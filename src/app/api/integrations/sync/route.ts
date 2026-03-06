@@ -7,18 +7,179 @@ import { createInboxItems } from "@/lib/inbox";
 
 export const maxDuration = 60;
 
-// Model names Nango uses per provider (try each; skip if no records returned)
-const PROVIDER_MODELS: Record<string, string[]> = {
-  "github":       ["Issue", "PullRequest", "GithubIssue", "Repository", "GithubRepoFile"],
-  "github-app":   ["Issue", "PullRequest", "GithubIssue", "Repository", "GithubRepoFile"],
-  "google-drive": ["GoogleDriveDocument", "Document", "File"],
-  "slack":        ["Message", "SlackMessage", "Channel"],
-  "linear":       ["Issue", "LinearIssue"],
-  "granola":      ["Meeting", "Transcript"],
-};
+interface RawRecord {
+  id: string;
+  title: string;
+  content: string;
+  sourceCreatedAt?: string | null;
+}
+
+// ── GitHub ─────────────────────────────────────────────────────────────────
+async function fetchGitHub(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  // Fetch repos the token has access to
+  let repos: { full_name: string; name: string }[] = [];
+  try {
+    const res = await nango.proxy<{ full_name: string; name: string }[]>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/user/repos",
+      params: { per_page: "10", sort: "pushed" },
+    });
+    repos = res.data ?? [];
+  } catch (err) {
+    console.error("[sync:github] repos fetch failed:", err);
+    return [];
+  }
+
+  for (const repo of repos.slice(0, 4)) {
+    try {
+      const res = await nango.proxy<
+        { number: number; title: string; body: string | null; created_at: string }[]
+      >({
+        method: "GET",
+        providerConfigKey: provider,
+        connectionId,
+        endpoint: `/repos/${repo.full_name}/issues`,
+        params: { per_page: "15", state: "all" },
+      });
+
+      for (const issue of (res.data ?? []).slice(0, 8)) {
+        if (!issue.body) continue;
+        records.push({
+          id: `${repo.full_name}#${issue.number}`,
+          title: `[${repo.name}] ${issue.title}`,
+          content: issue.body.slice(0, 12000),
+          sourceCreatedAt: issue.created_at,
+        });
+      }
+    } catch {
+      // repo might have no issues / no access — skip
+    }
+  }
+
+  return records.slice(0, 20);
+}
+
+// ── Google Drive ────────────────────────────────────────────────────────────
+async function fetchGoogleDrive(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  let files: { id: string; name: string; createdTime?: string }[] = [];
+  try {
+    const res = await nango.proxy<{
+      files: { id: string; name: string; createdTime?: string }[];
+    }>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/drive/v3/files",
+      params: {
+        q: "mimeType='application/vnd.google-apps.document' and trashed=false",
+        fields: "files(id,name,createdTime)",
+        pageSize: "20",
+        orderBy: "modifiedTime desc",
+      },
+    });
+    files = res.data?.files ?? [];
+  } catch (err) {
+    console.error("[sync:gdrive] files list failed:", err);
+    return [];
+  }
+
+  for (const file of files.slice(0, 10)) {
+    try {
+      const res = await nango.proxy<string>({
+        method: "GET",
+        providerConfigKey: provider,
+        connectionId,
+        endpoint: `/drive/v3/files/${file.id}/export`,
+        params: { mimeType: "text/plain" },
+      });
+      const content =
+        typeof res.data === "string" ? res.data.trim() : "";
+      if (content.length < 50) continue;
+
+      records.push({
+        id: file.id,
+        title: file.name,
+        content: content.slice(0, 12000),
+        sourceCreatedAt: file.createdTime ?? null,
+      });
+    } catch {
+      // export failed (might be a non-exportable type) — skip
+    }
+  }
+
+  return records;
+}
+
+// ── Slack ───────────────────────────────────────────────────────────────────
+async function fetchSlack(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  let channels: { id: string; name: string }[] = [];
+  try {
+    const res = await nango.proxy<{
+      channels: { id: string; name: string }[];
+    }>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/api/conversations.list",
+      params: { types: "public_channel", limit: "10" },
+    });
+    channels = res.data?.channels ?? [];
+  } catch (err) {
+    console.error("[sync:slack] channels fetch failed:", err);
+    return [];
+  }
+
+  for (const channel of channels.slice(0, 3)) {
+    try {
+      const res = await nango.proxy<{
+        messages: { ts: string; text?: string; user?: string }[];
+      }>({
+        method: "GET",
+        providerConfigKey: provider,
+        connectionId,
+        endpoint: "/api/conversations.history",
+        params: { channel: channel.id, limit: "50" },
+      });
+
+      const msgs = (res.data?.messages ?? [])
+        .filter((m) => m.text && m.text.length > 20)
+        .map((m) => m.text!)
+        .join("\n\n");
+
+      if (msgs.length < 50) continue;
+
+      records.push({
+        id: `slack-${channel.id}`,
+        title: `#${channel.name} — recent messages`,
+        content: msgs.slice(0, 12000),
+      });
+    } catch {
+      // skip inaccessible channels
+    }
+  }
+
+  return records;
+}
 
 function contentTypeFor(provider: string): string {
-  if (provider.startsWith("github")) return "issue";
+  if (provider.includes("github")) return "issue";
   switch (provider) {
     case "google-drive": return "document";
     case "slack":        return "message";
@@ -28,13 +189,7 @@ function contentTypeFor(provider: string): string {
   }
 }
 
-interface NangoRecord {
-  id: string;
-  [key: string]: unknown;
-}
-
 export async function POST(request: NextRequest) {
-  // Auth
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -51,7 +206,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "connectionId and provider required" }, { status: 400 });
   }
 
-  // Verify this integration belongs to user's org (RLS handles this)
+  // Verify the integration belongs to the user's org (RLS scoped)
   const { data: integration } = await supabase
     .from("integrations")
     .select("org_id")
@@ -64,100 +219,80 @@ export async function POST(request: NextRequest) {
 
   const orgId = integration.org_id;
   const adminDb = createAdminClient();
+
+  // Fetch raw records from the provider via Nango proxy
+  let rawRecords: RawRecord[] = [];
+  if (provider.includes("github")) {
+    rawRecords = await fetchGitHub(provider, connectionId);
+  } else if (provider === "google-drive") {
+    rawRecords = await fetchGoogleDrive(provider, connectionId);
+  } else if (provider === "slack") {
+    rawRecords = await fetchSlack(provider, connectionId);
+  } else {
+    return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
+  }
+
+  if (rawRecords.length === 0) {
+    return NextResponse.json({ processed: 0, note: "Provider returned no usable records" });
+  }
+
   const contentType = contentTypeFor(provider);
+  let processed = 0;
 
-  const models = PROVIDER_MODELS[provider] ?? ["Document"];
-  let totalProcessed = 0;
-  const modelResults: Record<string, number> = {};
-
-  for (const model of models) {
-    let records: NangoRecord[] = [];
+  for (const record of rawRecords) {
     try {
-      const response = await nango.listRecords<NangoRecord>({
-        providerConfigKey: provider,
-        connectionId,
-        model,
-      });
-      records = response.records ?? [];
-    } catch {
-      // Model not configured for this connection — skip
-      continue;
-    }
+      const { data: item, error } = await adminDb
+        .from("context_items")
+        .upsert(
+          {
+            org_id: orgId,
+            source_type: provider,
+            source_id: record.id,
+            nango_connection_id: connectionId,
+            title: record.title,
+            raw_content: record.content,
+            content_type: contentType,
+            status: "processing",
+            source_created_at: record.sourceCreatedAt ?? null,
+          },
+          { onConflict: "org_id,source_type,source_id" }
+        )
+        .select()
+        .single();
 
-    if (records.length === 0) continue;
+      if (error || !item) continue;
 
-    let processed = 0;
-    for (const record of records) {
-      try {
-        const sourceId = String(record.id ?? "");
-        const title = String(record.title ?? record.name ?? record.subject ?? "Untitled");
-        const content = String(
-          record.transcript ?? record.content ?? record.body ?? record.description ?? record.text ?? ""
-        );
-        const sourceCreatedAt = (record.created_at ?? record.started_at ?? null) as string | null;
+      const [extraction, embedding] = await Promise.all([
+        extractStructured(record.content, record.title),
+        generateEmbedding(record.content),
+      ]);
 
-        if (!content) continue;
+      await adminDb
+        .from("context_items")
+        .update({
+          title: extraction.title,
+          description_short: extraction.description_short,
+          description_long: extraction.description_long,
+          entities: extraction.entities,
+          embedding: embedding as unknown as string,
+          status: "ready",
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
 
-        const { data: item, error } = await adminDb
-          .from("context_items")
-          .upsert(
-            {
-              org_id: orgId,
-              source_type: provider,
-              source_id: sourceId,
-              nango_connection_id: connectionId,
-              title,
-              raw_content: content,
-              content_type: contentType,
-              status: "processing",
-              source_created_at: sourceCreatedAt,
-            },
-            { onConflict: "org_id,source_type,source_id" }
-          )
-          .select()
-          .single();
-
-        if (error || !item) continue;
-
-        const [extraction, embedding] = await Promise.all([
-          extractStructured(content, title),
-          generateEmbedding(content),
-        ]);
-
-        await adminDb
-          .from("context_items")
-          .update({
-            title: extraction.title,
-            description_short: extraction.description_short,
-            description_long: extraction.description_long,
-            entities: extraction.entities,
-            embedding: embedding as unknown as string,
-            status: "ready",
-            processed_at: new Date().toISOString(),
-          })
-          .eq("id", item.id);
-
-        await createInboxItems(adminDb, orgId, item.id, extraction, provider);
-
-        processed++;
-      } catch (err) {
-        console.error(`[sync] record processing error (${model}):`, err);
-      }
-    }
-
-    if (processed > 0) {
-      modelResults[model] = processed;
-      totalProcessed += processed;
+      await createInboxItems(adminDb, orgId, item.id, extraction, provider);
+      processed++;
+    } catch (err) {
+      console.error(`[sync] processing error for ${record.id}:`, err);
     }
   }
 
-  // Update last_sync_at
-  if (totalProcessed > 0) {
+  if (processed > 0) {
     await adminDb
       .from("integrations")
       .update({ last_sync_at: new Date().toISOString() })
       .eq("nango_connection_id", connectionId);
   }
 
-  return NextResponse.json({ processed: totalProcessed, models: modelResults });
+  return NextResponse.json({ processed, fetched: rawRecords.length });
 }
