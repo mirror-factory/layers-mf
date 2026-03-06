@@ -113,7 +113,7 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
         const label =
           data.processed > 0
             ? `${data.processed} item${data.processed === 1 ? "" : "s"} added to Context Library`
-            : "No new items found";
+            : data.note ?? "No exportable content found";
         setSyncResults((prev) => ({ ...prev, [integration.id]: label }));
         if (data.processed > 0) {
           setTimeout(() => window.location.reload(), 1800);

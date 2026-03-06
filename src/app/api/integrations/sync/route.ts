@@ -67,46 +67,64 @@ async function fetchGitHub(
 }
 
 // ── Google Drive ────────────────────────────────────────────────────────────
+// MIME types we can export as plain text
+const GDRIVE_EXPORTABLE: Record<string, string> = {
+  "application/vnd.google-apps.document":     "text/plain",
+  "application/vnd.google-apps.spreadsheet":  "text/csv",
+  "application/vnd.google-apps.presentation": "text/plain",
+};
+
 async function fetchGoogleDrive(
   provider: string,
   connectionId: string
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
 
-  let files: { id: string; name: string; createdTime?: string }[] = [];
+  let files: { id: string; name: string; mimeType: string; createdTime?: string }[] = [];
   try {
     const res = await nango.proxy<{
-      files: { id: string; name: string; createdTime?: string }[];
+      files: { id: string; name: string; mimeType: string; createdTime?: string }[];
     }>({
       method: "GET",
       providerConfigKey: provider,
       connectionId,
       endpoint: "/drive/v3/files",
       params: {
-        q: "mimeType='application/vnd.google-apps.document' and trashed=false",
-        fields: "files(id,name,createdTime)",
-        pageSize: "20",
+        // No mimeType filter — fetch everything, then decide per file
+        q: "trashed=false",
+        fields: "files(id,name,mimeType,createdTime)",
+        pageSize: "30",
         orderBy: "modifiedTime desc",
       },
     });
     files = res.data?.files ?? [];
+    console.log(
+      `[sync:gdrive] found ${files.length} files:`,
+      files.map((f) => `${f.name} [${f.mimeType}]`)
+    );
   } catch (err) {
     console.error("[sync:gdrive] files list failed:", err);
     return [];
   }
 
-  for (const file of files.slice(0, 10)) {
+  for (const file of files.slice(0, 15)) {
+    const exportMime = GDRIVE_EXPORTABLE[file.mimeType];
+    if (!exportMime) {
+      console.log(`[sync:gdrive] skipping non-exportable: ${file.name} (${file.mimeType})`);
+      continue;
+    }
     try {
       const res = await nango.proxy<string>({
         method: "GET",
         providerConfigKey: provider,
         connectionId,
         endpoint: `/drive/v3/files/${file.id}/export`,
-        params: { mimeType: "text/plain" },
+        params: { mimeType: exportMime },
       });
       const content =
         typeof res.data === "string" ? res.data.trim() : "";
-      if (content.length < 50) continue;
+      console.log(`[sync:gdrive] exported ${file.name}: ${content.length} chars`);
+      if (content.length < 30) continue;
 
       records.push({
         id: file.id,
@@ -232,8 +250,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
   }
 
+  console.log(`[sync:${provider}] fetched ${rawRecords.length} usable records`);
+
   if (rawRecords.length === 0) {
-    return NextResponse.json({ processed: 0, note: "Provider returned no usable records" });
+    return NextResponse.json({
+      processed: 0,
+      note: "No exportable content found. Check server logs for details — your files may be PDFs or other non-exportable types.",
+    });
   }
 
   const contentType = contentTypeFor(provider);
