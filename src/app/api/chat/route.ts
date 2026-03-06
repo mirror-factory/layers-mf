@@ -1,12 +1,10 @@
 import { NextRequest } from "next/server";
 import { streamText, convertToModelMessages, UIMessage } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { gateway } from "@ai-sdk/gateway";
 import { createClient } from "@/lib/supabase/server";
 import { searchContext, buildContextBlock } from "@/lib/db/search";
 
 export const maxDuration = 60;
-
-const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -52,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = streamText({
-    model: anthropic("claude-haiku-4-5-20251001"),
+    model: gateway("anthropic/claude-haiku-4-5-20251001"),
     system: `You are Layers, an AI assistant for knowledge teams. You help users understand their documents, meetings, and projects.
 
 You have access to the following context from the team's knowledge base:

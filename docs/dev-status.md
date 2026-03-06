@@ -41,23 +41,19 @@ Last updated: 2026-03-06
 Add to `.env.local` (never committed):
 
 ```bash
-# Already filled in
+# Already filled in — AI routes through Gateway, no per-provider keys needed
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
-AI_GATEWAY_API_KEY=...
+AI_GATEWAY_API_KEY=...        # covers Anthropic (extraction) + OpenAI (embeddings)
 NANGO_SECRET_KEY=...
 STRIPE_SECRET_KEY=...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
 
-# Still needed for AI pipeline to work
-ANTHROPIC_API_KEY=       # for generateObject (extraction)
-OPENAI_API_KEY=          # for embed (text-embedding-3-small)
-
 # Still pending
-NEXT_PUBLIC_NANGO_PUBLIC_KEY=   # find in Nango dashboard → Settings → API Keys
-NANGO_WEBHOOK_SECRET=            # set in Nango dashboard → Webhooks
-STRIPE_WEBHOOK_SECRET=           # run: stripe listen --forward-to localhost:3000/api/webhooks/stripe
+NEXT_PUBLIC_NANGO_PUBLIC_KEY=   # Nango dashboard → Settings → API Keys
+NANGO_WEBHOOK_SECRET=            # Nango dashboard → Webhooks
+STRIPE_WEBHOOK_SECRET=           # stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
 
 ---
