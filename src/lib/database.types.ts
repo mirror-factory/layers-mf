@@ -357,6 +357,35 @@ export type Database = {
     }
     Functions: {
       get_user_org_ids: { Args: never; Returns: string[] }
+      search_context_items: {
+        Args: {
+          p_limit?: number
+          p_org_id: string
+          p_query_embedding: string
+          p_query_text: string
+        }
+        Returns: {
+          content_type: string
+          description_long: string
+          description_short: string
+          id: string
+          rrf_score: number
+          source_type: string
+          title: string
+        }[]
+      }
+      search_context_items_text: {
+        Args: { p_limit?: number; p_org_id: string; p_query_text: string }
+        Returns: {
+          content_type: string
+          description_long: string
+          description_short: string
+          id: string
+          rrf_score: number
+          source_type: string
+          title: string
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
