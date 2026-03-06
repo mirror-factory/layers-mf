@@ -16,7 +16,7 @@ export default async function IntegrationsPage() {
   const { data: integrations } = member
     ? await supabase
         .from("integrations")
-        .select("id, provider, status, last_sync_at")
+        .select("id, provider, nango_connection_id, status, last_sync_at")
         .eq("org_id", member.org_id)
     : { data: [] };
 
