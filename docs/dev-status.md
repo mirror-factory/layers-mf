@@ -1,6 +1,6 @@
 # Development Status
 
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 ## Completed (Sprint 1 Foundation)
 
@@ -20,6 +20,11 @@ Last updated: 2026-03-05
 - [x] Login page (`/login`)
 - [x] Signup page (`/signup`) — creates org via DB trigger
 - [x] Auth callback route (`/auth/callback`)
+
+### Integrations (Nango)
+- [x] `@nangohq/node` + `@nangohq/frontend` installed
+- [x] Nango server client (`src/lib/nango/client.ts`)
+- [x] Single Nango webhook handler (`POST /api/webhooks/nango`) — receives sync events for ALL integrations (Granola, Linear, etc.), fetches records from Nango, upserts to `context_items`, triggers extract + embed
 
 ### Context Library (Sprint 1 core feature)
 - [x] File parsing (`src/lib/ingest/parse.ts`): PDF (pdf-parse v1), DOCX (mammoth), TXT/MD
@@ -51,26 +56,20 @@ OPENAI_API_KEY=          # for embed (text-embedding-3-small)
 
 # Still pending
 NEXT_PUBLIC_NANGO_PUBLIC_KEY=   # find in Nango dashboard → Settings → API Keys
+NANGO_WEBHOOK_SECRET=            # set in Nango dashboard → Webhooks
 STRIPE_WEBHOOK_SECRET=           # run: stripe listen --forward-to localhost:3000/api/webhooks/stripe
-GRANOLA_WEBHOOK_SECRET=
 ```
 
 ---
 
 ## Next Up (Sprint 1 remaining)
 
-### 1. Nango integration wiring (Issue #5)
+### 1. Nango connect flow (Issue #5)
 - Get `NEXT_PUBLIC_NANGO_PUBLIC_KEY` from Nango dashboard (Settings → API Keys)
-- Install `@nangohq/frontend` for the OAuth connect flow
-- Build `POST /api/integrations/connect` — saves connection to `integrations` table
-- Build `GET /api/integrations` — list org integrations
-- Add Integrations page to dashboard sidebar
-
-### 2. Granola webhook (Issue #6)
-- Build `POST /api/webhooks/granola` — receives meeting transcript webhooks
-- Verify `GRANOLA_WEBHOOK_SECRET` HMAC signature
-- Parse payload → insert `context_item` (source_type: 'granola', content_type: 'meeting_transcript')
-- Trigger same extract + embed pipeline as file upload
+- Build Integrations page (`/integrations`) with connect buttons per integration
+- `POST /api/integrations/connect` — saves connection to `integrations` table after OAuth
+- `GET /api/integrations` — list org integrations
+- Set up Nango webhook URL in dashboard → `https://<your-domain>/api/webhooks/nango`
 
 ### 3. Chat interface (Sprint 2 – Issue #8)
 - Install `@ai-sdk/anthropic` streaming
