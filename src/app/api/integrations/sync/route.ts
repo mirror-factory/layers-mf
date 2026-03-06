@@ -77,8 +77,9 @@ const GDRIVE_EXPORTABLE: Record<string, string> = {
 async function fetchGoogleDrive(
   provider: string,
   connectionId: string
-): Promise<RawRecord[]> {
+): Promise<{ records: RawRecord[]; debug: string[] }> {
   const records: RawRecord[] = [];
+  const debug: string[] = [];
 
   let files: { id: string; name: string; mimeType: string; createdTime?: string }[] = [];
   try {
@@ -90,7 +91,6 @@ async function fetchGoogleDrive(
       connectionId,
       endpoint: "/drive/v3/files",
       params: {
-        // No mimeType filter — fetch everything, then decide per file
         q: "trashed=false",
         fields: "files(id,name,mimeType,createdTime)",
         pageSize: "30",
@@ -98,19 +98,18 @@ async function fetchGoogleDrive(
       },
     });
     files = res.data?.files ?? [];
-    console.log(
-      `[sync:gdrive] found ${files.length} files:`,
-      files.map((f) => `${f.name} [${f.mimeType}]`)
-    );
+    debug.push(`Found ${files.length} files in Drive`);
   } catch (err) {
-    console.error("[sync:gdrive] files list failed:", err);
-    return [];
+    const msg = err instanceof Error ? err.message : String(err);
+    debug.push(`Drive API error: ${msg}`);
+    return { records, debug };
   }
 
   for (const file of files.slice(0, 15)) {
     const exportMime = GDRIVE_EXPORTABLE[file.mimeType];
     if (!exportMime) {
-      console.log(`[sync:gdrive] skipping non-exportable: ${file.name} (${file.mimeType})`);
+      const friendly = file.mimeType.split(".").pop() ?? file.mimeType;
+      debug.push(`Skipped: ${file.name} (${friendly} — not exportable)`);
       continue;
     }
     try {
@@ -121,23 +120,25 @@ async function fetchGoogleDrive(
         endpoint: `/drive/v3/files/${file.id}/export`,
         params: { mimeType: exportMime },
       });
-      const content =
-        typeof res.data === "string" ? res.data.trim() : "";
-      console.log(`[sync:gdrive] exported ${file.name}: ${content.length} chars`);
-      if (content.length < 30) continue;
-
+      const content = typeof res.data === "string" ? res.data.trim() : "";
+      if (content.length < 30) {
+        debug.push(`Skipped: ${file.name} (empty content)`);
+        continue;
+      }
+      debug.push(`Imported: ${file.name} (${content.length} chars)`);
       records.push({
         id: file.id,
         title: file.name,
         content: content.slice(0, 12000),
         sourceCreatedAt: file.createdTime ?? null,
       });
-    } catch {
-      // export failed (might be a non-exportable type) — skip
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      debug.push(`Failed: ${file.name} — ${msg}`);
     }
   }
 
-  return records;
+  return { records, debug };
 }
 
 // ── Slack ───────────────────────────────────────────────────────────────────
@@ -240,23 +241,22 @@ export async function POST(request: NextRequest) {
 
   // Fetch raw records from the provider via Nango proxy
   let rawRecords: RawRecord[] = [];
+  let debugLines: string[] = [];
+
   if (provider.includes("github")) {
     rawRecords = await fetchGitHub(provider, connectionId);
   } else if (provider === "google-drive") {
-    rawRecords = await fetchGoogleDrive(provider, connectionId);
+    const result = await fetchGoogleDrive(provider, connectionId);
+    rawRecords = result.records;
+    debugLines = result.debug;
   } else if (provider === "slack") {
     rawRecords = await fetchSlack(provider, connectionId);
   } else {
     return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
   }
 
-  console.log(`[sync:${provider}] fetched ${rawRecords.length} usable records`);
-
   if (rawRecords.length === 0) {
-    return NextResponse.json({
-      processed: 0,
-      note: "No exportable content found. Check server logs for details — your files may be PDFs or other non-exportable types.",
-    });
+    return NextResponse.json({ processed: 0, debug: debugLines });
   }
 
   const contentType = contentTypeFor(provider);
@@ -317,5 +317,5 @@ export async function POST(request: NextRequest) {
       .eq("nango_connection_id", connectionId);
   }
 
-  return NextResponse.json({ processed, fetched: rawRecords.length });
+  return NextResponse.json({ processed, fetched: rawRecords.length, debug: debugLines });
 }

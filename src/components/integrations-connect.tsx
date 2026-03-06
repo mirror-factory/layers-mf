@@ -31,6 +31,7 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
   const [connectError, setConnectError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncResults, setSyncResults] = useState<Record<string, string>>({});
+  const [syncDebug, setSyncDebug] = useState<Record<string, string[]>>({});
 
   async function saveConnection(connectionId: string, provider: string) {
     const res = await fetch("/api/integrations/save-connection", {
@@ -113,8 +114,11 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
         const label =
           data.processed > 0
             ? `${data.processed} item${data.processed === 1 ? "" : "s"} added to Context Library`
-            : data.note ?? "No exportable content found";
+            : "Nothing importable found — see details below";
         setSyncResults((prev) => ({ ...prev, [integration.id]: label }));
+        if (data.debug?.length) {
+          setSyncDebug((prev) => ({ ...prev, [integration.id]: data.debug }));
+        }
         if (data.processed > 0) {
           setTimeout(() => window.location.reload(), 1800);
         }
@@ -156,11 +160,13 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
             const meta = PROVIDER_META[integration.provider];
             const isSyncing = syncing === integration.id;
             const result = syncResults[integration.id];
+            const debug = syncDebug[integration.id];
             return (
               <div
                 key={integration.id}
-                className="flex items-center justify-between px-4 py-3"
+                className="px-4 py-3"
               >
+                <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">
                     {meta?.label ?? integration.provider}
@@ -200,6 +206,14 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
                     {isSyncing ? "Syncing…" : "Sync now"}
                   </Button>
                 </div>
+                </div>
+                {debug && debug.length > 0 && (
+                  <div className="mt-2 rounded-md bg-muted p-2 space-y-0.5">
+                    {debug.map((line, i) => (
+                      <p key={i} className="text-xs text-muted-foreground font-mono">{line}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
