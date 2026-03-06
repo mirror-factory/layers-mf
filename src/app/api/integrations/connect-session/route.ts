@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { nango } from "@/lib/nango/client";
 
-// Supported integrations — must match provider config keys in Nango dashboard
-const ALLOWED_INTEGRATIONS = ["granola", "linear", "google-drive"];
-
 export async function POST() {
   const supabase = await createClient();
 
@@ -30,12 +27,12 @@ export async function POST() {
         end_user_email: user.email ?? "",
         organization_id: member.org_id,
       },
-      allowed_integrations: ALLOWED_INTEGRATIONS,
     });
 
     return NextResponse.json({ sessionToken: data.token });
   } catch (err) {
-    console.error("Nango createConnectSession error:", err);
-    return NextResponse.json({ error: "Failed to create connect session" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Nango createConnectSession error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

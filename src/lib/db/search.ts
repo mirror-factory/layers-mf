@@ -23,7 +23,7 @@ export async function searchContext(
 ): Promise<SearchResult[]> {
   const db = supabase as AnySupabase;
 
-  if (process.env.OPENAI_API_KEY) {
+  if (process.env.AI_GATEWAY_API_KEY) {
     // Hybrid: vector cosine + full-text RRF
     const embedding = await generateEmbedding(query);
     const { data, error } = await db.rpc("search_context_items", {
