@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { nango } from "@/lib/nango/client";
 import { extractStructured } from "@/lib/ai/extract";
 import { generateEmbedding } from "@/lib/ai/embed";
+import { createInboxItems } from "@/lib/inbox";
 
 export const maxDuration = 60;
 
@@ -162,6 +163,8 @@ export async function POST(request: NextRequest) {
               processed_at: new Date().toISOString(),
             })
             .eq("id", item.id);
+
+          await createInboxItems(supabase, orgId, item.id, extraction, payload.providerConfigKey!);
         } catch (err) {
           console.error("Nango record processing error:", err);
         }
@@ -178,7 +181,8 @@ function contentTypeFor(provider: string): string {
   switch (provider) {
     case "granola": return "meeting_transcript";
     case "linear": return "issue";
-    case "google-drive": return "document";
+    case "github": return "issue";
+    case "slack": return "message";
     default: return "document";
   }
 }

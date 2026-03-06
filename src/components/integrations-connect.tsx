@@ -16,11 +16,13 @@ interface IntegrationsConnectProps {
   integrations: Integration[];
 }
 
-const PROVIDERS = [
+const PROVIDERS: { key: string; label: string; description: string }[] = [
   { key: "granola", label: "Granola", description: "Meeting transcripts and notes" },
   { key: "linear", label: "Linear", description: "Issues, projects, and cycles" },
   { key: "google-drive", label: "Google Drive", description: "Documents and files" },
-] as const;
+  { key: "github", label: "GitHub", description: "Repositories and issues" },
+  { key: "slack", label: "Slack", description: "Messages and channels" },
+];
 
 export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) {
   const [connecting, setConnecting] = useState(false);
@@ -41,13 +43,31 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
       // Open Nango's pre-built Connect UI (no public key needed)
       const nango = new Nango();
       const connect = nango.openConnectUI({
-        onEvent: (event) => {
+        onEvent: async (event) => {
+          console.log("[Nango] event:", event);
           if (event.type === "close") {
             setConnecting(false);
           } else if (event.type === "connect") {
-            // Nango will fire an auth webhook → our /api/webhooks/nango saves the connection
+            // Save connection directly as a fallback (works even when webhook
+            // can't reach localhost in local dev; upsert is safe if webhook
+            // also fires successfully).
+            try {
+              const payload = event as unknown as {
+                type: "connect";
+                payload: { connectionId: string; providerConfigKey: string };
+              };
+              await fetch("/api/integrations/save-connection", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  connectionId: payload.payload.connectionId,
+                  provider: payload.payload.providerConfigKey,
+                }),
+              });
+            } catch (err) {
+              console.warn("[Nango] save-connection fallback failed:", err);
+            }
             setConnecting(false);
-            // Refresh to show updated status
             window.location.reload();
           }
         },

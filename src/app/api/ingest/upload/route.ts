@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseFile } from "@/lib/ingest/parse";
 import { extractStructured } from "@/lib/ai/extract";
 import { generateEmbedding } from "@/lib/ai/embed";
+import { createInboxItems } from "@/lib/inbox";
 
 export const maxDuration = 60; // seconds — allow time for AI processing
 
@@ -89,6 +90,9 @@ export async function POST(request: NextRequest) {
         processed_at: new Date().toISOString(),
       })
       .eq("id", item.id);
+
+    // Surface action items / decisions from this upload into the uploader's inbox
+    await createInboxItems(supabase, member.org_id, item.id, extraction, "upload");
 
     return NextResponse.json({ id: item.id, status: "ready" });
   } catch (err) {
