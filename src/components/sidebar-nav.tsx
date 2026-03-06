@@ -8,6 +8,7 @@ import {
   Library,
   MessageSquare,
   Inbox,
+  Plug,
   LogOut,
   Layers,
 } from "lucide-react";
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/integrations", label: "Integrations", icon: Plug },
 ];
 
 export function SidebarNav({
