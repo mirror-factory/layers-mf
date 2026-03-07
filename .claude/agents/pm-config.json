@@ -1,0 +1,25 @@
+{
+  "ntfy_topic": "layers-mf-pm",
+  "github_repo": "mirror-factory/layers-mf",
+  "github_url": "https://github.com/mirror-factory/layers-mf",
+  "linear_user_id": "3c412574-fcb3-4cf3-ba62-85717f95a359",
+  "team_prefixes": ["PROD", "SERV", "COMP"],
+  "statuses": {
+    "in_progress": {
+      "name": "In Progress",
+      "id": "45d69c56-a575-42e2-8f08-361356ab8393"
+    },
+    "in_review": {
+      "name": "In Review",
+      "id": "d2397d2e-571f-4f28-8c61-e73f90620902"
+    },
+    "done": {
+      "name": "Done",
+      "id": "e258c791-78bc-4c9a-a046-187bee0f889d"
+    }
+  },
+  "trigger_keywords": {
+    "review": ["fix", "close", "resolve", "fixed", "closed", "resolved", "fixes", "closes", "resolves"],
+    "in_progress": ["wip", "progress", "working on", "start"]
+  }
+}
