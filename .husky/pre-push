@@ -5,6 +5,6 @@ echo "Pre-push: running typecheck..."
 $NODE node_modules/typescript/bin/tsc --noEmit || exit 1
 
 echo "Pre-push: running tests..."
-$NODE node_modules/.bin/vitest run || exit 1
+$NODE node_modules/vitest/dist/cli.js run || exit 1
 
 echo "Pre-push: all checks passed."
