@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Inbox,
   Plug,
+  BarChart3,
   LogOut,
   Layers,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
 ];
 

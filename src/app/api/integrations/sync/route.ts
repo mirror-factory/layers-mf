@@ -91,21 +91,21 @@ async function fetchGoogleDrive(
       connectionId,
       endpoint: "/drive/v3/files",
       params: {
-        q: "trashed=false",
+        q: "trashed=false and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.presentation')",
         fields: "files(id,name,mimeType,createdTime)",
-        pageSize: "30",
+        pageSize: "100",
         orderBy: "modifiedTime desc",
       },
     });
     files = res.data?.files ?? [];
-    debug.push(`Found ${files.length} files in Drive`);
+    debug.push(`Found ${files.length} exportable Google files in Drive`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     debug.push(`Drive API error: ${msg}`);
     return { records, debug };
   }
 
-  for (const file of files.slice(0, 15)) {
+  for (const file of files) {
     const exportMime = GDRIVE_EXPORTABLE[file.mimeType];
     if (!exportMime) {
       const friendly = file.mimeType.split(".").pop() ?? file.mimeType;
@@ -264,10 +264,28 @@ export async function POST(request: NextRequest) {
 
   for (const record of rawRecords) {
     try {
-      const { data: item, error } = await adminDb
+      // Check if already exists (partial unique index doesn't work reliably with upsert)
+      const { data: existing } = await adminDb
         .from("context_items")
-        .upsert(
-          {
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("source_type", provider)
+        .eq("source_id", record.id)
+        .maybeSingle();
+
+      let item: { id: string } | null = null;
+
+      if (existing) {
+        // Already exists — re-process it and refresh content
+        item = existing;
+        await adminDb
+          .from("context_items")
+          .update({ status: "processing", raw_content: record.content, title: record.title })
+          .eq("id", existing.id);
+      } else {
+        const { data: inserted, error } = await adminDb
+          .from("context_items")
+          .insert({
             org_id: orgId,
             source_type: provider,
             source_id: record.id,
@@ -277,36 +295,46 @@ export async function POST(request: NextRequest) {
             content_type: contentType,
             status: "processing",
             source_created_at: record.sourceCreatedAt ?? null,
-          },
-          { onConflict: "org_id,source_type,source_id" }
-        )
-        .select()
-        .single();
+          })
+          .select("id")
+          .single();
 
-      if (error || !item) continue;
+        if (error || !inserted) {
+          debugLines.push(`DB insert error for "${record.title}": ${error?.message ?? "no row returned"}`);
+          continue;
+        }
+        item = inserted;
+      }
 
-      const [extraction, embedding] = await Promise.all([
-        extractStructured(record.content, record.title),
-        generateEmbedding(record.content),
-      ]);
+      try {
+        const [extraction, embedding] = await Promise.all([
+          extractStructured(record.content, record.title),
+          generateEmbedding(record.content),
+        ]);
 
-      await adminDb
-        .from("context_items")
-        .update({
-          title: extraction.title,
-          description_short: extraction.description_short,
-          description_long: extraction.description_long,
-          entities: extraction.entities,
-          embedding: embedding as unknown as string,
-          status: "ready",
-          processed_at: new Date().toISOString(),
-        })
-        .eq("id", item.id);
+        await adminDb
+          .from("context_items")
+          .update({
+            title: extraction.title,
+            description_short: extraction.description_short,
+            description_long: extraction.description_long,
+            entities: extraction.entities,
+            embedding: embedding as unknown as string,
+            status: "ready",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", item.id);
 
-      await createInboxItems(adminDb, orgId, item.id, extraction, provider);
-      processed++;
+        await createInboxItems(adminDb, orgId, item.id, extraction, provider);
+        processed++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        debugLines.push(`AI error for "${record.title}": ${msg}`);
+        await adminDb.from("context_items").update({ status: "error" }).eq("id", item.id);
+      }
     } catch (err) {
-      console.error(`[sync] processing error for ${record.id}:`, err);
+      const msg = err instanceof Error ? err.message : String(err);
+      debugLines.push(`Error for "${record.title}": ${msg}`);
     }
   }
 

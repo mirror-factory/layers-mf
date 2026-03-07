@@ -18,12 +18,12 @@ interface IntegrationsConnectProps {
 }
 
 const PROVIDER_META: Record<string, { label: string; description: string }> = {
-  granola:        { label: "Granola",       description: "Meeting transcripts and notes" },
-  linear:         { label: "Linear",        description: "Issues, projects, and cycles" },
-  "google-drive": { label: "Google Drive",  description: "Documents and files" },
-  github:         { label: "GitHub",        description: "Repositories and issues" },
-  "github-app":   { label: "GitHub",        description: "Repositories and issues" },
-  slack:          { label: "Slack",         description: "Messages and channels" },
+  granola:        { label: "Granola",      description: "Meeting transcripts and notes" },
+  linear:         { label: "Linear",       description: "Issues, projects, and cycles" },
+  "google-drive": { label: "Google Drive", description: "Documents and files" },
+  github:         { label: "GitHub",       description: "Repositories and issues" },
+  "github-app":   { label: "GitHub",       description: "Repositories and issues" },
+  slack:          { label: "Slack",        description: "Messages and channels" },
 };
 
 export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) {
@@ -48,7 +48,6 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
   async function handleConnect() {
     setConnecting(true);
     setConnectError(null);
-
     try {
       const res = await fetch("/api/integrations/connect-session", { method: "POST" });
       if (!res.ok) {
@@ -61,12 +60,10 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
       const connect = nango.openConnectUI({
         onEvent: async (event) => {
           console.log("[Nango] event:", JSON.stringify(event));
-
           if (event.type === "close") {
             setConnecting(false);
             return;
           }
-
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const e = event as any;
           const connectionId: string =
@@ -75,11 +72,7 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
             e.providerConfigKey ?? e.payload?.providerConfigKey ?? e.connection?.providerConfigKey ?? "";
 
           if (connectionId && provider) {
-            try {
-              await saveConnection(connectionId, provider);
-            } catch (err) {
-              console.warn("[Nango] save-connection failed:", err);
-            }
+            try { await saveConnection(connectionId, provider); } catch {}
             setConnecting(false);
             window.location.reload();
           } else {
@@ -87,7 +80,6 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
           }
         },
       });
-
       connect.setSessionToken(sessionToken);
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : "Connection failed");
@@ -98,6 +90,7 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
   async function handleSync(integration: Integration) {
     setSyncing(integration.id);
     setSyncResults((prev) => ({ ...prev, [integration.id]: "" }));
+    setSyncDebug((prev) => ({ ...prev, [integration.id]: [] }));
 
     try {
       const res = await fetch("/api/integrations/sync", {
@@ -109,8 +102,9 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
         const label =
           data.processed > 0
             ? `${data.processed} item${data.processed === 1 ? "" : "s"} added to Context Library`
@@ -123,10 +117,9 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
           setTimeout(() => window.location.reload(), 1800);
         }
       } else {
-        const body = await res.json().catch(() => ({}));
         setSyncResults((prev) => ({
           ...prev,
-          [integration.id]: body.error ?? "Sync failed",
+          [integration.id]: data.error ?? "Sync failed",
         }));
       }
     } catch {
@@ -143,11 +136,9 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
           Connect your tools to start syncing knowledge into Layers.
         </p>
         <Button onClick={handleConnect} disabled={connecting}>
-          {connecting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Plug className="h-4 w-4 mr-2" />
-          )}
+          {connecting
+            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            : <Plug className="h-4 w-4 mr-2" />}
           {connecting ? "Connecting…" : "Connect an integration"}
         </Button>
       </div>
@@ -162,50 +153,39 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
             const result = syncResults[integration.id];
             const debug = syncDebug[integration.id];
             return (
-              <div
-                key={integration.id}
-                className="px-4 py-3"
-              >
+              <div key={integration.id} className="px-4 py-3">
                 <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">
-                    {meta?.label ?? integration.provider}
-                  </p>
-                  {meta && (
-                    <p className="text-xs text-muted-foreground">{meta.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="flex items-center gap-1.5">
-                      <Check className="h-4 w-4 text-green-500" />
-                      <span className="text-xs text-muted-foreground">
-                        {integration.last_sync_at
-                          ? `Synced ${new Date(
-                              integration.last_sync_at
-                            ).toLocaleDateString()}`
-                          : "Connected"}
-                      </span>
-                    </div>
-                    {result && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{result}</p>
-                    )}
+                  <div>
+                    <p className="text-sm font-medium">{meta?.label ?? integration.provider}</p>
+                    {meta && <p className="text-xs text-muted-foreground">{meta.description}</p>}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSync(integration)}
-                    disabled={isSyncing}
-                    className="h-7 text-xs"
-                  >
-                    {isSyncing ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                    )}
-                    {isSyncing ? "Syncing…" : "Sync now"}
-                  </Button>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-xs text-muted-foreground">
+                          {integration.last_sync_at
+                            ? `Synced ${new Date(integration.last_sync_at).toLocaleDateString()}`
+                            : "Connected"}
+                        </span>
+                      </div>
+                      {result && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{result}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSync(integration)}
+                      disabled={isSyncing}
+                      className="h-7 text-xs"
+                    >
+                      {isSyncing
+                        ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        : <RefreshCw className="h-3 w-3 mr-1" />}
+                      {isSyncing ? "Syncing…" : "Sync now"}
+                    </Button>
+                  </div>
                 </div>
                 {debug && debug.length > 0 && (
                   <div className="mt-2 rounded-md bg-muted p-2 space-y-0.5">

@@ -1,15 +1,38 @@
 import { NextRequest } from "next/server";
-import { streamText, convertToModelMessages, UIMessage } from "ai";
+import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } from "ai";
 import { gateway } from "@ai-sdk/gateway";
-import { createClient } from "@/lib/supabase/server";
-import { searchContext, buildContextBlock } from "@/lib/db/search";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createTools } from "@/lib/ai/tools";
 
 export const maxDuration = 60;
+
+const ALLOWED_MODELS = new Set([
+  "anthropic/claude-haiku-4-5-20251001",
+  "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-opus-4.6",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4o",
+  "google/gemini-flash",
+  "google/gemini-pro",
+]);
+
+const AGENT_INSTRUCTIONS = `You are Layers, an AI assistant for knowledge teams. You have access to tools to search the team's knowledge base and read full documents.
+
+Guidelines:
+- Always call search_context before answering any question — do not rely on your training data alone
+- Use multiple search queries with different angles if one query isn't sufficient
+- Call get_document for documents that appear highly relevant to get their full content
+- Be concise and specific in your final answer
+- Cite sources by title when you use information from them
+- If the knowledge base has no relevant information, say so clearly`;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -31,37 +54,71 @@ export async function POST(request: NextRequest) {
     return new Response("Invalid messages", { status: 400 });
   }
 
-  // Extract last user message text for retrieval
-  const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
-  const queryText = lastUserMsg?.parts
-    .filter((p) => p.type === "text")
-    .map((p) => (p as { type: "text"; text: string }).text)
-    .join(" ") ?? "";
+  const modelId = ALLOWED_MODELS.has(body.model)
+    ? (body.model as string)
+    : "anthropic/claude-haiku-4-5-20251001";
 
-  // Retrieve relevant context
-  let contextBlock = "No context available.";
-  if (queryText) {
-    try {
-      const results = await searchContext(supabase, member.org_id, queryText);
-      contextBlock = buildContextBlock(results);
-    } catch {
-      // Non-fatal: proceed without context
-    }
-  }
+  // Extract first user message as the "query" for analytics
+  const firstUserMsg = uiMessages.find((m) => m.role === "user");
+  const query =
+    (firstUserMsg?.parts as { type: string; text?: string }[] | undefined)
+      ?.filter((p) => p.type === "text")
+      .map((p) => p.text ?? "")
+      .join(" ")
+      .slice(0, 500) ?? "";
 
-  const result = streamText({
-    model: gateway("anthropic/claude-haiku-4-5-20251001"),
-    system: `You are Layers, an AI assistant for knowledge teams. You help users understand their documents, meetings, and projects.
+  // Collect per-step data for the final log
+  const startTime = Date.now();
+  const toolCallCounts: Record<string, number> = {};
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let runStepCount = 0;
 
-You have access to the following context from the team's knowledge base:
+  const adminDb = createAdminClient();
+  const orgId = member.org_id;
+  const userId = user.id;
 
-<context>
-${contextBlock}
-</context>
-
-Answer questions using the context above when relevant. Be concise and specific. If the context doesn't contain relevant information, say so and answer from your general knowledge.`,
-    messages: await convertToModelMessages(uiMessages),
+  const agent = new ToolLoopAgent({
+    model: gateway(modelId),
+    instructions: AGENT_INSTRUCTIONS,
+    tools: createTools(supabase, orgId),
+    stopWhen: stepCountIs(6),
+    onStepFinish: ({ usage, toolCalls }) => {
+      runStepCount++;
+      if (usage) {
+        totalInputTokens += usage.inputTokens ?? 0;
+        totalOutputTokens += usage.outputTokens ?? 0;
+      }
+      if (toolCalls) {
+        for (const tc of toolCalls) {
+          const name = tc.toolName ?? "unknown";
+          toolCallCounts[name] = (toolCallCounts[name] ?? 0) + 1;
+        }
+      }
+    },
+    onFinish: () => {
+      const toolCallsArray = Object.entries(toolCallCounts).map(([tool, count]) => ({ tool, count }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      void (adminDb as any)
+        .from("agent_runs")
+        .insert({
+          org_id: orgId,
+          user_id: userId,
+          model: modelId,
+          query,
+          step_count: runStepCount,
+          finish_reason: "stop",
+          total_input_tokens: totalInputTokens,
+          total_output_tokens: totalOutputTokens,
+          duration_ms: Date.now() - startTime,
+          tool_calls: toolCallsArray,
+          error: null,
+        });
+    },
   });
 
-  return result.toUIMessageStreamResponse();
+  return createAgentUIStreamResponse({
+    agent,
+    uiMessages,
+  });
 }
