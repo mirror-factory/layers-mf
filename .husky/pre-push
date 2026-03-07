@@ -1,0 +1,10 @@
+export PATH="/opt/homebrew/bin:$PATH"
+NODE="/opt/homebrew/bin/node"
+
+echo "Pre-push: running typecheck..."
+$NODE node_modules/typescript/bin/tsc --noEmit || exit 1
+
+echo "Pre-push: running tests..."
+$NODE node_modules/.bin/vitest run || exit 1
+
+echo "Pre-push: all checks passed."

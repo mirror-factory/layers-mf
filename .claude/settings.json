@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); CMD=$(echo \"$INPUT\" | grep -o '\"command\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | head -1 | sed 's/.*\"command\"[[:space:]]*:[[:space:]]*\"\\(.*\\)\"/\\1/'); if echo \"$CMD\" | grep -qE '^git commit'; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-check.sh; elif echo \"$CMD\" | grep -qE '^git push'; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-push-check.sh; fi",
+            "statusMessage": "Running pre-commit/push checks..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); FILE=$(echo \"$INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$'; then echo \"[hook] Edited: $FILE\" >> \"$CLAUDE_PROJECT_DIR\"/.claude/dev-activity.log; fi",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-push-pm.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
