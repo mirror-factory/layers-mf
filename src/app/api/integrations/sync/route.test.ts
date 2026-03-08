@@ -376,3 +376,361 @@ describe("POST /api/integrations/sync — Google Drive", () => {
     expect(body.processed).toBe(1);
   });
 });
+
+describe("POST /api/integrations/sync — Granola", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("fetches meeting transcripts via Nango proxy", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockAdminDbForProcessing();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        documents: [
+          {
+            id: "mtg-1",
+            title: "Sprint Planning",
+            transcript: "This is a sufficiently long transcript from the sprint planning meeting to pass the fifty character minimum filter.",
+            created_at: "2026-03-01T10:00:00Z",
+            attendees: [
+              { name: "Alice", email: "alice@co.com" },
+              { name: "Bob", email: "bob@co.com" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.fetched).toBe(1);
+    expect(body.processed).toBe(1);
+
+    expect(mockNangoProxy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "/v1/documents",
+        providerConfigKey: "granola",
+      })
+    );
+  });
+
+  it("returns processed=0 when documents fetch fails", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockNangoProxy.mockRejectedValueOnce(new Error("Granola API error"));
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.processed).toBe(0);
+  });
+
+  it("skips documents with short transcripts", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        documents: [
+          { id: "mtg-2", title: "Quick call", transcript: "Short" },
+        ],
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.processed).toBe(0);
+  });
+
+  it("creates context_item with content_type=meeting_transcript and includes attendees", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+
+    const transcript = "A".repeat(100);
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        documents: [
+          {
+            id: "mtg-3",
+            title: "Retro",
+            transcript,
+            attendees: [{ name: "Carol" }, { name: "Dan" }],
+          },
+        ],
+      },
+    });
+
+    const insertMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: "ci-g1" }, error: null }),
+      }),
+    });
+    const updateMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    mockAdminFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+        }),
+      }),
+      insert: insertMock,
+      update: updateMock,
+    });
+
+    mockExtract.mockResolvedValue({
+      title: "Retro meeting",
+      description_short: "Retro",
+      description_long: "Detailed retro",
+      entities: { people: ["Carol", "Dan"] },
+    });
+    mockEmbed.mockResolvedValue([0.5]);
+    mockCreateInbox.mockResolvedValue(undefined);
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
+    expect(res.status).toBe(200);
+
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source_type: "granola",
+        content_type: "meeting_transcript",
+        source_id: "mtg-3",
+      })
+    );
+
+    // Verify content includes attendees
+    const insertedContent = insertMock.mock.calls[0][0].raw_content as string;
+    expect(insertedContent).toContain("Attendees: Carol, Dan");
+  });
+
+  it("handles array-style response data", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockAdminDbForProcessing();
+
+    // Some APIs return data as a flat array
+    mockNangoProxy.mockResolvedValueOnce({
+      data: [
+        {
+          id: "mtg-flat",
+          title: "Team Sync",
+          transcript: "A long enough transcript for the team sync meeting that passes the minimum character filter.",
+          created_at: "2026-03-02T14:00:00Z",
+        },
+      ],
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.fetched).toBe(1);
+  });
+});
+
+describe("POST /api/integrations/sync — Linear", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("fetches issues with all fields via Nango proxy", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockAdminDbForProcessing();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        issues: [
+          {
+            id: "issue-1",
+            identifier: "ENG-42",
+            title: "Fix login bug",
+            description: "Users cannot log in when using SSO. The OAuth redirect is broken and needs to be fixed urgently.",
+            state: { name: "In Progress" },
+            assignee: { name: "Alice" },
+            priority: 1,
+            labels: { nodes: [{ name: "bug" }, { name: "auth" }] },
+            createdAt: "2026-03-01T09:00:00Z",
+          },
+        ],
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.fetched).toBe(1);
+    expect(body.processed).toBe(1);
+
+    expect(mockNangoProxy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "/issues",
+        providerConfigKey: "linear",
+      })
+    );
+  });
+
+  it("returns processed=0 when issues fetch fails", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockNangoProxy.mockRejectedValueOnce(new Error("Linear API error"));
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.processed).toBe(0);
+  });
+
+  it("skips issues with short descriptions", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        issues: [
+          { id: "issue-2", title: "Minor", description: "short" },
+        ],
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.processed).toBe(0);
+  });
+
+  it("creates context_item with all issue metadata in content", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        issues: [
+          {
+            id: "issue-3",
+            identifier: "PROD-99",
+            title: "Add dark mode",
+            description: "Implement dark mode support across all pages and components in the application.",
+            state: { name: "Todo" },
+            assignee: { name: "Bob" },
+            priority: 3,
+            labels: { nodes: [{ name: "feature" }, { name: "ui" }] },
+            createdAt: "2026-02-28",
+          },
+        ],
+      },
+    });
+
+    const insertMock = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: "ci-l1" }, error: null }),
+      }),
+    });
+    const updateMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    mockAdminFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+        }),
+      }),
+      insert: insertMock,
+      update: updateMock,
+    });
+
+    mockExtract.mockResolvedValue({
+      title: "PROD-99: Add dark mode",
+      description_short: "Dark mode feature",
+      description_long: "Full dark mode implementation",
+      entities: { people: ["Bob"] },
+    });
+    mockEmbed.mockResolvedValue([0.2]);
+    mockCreateInbox.mockResolvedValue(undefined);
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+
+    // Verify insert was called with correct source_type and content_type
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source_type: "linear",
+        content_type: "issue",
+        source_id: "issue-3",
+        title: "PROD-99: Add dark mode",
+      })
+    );
+
+    // Verify content includes metadata
+    const insertedContent = insertMock.mock.calls[0][0].raw_content as string;
+    expect(insertedContent).toContain("Status: Todo");
+    expect(insertedContent).toContain("Assignee: Bob");
+    expect(insertedContent).toContain("Priority: Medium");
+    expect(insertedContent).toContain("Labels: feature, ui");
+    expect(insertedContent).toContain("ID: PROD-99");
+  });
+
+  it("formats title with identifier prefix when available", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockAdminDbForProcessing();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        issues: [
+          {
+            id: "issue-4",
+            identifier: "ENG-100",
+            title: "Refactor auth",
+            description: "Refactor the authentication module to use the new auth library and improve security.",
+          },
+        ],
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.fetched).toBe(1);
+  });
+
+  it("handles GraphQL-style nested response data", async () => {
+    mockAuthenticatedUser();
+    mockIntegrationLookup();
+    mockAdminDbForProcessing();
+
+    mockNangoProxy.mockResolvedValueOnce({
+      data: {
+        data: {
+          issues: {
+            nodes: [
+              {
+                id: "issue-gql",
+                identifier: "API-5",
+                title: "API rate limiting",
+                description: "Add rate limiting to all API endpoints to prevent abuse and ensure fair usage.",
+                state: { name: "Backlog" },
+                createdAt: "2026-03-05",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.fetched).toBe(1);
+  });
+});

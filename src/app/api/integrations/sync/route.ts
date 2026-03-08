@@ -197,6 +197,132 @@ async function fetchSlack(
   return records;
 }
 
+// ── Granola ──────────────────────────────────────────────────────────────────
+async function fetchGranola(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  let docs: {
+    id: string;
+    title?: string;
+    transcript?: string;
+    created_at?: string;
+    attendees?: { name?: string; email?: string }[];
+  }[] = [];
+
+  try {
+    const res = await nango.proxy<{
+      documents?: typeof docs;
+      data?: typeof docs;
+    }>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/v1/documents",
+      params: { limit: "50" },
+    });
+    docs = res.data?.documents ?? res.data?.data ?? (Array.isArray(res.data) ? res.data : []);
+  } catch (err) {
+    console.error("[sync:granola] documents fetch failed:", err);
+    return [];
+  }
+
+  for (const doc of docs) {
+    const transcript = doc.transcript ?? "";
+    if (transcript.length < 50) continue;
+
+    const attendeeNames = (doc.attendees ?? [])
+      .map((a) => a.name ?? a.email ?? "")
+      .filter(Boolean);
+    const attendeeLine = attendeeNames.length > 0
+      ? `\n\nAttendees: ${attendeeNames.join(", ")}`
+      : "";
+
+    records.push({
+      id: doc.id,
+      title: doc.title ?? "Untitled meeting",
+      content: (transcript + attendeeLine).slice(0, 12000),
+      sourceCreatedAt: doc.created_at ?? null,
+    });
+  }
+
+  return records.slice(0, 30);
+}
+
+// ── Linear ───────────────────────────────────────────────────────────────────
+async function fetchLinear(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  let issues: {
+    id: string;
+    identifier?: string;
+    title: string;
+    description?: string | null;
+    state?: { name?: string } | null;
+    assignee?: { name?: string } | null;
+    priority?: number;
+    labels?: { nodes?: { name: string }[] } | null;
+    createdAt?: string;
+  }[] = [];
+
+  try {
+    const res = await nango.proxy<{
+      issues?: typeof issues;
+      nodes?: typeof issues;
+      data?: { issues?: { nodes?: typeof issues } };
+    }>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/issues",
+      params: { first: "50", orderBy: "updatedAt" },
+    });
+    issues =
+      res.data?.issues ??
+      res.data?.nodes ??
+      res.data?.data?.issues?.nodes ??
+      (Array.isArray(res.data) ? res.data : []);
+  } catch (err) {
+    console.error("[sync:linear] issues fetch failed:", err);
+    return [];
+  }
+
+  for (const issue of issues) {
+    const description = issue.description ?? "";
+    if (description.length < 10) continue;
+
+    const meta: string[] = [];
+    if (issue.identifier) meta.push(`ID: ${issue.identifier}`);
+    if (issue.state?.name) meta.push(`Status: ${issue.state.name}`);
+    if (issue.assignee?.name) meta.push(`Assignee: ${issue.assignee.name}`);
+    if (issue.priority != null) {
+      const priorityLabels = ["None", "Urgent", "High", "Medium", "Low"];
+      meta.push(`Priority: ${priorityLabels[issue.priority] ?? issue.priority}`);
+    }
+    const labels = issue.labels?.nodes?.map((l) => l.name) ?? [];
+    if (labels.length > 0) meta.push(`Labels: ${labels.join(", ")}`);
+
+    const metaBlock = meta.length > 0 ? `\n\n${meta.join(" | ")}` : "";
+    const content = (description + metaBlock).slice(0, 12000);
+
+    records.push({
+      id: issue.id,
+      title: issue.identifier
+        ? `${issue.identifier}: ${issue.title}`
+        : issue.title,
+      content,
+      sourceCreatedAt: issue.createdAt ?? null,
+    });
+  }
+
+  return records.slice(0, 30);
+}
+
 function contentTypeFor(provider: string): string {
   if (provider.includes("github")) return "issue";
   switch (provider) {
@@ -251,6 +377,10 @@ export async function POST(request: NextRequest) {
     debugLines = result.debug;
   } else if (provider === "slack") {
     rawRecords = await fetchSlack(provider, connectionId);
+  } else if (provider === "granola") {
+    rawRecords = await fetchGranola(provider, connectionId);
+  } else if (provider === "linear") {
+    rawRecords = await fetchLinear(provider, connectionId);
   } else {
     return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
   }

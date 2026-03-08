@@ -82,6 +82,62 @@ export type Database = {
           },
         ]
       }
+      agent_runs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          finish_reason: string | null
+          id: string
+          model: string
+          org_id: string
+          query: string
+          step_count: number
+          tool_calls: Json
+          total_input_tokens: number | null
+          total_output_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          finish_reason?: string | null
+          id?: string
+          model: string
+          org_id: string
+          query: string
+          step_count?: number
+          tool_calls?: Json
+          total_input_tokens?: number | null
+          total_output_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          finish_reason?: string | null
+          id?: string
+          model?: string
+          org_id?: string
+          query?: string
+          step_count?: number
+          tool_calls?: Json
+          total_input_tokens?: number | null
+          total_output_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_items: {
         Row: {
           content_type: string
@@ -451,6 +507,18 @@ export type Database = {
       accept_invitation: {
         Args: { invitation_id: string; accepting_user_id: string }
         Returns: undefined
+      }
+      get_agent_metrics: {
+        Args: { p_org_id: string; p_since?: string }
+        Returns: Json
+      }
+      get_context_health: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
+      get_integration_health: {
+        Args: { p_org_id: string }
+        Returns: Json
       }
       get_user_org_ids: { Args: never; Returns: string[] }
       search_context_items: {
