@@ -13,6 +13,7 @@ import {
   LogOut,
   Layers,
   FolderKanban,
+  Users,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
+  { href: "/settings/team", label: "Team", icon: Users },
 ];
 
 export function SidebarNav({

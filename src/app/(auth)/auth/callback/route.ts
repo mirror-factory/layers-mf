@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -26,6 +27,33 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Accept any pending invitations for this user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const admin = createSupabaseClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          { auth: { persistSession: false } }
+        );
+
+        const { data: invitations } = await admin
+          .from("org_invitations")
+          .select("id")
+          .eq("email", user.email)
+          .eq("status", "pending");
+
+        if (invitations?.length) {
+          await Promise.all(
+            invitations.map((inv) =>
+              admin.rpc("accept_invitation", {
+                invitation_id: inv.id,
+                accepting_user_id: user.id,
+              })
+            )
+          );
+        }
+      }
+
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
