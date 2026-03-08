@@ -14,6 +14,7 @@ import {
   Layers,
   FolderKanban,
   Users,
+  UserCog,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/team", label: "Team", icon: Users },
+  { href: "/settings/profile", label: "Profile", icon: UserCog },
 ];
 
 export function SidebarNav({
