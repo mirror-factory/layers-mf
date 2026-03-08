@@ -114,7 +114,11 @@ The Linear workspace uses project-based doc folders to organize documentation. A
 - **Dev Docs** — architecture decisions, tooling guides, technical standards
 - **Layers 2026.1** — Layers-specific product docs
 
-When updating docs, preserve existing content and append new entries. Never overwrite or remove existing doc content.
+**Key reference docs to keep updated:**
+- **"Layers Architecture & Status"** (Dev Docs, id: `60829725-f6a9-4d98-9cd6-5a7f62d4dffc`) — **ALWAYS update the "Recent Activity Log" section** with a dated entry summarizing what this push changed. If the push adds new features, changes architecture, or introduces gotchas, update those sections too. This is the living doc that new developers read to understand the current state of the codebase.
+- **"Developer Start Here"** (Dev Docs, id: `9a88d618-1c88-438a-8bdf-5761a1d9a531`) — Update if the push changes workflows, key file paths, conventions, or stack components. This is the onboarding doc every new developer reads first.
+
+When updating docs, preserve existing content and append new entries. Never overwrite or remove existing doc content. Always update the "Last updated" date at the top.
 
 ## Step 5 — ntfy.sh Notification
 
