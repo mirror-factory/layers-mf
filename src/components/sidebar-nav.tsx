@@ -12,11 +12,13 @@ import {
   BarChart3,
   LogOut,
   Layers,
+  FolderKanban,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/sessions", label: "Sessions", icon: FolderKanban },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
