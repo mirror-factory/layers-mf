@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/inbox/generate",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
