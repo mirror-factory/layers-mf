@@ -21,6 +21,12 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Consu
 [Skills Index]
 |IMPORTANT: When a skill is relevant, read its SKILL.md BEFORE writing code or creating files.
 
+### Tier 0 — Always Active
+
+|pm-linear|~/.claude/skills/pm-linear
+|  desc: PM workflow for Linear — session protocol, context-rich comments, changelog, doc registry
+|  use when: starting sessions, ending sessions, pushing code, updating Linear, onboarding devs
+
 ### Tier 1 — Core
 
 |shadcn-ui|~/.claude/skills/shadcn-ui
