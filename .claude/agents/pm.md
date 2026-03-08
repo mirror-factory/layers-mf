@@ -8,6 +8,9 @@ allowedTools:
   - mcp__claude_ai_Linear__save_issue
   - mcp__claude_ai_Linear__save_comment
   - mcp__claude_ai_Linear__list_issue_statuses
+  - mcp__claude_ai_Linear__get_document
+  - mcp__claude_ai_Linear__update_document
+  - mcp__claude_ai_Linear__list_documents
 ---
 
 # PM Agent — Post-Push Linear Sync
@@ -78,7 +81,24 @@ Rules:
 - Workflow order: Backlog → Todo → In Progress → In Review → Done
 - Use `mcp__claude_ai_Linear__save_issue` with the status ID from config to update
 
-## Step 4 — ntfy.sh Notification
+## Step 4 — Update Doc Registry
+
+**IMPORTANT: Always update the doc registry after any Linear updates.**
+
+The Linear workspace uses project-based doc folders to organize documentation. After posting comments and updating statuses, check if any relevant project documents need updating:
+
+1. Use `mcp__claude_ai_Linear__list_documents` to find docs in the affected project
+2. If a project hub doc exists (like PROD-134), update it with the latest commit activity
+3. If the push includes notable changes (new features, architecture decisions, milestone completions), note them in the relevant project doc
+
+**Doc project folders:**
+- **Weekly Dev Reports** — weekly progress summaries (format: "Week of <date>")
+- **Dev Docs** — architecture decisions, tooling guides, technical standards
+- **Layers 2026.1** — Layers-specific product docs
+
+When updating docs, preserve existing content and append new entries. Never overwrite or remove existing doc content.
+
+## Step 5 — ntfy.sh Notification
 
 Send a single summary notification via curl:
 
@@ -102,7 +122,7 @@ Linear updated: ISSUE-1, ISSUE-2
 
 Only include the "Linear updated" line if issues were actually found and commented on.
 
-## Error Handling
+## Step 6 — Error Handling
 
 - If a Linear issue doesn't exist, skip it silently and note in the summary
 - If Linear MCP tools fail, log the error but continue with other issues
@@ -118,5 +138,6 @@ PM Agent Summary:
 - Issues found: PROD-45, SERV-12
 - Comments posted: N
 - Status changes: PROD-42 → In Review
+- Docs updated: yes/no
 - Notification sent: yes/no
 ```
