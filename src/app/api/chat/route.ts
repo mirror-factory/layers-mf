@@ -3,6 +3,7 @@ import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } fr
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools } from "@/lib/ai/tools";
+import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
 
@@ -73,18 +74,36 @@ export async function POST(request: NextRequest) {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let runStepCount = 0;
+  let assistantText = "";
 
   const adminDb = createAdminClient();
   const orgId = member.org_id;
   const userId = user.id;
+
+  // Save the new user message (last in array)
+  const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
+  if (lastUserMsg) {
+    void adminDb
+      .from("chat_messages")
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        session_id: null,
+        role: "user",
+        content: (lastUserMsg.parts ?? []) as unknown as Json,
+        model: null,
+      })
+      .then();
+  }
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
     tools: createTools(supabase, orgId),
     stopWhen: stepCountIs(6),
-    onStepFinish: ({ usage, toolCalls }) => {
+    onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;
+      if (text) assistantText += text;
       if (usage) {
         totalInputTokens += usage.inputTokens ?? 0;
         totalOutputTokens += usage.outputTokens ?? 0;
@@ -114,6 +133,21 @@ export async function POST(request: NextRequest) {
           tool_calls: toolCallsArray,
           error: null,
         });
+
+      // Save the assistant response
+      if (assistantText) {
+        void adminDb
+          .from("chat_messages")
+          .insert({
+            org_id: orgId,
+            user_id: userId,
+            session_id: null,
+            role: "assistant",
+            content: [{ type: "text", text: assistantText }],
+            model: modelId,
+          })
+          .then();
+      }
     },
   });
 

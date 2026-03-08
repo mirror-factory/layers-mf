@@ -1,8 +1,8 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useRef, useState } from "react";
+import { DefaultChatTransport, UIMessage } from "ai";
+import { useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User, FileText, X,
   Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
@@ -131,9 +131,22 @@ export function SessionWorkspace({
   const [input, setInput] = useState("");
   const [linked, setLinked] = useState<ContextItem[]>(initialLinked);
   const [available, setAvailable] = useState<ContextItem[]>(initialAvailable);
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    fetch(`/api/chat/history?session_id=${session.id}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((msgs: UIMessage[]) => {
+        if (msgs.length > 0) setInitialMessages(msgs);
+        setHistoryLoaded(true);
+      })
+      .catch(() => setHistoryLoaded(true));
+  }, [session.id]);
+
   const { messages, sendMessage, status, error } = useChat({
+    messages: initialMessages,
     transport: new DefaultChatTransport({
       api: `/api/chat/session/${session.id}`,
       body: { model },
@@ -239,7 +252,14 @@ export function SessionWorkspace({
       {/* Center: chat */}
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.length === 0 && (
+          {!historyLoaded && (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
+              <p className="text-xs">Loading conversation…</p>
+            </div>
+          )}
+
+          {historyLoaded && messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Bot className="h-10 w-10 mb-3 opacity-30" />
               <p className="text-sm font-medium">Session: {session.name}</p>
