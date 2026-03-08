@@ -115,6 +115,7 @@ The Linear workspace uses project-based doc folders to organize documentation. A
 - **Layers 2026.1** — Layers-specific product docs
 
 **Key reference docs to keep updated:**
+- **"Changelog"** (Dev Docs, id: `398703d8-3b67-4f42-a295-d6122352860f`) — **ALWAYS append a session entry at the TOP** (below the header, above previous entries) with: date, developer, branch, commit table, what changed, Linear issues touched, what's next. This is the running record of all work done on the project.
 - **"Layers Architecture & Status"** (Dev Docs, id: `60829725-f6a9-4d98-9cd6-5a7f62d4dffc`) — **ALWAYS update the "Recent Activity Log" section** with a dated entry summarizing what this push changed. If the push adds new features, changes architecture, or introduces gotchas, update those sections too. This is the living doc that new developers read to understand the current state of the codebase.
 - **"Developer Start Here"** (Dev Docs, id: `9a88d618-1c88-438a-8bdf-5761a1d9a531`) — Update if the push changes workflows, key file paths, conventions, or stack components. This is the onboarding doc every new developer reads first.
 
