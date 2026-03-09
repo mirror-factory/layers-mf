@@ -73,6 +73,14 @@ const server = http.createServer((req, res) => {
   }
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} already in use. Kill the existing process: lsof -ti:${PORT} | xargs kill`);
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, () => {
   console.log(`Agent message broker running on http://localhost:${PORT}`);
   console.log('Channels are created on first use. Messages queue until read.');

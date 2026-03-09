@@ -10,9 +10,29 @@
             "statusMessage": "Running pre-commit/push checks..."
           }
         ]
+      },
+      {
+        "matcher": "Bash|Edit|Write|Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PANE=$(tmux display-message -p '#P' 2>/dev/null || echo '0'); if [ \"$PANE\" = '0' ]; then CH='pm'; elif [ \"$PANE\" = '1' ]; then CH='dev'; else CH='pm'; fi; MSGS=$(curl -s --max-time 1 http://localhost:9876/read/$CH 2>/dev/null); if [ -n \"$MSGS\" ] && [ \"$MSGS\" != '[]' ]; then echo \"[INCOMING MESSAGE] $MSGS\"; fi",
+            "statusMessage": "Checking messages..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/agent-comms.sh",
+            "async": true
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [

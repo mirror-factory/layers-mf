@@ -1,63 +1,49 @@
 /**
  * Retrieval Quality Eval Suite
  *
- * Tests the hybrid search function (searchContext) against a live Supabase DB.
- * Requires NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
- * SUPABASE_SERVICE_ROLE_KEY, and AI_GATEWAY_API_KEY env vars to be set.
+ * Inserts canary documents, searches against them, asserts Precision@5 and MRR,
+ * then cleans up. Also supports custom fixtures from real org data.
  *
- * Run with: pnpm eval
- * (adds --reporter=verbose so each case prints)
+ * Env vars required:
+ *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ *   AI_GATEWAY_API_KEY, EVAL_ORG_ID
  *
- * USAGE:
- *   1. Add at least one known Q&A pair to the fixtures below that matches
- *      real documents in your org's context_items table.
- *   2. Set EVAL_ORG_ID env var to your org UUID.
- *   3. Run: EVAL_ORG_ID=<your-org-id> pnpm eval
+ * Run: EVAL_ORG_ID=<uuid> pnpm eval:retrieval
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import { searchContext, SearchResult } from "@/lib/db/search";
+import { searchContext, type SearchResult } from "@/lib/db/search";
+import { generateEmbedding } from "@/lib/ai/embed";
 import type { Database } from "@/lib/database.types";
+import {
+  CANARY_DOCS,
+  CANARY_QUERIES,
+  CANARY_PREFIX,
+  type CanaryDoc,
+} from "./fixtures/canary-docs";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 const ORG_ID = process.env.EVAL_ORG_ID ?? "";
-const TOP_N = 5; // Assert target appears in top-N results
+const TOP_N = 5;
 
-// ---------------------------------------------------------------------------
-// Fixtures — add known query → expected document title pairs here
-// ---------------------------------------------------------------------------
-type Fixture = {
-  query: string;
-  /** One or more substrings that must appear in at least one top-N result title */
-  expectTitles: string[];
-  /** Optional: minimum acceptable RRF score for the top result */
-  minScore?: number;
-};
-
-const FIXTURES: Fixture[] = [
-  // Example fixture — replace with real docs from your org:
-  // {
-  //   query: "Q3 roadmap priorities",
-  //   expectTitles: ["Q3 Roadmap", "Roadmap"],
-  //   minScore: 0.001,
-  // },
-  // {
-  //   query: "onboarding process for new engineers",
-  //   expectTitles: ["Engineering Onboarding", "Onboarding"],
-  // },
-];
+// Thresholds
+const MIN_PRECISION_AT_5 = 0.8; // 80% of queries find expected doc in top 5
+const MIN_MRR = 0.5;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function titlesMatch(results: SearchResult[], expectTitles: string[]): boolean {
-  const topTitles = results.slice(0, TOP_N).map((r) => r.title.toLowerCase());
-  return expectTitles.some((expected) =>
-    topTitles.some((t) => t.includes(expected.toLowerCase()))
+function findRank(
+  results: SearchResult[],
+  expectedTitle: string
+): number | null {
+  const idx = results.findIndex((r) =>
+    r.title.toLowerCase().includes(expectedTitle.toLowerCase())
   );
+  return idx >= 0 ? idx + 1 : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,19 +52,17 @@ function titlesMatch(results: SearchResult[], expectTitles: string[]): boolean {
 describe("Retrieval quality evals", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let supabase: ReturnType<typeof createClient<any>>;
+  const insertedIds: string[] = [];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!url || !key) {
       throw new Error(
         "Missing Supabase env vars. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
       );
     }
-
     if (!ORG_ID) {
       throw new Error("Set EVAL_ORG_ID env var to your organization UUID.");
     }
@@ -86,41 +70,118 @@ describe("Retrieval quality evals", () => {
     supabase = createClient<Database>(url, key, {
       auth: { persistSession: false },
     });
-  });
 
-  if (FIXTURES.length === 0) {
-    it.skip("no fixtures defined — add fixtures to src/lib/evals/retrieval.eval.ts", () => {});
-  }
+    // Insert canary docs with embeddings
+    for (const doc of CANARY_DOCS) {
+      const embedding = await generateEmbedding(
+        `${doc.title} ${doc.description_long}`
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("context_items")
+        .insert({
+          org_id: ORG_ID,
+          title: doc.title,
+          description_short: doc.description_short,
+          description_long: doc.description_long,
+          raw_content: doc.raw_content,
+          source_type: doc.source_type,
+          content_type: doc.content_type,
+          entities: doc.entities,
+          embedding,
+          status: "ready",
+        })
+        .select("id")
+        .single();
 
-  for (const fixture of FIXTURES) {
-    it(`"${fixture.query}" → expects [${fixture.expectTitles.join(", ")}] in top ${TOP_N}`, async () => {
-      const results = await searchContext(supabase, ORG_ID, fixture.query, TOP_N + 5);
+      if (error) throw new Error(`Failed to insert canary: ${error.message}`);
+      insertedIds.push(data.id);
+    }
 
-      // Print results for inspection
-      console.log(`\nQuery: "${fixture.query}"`);
+    console.log(`Inserted ${insertedIds.length} canary documents`);
+  }, 120_000);
+
+  afterAll(async () => {
+    if (insertedIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("context_items")
+        .delete()
+        .in("id", insertedIds);
+
+      if (error) console.error("Cleanup failed:", error.message);
+      else console.log(`Cleaned up ${insertedIds.length} canary documents`);
+    }
+  }, 30_000);
+
+  // Individual canary query tests
+  for (const cq of CANARY_QUERIES) {
+    it(`"${cq.query}" → finds "${cq.expectedTitle}" in top ${TOP_N}`, async () => {
+      const results = await searchContext(
+        supabase as ReturnType<typeof createClient<Database>>,
+        ORG_ID,
+        cq.query,
+        TOP_N + 5
+      );
+
+      console.log(`\nQuery: "${cq.query}"`);
       results.slice(0, TOP_N).forEach((r, i) => {
-        console.log(`  ${i + 1}. [${r.rrf_score.toFixed(4)}] ${r.title} (${r.source_type})`);
+        const marker = r.title.includes(CANARY_PREFIX) ? " [canary]" : "";
+        console.log(
+          `  ${i + 1}. [${r.rrf_score.toFixed(4)}] ${r.title}${marker}`
+        );
       });
 
-      expect(results.length).toBeGreaterThan(0);
-      expect(titlesMatch(results, fixture.expectTitles)).toBe(true);
-
-      if (fixture.minScore !== undefined) {
-        expect(results[0].rrf_score).toBeGreaterThanOrEqual(fixture.minScore);
-      }
+      const rank = findRank(results.slice(0, TOP_N), cq.expectedTitle);
+      expect(rank).not.toBeNull();
     }, 30_000);
   }
 
-  it("search returns results without errors for a generic query", async () => {
-    if (!ORG_ID) return; // skip if no org set
-    const results = await searchContext(supabase, ORG_ID, "team", 5);
-    // Just verify the call doesn't throw and returns an array
-    expect(Array.isArray(results)).toBe(true);
-  }, 30_000);
+  // Aggregate metrics
+  it("Precision@5 >= 80%", async () => {
+    let hits = 0;
+    for (const cq of CANARY_QUERIES) {
+      const results = await searchContext(
+        supabase as ReturnType<typeof createClient<Database>>,
+        ORG_ID,
+        cq.query,
+        TOP_N + 5
+      );
+      const rank = findRank(results.slice(0, TOP_N), cq.expectedTitle);
+      if (rank !== null) hits++;
+    }
+    const precision = hits / CANARY_QUERIES.length;
+    console.log(
+      `\nPrecision@${TOP_N}: ${(precision * 100).toFixed(1)}% (${hits}/${CANARY_QUERIES.length})`
+    );
+    expect(precision).toBeGreaterThanOrEqual(MIN_PRECISION_AT_5);
+  }, 60_000);
 
+  it("MRR >= 0.5", async () => {
+    let rrSum = 0;
+    for (const cq of CANARY_QUERIES) {
+      const results = await searchContext(
+        supabase as ReturnType<typeof createClient<Database>>,
+        ORG_ID,
+        cq.query,
+        TOP_N + 5
+      );
+      const rank = findRank(results, cq.expectedTitle);
+      if (rank !== null) rrSum += 1 / rank;
+    }
+    const mrr = rrSum / CANARY_QUERIES.length;
+    console.log(`MRR: ${mrr.toFixed(4)}`);
+    expect(mrr).toBeGreaterThanOrEqual(MIN_MRR);
+  }, 60_000);
+
+  // Graceful edge cases
   it("empty query returns array (graceful)", async () => {
-    if (!ORG_ID) return;
-    const results = await searchContext(supabase, ORG_ID, " ", 3).catch(() => []);
+    const results = await searchContext(
+      supabase as ReturnType<typeof createClient<Database>>,
+      ORG_ID,
+      " ",
+      3
+    ).catch(() => []);
     expect(Array.isArray(results)).toBe(true);
   }, 15_000);
 });
