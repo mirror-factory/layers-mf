@@ -185,7 +185,7 @@ export function ChatInterface() {
   })();
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -292,10 +292,10 @@ export function ChatInterface() {
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t p-4">
-          <div className="flex gap-3 max-w-3xl mx-auto">
+        <div className="border-t p-3 sm:p-4">
+          <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-36 shrink-0 text-xs h-9">
+              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -306,29 +306,31 @@ export function ChatInterface() {
                 ))}
               </SelectContent>
             </Select>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your documents, meetings, or team…"
-              rows={1}
-              className="flex-1 resize-none rounded-lg border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2 sm:gap-3 flex-1">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your documents, meetings, or team…"
+                rows={1}
+                className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">Enter to send · Shift+Enter for new line</p>
+          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line</p>
         </div>
       </div>
 
-      {/* Right: context panel */}
-      <aside className="w-72 shrink-0 border-l flex flex-col bg-card">
+      {/* Right: context panel (hidden on mobile) */}
+      <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
         <div className="px-4 py-3 border-b flex items-center gap-2">
           <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>

@@ -18,6 +18,7 @@ import {
   MessageSquare,
   GitBranch,
   Mic,
+  Filter,
 } from "lucide-react";
 
 interface ContextItem {
@@ -81,17 +82,25 @@ export function ContextLibrary({ items }: Props) {
   const sources = Object.keys(groups).sort();
   const filtered = selected === "all" ? items : (groups[selected] ?? []);
 
+  const [sourceOpen, setSourceOpen] = useState(false);
+
   return (
-    <div className="flex h-full min-h-0 gap-0 overflow-hidden">
+    <div className="flex h-full min-h-0 gap-0 overflow-hidden flex-col md:flex-row">
       {/* Left: source folders */}
-      <aside className="w-52 shrink-0 border-r bg-card flex flex-col">
+      <aside
+        className={cn(
+          "shrink-0 border-r bg-card flex flex-col",
+          "md:w-52 md:flex",
+          sourceOpen ? "flex" : "hidden md:flex"
+        )}
+      >
         <div className="p-3 border-b">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
         </div>
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {/* All */}
           <button
-            onClick={() => setSelected("all")}
+            onClick={() => { setSelected("all"); setSourceOpen(false); }}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
               selected === "all"
@@ -111,7 +120,7 @@ export function ContextLibrary({ items }: Props) {
             return (
               <button
                 key={key}
-                onClick={() => setSelected(key)}
+                onClick={() => { setSelected(key); setSourceOpen(false); }}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   selected === key
@@ -131,12 +140,21 @@ export function ContextLibrary({ items }: Props) {
       {/* Right: item list */}
       <div className="flex-1 flex flex-col min-w-0 bg-background">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-card">
-          <p className="text-sm font-medium">
-            {selected === "all"
-              ? "All Items"
-              : (SOURCE_META[selected]?.label ?? selected)}
-          </p>
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b bg-card gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSourceOpen(!sourceOpen)}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
+              aria-label="Toggle sources"
+            >
+              <Filter className="h-4 w-4" />
+            </button>
+            <p className="text-sm font-medium">
+              {selected === "all"
+                ? "All Items"
+                : (SOURCE_META[selected]?.label ?? selected)}
+            </p>
+          </div>
           <span className="text-xs text-muted-foreground">{filtered.length} item{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 

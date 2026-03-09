@@ -74,16 +74,16 @@ export default async function AnalyticsPage() {
     : null;
 
   return (
-    <div className="p-8 max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-5xl space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Analytics</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold mb-1">Analytics</h1>
           <p className="text-muted-foreground text-sm">
             KPIs and quality metrics for your organization.
           </p>
         </div>
         {summary && (
-          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[summary.status]}`}>
+          <span className={`inline-flex items-center self-start rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[summary.status]}`}>
             {STATUS_LABEL[summary.status]}
           </span>
         )}
@@ -103,10 +103,10 @@ export default async function AnalyticsPage() {
         />
       ) : (
         <Tabs defaultValue="context" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
             <TabsTrigger value="context">Context Health</TabsTrigger>
-            <TabsTrigger value="agent">Agent Analytics</TabsTrigger>
-            <TabsTrigger value="retrieval">Retrieval Quality</TabsTrigger>
+            <TabsTrigger value="agent">Agent</TabsTrigger>
+            <TabsTrigger value="retrieval">Retrieval</TabsTrigger>
           </TabsList>
 
           <TabsContent value="context" className="mt-6">

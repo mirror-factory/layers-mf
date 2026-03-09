@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,8 @@ import {
   FolderKanban,
   Users,
   UserCog,
+  Menu,
+  X,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -38,6 +41,12 @@ export function SidebarNav({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [open, setOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -46,49 +55,87 @@ export function SidebarNav({
   }
 
   return (
-    <aside className="flex w-56 flex-col border-r bg-card">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-5 border-b">
+    <>
+      {/* Mobile header bar */}
+      <div className="sticky top-0 z-40 flex items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
+        <button
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          aria-label="Open navigation"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
         <Layers className="h-5 w-5 text-primary" />
         <span className="font-semibold text-sm">Layers</span>
       </div>
 
-      {/* Org name */}
-      <div className="px-4 py-3 border-b">
-        <p className="text-xs text-muted-foreground">Organization</p>
-        <p className="text-sm font-medium truncate">{orgName}</p>
-      </div>
+      {/* Backdrop (mobile only) */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-1 p-2">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-              pathname === href
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r bg-card transition-transform duration-200 md:static md:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between px-4 py-5 border-b">
+          <div className="flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-sm">Layers</span>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
+            aria-label="Close navigation"
           >
-            <Icon className="h-4 w-4 shrink-0" />
-            {label}
-          </Link>
-        ))}
-      </nav>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-      {/* User */}
-      <div className="border-t p-3">
-        <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>
-        <button
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
-      </div>
-    </aside>
+        {/* Org name */}
+        <div className="px-4 py-3 border-b">
+          <p className="text-xs text-muted-foreground">Organization</p>
+          <p className="text-sm font-medium truncate">{orgName}</p>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                pathname === href
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* User */}
+        <div className="border-t p-3">
+          <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>
+          <button
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
