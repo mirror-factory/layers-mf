@@ -4,6 +4,7 @@ import { nango } from "@/lib/nango/client";
 import { extractStructured } from "@/lib/ai/extract";
 import { generateEmbedding } from "@/lib/ai/embed";
 import { createInboxItems } from "@/lib/inbox";
+import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
 
@@ -12,6 +13,7 @@ interface RawRecord {
   title: string;
   content: string;
   sourceCreatedAt?: string | null;
+  sourceMetadata?: Json | null;
 }
 
 // ── GitHub ─────────────────────────────────────────────────────────────────
@@ -81,10 +83,19 @@ async function fetchGoogleDrive(
   const records: RawRecord[] = [];
   const debug: string[] = [];
 
-  let files: { id: string; name: string; mimeType: string; createdTime?: string }[] = [];
+  let files: {
+    id: string;
+    name: string;
+    mimeType: string;
+    createdTime?: string;
+    modifiedTime?: string;
+    webViewLink?: string;
+    size?: string;
+    lastModifyingUser?: { displayName?: string; emailAddress?: string };
+  }[] = [];
   try {
     const res = await nango.proxy<{
-      files: { id: string; name: string; mimeType: string; createdTime?: string }[];
+      files: typeof files;
     }>({
       method: "GET",
       providerConfigKey: provider,
@@ -92,7 +103,7 @@ async function fetchGoogleDrive(
       endpoint: "/drive/v3/files",
       params: {
         q: "trashed=false and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.presentation')",
-        fields: "files(id,name,mimeType,createdTime)",
+        fields: "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,lastModifyingUser(displayName,emailAddress))",
         pageSize: "100",
         orderBy: "modifiedTime desc",
       },
@@ -131,6 +142,13 @@ async function fetchGoogleDrive(
         title: file.name,
         content: content.slice(0, 12000),
         sourceCreatedAt: file.createdTime ?? null,
+        sourceMetadata: {
+          url: file.webViewLink ?? null,
+          mimeType: file.mimeType,
+          fileSize: file.size ?? null,
+          lastModifiedBy: file.lastModifyingUser?.displayName ?? null,
+          modifiedTime: file.modifiedTime ?? null,
+        } satisfies Json,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -410,7 +428,12 @@ export async function POST(request: NextRequest) {
         item = existing;
         await adminDb
           .from("context_items")
-          .update({ status: "processing", raw_content: record.content, title: record.title })
+          .update({
+            status: "processing",
+            raw_content: record.content,
+            title: record.title,
+            ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
+          })
           .eq("id", existing.id);
       } else {
         const { data: inserted, error } = await adminDb
@@ -425,6 +448,7 @@ export async function POST(request: NextRequest) {
             content_type: contentType,
             status: "processing",
             source_created_at: record.sourceCreatedAt ?? null,
+            ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
           })
           .select("id")
           .single();
