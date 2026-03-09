@@ -21,6 +21,7 @@ import {
   Mic,
   Filter,
   X,
+  Download,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -247,9 +248,20 @@ export function ContextLibrary({ items }: Props) {
                   : (SOURCE_META[selected]?.label ?? selected)}
               </p>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {processed.length} item{processed.length !== 1 ? "s" : ""}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {processed.length} item{processed.length !== 1 ? "s" : ""}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => window.open("/api/context/export?format=json", "_blank")}
+                aria-label="Export context"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
 
           {/* Filter bar */}

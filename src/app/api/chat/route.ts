@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
     ? (body.model as string)
     : "anthropic/claude-haiku-4-5-20251001";
 
+  const conversationId: string | null = body.conversationId ?? null;
+
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
   const query =
@@ -82,13 +84,21 @@ export async function POST(request: NextRequest) {
 
   // Save the new user message (last in array)
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
+  const lastUserText = lastUserMsg
+    ? ((lastUserMsg.parts as { type: string; text?: string }[]) ?? [])
+        .filter((p) => p.type === "text")
+        .map((p) => p.text ?? "")
+        .join(" ")
+    : "";
   if (lastUserMsg) {
-    void adminDb
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (adminDb as any)
       .from("chat_messages")
       .insert({
         org_id: orgId,
         user_id: userId,
         session_id: null,
+        conversation_id: conversationId,
         role: "user",
         content: (lastUserMsg.parts ?? []) as unknown as Json,
         model: null,
@@ -136,16 +146,32 @@ export async function POST(request: NextRequest) {
 
       // Save the assistant response
       if (assistantText) {
-        void adminDb
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        void (adminDb as any)
           .from("chat_messages")
           .insert({
             org_id: orgId,
             user_id: userId,
             session_id: null,
+            conversation_id: conversationId,
             role: "assistant",
             content: [{ type: "text", text: assistantText }],
             model: modelId,
           })
+          .then();
+      }
+
+      // Auto-title: set conversation title after first assistant response
+      if (conversationId && lastUserText) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        void (adminDb as any)
+          .from("conversations")
+          .update({
+            title: lastUserText.slice(0, 50),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId)
+          .is("title", null)
           .then();
       }
     },
