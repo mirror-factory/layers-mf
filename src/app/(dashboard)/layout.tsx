@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { CommandPalette } from "@/components/command-palette";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col md:flex-row">
       <SidebarNav email={user.email ?? ""} orgName={orgName} />
       <main className="flex-1 overflow-auto">{children}</main>
+      <CommandPalette />
     </div>
   );
 }
