@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { IntegrationsConnect } from "@/components/integrations-connect";
+import { ConnectPanel } from "@/components/integrations/connect-panel";
 
 export default async function IntegrationsPage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data: member } = await supabase
@@ -16,19 +18,21 @@ export default async function IntegrationsPage() {
   const { data: integrations } = member
     ? await supabase
         .from("integrations")
-        .select("id, provider, nango_connection_id, status, last_sync_at")
+        .select("id, provider, nango_connection_id, status, last_sync_at, created_at")
         .eq("org_id", member.org_id)
+        .order("created_at", { ascending: false })
     : { data: [] };
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 sm:p-8 max-w-3xl">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-1">Integrations</h1>
         <p className="text-muted-foreground text-sm">
-          Connect your tools so Layers can sync meetings, issues, and documents automatically.
+          Connect your tools so Layers can sync meetings, issues, and documents
+          automatically.
         </p>
       </div>
-      <IntegrationsConnect integrations={integrations ?? []} />
+      <ConnectPanel initialIntegrations={integrations ?? []} />
     </div>
   );
 }
