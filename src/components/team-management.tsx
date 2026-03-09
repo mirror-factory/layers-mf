@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import { Loader2, Trash2, Send, X } from "lucide-react";
 
 interface Member {
@@ -83,6 +84,7 @@ export function TeamManagement({
         setError(typeof body.error === "string" ? body.error : "Failed to send invite");
         return;
       }
+      toast.success("Invitation sent");
       setInviteEmail("");
       await fetchInvitations();
     } finally {

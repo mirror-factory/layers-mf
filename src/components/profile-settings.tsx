@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export function ProfileSettings({
   email,
@@ -27,13 +28,10 @@ export function ProfileSettings({
   const [savingPassword, setSavingPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
     setSaving(true);
     try {
       const res = await fetch("/api/team/profile", {
@@ -46,7 +44,7 @@ export function ProfileSettings({
         setError(typeof body.error === "string" ? body.error : "Failed to update profile");
         return;
       }
-      setSuccess(true);
+      toast.success("Profile saved");
     } finally {
       setSaving(false);
     }
@@ -55,7 +53,6 @@ export function ProfileSettings({
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setPasswordError(null);
-    setPasswordSuccess(false);
 
     if (password !== confirmPassword) {
       setPasswordError("Passwords do not match");
@@ -78,7 +75,7 @@ export function ProfileSettings({
       }
       setPassword("");
       setConfirmPassword("");
-      setPasswordSuccess(true);
+      toast.success("Password updated");
     } finally {
       setSavingPassword(false);
     }
@@ -110,12 +107,8 @@ export function ProfileSettings({
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={saving}>
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : success ? (
-                <Check className="h-4 w-4" />
-              ) : null}
-              <span className="ml-2">{success ? "Saved" : "Save"}</span>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
             </Button>
           </form>
         </CardContent>
@@ -157,14 +150,8 @@ export function ProfileSettings({
               <p className="text-sm text-destructive">{passwordError}</p>
             )}
             <Button type="submit" disabled={savingPassword}>
-              {savingPassword ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : passwordSuccess ? (
-                <Check className="h-4 w-4" />
-              ) : null}
-              <span className="ml-2">
-                {passwordSuccess ? "Updated" : "Change password"}
-              </span>
+              {savingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
+              Change password
             </Button>
           </form>
         </CardContent>

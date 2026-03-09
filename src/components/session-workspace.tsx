@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Tool,
@@ -175,6 +176,7 @@ export function SessionWorkspace({
     if (res.ok) {
       setLinked((prev) => [...prev, item]);
       setAvailable((prev) => prev.filter((a) => a.id !== item.id));
+      toast.success("Context added");
     }
   }
 
@@ -188,6 +190,7 @@ export function SessionWorkspace({
       const removed = linked.find((l) => l.id === itemId);
       setLinked((prev) => prev.filter((l) => l.id !== itemId));
       if (removed) setAvailable((prev) => [removed, ...prev]);
+      toast.success("Context removed");
     }
   }
 
