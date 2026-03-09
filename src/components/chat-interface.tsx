@@ -199,8 +199,23 @@ export function ChatInterface() {
           {historyLoaded && messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Bot className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm font-medium">Ask anything about your team&apos;s knowledge</p>
+              <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
               <p className="text-xs mt-1">Layers searches your documents, meetings, and notes to answer.</p>
+              <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
+                {[
+                  "Summarize last week\u2019s meetings",
+                  "What decisions were made about the roadmap?",
+                  "Find documents about onboarding",
+                ].map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => sendMessage({ text: prompt })}
+                    className="rounded-full border bg-background px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

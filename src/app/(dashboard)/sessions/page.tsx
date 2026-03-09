@@ -34,8 +34,14 @@ export default async function SessionsPage() {
 
       {!sessions || sessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
-          <FolderKanban className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm">No sessions yet. Create your first one above.</p>
+          <FolderKanban className="h-12 w-12 mb-4 opacity-30" />
+          <p className="text-sm font-medium text-foreground">No sessions yet</p>
+          <p className="text-xs mt-1 max-w-xs text-center">
+            Sessions let you scope AI conversations to specific documents and topics.
+          </p>
+          <div className="mt-4">
+            <CreateSessionDialog />
+          </div>
         </div>
       ) : (
         <SessionsList sessions={sessions} />
