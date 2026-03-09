@@ -4,6 +4,7 @@ import { parseFile } from "@/lib/ingest/parse";
 import { extractStructured } from "@/lib/ai/extract";
 import { generateEmbedding } from "@/lib/ai/embed";
 import { createInboxItems } from "@/lib/inbox";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60; // seconds — allow time for AI processing
 
@@ -14,6 +15,14 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { success, remaining } = rateLimit(`upload:${user.id}`, 10, 60_000);
+  if (!success) {
+    return new Response("Too many requests", {
+      status: 429,
+      headers: { "X-RateLimit-Remaining": "0" },
+    });
   }
 
   // Get user's org

@@ -8,6 +8,7 @@ import {
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createSessionTools } from "@/lib/ai/session-tools";
+import { rateLimit } from "@/lib/rate-limit";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -54,6 +55,14 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { success, remaining } = rateLimit(`chat-session:${user.id}`, 10, 60_000);
+  if (!success) {
+    return new Response("Too many requests", {
+      status: 429,
+      headers: { "X-RateLimit-Remaining": "0" },
+    });
   }
 
   const { data: member } = await supabase

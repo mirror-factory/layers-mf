@@ -3,6 +3,7 @@ import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } fr
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools } from "@/lib/ai/tools";
+import { rateLimit } from "@/lib/rate-limit";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { success, remaining } = rateLimit(`chat:${user.id}`, 10, 60_000);
+  if (!success) {
+    return new Response("Too many requests", {
+      status: 429,
+      headers: { "X-RateLimit-Remaining": "0" },
+    });
   }
 
   const { data: member } = await supabase
