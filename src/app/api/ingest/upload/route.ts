@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseFile } from "@/lib/ingest/parse";
-import { extractStructured } from "@/lib/ai/extract";
-import { generateEmbedding } from "@/lib/ai/embed";
-import { createInboxItems } from "@/lib/inbox";
+import { processContextItem } from "@/lib/pipeline/process-context";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60; // seconds — allow time for AI processing
@@ -17,7 +15,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { success, remaining } = rateLimit(`upload:${user.id}`, 10, 60_000);
+  const { success } = rateLimit(`upload:${user.id}`, 10, 60_000);
   if (!success) {
     return new Response("Too many requests", {
       status: 429,
@@ -71,7 +69,7 @@ export async function POST(request: NextRequest) {
       title: file.name,
       raw_content: parsed.text,
       content_type: parsed.contentType,
-      status: "processing",
+      status: "pending",
     })
     .select()
     .single();
@@ -80,38 +78,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save item" }, { status: 500 });
   }
 
-  // 3. AI extraction + embedding (inline for MVP)
-  try {
-    const [extraction, embedding] = await Promise.all([
-      extractStructured(parsed.text, file.name),
-      generateEmbedding(parsed.text),
-    ]);
+  // 3. Run full processing pipeline (extract → embed → link to sessions)
+  const result = await processContextItem(supabase, item.id, member.org_id);
 
-    await supabase
-      .from("context_items")
-      .update({
-        title: extraction.title,
-        description_short: extraction.description_short,
-        description_long: extraction.description_long,
-        entities: extraction.entities,
-        embedding: embedding as unknown as string, // pgvector accepts number[] via REST
-        status: "ready",
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", item.id);
-
-    // Surface action items / decisions from this upload into the uploader's inbox
-    await createInboxItems(supabase, member.org_id, item.id, extraction, "upload");
-
-    return NextResponse.json({ id: item.id, status: "ready" });
-  } catch (err) {
-    // Mark as error but don't fail the upload
-    await supabase
-      .from("context_items")
-      .update({ status: "error" })
-      .eq("id", item.id);
-
-    console.error("Processing failed:", err);
-    return NextResponse.json({ id: item.id, status: "error", error: "Processing failed" }, { status: 207 });
-  }
+  const status = result.status === "ready" ? 200 : 207;
+  return NextResponse.json(
+    { id: item.id, status: result.status, error: result.error },
+    { status }
+  );
 }

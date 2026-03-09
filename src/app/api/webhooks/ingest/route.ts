@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { processContextItem } from "@/lib/pipeline/process-context";
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("x-webhook-secret");
@@ -46,6 +49,11 @@ export async function POST(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Auto-trigger processing pipeline (fire-and-forget)
+  processContextItem(adminDb, data.id, org_id).catch((err) =>
+    console.error("Pipeline auto-trigger failed:", err)
+  );
 
   return NextResponse.json({ id: data.id, status: "accepted" });
 }
