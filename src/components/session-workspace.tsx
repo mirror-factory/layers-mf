@@ -2,9 +2,9 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Send, Loader2, Bot, User, FileText, X,
+  Send, Loader2, Bot, User, FileText, X, Users, UserPlus,
   Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -42,6 +50,20 @@ type Session = {
   goal: string;
   status: string;
   updated_at: string;
+};
+
+type SessionMember = {
+  id: string;
+  user_id: string;
+  role: string;
+  email?: string | null;
+};
+
+type OrgMember = {
+  id: string;
+  userId: string;
+  email: string;
+  role: string;
 };
 
 const MODELS = [
@@ -134,7 +156,48 @@ export function SessionWorkspace({
   const [available, setAvailable] = useState<ContextItem[]>(initialAvailable);
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [members, setMembers] = useState<SessionMember[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Load session members
+  useEffect(() => {
+    fetch(`/api/sessions/${session.id}/members`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setMembers)
+      .catch(() => {});
+  }, [session.id]);
+
+  // Load org members when share dialog opens
+  const loadOrgMembers = useCallback(() => {
+    if (orgMembers.length > 0) return;
+    fetch("/api/team/members")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setOrgMembers)
+      .catch(() => {});
+  }, [orgMembers.length]);
+
+  async function handleAddMember(userId: string) {
+    setAddingMember(true);
+    const res = await fetch(`/api/sessions/${session.id}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (res.ok) {
+      const newMember = await res.json();
+      const orgMember = orgMembers.find((m) => m.userId === userId);
+      setMembers((prev) => [...prev, { ...newMember, email: orgMember?.email }]);
+      toast.success("Member added to session");
+    } else if (res.status === 409) {
+      toast.error("User is already a member");
+    } else {
+      toast.error("Failed to add member");
+    }
+    setAddingMember(false);
+  }
 
   useEffect(() => {
     fetch(`/api/chat/history?session_id=${session.id}`)
@@ -201,9 +264,87 @@ export function SessionWorkspace({
         <div className="px-4 py-3 border-b">
           <h2 className="text-sm font-semibold truncate">{session.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{session.goal}</p>
-          <Badge variant={STATUS_VARIANT[session.status] ?? "outline"} className="text-[10px] mt-1.5">
-            {session.status}
-          </Badge>
+          <div className="flex items-center justify-between mt-1.5">
+            <Badge variant={STATUS_VARIANT[session.status] ?? "outline"} className="text-[10px]">
+              {session.status}
+            </Badge>
+            <div className="flex items-center gap-1">
+              {/* Member avatars */}
+              {members.slice(0, 3).map((m) => (
+                <div
+                  key={m.id}
+                  className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[9px] font-medium"
+                  title={m.email ?? m.user_id}
+                >
+                  {(m.email ?? m.user_id).charAt(0).toUpperCase()}
+                </div>
+              ))}
+              {members.length > 3 && (
+                <span className="text-[9px] text-muted-foreground">+{members.length - 3}</span>
+              )}
+              {/* Share button */}
+              <Dialog open={shareOpen} onOpenChange={(open) => { setShareOpen(open); if (open) loadOrgMembers(); }}>
+                <DialogTrigger asChild>
+                  <button
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    title="Share session"
+                  >
+                    <UserPlus className="h-2.5 w-2.5" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Share Session
+                    </DialogTitle>
+                    <DialogDescription>
+                      Invite org members to collaborate on this session.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {orgMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Loading members…</p>
+                    ) : (
+                      orgMembers
+                        .filter((om) => !members.some((m) => m.user_id === om.userId))
+                        .map((om) => (
+                          <div
+                            key={om.id}
+                            className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-accent/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium shrink-0">
+                                {om.email.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm truncate">{om.email}</p>
+                                <p className="text-xs text-muted-foreground">{om.role}</p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAddMember(om.userId)}
+                              disabled={addingMember}
+                              className="text-xs h-7 shrink-0"
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        ))
+                    )}
+                    {orgMembers.length > 0 &&
+                      orgMembers.filter((om) => !members.some((m) => m.user_id === om.userId)).length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          All org members have been added.
+                        </p>
+                      )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
         </div>
 
         <div className="px-4 py-2 border-b flex items-center justify-between">
