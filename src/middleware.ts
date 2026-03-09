@@ -32,7 +32,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public paths that don't require auth
-  const isAuthPath = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/auth");
+  const isAuthPath =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
   const isOnboardingPath = pathname.startsWith("/onboarding");
 
   // Redirect unauthenticated users to login
@@ -41,7 +46,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
