@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ContextUploader } from "@/components/context-uploader";
 import { ContextLibrary } from "@/components/context-library";
-import { FileText } from "lucide-react";
+import { FileText, Mic } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default async function ContextPage() {
   const supabase = await createClient();
@@ -29,7 +31,15 @@ export default async function ContextPage() {
             All documents, transcripts, and files available to your agents.
           </p>
         </div>
-        <ContextUploader />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/context/upload-meeting">
+              <Mic className="h-4 w-4 mr-1.5" />
+              Upload Meeting
+            </Link>
+          </Button>
+          <ContextUploader />
+        </div>
       </div>
 
       {!items || items.length === 0 ? (
