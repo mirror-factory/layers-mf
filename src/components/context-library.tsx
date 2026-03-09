@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   FileText,
@@ -83,6 +84,29 @@ function normalizeSource(source: string) {
 }
 
 export function ContextLibrary({ items }: Props) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
+        <FileText className="h-12 w-12 mb-4 opacity-30" />
+        <p className="text-sm font-medium text-foreground">No documents yet</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          Connect an integration or upload files to start building your knowledge base.
+        </p>
+        <div className="flex gap-2 mt-4">
+          <Button asChild size="sm">
+            <Link href="/integrations">Connect integration</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/context?upload=true">
+              <Upload className="h-4 w-4 mr-1" />
+              Upload files
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const [selected, setSelected] = useState<string>("all");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("newest");
@@ -316,13 +340,14 @@ export function ContextLibrary({ items }: Props) {
                 const StatusIcon = status.icon;
                 const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
                 return (
-                  <div
+                  <Link
                     key={item.id}
+                    href={`/context/${item.id}`}
                     className="flex items-start gap-3 px-5 py-3.5 hover:bg-accent/30 transition-colors"
                   >
                     <ContentIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-sm font-medium truncate hover:underline">{item.title}</p>
                       {item.description_short && (
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                           {item.description_short}
@@ -333,7 +358,7 @@ export function ContextLibrary({ items }: Props) {
                       </p>
                     </div>
                     <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-1", status.className)} />
-                  </div>
+                  </Link>
                 );
               })}
             </div>
