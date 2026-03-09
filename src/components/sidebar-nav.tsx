@@ -20,6 +20,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
@@ -127,8 +128,9 @@ export function SidebarNav({
         </nav>
 
         {/* User */}
-        <div className="border-t p-3">
+        <div className="border-t p-3 space-y-1">
           <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>
+          <ThemeToggle />
           <button
             onClick={handleSignOut}
             className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
