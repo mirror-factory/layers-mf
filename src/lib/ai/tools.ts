@@ -9,6 +9,13 @@ type AnySupabase = SupabaseClient<any>;
 const searchContextSchema = z.object({
   query: z.string().describe("The search query"),
   limit: z.number().min(1).max(20).describe("Maximum results").optional(),
+  filters: z
+    .object({
+      sourceType: z.string().optional().describe("Filter by source type (e.g. upload, linear, gdrive)"),
+      contentType: z.string().optional().describe("Filter by content type (e.g. document, meeting_transcript, issue)"),
+    })
+    .optional()
+    .describe("Optional filters to narrow search results"),
 });
 
 const getDocumentSchema = z.object({
@@ -21,12 +28,13 @@ export function createTools(supabase: AnySupabase, orgId: string) {
       description:
         "Search the team knowledge base for relevant documents, meetings, messages, and notes. Call this first to find what context exists before answering.",
       inputSchema: searchContextSchema,
-      execute: async ({ query, limit }: z.infer<typeof searchContextSchema>) => {
+      execute: async ({ query, limit, filters }: z.infer<typeof searchContextSchema>) => {
         const results = await searchContext(
           supabase as Parameters<typeof searchContext>[0],
           orgId,
           query,
-          limit ?? 8
+          limit ?? 8,
+          filters
         );
         return results.map((r) => ({
           id: r.id,
@@ -35,6 +43,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           content_type: r.content_type,
           rrf_score: r.rrf_score,
           description_short: r.description_short,
+          source_url: r.source_url,
         }));
       },
     }),
@@ -46,7 +55,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
       execute: async ({ id }: z.infer<typeof getDocumentSchema>) => {
         const { data, error } = await supabase
           .from("context_items")
-          .select("id, title, raw_content, source_type, content_type")
+          .select("id, title, raw_content, source_type, content_type, source_metadata")
           .eq("id", id)
           .eq("org_id", orgId)
           .single();
@@ -56,12 +65,14 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           raw_content: string | null;
           source_type: string;
           content_type: string;
+          source_metadata: { url?: string } | null;
         };
         return {
           title: item.title,
           content: item.raw_content ?? "(no content available)",
           source_type: item.source_type,
           content_type: item.content_type,
+          source_url: item.source_metadata?.url ?? null,
         };
       },
     }),

@@ -11,6 +11,7 @@ vi.mock("@/lib/db/search", () => ({
       description_long: "Full retro notes",
       source_type: "google-drive",
       content_type: "meeting_notes",
+      source_url: "https://docs.google.com/retro",
       rrf_score: 0.9,
     },
   ]),
@@ -30,6 +31,7 @@ function createMockSupabase() {
                 raw_content: "We discussed velocity improvements.",
                 source_type: "google-drive",
                 content_type: "meeting_notes",
+                source_metadata: { url: "https://docs.google.com/retro" },
               },
               error: null,
             }),
@@ -76,6 +78,7 @@ describe("createTools", () => {
         content_type: "meeting_notes",
         rrf_score: 0.9,
         description_short: "Retro notes",
+        source_url: "https://docs.google.com/retro",
       },
     ]);
   });
@@ -92,6 +95,7 @@ describe("createTools", () => {
       content: "We discussed velocity improvements.",
       source_type: "google-drive",
       content_type: "meeting_notes",
+      source_url: "https://docs.google.com/retro",
     });
   });
 

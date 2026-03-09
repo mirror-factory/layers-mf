@@ -14,6 +14,7 @@ const mockResults: SearchResult[] = [
     description_long: "Full quarterly planning doc for Q3",
     source_type: "google-drive",
     content_type: "meeting_notes",
+    source_url: "https://docs.google.com/doc/123",
     rrf_score: 0.85,
   },
   {
@@ -23,6 +24,7 @@ const mockResults: SearchResult[] = [
     description_long: null,
     source_type: "github",
     content_type: "document",
+    source_url: null,
     rrf_score: 0.72,
   },
 ];
@@ -48,11 +50,15 @@ describe("searchContext", () => {
 
     expect(results).toEqual(mockResults);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((supabase as any).rpc).toHaveBeenCalledWith("search_context_items", {
+    expect((supabase as any).rpc).toHaveBeenCalledWith("hybrid_search", {
       p_org_id: "org-1",
       p_query_text: "planning",
       p_query_embedding: [0.1, 0.2, 0.3],
       p_limit: 5,
+      p_source_type: null,
+      p_content_type: null,
+      p_date_from: null,
+      p_date_to: null,
     });
   });
 
@@ -64,10 +70,35 @@ describe("searchContext", () => {
 
     expect(results).toEqual(mockResults);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((supabase as any).rpc).toHaveBeenCalledWith("search_context_items_text", {
+    expect((supabase as any).rpc).toHaveBeenCalledWith("hybrid_search_text", {
       p_org_id: "org-1",
       p_query_text: "planning",
-      p_limit: 8,
+      p_limit: 10,
+      p_source_type: null,
+      p_content_type: null,
+      p_date_from: null,
+      p_date_to: null,
+    });
+  });
+
+  it("passes filters to RPC call", async () => {
+    delete process.env.AI_GATEWAY_API_KEY;
+    const supabase = createMockSupabase(mockResults);
+
+    await searchContext(supabase, "org-1", "planning", 10, {
+      sourceType: "upload",
+      contentType: "document",
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((supabase as any).rpc).toHaveBeenCalledWith("hybrid_search_text", {
+      p_org_id: "org-1",
+      p_query_text: "planning",
+      p_limit: 10,
+      p_source_type: "upload",
+      p_content_type: "document",
+      p_date_from: null,
+      p_date_to: null,
     });
   });
 
@@ -108,6 +139,7 @@ describe("buildContextBlock", () => {
       description_long: null,
       source_type: "upload",
       content_type: "file",
+      source_url: null,
       rrf_score: 0.5,
     };
     const block = buildContextBlock([result]);
