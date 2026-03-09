@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
+  Home,
   Library,
   MessageSquare,
   Inbox,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/", label: "Home", icon: Home },
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/sessions", label: "Sessions", icon: FolderKanban },
