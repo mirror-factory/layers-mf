@@ -25,7 +25,7 @@ Guidelines:
 - Use multiple search queries with different angles if one query isn't sufficient
 - Call get_document for documents that appear highly relevant to get their full content
 - Be concise and specific in your final answer
-- Cite sources by title when you use information from them
+- Cite sources by name and date using [Source: title (date)] format, e.g. [Source: Sprint Retro (2026-03-01)]
 - If the knowledge base has no relevant information, say so clearly`;
 
 export async function POST(request: NextRequest) {

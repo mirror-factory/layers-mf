@@ -54,6 +54,7 @@ export async function searchSessionContext(
     source_type: item.source_type as string,
     content_type: item.content_type as string,
     source_url: null,
+    source_created_at: null,
     rrf_score: (item.title as string)
       .toLowerCase()
       .includes(query.toLowerCase())

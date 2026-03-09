@@ -15,6 +15,7 @@ const mockResults: SearchResult[] = [
     source_type: "google-drive",
     content_type: "meeting_notes",
     source_url: "https://docs.google.com/doc/123",
+    source_created_at: "2026-03-01T10:00:00Z",
     rrf_score: 0.85,
   },
   {
@@ -25,6 +26,7 @@ const mockResults: SearchResult[] = [
     source_type: "github",
     content_type: "document",
     source_url: null,
+    source_created_at: null,
     rrf_score: 0.72,
   },
 ];
@@ -140,6 +142,7 @@ describe("buildContextBlock", () => {
       source_type: "upload",
       content_type: "file",
       source_url: null,
+      source_created_at: null,
       rrf_score: 0.5,
     };
     const block = buildContextBlock([result]);

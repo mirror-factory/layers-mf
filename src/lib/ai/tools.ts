@@ -44,6 +44,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           rrf_score: r.rrf_score,
           description_short: r.description_short,
           source_url: r.source_url,
+          source_created_at: r.source_created_at,
         }));
       },
     }),
@@ -55,7 +56,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
       execute: async ({ id }: z.infer<typeof getDocumentSchema>) => {
         const { data, error } = await supabase
           .from("context_items")
-          .select("id, title, raw_content, source_type, content_type, source_metadata")
+          .select("id, title, raw_content, source_type, content_type, source_metadata, source_created_at")
           .eq("id", id)
           .eq("org_id", orgId)
           .single();
@@ -66,6 +67,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           source_type: string;
           content_type: string;
           source_metadata: { url?: string } | null;
+          source_created_at: string | null;
         };
         return {
           title: item.title,
@@ -73,6 +75,7 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           source_type: item.source_type,
           content_type: item.content_type,
           source_url: item.source_metadata?.url ?? null,
+          source_created_at: item.source_created_at,
         };
       },
     }),

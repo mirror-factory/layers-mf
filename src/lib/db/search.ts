@@ -10,6 +10,7 @@ export type SearchResult = {
   source_type: string;
   content_type: string;
   source_url: string | null;
+  source_created_at: string | null;
   rrf_score: number;
 };
 

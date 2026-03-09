@@ -25,6 +25,7 @@ import {
   ToolOutput,
   type ToolPart,
 } from "@/components/ai-elements/tool";
+import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
 
 const MODELS = [
   { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku" },
@@ -74,12 +75,12 @@ function getToolParts(parts: { type: string }[]): ToolPart[] {
   return parts.filter((p) => p.type.startsWith("tool-")) as ToolPart[];
 }
 
-function getSearchSources(toolParts: ToolPart[]) {
+function getSearchSources(toolParts: ToolPart[]): CitationSource[] {
   const searchTool = [...toolParts]
     .reverse()
     .find((p) => p.type === "tool-search_context" && p.state === "output-available");
   if (!searchTool || !("output" in searchTool)) return [];
-  return (searchTool.output as { id: string; title: string; source_type: string; content_type: string; rrf_score: number; description_short: string | null }[]) ?? [];
+  return (searchTool.output as CitationSource[]) ?? [];
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -271,27 +272,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     </div>
                   )}
 
-                  {/* Source chips */}
+                  {/* Source citations */}
                   {sources.length > 0 && (
-                    <div className="flex flex-wrap gap-1 px-1">
-                      {sources.slice(0, 4).map((s) => {
-                        const Icon = CONTENT_ICON[s.content_type] ?? FileText;
-                        return (
-                          <span
-                            key={s.id}
-                            className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[10px] text-muted-foreground"
-                          >
-                            <Icon className="h-2.5 w-2.5" />
-                            <span className="max-w-[120px] truncate">{s.title}</span>
-                          </span>
-                        );
-                      })}
-                      {sources.length > 4 && (
-                        <span className="inline-flex items-center rounded-full border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
-                          +{sources.length - 4} more
-                        </span>
-                      )}
-                    </div>
+                    <SourceCitation sources={sources} />
                   )}
                 </div>
               </div>

@@ -36,6 +36,7 @@ returns table (
   source_type       text,
   content_type      text,
   source_url        text,
+  source_created_at timestamptz,
   rrf_score         float
 )
 language sql
@@ -89,6 +90,7 @@ as $$
     ci.source_type,
     ci.content_type,
     ci.source_metadata->>'url' as source_url,
+    ci.source_created_at,
     r.score as rrf_score
   from rrf r
   join context_items ci on ci.id = r.id
@@ -114,6 +116,7 @@ returns table (
   source_type       text,
   content_type      text,
   source_url        text,
+  source_created_at timestamptz,
   rrf_score         float
 )
 language sql
@@ -128,6 +131,7 @@ as $$
     ci.source_type,
     ci.content_type,
     ci.source_metadata->>'url' as source_url,
+    ci.source_created_at,
     ts_rank_cd(ci.search_tsv, plainto_tsquery('english', p_query_text))::float as rrf_score
   from context_items ci
   where ci.org_id = p_org_id
