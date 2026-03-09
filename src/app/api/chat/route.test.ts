@@ -161,4 +161,54 @@ describe("POST /api/chat", () => {
 
     expect(res.status).toBe(200);
   });
+
+  it("wires createTools with supabase client and org_id", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-42" } }),
+        }),
+      }),
+    });
+
+    const { createTools } = await import("@/lib/ai/tools");
+
+    await POST(
+      makeRequest({
+        messages: [{ role: "user", parts: [{ type: "text", text: "test" }] }],
+      })
+    );
+
+    expect(createTools).toHaveBeenCalledWith(
+      expect.objectContaining({ auth: expect.any(Object), from: expect.any(Function) }),
+      "org-42"
+    );
+  });
+
+  it("passes agent to createAgentUIStreamResponse", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const { createAgentUIStreamResponse } = await import("ai");
+
+    await POST(
+      makeRequest({
+        messages: [{ role: "user", parts: [{ type: "text", text: "test" }] }],
+      })
+    );
+
+    expect(createAgentUIStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: expect.any(Object),
+        uiMessages: expect.any(Array),
+      })
+    );
+  });
 });
