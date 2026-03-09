@@ -133,7 +133,11 @@ function ToolCallCard({ part }: { part: ToolPart }) {
   );
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  conversationId?: string | null;
+}
+
+export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [model, setModel] = useState<string>("anthropic/claude-haiku-4-5-20251001");
   const [input, setInput] = useState("");
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
@@ -141,20 +145,25 @@ export function ChatInterface() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/chat/history")
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversation_id", conversationId);
+    const url = `/api/chat/history${params.toString() ? `?${params}` : ""}`;
+    setInitialMessages(undefined);
+    setHistoryLoaded(false);
+    fetch(url)
       .then((res) => (res.ok ? res.json() : []))
       .then((msgs: UIMessage[]) => {
         if (msgs.length > 0) setInitialMessages(msgs);
         setHistoryLoaded(true);
       })
       .catch(() => setHistoryLoaded(true));
-  }, []);
+  }, [conversationId]);
 
   const { messages, sendMessage, status, error } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model },
+      body: { model, conversationId },
     }),
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   const sessionId = request.nextUrl.searchParams.get("session_id");
+  const conversationId = request.nextUrl.searchParams.get("conversation_id");
 
   let query = supabase
     .from("chat_messages")
@@ -33,8 +34,10 @@ export async function GET(request: NextRequest) {
 
   if (sessionId) {
     query = query.eq("session_id", sessionId);
+  } else if (conversationId) {
+    query = query.eq("conversation_id", conversationId);
   } else {
-    query = query.is("session_id", null);
+    query = query.is("session_id", null).is("conversation_id", null);
   }
 
   const { data: rows, error } = await query;
