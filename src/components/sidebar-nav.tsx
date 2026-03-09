@@ -19,6 +19,7 @@ import {
   UserCog,
   Shield,
   FileCode2,
+  CheckSquare,
   Menu,
   X,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/sessions", label: "Sessions", icon: FolderKanban },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/actions", label: "Actions", icon: CheckSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/team", label: "Team", icon: Users },
