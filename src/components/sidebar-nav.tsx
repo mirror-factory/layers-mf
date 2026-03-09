@@ -17,6 +17,7 @@ import {
   FolderKanban,
   Users,
   UserCog,
+  Shield,
   Menu,
   X,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
+  { href: "/settings/audit", label: "Audit Log", icon: Shield },
 ];
 
 export function SidebarNav({
