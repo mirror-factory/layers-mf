@@ -18,6 +18,7 @@ import {
   Users,
   UserCog,
   Shield,
+  FileCode2,
   Menu,
   X,
 } from "lucide-react";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
+  { href: "/api-docs", label: "API Docs", icon: FileCode2 },
 ];
 
 export function SidebarNav({

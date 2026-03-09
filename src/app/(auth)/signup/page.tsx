@@ -38,7 +38,7 @@ export default function SignupPage() {
     }
 
     // org + member created via DB trigger (see migration)
-    router.push("/");
+    router.push("/onboarding");
     router.refresh();
   }
 

@@ -31,14 +31,23 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Public paths that don't require auth
+  const isAuthPath = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/auth");
+  const isOnboardingPath = pathname.startsWith("/onboarding");
+
   // Redirect unauthenticated users to login
-  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/signup") && !pathname.startsWith("/auth")) {
+  if (!user && !isAuthPath) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Redirect authenticated users away from auth pages
   if (user && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Allow onboarding paths for authenticated users
+  if (user && isOnboardingPath) {
+    return supabaseResponse;
   }
 
   return supabaseResponse;
