@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -22,9 +23,22 @@ import {
   Filter,
   X,
   Download,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -108,11 +122,14 @@ export function ContextLibrary({ items }: Props) {
     );
   }
 
+  const router = useRouter();
   const [selected, setSelected] = useState<string>("all");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("newest");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   // Derive unique content types from items
   const contentTypes = useMemo(
@@ -176,6 +193,52 @@ export function ContextLibrary({ items }: Props) {
     setVisibleCount(PAGE_SIZE);
     setSourceOpen(false);
   }
+
+  const toggleItem = useCallback((id: string) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    const visibleIds = visible.map((i) => i.id);
+    const allChecked = visibleIds.every((id) => checkedIds.has(id));
+    if (allChecked) {
+      setCheckedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.delete(id);
+        return next;
+      });
+    } else {
+      setCheckedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.add(id);
+        return next;
+      });
+    }
+  }, [visible, checkedIds]);
+
+  async function handleBulkDelete() {
+    if (checkedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/context/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...checkedIds] }),
+      });
+      setCheckedIds(new Set());
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const allVisibleChecked = visible.length > 0 && visible.every((i) => checkedIds.has(i.id));
+  const someChecked = checkedIds.size > 0;
 
   return (
     <div className="flex h-full min-h-0 gap-0 overflow-hidden flex-col md:flex-row">
@@ -242,6 +305,11 @@ export function ContextLibrary({ items }: Props) {
               >
                 <Filter className="h-4 w-4" />
               </button>
+              <Checkbox
+                checked={allVisibleChecked}
+                onCheckedChange={toggleAll}
+                aria-label="Select all"
+              />
               <p className="text-sm font-medium">
                 {selected === "all"
                   ? "All Items"
@@ -351,26 +419,40 @@ export function ContextLibrary({ items }: Props) {
                 const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
                 const StatusIcon = status.icon;
                 const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
+                const isChecked = checkedIds.has(item.id);
                 return (
-                  <Link
+                  <div
                     key={item.id}
-                    href={`/context/${item.id}`}
-                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-accent/30 transition-colors"
+                    className={cn(
+                      "flex items-start gap-3 px-5 py-3.5 hover:bg-accent/30 transition-colors",
+                      isChecked && "bg-primary/5",
+                    )}
                   >
-                    <ContentIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate hover:underline">{item.title}</p>
-                      {item.description_short && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                          {item.description_short}
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => toggleItem(item.id)}
+                      className="mt-0.5 shrink-0"
+                      aria-label={`Select ${item.title}`}
+                    />
+                    <Link
+                      href={`/context/${item.id}`}
+                      className="flex items-start gap-3 flex-1 min-w-0"
+                    >
+                      <ContentIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate hover:underline">{item.title}</p>
+                        {item.description_short && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {item.description_short}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {item.content_type.replace(/_/g, " ")} · {new Date(item.ingested_at).toLocaleDateString()}
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {item.content_type.replace(/_/g, " ")} · {new Date(item.ingested_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-1", status.className)} />
-                  </Link>
+                      </div>
+                      <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-1", status.className)} />
+                    </Link>
+                  </div>
                 );
               })}
             </div>
@@ -389,6 +471,46 @@ export function ContextLibrary({ items }: Props) {
             </div>
           )}
         </div>
+
+        {/* Floating action bar */}
+        {someChecked && (
+          <div className="border-t bg-card px-5 py-2.5 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCheckedIds(new Set())}
+              >
+                Cancel
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={deleting}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. The selected context items will be permanently removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkDelete} disabled={deleting}>
+                      {deleting ? "Deleting..." : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
