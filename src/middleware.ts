@@ -32,6 +32,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public paths that don't require auth
+  const isPublicPath = pathname.startsWith("/sprint-progress");
+
   const isAuthPath =
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
@@ -41,7 +43,7 @@ export async function middleware(request: NextRequest) {
   const isOnboardingPath = pathname.startsWith("/onboarding");
 
   // Redirect unauthenticated users to login
-  if (!user && !isAuthPath) {
+  if (!user && !isAuthPath && !isPublicPath) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
