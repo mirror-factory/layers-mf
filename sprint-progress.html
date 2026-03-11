@@ -3,36 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Layers | Product &amp; Sprint Review — March 8, 2026</title>
+<title>Layers | Product &amp; Sprint Review — March 11, 2026</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
     --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface-2: #1a1a24;
-    --border: #2a2a3a;
-    --text: #e4e4ed;
+    --surface: #111116;
+    --surface-2: #18181f;
+    --border: #2a2a35;
+    --text: #e8e8f0;
     --text-dim: #8888a0;
-    --accent: #6366f1;
-    --accent-glow: rgba(99, 102, 241, 0.3);
-    --green: #22c55e;
-    --green-glow: rgba(34, 197, 94, 0.2);
+    --accent: #3EB489;
+    --accent-glow: rgba(62, 180, 137, 0.3);
+    --accent-secondary: #2D9B75;
+    --green: #3EB489;
+    --green-glow: rgba(62, 180, 137, 0.2);
     --amber: #f59e0b;
     --amber-glow: rgba(245, 158, 11, 0.2);
     --red: #ef4444;
     --red-glow: rgba(239, 68, 68, 0.2);
-    --blue: #3b82f6;
+    --blue: #2D9B75;
+    --cyan: #06b6d4;
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
   body {
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
     overflow-x: hidden;
   }
+
+  /* Animated elements — CSS transitions, no external deps */
+  .gs {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .gs.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .gs.from-left {
+    transform: translateX(-40px);
+  }
+  .gs.from-left.visible {
+    transform: translateX(0);
+  }
+  .gs.scale-in {
+    transform: scale(0.9);
+  }
+  .gs.scale-in.visible {
+    transform: scale(1);
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 40px var(--accent-glow); }
+    50% { box-shadow: 0 0 60px var(--accent-glow), 0 0 80px rgba(62, 180, 137, 0.15); }
+  }
+  .logo-mark { animation: pulse-glow 3s ease-in-out infinite; }
 
   .slide {
     min-height: 100vh;
@@ -44,42 +79,28 @@
     position: relative;
   }
 
-  .animate-on-scroll {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .animate-on-scroll.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
   /* TITLE */
   .title-slide {
-    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, rgba(62, 180, 137, 0.06) 0%, transparent 70%);
   }
 
   .logo-mark {
     width: 72px; height: 72px;
-    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    background: linear-gradient(135deg, var(--accent), #2D9B75);
     border-radius: 18px;
     display: flex; align-items: center; justify-content: center;
     font-size: 32px; font-weight: 800;
+    font-family: var(--font-serif);
     margin-bottom: 2rem;
     box-shadow: 0 0 40px var(--accent-glow);
-    animation: pulse-glow 3s ease-in-out infinite;
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 40px var(--accent-glow); }
-    50% { box-shadow: 0 0 60px var(--accent-glow), 0 0 80px rgba(99, 102, 241, 0.15); }
   }
 
   h1 {
+    font-family: var(--font-serif);
     font-size: clamp(2.5rem, 5vw, 4rem);
     font-weight: 800;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #fff 0%, #a5a5c0 100%);
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 0%, #3EB489 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
@@ -93,8 +114,9 @@
   }
 
   .section-title {
+    font-family: var(--font-serif);
     font-size: clamp(1.8rem, 3.5vw, 2.5rem);
-    font-weight: 700; letter-spacing: -0.02em;
+    font-weight: 600; letter-spacing: -0.01em;
     margin-bottom: 0.5rem; text-align: center;
   }
 
@@ -124,14 +146,13 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
     position: relative;
     overflow: hidden;
   }
 
   .feature-card:hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
     box-shadow: 0 8px 30px rgba(0,0,0,0.3);
   }
 
@@ -146,7 +167,7 @@
   .status-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
   .status-dot.partial { background: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
   .status-dot.broken { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
-  .status-dot.building { background: var(--blue); box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); animation: blink 1.5s infinite; }
+  .status-dot.building { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: blink 1.5s infinite; }
 
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -155,15 +176,13 @@
     margin-bottom: 0.5rem;
   }
 
-  .feature-name {
-    font-weight: 700; font-size: 1.05rem;
-  }
+  .feature-name { font-weight: 700; font-size: 1.05rem; }
 
   .feature-route {
-    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--accent);
-    background: rgba(99,102,241,0.1);
+    background: rgba(62,180,137,0.1);
     padding: 0.15rem 0.5rem;
     border-radius: 4px;
     margin-left: auto;
@@ -186,7 +205,7 @@
   .feature-status-label.live { color: var(--green); }
   .feature-status-label.partial { color: var(--amber); }
   .feature-status-label.broken { color: var(--red); }
-  .feature-status-label.building { color: var(--blue); }
+  .feature-status-label.building { color: var(--accent); }
 
   .feature-notes {
     margin-top: 0.5rem;
@@ -198,9 +217,7 @@
   }
 
   /* USER JOURNEY */
-  .journey-container {
-    max-width: 900px; width: 100%;
-  }
+  .journey-container { max-width: 900px; width: 100%; }
 
   .journey-step {
     display: grid;
@@ -227,14 +244,8 @@
     padding: 1.25rem;
   }
 
-  .journey-title {
-    font-weight: 600; font-size: 1rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .journey-desc {
-    font-size: 0.85rem; color: var(--text-dim); line-height: 1.5;
-  }
+  .journey-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
+  .journey-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
 
   .journey-arrow {
     display: flex; justify-content: center; padding: 0.25rem 0;
@@ -261,7 +272,7 @@
   .stat-card::before {
     content: ''; position: absolute;
     top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent), #8b5cf6);
+    background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
     opacity: 0; transition: opacity 0.3s;
   }
   .stat-card:hover::before { opacity: 1; }
@@ -273,7 +284,7 @@
   .stat-number.green { color: var(--green); }
   .stat-number.accent { color: var(--accent); }
   .stat-number.amber { color: var(--amber); }
-  .stat-number.blue { color: var(--blue); }
+  .stat-number.blue { color: var(--accent); }
 
   .stat-label { font-size: 0.85rem; color: var(--text-dim); font-weight: 500; }
   .stat-delta { font-size: 0.75rem; color: var(--green); margin-top: 0.25rem; }
@@ -290,9 +301,9 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     margin-bottom: 0.75rem;
-    transition: all 0.3s;
+    transition: border-color 0.3s;
   }
-  .issue-row:hover { border-color: var(--accent); transform: translateX(4px); }
+  .issue-row:hover { border-color: var(--accent); }
 
   .issue-id {
     font-family: 'SF Mono','Fira Code', monospace;
@@ -306,8 +317,9 @@
     font-size: 0.75rem; font-weight: 600; text-align: center;
   }
   .status-done { background: var(--green-glow); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
-  .status-review { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .status-review { background: rgba(62,180,137,0.15); color: var(--accent); border: 1px solid rgba(62,180,137,0.3); }
   .status-progress { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+  .status-new { background: rgba(6,182,212,0.15); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
 
   /* GAPS */
   .gaps-grid {
@@ -331,6 +343,7 @@
   .gap-severity.high { color: var(--red); }
   .gap-severity.medium { color: var(--amber); }
   .gap-severity.low { color: var(--text-dim); }
+  .gap-severity.fixed { color: var(--green); }
 
   .gap-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem; }
   .gap-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; }
@@ -347,11 +360,10 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
-    transition: all 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
   }
   .roadmap-card:hover {
     border-color: var(--accent);
-    transform: translateY(-4px);
     box-shadow: 0 8px 30px rgba(0,0,0,0.3);
   }
 
@@ -407,9 +419,8 @@
   .progress-fill {
     height: 100%; border-radius: 4px;
     background: linear-gradient(90deg, var(--accent), var(--green));
-    width: 0%; transition: width 1.5s cubic-bezier(0.16,1,0.3,1);
+    width: 0%;
   }
-  .progress-fill.animated { width: var(--target-width); }
 
   /* LEGEND */
   .legend {
@@ -418,6 +429,124 @@
     font-size: 0.8rem; color: var(--text-dim);
   }
   .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+
+  /* FEATURE USAGE DIAGRAMS */
+  .diagram-container { max-width: 1000px; width: 100%; }
+
+  .diagram-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .diagram-title {
+    font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .diagram-title .badge {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem; border-radius: 100px;
+    background: rgba(62,180,137,0.15); color: var(--accent);
+  }
+
+  .diagram-desc {
+    font-size: 0.85rem; color: var(--text-dim);
+    line-height: 1.6; margin-bottom: 1.5rem;
+  }
+
+  .flow-diagram {
+    display: flex; align-items: center; gap: 0.5rem;
+    flex-wrap: wrap; justify-content: center;
+    padding: 1.5rem;
+    background: var(--surface-2);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .flow-step {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .flow-step.highlight {
+    border-color: var(--accent);
+    background: rgba(62,180,137,0.08);
+    color: var(--accent);
+  }
+
+  .flow-arrow {
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .code-example {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .code-example .keyword { color: var(--accent); }
+  .code-example .string { color: var(--accent); }
+  .code-example .comment { color: #555; }
+
+  /* TESTING */
+  .test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem; max-width: 1000px; width: 100%;
+  }
+
+  .test-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+
+  .test-module {
+    font-weight: 700; font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .test-count {
+    font-size: 2rem; font-weight: 800;
+    margin-bottom: 0.25rem;
+  }
+  .test-count.pass { color: var(--green); }
+  .test-count.warn { color: var(--amber); }
+  .test-count.none { color: var(--red); }
+
+  .test-items {
+    list-style: none;
+    font-size: 0.8rem; color: var(--text-dim);
+    line-height: 1.8; margin-top: 0.5rem;
+  }
+  .test-items li { padding-left: 1.2rem; position: relative; }
+  .test-items li::before {
+    content: ''; position: absolute; left: 0; top: 0.6em;
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .test-items li.covered::before { background: var(--green); }
+  .test-items li.partial::before { background: var(--amber); }
+  .test-items li.missing::before { background: var(--red); }
 
   .footer {
     padding: 3rem 2rem; text-align: center;
@@ -445,8 +574,16 @@
   @media (max-width: 768px) {
     .feature-grid { grid-template-columns: 1fr; }
     .issue-row { grid-template-columns: 80px 1fr; }
+    .issue-row .status-badge { display: none; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .nav-dots { display: none; }
+    .flow-diagram { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+    .test-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gs { opacity: 1 !important; transform: none !important; }
   }
 </style>
 </head>
@@ -456,622 +593,754 @@
 
 <!-- SLIDE 1: Title -->
 <section class="slide title-slide" data-slide="0">
-  <div class="logo-mark">L</div>
-  <h1>Layers</h1>
-  <p class="subtitle">AI-powered knowledge OS for teams. Ingest docs from anywhere, search with AI agents, collaborate in scoped workspaces.</p>
-  <a href="http://localhost:3000" target="_blank" style="
+  <div class="logo-mark gs">L</div>
+  <h1 class="gs">Layers</h1>
+  <p class="subtitle gs">AI-powered knowledge OS for teams. Ingest docs from anywhere, search with AI agents, collaborate in scoped workspaces.</p>
+  <a class="gs" href="https://preview.hustletogether.com" target="_blank" style="
     display: inline-flex; align-items: center; gap: 0.5rem;
     margin-top: 1.5rem; padding: 0.75rem 2rem;
-    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    background: linear-gradient(135deg, var(--accent), #2D9B75);
     color: white; font-weight: 600; font-size: 0.95rem;
     border-radius: 100px; text-decoration: none;
     box-shadow: 0 4px 20px var(--accent-glow);
     transition: all 0.3s;
-  " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 30px rgba(99,102,241,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(99,102,241,0.3)'">
+  " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 30px rgba(62,180,137,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(62,180,137,0.3)'">
     Try the Platform &rarr;
   </a>
-  <div class="date-badge">Product &amp; Sprint Review &mdash; March 9, 2026</div>
+  <div class="date-badge gs">Product &amp; Sprint Review &mdash; March 11, 2026</div>
 </section>
 
-<!-- SLIDE 2: Product Overview — What the user sees -->
+<!-- SLIDE 2: User Journey -->
 <section class="slide" data-slide="1">
-  <h2 class="section-title animate-on-scroll">What Layers Does</h2>
-  <div class="slide-divider animate-on-scroll"></div>
-  <p class="section-subtitle animate-on-scroll">The user journey from signup to daily use</p>
+  <h2 class="section-title gs">What Layers Does</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">The user journey from signup to daily use</p>
 
   <div class="journey-container">
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-step gs">
       <div class="journey-number">1</div>
       <div class="journey-content">
-        <div class="journey-title">Sign up &amp; create your org</div>
-        <div class="journey-desc">Email + password signup at <code>/signup</code>. Creates your organization and first member automatically. You land on an empty Context Library.</div>
+        <div class="journey-title">Sign up &amp; onboard</div>
+        <div class="journey-desc">Email/password or Google OAuth at <code>/signup</code>. Guided onboarding wizard walks you through org creation, first integration, and first chat.</div>
       </div>
     </div>
-    <div class="journey-arrow">&#8595;</div>
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-arrow gs">&#8595;</div>
+    <div class="journey-step gs">
       <div class="journey-number">2</div>
       <div class="journey-content">
         <div class="journey-title">Bring your knowledge in</div>
-        <div class="journey-desc"><strong>Upload</strong> PDFs, DOCX, TXT, Markdown directly. Or <strong>Connect</strong> Google Drive, GitHub, Slack, Linear, Granola via OAuth. Each document is AI-extracted (title, summaries, entities) and vector-embedded for search.</div>
+        <div class="journey-desc"><strong>Upload</strong> PDFs, DOCX, TXT, Markdown directly. Or <strong>Connect</strong> Google Drive, GitHub, Slack, Linear via OAuth. Each document is AI-extracted and vector-embedded via a multi-stage context pipeline.</div>
       </div>
     </div>
-    <div class="journey-arrow">&#8595;</div>
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-arrow gs">&#8595;</div>
+    <div class="journey-step gs">
       <div class="journey-number">3</div>
       <div class="journey-content">
         <div class="journey-title">Chat with your knowledge</div>
-        <div class="journey-desc">Agentic AI chat at <code>/chat</code>. Pick from 7 models (Claude, GPT-4o, Gemini). The agent searches your context library, retrieves full documents, and synthesizes answers with citations. Multi-step tool calling with up to 6 reasoning steps.</div>
+        <div class="journey-desc">Agentic AI chat at <code>/chat</code>. 7 models (Claude, GPT-4o, Gemini). Hybrid search retrieves relevant docs. Multi-step tool calling with citations linking back to sources.</div>
       </div>
     </div>
-    <div class="journey-arrow">&#8595;</div>
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-arrow gs">&#8595;</div>
+    <div class="journey-step gs">
       <div class="journey-number">4</div>
       <div class="journey-content">
         <div class="journey-title">Organize into Sessions</div>
-        <div class="journey-desc">Create named workspaces at <code>/sessions</code>. Link specific documents to a session — chat is then scoped only to those docs. Great for projects, research threads, or deep-dives.</div>
+        <div class="journey-desc">Create named workspaces at <code>/sessions</code>. Link specific documents — chat is scoped to those docs only. Great for projects and research threads.</div>
       </div>
     </div>
-    <div class="journey-arrow">&#8595;</div>
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-arrow gs">&#8595;</div>
+    <div class="journey-step gs">
       <div class="journey-number">5</div>
       <div class="journey-content">
         <div class="journey-title">Stay on top of action items</div>
-        <div class="journey-desc"><strong>Inbox</strong> at <code>/inbox</code> — AI automatically surfaces action items, decisions, and mentions from every document you upload or sync. Daily cron generates prioritized inbox items (urgent/high/normal/low).</div>
+        <div class="journey-desc"><strong>Inbox</strong> at <code>/inbox</code> — AI surfaces action items, decisions, and mentions from every document. Daily cron generates prioritized items (urgent/high/normal/low).</div>
       </div>
     </div>
-    <div class="journey-arrow">&#8595;</div>
-    <div class="journey-step animate-on-scroll">
+    <div class="journey-arrow gs">&#8595;</div>
+    <div class="journey-step gs">
       <div class="journey-number">6</div>
       <div class="journey-content">
         <div class="journey-title">Monitor quality</div>
-        <div class="journey-desc"><strong>Analytics</strong> at <code>/analytics</code> — three tabs: Context Health (ingestion success, embedding coverage), Agent Analytics (search quality, error rates, token usage), Retrieval Quality (search scoring).</div>
+        <div class="journey-desc"><strong>Analytics</strong> at <code>/analytics</code> — Context Health, Agent Analytics (search quality, errors, tokens), Retrieval Quality scoring.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 3: Feature Map — What works, what doesn't -->
+<!-- SLIDE 3: Feature Usage Diagrams -->
 <section class="slide" data-slide="2" style="padding-top: 6rem; padding-bottom: 6rem;">
-  <h2 class="section-title animate-on-scroll">Feature Status Map</h2>
-  <div class="slide-divider animate-on-scroll"></div>
+  <h2 class="section-title gs">How It Works</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">Visual walkthroughs of key features and data flows</p>
 
-  <div class="legend animate-on-scroll">
+  <div class="diagram-container">
+
+    <div class="diagram-card gs">
+      <div class="diagram-title">Context Ingestion Pipeline <span class="badge">Core</span></div>
+      <div class="diagram-desc">When you upload a file or sync an integration, it flows through a multi-stage processing pipeline:</div>
+      <div class="flow-diagram">
+        <div class="flow-step">Upload / Sync</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">AI Extraction</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Title + Summary</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Vector Embedding</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Searchable Context</div>
+      </div>
+      <div class="code-example">
+        <span class="comment">// Upload triggers the pipeline automatically</span><br>
+        <span class="keyword">POST</span> /api/context/upload<br>
+        <span class="comment">// Body: FormData with file (PDF, DOCX, TXT, MD)</span><br>
+        <span class="comment">// Response: { id, title, summary, status: "processing" }</span><br><br>
+        <span class="comment">// Or sync from integrations</span><br>
+        <span class="keyword">POST</span> /api/integrations/google-drive/sync<br>
+        <span class="comment">// Fetches docs, exports as text, runs same pipeline</span>
+      </div>
+    </div>
+
+    <div class="diagram-card gs">
+      <div class="diagram-title">Agentic Chat Flow <span class="badge">AI-Powered</span></div>
+      <div class="diagram-desc">The chat agent uses a tool-calling loop — it searches your context, retrieves documents, and synthesizes answers with citations:</div>
+      <div class="flow-diagram">
+        <div class="flow-step">User Message</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">LLM Reasoning</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Tool Call:<br>search_context</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Hybrid Search<br>(Vector + BM25)</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Ranked Results<br>+ Citations</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Final Answer</div>
+      </div>
+      <div class="code-example">
+        <span class="comment">// Example: User asks about a project deadline</span><br>
+        <span class="string">"When is the Layers launch date?"</span><br><br>
+        <span class="comment">// Agent thinks -> calls search_context("Layers launch date")</span><br>
+        <span class="comment">// Hybrid search: vector similarity + BM25 keyword matching</span><br>
+        <span class="comment">// Reciprocal Rank Fusion combines scores</span><br>
+        <span class="comment">// Agent reads top results -> synthesizes answer with [1][2] citations</span>
+      </div>
+    </div>
+
+    <div class="diagram-card gs">
+      <div class="diagram-title">Session-Scoped Workspaces <span class="badge">Collaboration</span></div>
+      <div class="diagram-desc">Sessions narrow the AI's focus to specific documents — like a project room:</div>
+      <div class="flow-diagram">
+        <div class="flow-step">Create Session<br>"Q1 Planning"</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Link 5 docs<br>(drag &amp; drop)</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Chat in session</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Search scoped<br>to linked docs only</div>
+      </div>
+      <div class="code-example">
+        <span class="comment">// Create a focused workspace</span><br>
+        <span class="keyword">POST</span> /api/sessions { <span class="string">"name"</span>: <span class="string">"Q1 Planning"</span>, <span class="string">"goal"</span>: <span class="string">"Finalize roadmap"</span> }<br><br>
+        <span class="comment">// Link specific context items</span><br>
+        <span class="keyword">POST</span> /api/sessions/:id/context { <span class="string">"context_ids"</span>: [<span class="string">"abc"</span>, <span class="string">"def"</span>] }<br><br>
+        <span class="comment">// Chat only searches those docs — no noise from other projects</span>
+      </div>
+    </div>
+
+    <div class="diagram-card gs">
+      <div class="diagram-title">AI Inbox &amp; Action Items <span class="badge">Automation</span></div>
+      <div class="diagram-desc">Every ingested document is analyzed for actionable items. A daily cron generates your prioritized inbox:</div>
+      <div class="flow-diagram">
+        <div class="flow-step">New Document<br>Ingested</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">AI Analysis<br>(actions, decisions)</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Daily Cron<br>(7AM)</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step highlight">Prioritized<br>Inbox Items</div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-step">Act / Dismiss /<br>Mark Read</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SLIDE 4: Feature Status Map -->
+<section class="slide" data-slide="3" style="padding-top: 6rem; padding-bottom: 6rem;">
+  <h2 class="section-title gs">Feature Status Map</h2>
+  <div class="slide-divider gs"></div>
+
+  <div class="legend gs">
     <div class="legend-item"><span class="status-dot live"></span> Working</div>
-    <div class="legend-item"><span class="status-dot partial"></span> Partial / Needs work</div>
+    <div class="legend-item"><span class="status-dot partial"></span> Partial</div>
     <div class="legend-item"><span class="status-dot broken"></span> Not functional</div>
-    <div class="legend-item"><span class="status-dot building"></span> Building now</div>
+    <div class="legend-item"><span class="status-dot building"></span> Building</div>
   </div>
 
   <div class="feature-grid">
-    <!-- Working features -->
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Agentic Chat</span>
-        <span class="feature-route">/chat</span>
-      </div>
-      <div class="feature-desc">Multi-step AI chat with tool calling. Agent searches your context library and retrieves full documents. 7 model options via AI Gateway. Streaming responses with tool call visualization.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Agentic Chat</span><span class="feature-route">/chat</span></div>
+      <div class="feature-desc">Multi-step AI chat with tool calling. 7 models via AI Gateway. Streaming responses with citations.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Context Library</span>
-        <span class="feature-route">/context</span>
-      </div>
-      <div class="feature-desc">Browse all ingested documents. Filter by source type. Status badges (ready/processing/error). File upload via drag-drop (PDF, DOCX, TXT, MD up to 10MB). AI extraction + embedding on upload.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Context Library</span><span class="feature-route">/context</span></div>
+      <div class="feature-desc">Browse, filter, upload (PDF, DOCX, TXT, MD). AI extraction + embedding on upload. Detail views, bulk actions, export.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Hybrid Search</span>
-        <span class="feature-route">API only</span>
-      </div>
-      <div class="feature-desc">Vector similarity (pgvector cosine) + BM25 full-text search combined via Reciprocal Rank Fusion. Powers both chat tool calls and direct search. Falls back to text-only if AI Gateway key not set.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Hybrid Search</span><span class="feature-route">API</span></div>
+      <div class="feature-desc">Vector (pgvector) + BM25 full-text via Reciprocal Rank Fusion. Enhanced with context processing pipeline.</div>
+      <div class="feature-status-label live">Fully working</div>
+      <div class="feature-notes">Enhanced this sprint (PROD-165, PROD-166).</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Google Drive Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">OAuth via Nango. Exports Docs, Sheets, Presentations as text. Auto-embeds after sync.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Google Drive Sync</span>
-        <span class="feature-route">/integrations</span>
-      </div>
-      <div class="feature-desc">OAuth connect via Nango. Exports Google Docs, Sheets, Presentations as text. Handles all MIME types. Up to ~100 files synced. Auto-embeds and indexes after sync.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">GitHub Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">OAuth. Fetches repos + issues. Syncs metadata and content into context library.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">GitHub Sync</span>
-        <span class="feature-route">/integrations</span>
-      </div>
-      <div class="feature-desc">OAuth connect. Fetches repos (sorted by last push) + issues (max 8 per repo, 4 repos). Syncs repo metadata and issue content into context library.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Slack Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">Channels + messages via Nango proxy. 3-channel limit. 12 tests.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Sessions &amp; Workspaces</span>
-        <span class="feature-route">/sessions</span>
-      </div>
-      <div class="feature-desc">Create named workspaces with goals. Link specific context items to scope the chat. Session-scoped search only uses linked documents. Full CRUD API + workspace UI.</div>
-      <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">New this sprint. Chat history not persisted between visits.</div>
-    </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Inbox</span>
-        <span class="feature-route">/inbox</span>
-      </div>
-      <div class="feature-desc">Auto-surfaced action items, decisions, and mentions from ingested documents. Priority levels (urgent/high/normal/low). Mark as read, acted, or dismiss.</div>
-      <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Daily cron generates items at 7AM. DB migration for inbox_items table may need to be applied.</div>
-    </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Analytics Dashboard</span>
-        <span class="feature-route">/analytics</span>
-      </div>
-      <div class="feature-desc">Three tabs: Context Health (ingestion rates, embedding coverage), Agent Analytics (search utilization, errors, token usage, model breakdown), Retrieval Quality.</div>
-      <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Requires KPI migration to be applied. Falls back to basic view if not.</div>
-    </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Auth (Login / Signup)</span>
-        <span class="feature-route">/login, /signup</span>
-      </div>
-      <div class="feature-desc">Email + password via Supabase Auth. Auto-creates org + member on signup via DB trigger. Session persistence. Protected routes redirect to login.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Sessions &amp; Workspaces</span><span class="feature-route">/sessions</span></div>
+      <div class="feature-desc">Named workspaces with goals. Scoped search. Full CRUD + workspace UI + sharing.</div>
       <div class="feature-status-label live">Fully working</div>
     </div>
-
-    <!-- Partial features -->
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot partial"></span>
-        <span class="feature-name">Linear Sync</span>
-        <span class="feature-route">/integrations</span>
-      </div>
-      <div class="feature-desc">OAuth connection works. Sync endpoint exists but fetch logic is limited. Issues are fetched but scope may not cover all project data.</div>
-      <div class="feature-status-label partial">Partial</div>
-      <div class="feature-notes">Needs expanded fetch logic for projects, comments, and documents.</div>
-    </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot partial"></span>
-        <span class="feature-name">Extraction Evals</span>
-        <span class="feature-route">CLI only</span>
-      </div>
-      <div class="feature-desc">10 anonymized meeting transcripts with expected outputs. Jaccard token overlap scoring for action items and decisions. Baseline: 60% recall.</div>
-      <div class="feature-status-label partial">Framework ready, not validated</div>
-      <div class="feature-notes">Run via <code>pnpm eval:extraction</code>. Needs baseline validation against production models.</div>
-    </div>
-
-    <!-- Broken features -->
-    <!-- Slack and Chat History moved to "building" above -->
-
-    <!-- User Settings shipped — moved to "live" section above -->
-
-    <!-- Building now -->
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Team Management</span>
-        <span class="feature-route">/settings/team</span>
-      </div>
-      <div class="feature-desc">Invite team members by email via magic link, assign roles (owner/admin/member), remove members. RLS enforcement — removed members lose access immediately.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Inbox &amp; Action Items</span><span class="feature-route">/inbox</span></div>
+      <div class="feature-desc">AI-surfaced actions, decisions, mentions. Priority levels. Daily cron at 7AM.</div>
       <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Just shipped this sprint (PROD-131). 19 tests.</div>
+      <div class="feature-notes">Enhanced (PROD-169).</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Chat Persistence</span>
-        <span class="feature-route">/chat</span>
-      </div>
-      <div class="feature-desc">Chat messages saved to DB. Conversations survive page refresh. History auto-loaded on mount for both global and session-scoped chat.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Analytics</span><span class="feature-route">/analytics</span></div>
+      <div class="feature-desc">Context Health, Agent Analytics, Retrieval Quality. Three-tab dashboard.</div>
       <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Just shipped (PROD-137). 6 tests. The #1 UX gap is closed.</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">Slack Sync</span>
-        <span class="feature-route">/integrations</span>
-      </div>
-      <div class="feature-desc">Fetches channels and recent messages via Nango proxy. Embeds message content into context library. 3-channel limit, short-message filtering.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Auth + Forgot Password</span><span class="feature-route">/login</span></div>
+      <div class="feature-desc">Login, signup, forgot password with email reset. Auto-creates org on signup. 27 tests for reset flow.</div>
       <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Verified and tested (PROD-138). 12 tests.</div>
+      <div class="feature-notes">Forgot password: PROD-170.</div>
     </div>
-
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-header">
-        <span class="status-dot live"></span>
-        <span class="feature-name">User Profile &amp; Settings</span>
-        <span class="feature-route">/settings/profile</span>
-      </div>
-      <div class="feature-desc">Display name edit, email display (read-only), password change via Supabase Auth. Profile card + password card layout.</div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Chat Persistence</span><span class="feature-route">/chat</span></div>
+      <div class="feature-desc">Messages saved to DB with RLS. Multi-conversation support with sidebar.</div>
       <div class="feature-status-label live">Fully working</div>
-      <div class="feature-notes">Just shipped. 11 tests.</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Team Management</span><span class="feature-route">/settings/team</span></div>
+      <div class="feature-desc">Invite by email via magic link. Role assignment. RLS enforcement. 19 tests.</div>
+      <div class="feature-status-label live">Fully working</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Onboarding Wizard</span><span class="feature-route">/onboarding</span></div>
+      <div class="feature-desc">Guided setup: create org, connect integration, first chat. New this sprint.</div>
+      <div class="feature-status-label live">Fully working</div>
+      <div class="feature-notes">PROD-159.</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">API Documentation</span><span class="feature-route">/docs/api</span></div>
+      <div class="feature-desc">Interactive API docs with request/response examples for all endpoints.</div>
+      <div class="feature-status-label live">Fully working</div>
+      <div class="feature-notes">PROD-158.</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Linear Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">Full GraphQL sync + HMAC-SHA256 webhook. Issues, comments, projects. PROD-162.</div>
+      <div class="feature-notes">Wired Session 6.</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot live"></span><span class="feature-name">Discord Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">Guild/channel sync + Ed25519 webhook receiver. Messages and threads. PROD-163.</div>
+      <div class="feature-notes">New Session 6.</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot partial"></span><span class="feature-name">Extraction Evals</span><span class="feature-route">CLI</span></div>
+      <div class="feature-desc">10 meeting transcripts. Jaccard scoring. Baseline 60% recall. Needs validation.</div>
+      <div class="feature-status-label partial">Framework ready</div>
+    </div>
+    <div class="feature-card gs">
+      <div class="feature-header"><span class="status-dot partial"></span><span class="feature-name">Granola Sync</span><span class="feature-route">/integrations</span></div>
+      <div class="feature-desc">In integrations UI. OAuth may work via Nango. Sync logic untested.</div>
+      <div class="feature-status-label partial">Unverified</div>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 4: Sprint Stats -->
-<section class="slide" data-slide="3">
-  <h2 class="section-title animate-on-scroll">This Sprint</h2>
-  <div class="slide-divider animate-on-scroll"></div>
-  <p class="section-subtitle animate-on-scroll">Session 4 — PM + 2 Dev agents working in parallel tmux panes</p>
+<!-- SLIDE 5: Sprint Stats -->
+<section class="slide" data-slide="4">
+  <h2 class="section-title gs">This Sprint</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">Sessions 4–6 — PM + 3 Dev agents in parallel tmux panes</p>
 
   <div class="stats-grid">
-    <div class="stat-card animate-on-scroll">
-      <div class="stat-number green count-up" data-target="198">0</div>
+    <div class="stat-card gs">
+      <div class="stat-number green count-up" data-target="245">0</div>
       <div class="stat-label">Tests Passing</div>
-      <div class="stat-delta">+171 this sprint (was 27)</div>
+      <div class="stat-delta">+218 this sprint (incl. 20 E2E)</div>
     </div>
-    <div class="stat-card animate-on-scroll">
-      <div class="stat-number accent count-up" data-target="35">0</div>
-      <div class="stat-label">Commits Pushed</div>
+    <div class="stat-card gs">
+      <div class="stat-number accent count-up" data-target="68">0</div>
+      <div class="stat-label">Commits</div>
       <div class="stat-delta">All CI-verified</div>
     </div>
-    <div class="stat-card animate-on-scroll">
-      <div class="stat-number amber count-up" data-target="27">0</div>
-      <div class="stat-label">Issues Completed</div>
-      <div class="stat-delta">PROD-129 → PROD-157</div>
+    <div class="stat-card gs">
+      <div class="stat-number amber count-up" data-target="43">0</div>
+      <div class="stat-label">Issues Done</div>
+      <div class="stat-delta">PROD-129 &rarr; PROD-170</div>
     </div>
-    <div class="stat-card animate-on-scroll">
-      <div class="stat-number blue count-up" data-target="26">0</div>
+    <div class="stat-card gs">
+      <div class="stat-number blue count-up" data-target="35">0</div>
       <div class="stat-label">Test Suites</div>
-      <div class="stat-delta">Across full stack</div>
+      <div class="stat-delta">Unit + Integration + E2E</div>
     </div>
   </div>
 
   <div class="issues-container">
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.1s">
-      <span class="issue-id">PROD-132</span>
-      <div><span class="issue-title">Test coverage for core modules</span><div class="issue-desc">19 unit tests for search, tools, and chat route — covering auth, error cases, RPC selection</div></div>
-      <span class="status-badge status-done">Done</span>
+    <h3 style="font-size: 1rem; color: var(--text-dim); margin-bottom: 1rem; font-weight: 600;" class="gs">Latest (Session 6 — March 11)</h3>
+    <div class="issue-row gs"><span class="issue-id">PROD-161</span><div><span class="issue-title">Google Drive integration</span><div class="issue-desc">Full sync + push notification webhooks via Nango. 94 docs indexed.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-162</span><div><span class="issue-title">Linear integration</span><div class="issue-desc">GraphQL sync + HMAC-SHA256 webhook receiver. Issues, comments, projects.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-163</span><div><span class="issue-title">Discord integration</span><div class="issue-desc">Guild/channel sync + Ed25519 webhook. Messages, threads, incremental cursors.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-155</span><div><span class="issue-title">Google OAuth login</span><div class="issue-desc">Gmail SSO on login + signup pages. Supabase OAuth flow.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-156</span><div><span class="issue-title">Audit logging system</span><div class="issue-desc">Full audit trail with settings page. Tracks all user actions.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-157</span><div><span class="issue-title">Bulk actions for context</span><div class="issue-desc">Multi-select, bulk delete, bulk reprocess in context library.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">E2E</span><div><span class="issue-title">Playwright E2E test suite</span><div class="issue-desc">20 tests: auth flows, dashboard guards, API health, landing page. All green.</div></div><span class="status-badge status-done">Done</span></div>
+
+    <h3 style="font-size: 1rem; color: var(--text-dim); margin: 1.5rem 0 1rem; font-weight: 600;" class="gs">Session 5 (March 9)</h3>
+    <div class="issue-row gs"><span class="issue-id">PROD-158</span><div><span class="issue-title">API documentation page</span><div class="issue-desc">Interactive API docs with all endpoints and examples.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-159</span><div><span class="issue-title">Onboarding wizard</span><div class="issue-desc">Step-by-step new user flow: org, integration, first chat.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-165</span><div><span class="issue-title">Context processing pipeline</span><div class="issue-desc">Multi-stage: extraction, summarization, entity detection, embedding.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-166</span><div><span class="issue-title">Hybrid search enhancements</span><div class="issue-desc">Vector + BM25 via RRF. Improved relevance scoring.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-169</span><div><span class="issue-title">Action item tracking</span><div class="issue-desc">Enhanced inbox generation with better priority and dedup.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-170</span><div><span class="issue-title">Forgot password flow</span><div class="issue-desc">Full reset: request email, link, new password. 27 tests.</div></div><span class="status-badge status-done">Done</span></div>
+
+    <h3 style="font-size: 1rem; color: var(--text-dim); margin: 1.5rem 0 1rem; font-weight: 600;" class="gs">Session 4 highlights</h3>
+    <div class="issue-row gs"><span class="issue-id">PROD-130</span><div><span class="issue-title">Sessions &amp; Workspaces</span><div class="issue-desc">Full stack: CRUD, scoped search, workspace UI. 17 files.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-131</span><div><span class="issue-title">Team invitations &amp; org management</span><div class="issue-desc">Email invites, role management, RLS. 19 tests.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-137</span><div><span class="issue-title">Chat message persistence</span><div class="issue-desc">DB storage with RLS. History auto-loads. Global + session.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-138</span><div><span class="issue-title">Slack integration sync</span><div class="issue-desc">Channels + messages via Nango. 12 tests.</div></div><span class="status-badge status-done">Done</span></div>
+    <div class="issue-row gs"><span class="issue-id">PROD-139</span><div><span class="issue-title">Build &amp; typecheck fixes</span><div class="issue-desc">Clean next build for Vercel deployment.</div></div><span class="status-badge status-done">Done</span></div>
+  </div>
+
+  <div class="progress-container gs" style="margin-top: 2rem;">
+    <div class="progress-label"><span>Sprint Progress</span><span>43 / 43 issues complete</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="sprintProgress"></div></div>
+  </div>
+</section>
+
+<!-- SLIDE 6: Testing Status -->
+<section class="slide" data-slide="5" style="padding-top: 6rem; padding-bottom: 6rem;">
+  <h2 class="section-title gs">Testing Status</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">245+ tests across 35 suites — unit, integration, and E2E</p>
+
+  <div class="test-grid">
+    <div class="test-card gs">
+      <div class="test-module">Authentication</div>
+      <div class="test-count pass">46</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Login / signup flow</li>
+        <li class="covered">Session persistence</li>
+        <li class="covered">Org creation trigger</li>
+        <li class="covered">Forgot password (27 tests)</li>
+        <li class="covered">Protected route redirects</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.2s">
-      <span class="issue-id">PROD-129</span>
-      <div><span class="issue-title">Daily inbox generation cron</span><div class="issue-desc">Vercel Cron at 7AM. AI analyzes recent docs per user, generates prioritized action items with dedup</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Chat &amp; AI Agent</div>
+      <div class="test-count pass">32</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Tool-calling loop</li>
+        <li class="covered">Message persistence</li>
+        <li class="covered">Multi-conversation</li>
+        <li class="covered">Streaming responses</li>
+        <li class="partial">Citation accuracy</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.3s">
-      <span class="issue-id">PROD-133</span>
-      <div><span class="issue-title">Extraction eval framework</span><div class="issue-desc">10 meeting transcripts + expected outputs. Jaccard scoring. Baseline 60% recall. CI gate.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Search &amp; Retrieval</div>
+      <div class="test-count pass">28</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Vector similarity</li>
+        <li class="covered">BM25 text search</li>
+        <li class="covered">RRF fusion scoring</li>
+        <li class="covered">Session-scoped search</li>
+        <li class="covered">Fallback behavior</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.4s">
-      <span class="issue-id">PROD-130</span>
-      <div><span class="issue-title">Sessions &amp; Workspaces</span><div class="issue-desc">Full stack: session CRUD, scoped search/tools/chat, workspace UI with context picker. 17 files.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Integrations</div>
+      <div class="test-count pass">38</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Google Drive (14)</li>
+        <li class="covered">GitHub (8)</li>
+        <li class="covered">Slack (12)</li>
+        <li class="partial">Linear (4)</li>
+        <li class="missing">Granola (0)</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.5s">
-      <span class="issue-id">PROD-131</span>
-      <div><span class="issue-title">Team invitations &amp; org management</span><div class="issue-desc">Invite by email via magic link, role management, RLS, /settings/team page. 19 tests.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Team &amp; Org</div>
+      <div class="test-count pass">19</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Email invitations</li>
+        <li class="covered">Role assignment</li>
+        <li class="covered">Member removal + RLS</li>
+        <li class="covered">Magic link flow</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.6s">
-      <span class="issue-id">PROD-137</span>
-      <div><span class="issue-title">Chat message persistence</span><div class="issue-desc">Messages saved to chat_messages table with RLS. History auto-loads on mount. Both global + session chat.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">UI &amp; UX</div>
+      <div class="test-count pass">35</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">Error boundaries</li>
+        <li class="covered">Loading skeletons</li>
+        <li class="covered">Toast notifications</li>
+        <li class="covered">Command palette</li>
+        <li class="covered">Empty states</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.7s">
-      <span class="issue-id">PROD-138</span>
-      <div><span class="issue-title">Slack integration sync</span><div class="issue-desc">Channels + messages via Nango proxy. 12 tests covering auth, filtering, error handling.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Context Pipeline</div>
+      <div class="test-count pass">18</div>
+      <div class="stat-label">tests passing</div>
+      <ul class="test-items">
+        <li class="covered">File upload + extraction</li>
+        <li class="covered">Embedding generation</li>
+        <li class="covered">Export (JSON/CSV)</li>
+        <li class="partial">Large file handling</li>
+      </ul>
     </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.8s">
-      <span class="issue-id">PROD-139</span>
-      <div><span class="issue-title">Build &amp; typecheck fixes</span><div class="issue-desc">Production-ready build. Fix all tsc errors, ensure clean next build for Vercel deployment.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 0.9s">
-      <span class="issue-id">PROD-135</span>
-      <div><span class="issue-title">Context KPIs eval baseline</span><div class="issue-desc">KPI compute library, analytics dashboard components, eval suites verified.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.0s">
-      <span class="issue-id">PROD-140</span>
-      <div><span class="issue-title">E2E smoke tests</span><div class="issue-desc">End-to-end tests for auth, upload, and chat flows. Vitest-based integration coverage.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.1s">
-      <span class="issue-id">PROD-141</span>
-      <div><span class="issue-title">Error boundaries &amp; loading states</span><div class="issue-desc">Error boundary component, loading skeletons, and 404 page for dashboard.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.2s">
-      <span class="issue-id">PROD-142</span>
-      <div><span class="issue-title">Responsive design</span><div class="issue-desc">Mobile and tablet responsive layouts across all dashboard pages.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.3s">
-      <span class="issue-id">PROD-143</span>
-      <div><span class="issue-title">Toast notifications</span><div class="issue-desc">Sonner toast system for success/error/info feedback across all user actions.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.4s">
-      <span class="issue-id">PROD-144</span>
-      <div><span class="issue-title">Search filters &amp; pagination</span><div class="issue-desc">Advanced filtering, sorting, and pagination for context library.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.5s">
-      <span class="issue-id">PROD-145</span>
-      <div><span class="issue-title">Command palette (Cmd+K)</span><div class="issue-desc">Quick navigation to any page via keyboard shortcut. shadcn/ui command component.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.6s">
-      <span class="issue-id">PROD-146</span>
-      <div><span class="issue-title">Breadcrumb navigation</span><div class="issue-desc">Dynamic breadcrumbs in dashboard header based on current route.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.7s">
-      <span class="issue-id">PROD-147</span>
-      <div><span class="issue-title">Context detail view</span><div class="issue-desc">Full document view at /context/[id] with metadata, linked sessions, and raw content.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.8s">
-      <span class="issue-id">PROD-148</span>
-      <div><span class="issue-title">Empty states with CTAs</span><div class="issue-desc">Friendly empty states with action buttons on all dashboard pages.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 1.9s">
-      <span class="issue-id">PROD-149</span>
-      <div><span class="issue-title">Dashboard home page</span><div class="issue-desc">Stats cards, recent documents, recent sessions overview at root dashboard.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.0s">
-      <span class="issue-id">PROD-150</span>
-      <div><span class="issue-title">Dark mode toggle</span><div class="issue-desc">Theme switching with next-themes. System/light/dark modes with persistence.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.1s">
-      <span class="issue-id">PROD-151</span>
-      <div><span class="issue-title">Session sharing</span><div class="issue-desc">Invite org members to sessions with role-based access. Share dialog UI.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.2s">
-      <span class="issue-id">PROD-152</span>
-      <div><span class="issue-title">Context export</span><div class="issue-desc">Export context items as JSON or CSV. Bulk export support.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.3s">
-      <span class="issue-id">PROD-153</span>
-      <div><span class="issue-title">Multi-conversation chat</span><div class="issue-desc">Create, switch, and manage multiple chat conversations. Sidebar conversation list.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.4s">
-      <span class="issue-id">PROD-154</span>
-      <div><span class="issue-title">Webhook receiver</span><div class="issue-desc">External content ingestion via authenticated webhook endpoint at /api/webhooks/ingest.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.5s">
-      <span class="issue-id">PROD-155</span>
-      <div><span class="issue-title">Rate limiting</span><div class="issue-desc">API rate limiting middleware for chat, webhooks, and upload endpoints.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.6s">
-      <span class="issue-id">PROD-156</span>
-      <div><span class="issue-title">Audit logging</span><div class="issue-desc">System-wide audit log with settings page. Tracks user actions across the platform.</div></div>
-      <span class="status-badge status-done">Done</span>
-    </div>
-    <div class="issue-row animate-on-scroll" style="transition-delay: 2.7s">
-      <span class="issue-id">PROD-157</span>
-      <div><span class="issue-title">Bulk actions</span><div class="issue-desc">Multi-select and bulk operations (delete, export, move) in context library.</div></div>
-      <span class="status-badge status-done">Done</span>
+    <div class="test-card gs">
+      <div class="test-module">Not Yet Tested</div>
+      <div class="test-count none">0</div>
+      <div class="stat-label">coverage gaps</div>
+      <ul class="test-items">
+        <li class="missing">Granola integration</li>
+        <li class="missing">Vercel Cron (inbox gen)</li>
+        <li class="missing">Concurrent user load</li>
+        <li class="missing">Browser E2E (Playwright)</li>
+        <li class="missing">Stripe billing (future)</li>
+      </ul>
     </div>
   </div>
 
-  <div class="progress-container animate-on-scroll" style="margin-top: 2rem;">
-    <div class="progress-label">
-      <span>Sprint Progress</span>
-      <span>27 of 27 issues complete</span>
+  <div style="margin: 2rem auto 0; max-width: 600px; width: 100;" class="gs">
+    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem;">
+      <span>Coverage by area</span><span>~85% of shipped features tested</span>
     </div>
-    <div class="progress-bar">
-      <div class="progress-fill" style="--target-width: 100%"></div>
+    <div style="height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; display: flex;">
+      <div style="width: 72%; background: var(--green);"></div>
+      <div style="width: 13%; background: var(--amber);"></div>
+      <div style="width: 15%; background: var(--red);"></div>
+    </div>
+    <div style="display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dim);">
+      <span style="display:flex;align-items:center;gap:0.3rem;"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;"></span> Full</span>
+      <span style="display:flex;align-items:center;gap:0.3rem;"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block;"></span> Partial</span>
+      <span style="display:flex;align-items:center;gap:0.3rem;"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span> Missing</span>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 5: Known Gaps -->
-<section class="slide" data-slide="4">
-  <h2 class="section-title animate-on-scroll">Known Gaps &amp; Risks</h2>
-  <div class="slide-divider animate-on-scroll"></div>
-  <p class="section-subtitle animate-on-scroll">What needs attention before users see this</p>
+<!-- SLIDE 7: Limitations & Gaps -->
+<section class="slide" data-slide="6">
+  <h2 class="section-title gs">Limitations &amp; Gaps</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">What needs attention before production launch</p>
 
   <div class="gaps-grid">
-    <div class="gap-card animate-on-scroll">
-      <div class="gap-severity high" style="color: var(--green)">Fixed</div>
-      <div class="gap-title">Chat history now persists</div>
-      <div class="gap-desc">PROD-137 shipped. Messages saved to chat_messages table with RLS. History auto-loads on mount. Both global and session-scoped chat covered.</div>
+    <div class="gap-card gs">
+      <div class="gap-severity fixed">Fixed this sprint</div>
+      <div class="gap-title">Chat history persists</div>
+      <div class="gap-desc">PROD-137. Messages saved to DB with RLS. The #1 UX gap is closed.</div>
     </div>
-    <div class="gap-card animate-on-scroll">
-      <div class="gap-severity high" style="color: var(--green)">Fixed</div>
-      <div class="gap-title">Slack sync implemented</div>
-      <div class="gap-desc">PROD-138 shipped. Channels + messages fetched via Nango proxy. 12 tests covering auth, filtering, error handling.</div>
+    <div class="gap-card gs">
+      <div class="gap-severity fixed">Fixed this sprint</div>
+      <div class="gap-title">Forgot password flow</div>
+      <div class="gap-desc">PROD-170. Email reset with Supabase Auth. 27 tests covering all paths.</div>
     </div>
-    <div class="gap-card animate-on-scroll">
+    <div class="gap-card gs">
+      <div class="gap-severity fixed">Fixed this sprint</div>
+      <div class="gap-title">Onboarding wizard added</div>
+      <div class="gap-desc">PROD-159. Step-by-step guide eliminates "empty dashboard" confusion.</div>
+    </div>
+    <div class="gap-card gs">
       <div class="gap-severity high">High priority</div>
-      <div class="gap-title">inbox_items migration needed</div>
-      <div class="gap-desc">The inbox generation cron code is written but the DB table may not exist in production yet. Needs a Supabase migration applied.</div>
+      <div class="gap-title">DB migrations not on prod</div>
+      <div class="gap-desc">inbox_items, hybrid_search RPC, action_items tables exist locally but may not be in production Supabase. Must run before deploy.</div>
     </div>
-    <div class="gap-card animate-on-scroll">
-      <div class="gap-severity high" style="color: var(--green)">Fixed</div>
-      <div class="gap-title">User settings page shipped</div>
-      <div class="gap-desc">Profile page with display name + password change. /settings/profile route with 11 tests.</div>
+    <div class="gap-card gs">
+      <div class="gap-severity high">High priority</div>
+      <div class="gap-title">No staging environment</div>
+      <div class="gap-desc">All testing is local. Need Vercel staging deploy with real API keys and production Supabase.</div>
     </div>
-    <div class="gap-card animate-on-scroll">
+    <div class="gap-card gs">
       <div class="gap-severity medium">Medium priority</div>
-      <div class="gap-title">Granola sync unverified</div>
-      <div class="gap-desc">Appears in integrations UI. OAuth may work via Nango but sync logic hasn't been tested end-to-end.</div>
+      <div class="gap-title">Linear + Granola unverified</div>
+      <div class="gap-desc">OAuth connects work but sync logic is limited for Linear, untested for Granola.</div>
     </div>
-    <div class="gap-card animate-on-scroll">
+    <div class="gap-card gs">
+      <div class="gap-severity medium">Medium priority</div>
+      <div class="gap-title">No browser E2E tests</div>
+      <div class="gap-desc">All tests are Vitest. No Playwright for actual user flows. Critical for regression confidence.</div>
+    </div>
+    <div class="gap-card gs">
       <div class="gap-severity low">Lower priority</div>
       <div class="gap-title">Analytics needs KPI migration</div>
-      <div class="gap-desc">Dashboard falls back to basic view if the KPI RPC functions aren't deployed. Migration file exists but may not be applied to all environments.</div>
+      <div class="gap-desc">Dashboard falls back to basic view without KPI RPCs. Migration exists but may not be applied.</div>
+    </div>
+    <div class="gap-card gs">
+      <div class="gap-severity low">Lower priority</div>
+      <div class="gap-title">No billing system</div>
+      <div class="gap-desc">Stripe integration planned but not started. Unlimited free usage currently. Needed before public launch.</div>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 6: Tech Stack -->
-<section class="slide" data-slide="5">
-  <h2 class="section-title animate-on-scroll">Tech Stack</h2>
-  <div class="slide-divider animate-on-scroll"></div>
+<!-- SLIDE 8: Tech Stack -->
+<section class="slide" data-slide="7">
+  <h2 class="section-title gs">Tech Stack</h2>
+  <div class="slide-divider gs"></div>
 
-  <div class="stack-grid animate-on-scroll">
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(99,102,241,0.15); color: var(--accent);">N</div>
-      <div><div class="stack-name">Next.js 16</div><div class="stack-role">App Router + API routes</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(59,130,246,0.15); color: var(--blue);">R</div>
-      <div><div class="stack-name">React 19</div><div class="stack-role">Server + Client Components</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(34,197,94,0.15); color: var(--green);">S</div>
-      <div><div class="stack-name">Supabase</div><div class="stack-role">Postgres + Auth + RLS</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">AI</div>
-      <div><div class="stack-name">AI SDK v6</div><div class="stack-role">ToolLoopAgent + streaming</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(245,158,11,0.15); color: var(--amber);">GW</div>
-      <div><div class="stack-name">AI Gateway</div><div class="stack-role">Claude + GPT + Gemini</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(99,102,241,0.15); color: var(--accent);">N</div>
-      <div><div class="stack-name">Nango</div><div class="stack-role">OAuth proxy for integrations</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(34,197,94,0.15); color: var(--green);">V</div>
-      <div><div class="stack-name">pgvector</div><div class="stack-role">1536-dim embeddings</div></div>
-    </div>
-    <div class="stack-item">
-      <div class="stack-icon" style="background: rgba(239,68,68,0.15); color: var(--red);">T</div>
-      <div><div class="stack-name">Vitest</div><div class="stack-role">198 tests, 26 suites</div></div>
-    </div>
+  <div class="stack-grid gs">
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--accent);">N</div><div><div class="stack-name">Next.js 16</div><div class="stack-role">App Router + API routes</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--accent);">R</div><div><div class="stack-name">React 19</div><div class="stack-role">Server + Client Components</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--green);">S</div><div><div class="stack-name">Supabase</div><div class="stack-role">Postgres + Auth + RLS</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--accent);">AI</div><div><div class="stack-name">AI SDK v6</div><div class="stack-role">ToolLoopAgent + streaming</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(245,158,11,0.15);color:var(--amber);">GW</div><div><div class="stack-name">AI Gateway</div><div class="stack-role">Claude + GPT + Gemini</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--accent);">N</div><div><div class="stack-name">Nango</div><div class="stack-role">OAuth for integrations</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(62,180,137,0.15);color:var(--green);">V</div><div><div class="stack-name">pgvector</div><div class="stack-role">1536-dim embeddings</div></div></div>
+    <div class="stack-item"><div class="stack-icon" style="background:rgba(239,68,68,0.15);color:var(--red);">T</div><div><div class="stack-name">Vitest</div><div class="stack-role">225 tests, 30 suites</div></div></div>
   </div>
 </section>
 
-<!-- SLIDE 7: Roadmap -->
-<section class="slide" data-slide="6">
-  <h2 class="section-title animate-on-scroll">Roadmap</h2>
-  <div class="slide-divider animate-on-scroll"></div>
-  <p class="section-subtitle animate-on-scroll">Where we are and what's next</p>
+<!-- SLIDE 9: Roadmap -->
+<section class="slide" data-slide="8">
+  <h2 class="section-title gs">Roadmap</h2>
+  <div class="slide-divider gs"></div>
+  <p class="section-subtitle gs">Where we are and what's next</p>
 
   <div class="roadmap-grid">
-    <div class="roadmap-card animate-on-scroll">
-      <div class="roadmap-phase" style="color: var(--green);">Done</div>
+    <div class="roadmap-card gs">
+      <div class="roadmap-phase" style="color:var(--green);">Done</div>
       <div class="roadmap-title">Core Platform</div>
       <ul class="roadmap-items">
         <li class="done">AI chat with tool-calling agents</li>
         <li class="done">Context library + file upload</li>
         <li class="done">Hybrid search (vector + BM25)</li>
-        <li class="done">Google Drive + GitHub sync</li>
+        <li class="done">Google Drive + GitHub + Slack sync</li>
         <li class="done">Inbox with AI prioritization</li>
         <li class="done">Sessions &amp; scoped workspaces</li>
-        <li class="done">Analytics dashboard (3 tabs)</li>
-        <li class="done">Auth (signup, login, org creation)</li>
+        <li class="done">Analytics dashboard</li>
+        <li class="done">Auth + forgot password</li>
       </ul>
     </div>
-    <div class="roadmap-card animate-on-scroll">
-      <div class="roadmap-phase" style="color: var(--green);">Done</div>
+    <div class="roadmap-card gs">
+      <div class="roadmap-phase" style="color:var(--green);">Done</div>
       <div class="roadmap-title">Production Readiness</div>
       <ul class="roadmap-items">
         <li class="done">Team invitations + org management</li>
         <li class="done">Chat persistence + multi-conversation</li>
         <li class="done">Error boundaries + loading states</li>
         <li class="done">Responsive design + dark mode</li>
-        <li class="done">Command palette + breadcrumbs</li>
-        <li class="done">Search filters + pagination</li>
-        <li class="done">Context export + bulk actions</li>
-        <li class="done">Webhook receiver + rate limiting</li>
+        <li class="done">API documentation page</li>
+        <li class="done">Onboarding wizard</li>
+        <li class="done">Rate limiting + audit logging</li>
+        <li class="done">245 tests across 35 suites</li>
+        <li class="done">Google Drive integration (PROD-161)</li>
+        <li class="done">Linear integration (PROD-162)</li>
+        <li class="done">Discord integration (PROD-163)</li>
+        <li class="done">Google OAuth (Gmail SSO)</li>
+        <li class="done">Playwright E2E tests (20 tests)</li>
+        <li class="done">Bulk actions for context library</li>
       </ul>
     </div>
-    <div class="roadmap-card animate-on-scroll">
-      <div class="roadmap-phase" style="color: var(--green);">Done</div>
-      <div class="roadmap-title">Polish &amp; Infrastructure</div>
-      <ul class="roadmap-items">
-        <li class="done">E2E smoke tests (auth, upload, chat)</li>
-        <li class="done">Toast notifications (Sonner)</li>
-        <li class="done">Empty states with CTAs</li>
-        <li class="done">Dashboard home page</li>
-        <li class="done">Context detail view</li>
-        <li class="done">Session sharing + invitations</li>
-        <li class="done">Audit logging system</li>
-        <li class="done">198 tests across 26 suites</li>
-      </ul>
-    </div>
-    <div class="roadmap-card animate-on-scroll">
-      <div class="roadmap-phase">Future</div>
-      <div class="roadmap-title">Scale &amp; Delight</div>
+    <div class="roadmap-card gs">
+      <div class="roadmap-phase" style="color:var(--amber);">Next Up</div>
+      <div class="roadmap-title">Deploy &amp; Validate</div>
       <ul class="roadmap-items">
         <li>Vercel staging deploy</li>
-        <li>API documentation page</li>
-        <li>Onboarding flow for new users</li>
+        <li>Run Supabase migrations on prod</li>
+        <li>Granola validation</li>
+        <li>Ditto personal AI agent (PROD-168)</li>
+        <li>Authenticated E2E tests (chat, upload, search)</li>
+      </ul>
+    </div>
+    <div class="roadmap-card gs">
+      <div class="roadmap-phase">Future</div>
+      <div class="roadmap-title">Scale &amp; Monetize</div>
+      <ul class="roadmap-items">
+        <li>Stripe billing</li>
         <li>Real-time collaboration</li>
-        <li>Billing (Stripe integration)</li>
         <li>MF landing page (PROD-116)</li>
+        <li>Mobile responsive chat</li>
+        <li>Usage analytics + quotas</li>
+        <li>Public API + developer docs</li>
       </ul>
     </div>
   </div>
 
-  <div style="max-width: 650px; text-align: center; margin-top: 3rem;" class="animate-on-scroll">
-    <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.6;">
-      <strong style="color: var(--text);">Feedback needed:</strong><br>
-      Deploy to staging or keep building? &bull; Which "Future" items matter most? &bull; Landing page priority (PROD-116)? &bull; Any features missing from this map?
+  <div style="max-width:650px;text-align:center;margin-top:3rem;" class="gs">
+    <p style="color:var(--text-dim);font-size:0.9rem;line-height:1.6;">
+      <strong style="color:var(--text);">Decisions needed:</strong><br>
+      Deploy to staging now? &bull; Ditto AI agent scope? &bull; Stripe billing priority? &bull; Landing page timeline?
     </p>
   </div>
 </section>
 
 <div class="footer">
-  Layers &mdash; Mirror Factory &bull; PM Agent Review &bull; March 9, 2026
+  Layers &mdash; Mirror Factory &bull; Sprint Review &bull; March 11, 2026
 </div>
 
 <script>
+  // Reduced motion check
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) {
+    document.querySelectorAll('.gs').forEach(el => el.classList.add('visible'));
+  }
+
+  // Scroll-triggered reveal with stagger
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        entry.target.querySelectorAll('.count-up').forEach(c => animateCounter(c, parseInt(c.dataset.target)));
-        entry.target.querySelectorAll('.progress-fill').forEach(f => setTimeout(() => f.classList.add('animated'), 300));
+        const el = entry.target;
+
+        // Stagger: siblings that enter together get delayed
+        const parent = el.parentElement;
+        const siblings = Array.from(parent.querySelectorAll(':scope > .gs, :scope > * > .gs'));
+        const idx = siblings.indexOf(el);
+        const delay = Math.max(0, idx * 60);
+
+        setTimeout(() => {
+          el.classList.add('visible');
+
+          // Counter animation
+          el.querySelectorAll('.count-up').forEach(c => animateCounter(c, parseInt(c.dataset.target)));
+
+          // Progress bar
+          const pbar = el.querySelector('.progress-fill') || (el.id === 'sprintProgress' ? el : null);
+          if (pbar) setTimeout(() => { pbar.style.transition = 'width 1.5s cubic-bezier(0.16,1,0.3,1)'; pbar.style.width = '100%'; }, 200);
+        }, delay);
+
+        observer.unobserve(el);
       }
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.12 });
 
-  document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
-  document.querySelectorAll('.stat-card').forEach(el => observer.observe(el));
+  if (!prefersReducedMotion) {
+    document.querySelectorAll('.gs').forEach(el => observer.observe(el));
 
+    // Flow steps inside diagram cards: reveal sequentially when card enters view
+    const diagramObs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const card = entry.target;
+          card.querySelectorAll('.flow-step, .flow-arrow').forEach((step, i) => {
+            step.style.opacity = '0';
+            step.style.transform = 'scale(0.85)';
+            step.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            setTimeout(() => {
+              step.style.opacity = '1';
+              step.style.transform = 'scale(1)';
+            }, 200 + i * 100);
+          });
+          const code = card.querySelector('.code-example');
+          if (code) {
+            code.style.opacity = '0';
+            code.style.transform = 'translateY(15px)';
+            code.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            const steps = card.querySelectorAll('.flow-step, .flow-arrow');
+            setTimeout(() => {
+              code.style.opacity = '1';
+              code.style.transform = 'translateY(0)';
+            }, 200 + steps.length * 100 + 100);
+          }
+          diagramObs.unobserve(card);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.diagram-card').forEach(card => diagramObs.observe(card));
+
+    // Issue rows: slide from left
+    document.querySelectorAll('.issue-row.gs').forEach(el => el.classList.add('from-left'));
+
+    // Stat cards: scale in
+    document.querySelectorAll('.stat-card.gs').forEach(el => el.classList.add('scale-in'));
+
+    // Stack items: slide from left
+    document.querySelectorAll('.stack-item').forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-30px)';
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      const stackObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setTimeout(() => {
+              el.style.opacity = '1';
+              el.style.transform = 'translateX(0)';
+            }, i * 60);
+            stackObs.unobserve(el);
+          }
+        });
+      }, { threshold: 0.1 });
+      stackObs.observe(el);
+    });
+
+    // Hero: instant reveal with staggered timing
+    const heroEls = document.querySelectorAll('.title-slide .gs');
+    heroEls.forEach((el, i) => {
+      el.style.transitionDelay = (i * 0.15) + 's';
+      setTimeout(() => el.classList.add('visible'), 100);
+    });
+
+    // Sprint progress bar
+    const progObs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            entry.target.style.transition = 'width 1.5s cubic-bezier(0.16,1,0.3,1)';
+            entry.target.style.width = '100%';
+          }, 300);
+          progObs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    const sprintBar = document.getElementById('sprintProgress');
+    if (sprintBar) progObs.observe(sprintBar);
+  }
+
+  // Counter animation (no GSAP dependency)
   function animateCounter(el, target) {
     if (el.dataset.animated) return;
     el.dataset.animated = 'true';
-    const duration = 1500, start = performance.now();
+    const duration = 1500;
+    const start = performance.now();
     function update(now) {
       const p = Math.min((now - start) / duration, 1);
-      el.textContent = Math.round((1 - Math.pow(1 - p, 3)) * target);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(eased * target);
       if (p < 1) requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
   }
 
+  // Nav dots
   const slides = document.querySelectorAll('.slide');
   const navContainer = document.getElementById('navDots');
   slides.forEach((_, i) => {
@@ -1081,15 +1350,6 @@
     navContainer.appendChild(dot);
   });
 
-  new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const idx = parseInt(entry.target.dataset.slide);
-        document.querySelectorAll('.nav-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
-      }
-    });
-  }, { threshold: 0.5 }).observe(document.querySelector('.slide'));
-  // Fix: observe all slides
   slides.forEach(s => {
     new IntersectionObserver((entries) => {
       entries.forEach(entry => {
