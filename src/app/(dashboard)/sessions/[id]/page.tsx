@@ -18,9 +18,11 @@ export default async function SessionPage({
   const { id } = await params;
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
   const { data: member } = await supabase
     .from("org_members")
     .select("org_id")
+    .eq("user_id", user!.id)
     .single();
 
   if (!member) notFound();

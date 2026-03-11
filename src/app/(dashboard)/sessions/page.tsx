@@ -6,9 +6,11 @@ import { FolderKanban } from "lucide-react";
 export default async function SessionsPage() {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
   const { data: member } = await supabase
     .from("org_members")
     .select("org_id")
+    .eq("user_id", user!.id)
     .single();
 
   const { data: sessions } = member
