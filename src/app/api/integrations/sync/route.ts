@@ -4,6 +4,13 @@ import { nango } from "@/lib/nango/client";
 import { extractStructured } from "@/lib/ai/extract";
 import { generateEmbedding } from "@/lib/ai/embed";
 import { createInboxItems } from "@/lib/inbox";
+import {
+  fetchDiscordGuilds,
+  fetchDiscordChannels,
+  fetchDiscordMessages,
+  batchMessagesToContent,
+  buildChannelMetadata,
+} from "@/lib/integrations/discord";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -341,11 +348,71 @@ async function fetchLinear(
   return records.slice(0, 30);
 }
 
+// ── Discord ──────────────────────────────────────────────────────────────────
+async function fetchDiscord(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  const guilds = await fetchDiscordGuilds(connectionId, provider);
+  if (guilds.length === 0) return [];
+
+  for (const guild of guilds.slice(0, 5)) {
+    const channels = await fetchDiscordChannels(connectionId, provider, guild.id);
+
+    for (const channel of channels.slice(0, 10)) {
+      try {
+        const messages = await fetchDiscordMessages(
+          connectionId,
+          provider,
+          channel.id,
+          { limit: 100 }
+        );
+
+        // Filter out bot messages and empty messages
+        const humanMessages = messages.filter(
+          (m) => !m.author.bot && m.content && m.content.trim().length > 0
+        );
+
+        if (humanMessages.length === 0) continue;
+
+        const content = batchMessagesToContent(humanMessages, channel.name, guild.name);
+        if (content.length < 50) continue;
+
+        const latestId = humanMessages.reduce((latest, msg) =>
+          BigInt(msg.id) > BigInt(latest.id) ? msg : latest
+        ).id;
+
+        records.push({
+          id: `discord-channel-${channel.id}`,
+          title: `#${channel.name} — ${guild.name}`,
+          content,
+          sourceCreatedAt: humanMessages[0]?.timestamp ?? null,
+          sourceMetadata: buildChannelMetadata(
+            channel.id,
+            channel.name,
+            guild.id,
+            guild.name,
+            humanMessages.length,
+            latestId
+          ) satisfies Json,
+        });
+      } catch {
+        // skip inaccessible channels
+      }
+    }
+  }
+
+  return records;
+}
+
 function contentTypeFor(provider: string): string {
   if (provider.includes("github")) return "issue";
   switch (provider) {
     case "google-drive": return "document";
     case "slack":        return "message";
+    case "discord":      return "message";
     case "linear":       return "issue";
     case "granola":      return "meeting_transcript";
     default:             return "document";
@@ -399,6 +466,8 @@ export async function POST(request: NextRequest) {
     rawRecords = await fetchGranola(provider, connectionId);
   } else if (provider === "linear") {
     rawRecords = await fetchLinear(provider, connectionId);
+  } else if (provider === "discord") {
+    rawRecords = await fetchDiscord(provider, connectionId);
   } else {
     return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
   }
