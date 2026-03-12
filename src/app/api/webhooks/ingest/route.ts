@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/server";
-import { processContextItem } from "@/lib/pipeline/process-context";
+import { inngest } from "@/lib/inngest/client";
 import {
   parseGranolaPayload,
   verifyGranolaToken,
@@ -42,29 +43,46 @@ export async function POST(request: NextRequest) {
   }
 
   const adminDb = createAdminClient();
+  const contentHash = createHash("sha256").update(content).digest("hex");
 
-  const { data, error } = await adminDb
-    .from("context_items")
-    .insert({
-      org_id,
-      title,
-      raw_content: content,
-      source_type,
-      content_type: "document",
-      status: "pending",
-      source_metadata: metadata ?? null,
-    })
-    .select("id")
-    .single();
+  // Upsert: skip reprocessing if content unchanged (source_id from metadata)
+  const sourceId = metadata?.source_id ?? null;
+  const insertPayload = {
+    org_id,
+    title,
+    raw_content: content,
+    source_type,
+    content_type: "document",
+    content_hash: contentHash,
+    status: "pending",
+    source_metadata: metadata ?? null,
+    ...(sourceId ? { source_id: sourceId } : {}),
+  };
+
+  const { data, error } = sourceId
+    ? await adminDb
+        .from("context_items")
+        .upsert(insertPayload, {
+          onConflict: "org_id,source_type,source_id",
+          ignoreDuplicates: false,
+        })
+        .select("id")
+        .single()
+    : await adminDb
+        .from("context_items")
+        .insert(insertPayload)
+        .select("id")
+        .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Auto-trigger processing pipeline (fire-and-forget)
-  processContextItem(adminDb, data.id, org_id).catch((err) =>
-    console.error("Pipeline auto-trigger failed:", err)
-  );
+  // Emit Inngest event for durable processing
+  await inngest.send({
+    name: "context/item.created",
+    data: { contextItemId: data.id, orgId: org_id },
+  });
 
   return NextResponse.json({ id: data.id, status: "accepted" });
 }
@@ -104,6 +122,7 @@ async function handleGranolaIngest(request: NextRequest, body: unknown) {
   }
 
   const adminDb = createAdminClient();
+  const contentHash = createHash("sha256").update(payload.content).digest("hex");
 
   const { data, error } = await adminDb
     .from("context_items")
@@ -113,6 +132,7 @@ async function handleGranolaIngest(request: NextRequest, body: unknown) {
       raw_content: payload.content,
       source_type: "granola",
       content_type: "meeting_transcript",
+      content_hash: contentHash,
       status: "pending",
       source_metadata: buildGranolaMetadata(payload.metadata),
     })
@@ -123,10 +143,11 @@ async function handleGranolaIngest(request: NextRequest, body: unknown) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Auto-trigger processing pipeline
-  processContextItem(adminDb, data.id, orgId).catch((err) =>
-    console.error("Granola pipeline auto-trigger failed:", err)
-  );
+  // Emit Inngest event for durable processing
+  await inngest.send({
+    name: "context/item.created",
+    data: { contextItemId: data.id, orgId: orgId as string },
+  });
 
   return NextResponse.json({ id: data.id, status: "accepted" });
 }

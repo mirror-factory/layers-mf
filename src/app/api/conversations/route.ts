@@ -23,7 +23,7 @@ export async function GET() {
   }
 
   const { data: conversations, error } = await supabase
-    // @ts-expect-error conversations table not yet in generated types
+
     .from("conversations")
     .select("id, title, created_at, updated_at")
     .eq("org_id", member.org_id)
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   const adminDb = createAdminClient();
   const { data: conversation, error } = await adminDb
-    // @ts-expect-error conversations table not yet in generated types
+
     .from("conversations")
     .insert({
       org_id: member.org_id,

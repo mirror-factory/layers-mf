@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { parseFile } from "@/lib/ingest/parse";
-import { processContextItem } from "@/lib/pipeline/process-context";
+import { inngest } from "@/lib/inngest/client";
 import { rateLimit } from "@/lib/rate-limit";
 
-export const maxDuration = 60; // seconds — allow time for AI processing
+// No maxDuration needed — processing is now handled async via Inngest
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -60,7 +61,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 422 });
   }
 
-  // 2. Insert context_item as pending
+  // 2. Insert context_item as pending (with content_hash for dedup)
+  const contentHash = createHash("sha256").update(parsed.text).digest("hex");
+
   const { data: item, error: insertError } = await supabase
     .from("context_items")
     .insert({
@@ -69,6 +72,7 @@ export async function POST(request: NextRequest) {
       title: file.name,
       raw_content: parsed.text,
       content_type: parsed.contentType,
+      content_hash: contentHash,
       status: "pending",
     })
     .select()
@@ -78,12 +82,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save item" }, { status: 500 });
   }
 
-  // 3. Run full processing pipeline (extract → embed → link to sessions)
-  const result = await processContextItem(supabase, item.id, member.org_id);
+  // 3. Emit Inngest event for durable processing pipeline
+  await inngest.send({
+    name: "context/item.created",
+    data: { contextItemId: item.id, orgId: member.org_id },
+  });
 
-  const status = result.status === "ready" ? 200 : 207;
   return NextResponse.json(
-    { id: item.id, status: result.status, error: result.error },
-    { status }
+    { id: item.id, status: "accepted" },
+    { status: 202 }
   );
 }

@@ -27,7 +27,7 @@ export async function GET(
   }
 
   const { data: conversation, error } = await supabase
-    // @ts-expect-error conversations table not yet in generated types
+
     .from("conversations")
     .select("id, title, created_at, updated_at")
     .eq("id", id)
@@ -68,7 +68,7 @@ export async function DELETE(
 
   const adminDb = createAdminClient();
   const { error } = await adminDb
-    // @ts-expect-error conversations table not yet in generated types
+
     .from("conversations")
     .delete()
     .eq("id", id)

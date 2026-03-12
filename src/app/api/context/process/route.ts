@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { processContextItem } from "@/lib/pipeline/process-context";
-
-export const maxDuration = 60;
+import { inngest } from "@/lib/inngest/client";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -41,8 +39,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await processContextItem(supabase, contextItemId, member.org_id);
+  // Emit Inngest event for durable processing
+  await inngest.send({
+    name: "context/item.created",
+    data: { contextItemId, orgId: member.org_id },
+  });
 
-  const status = result.status === "ready" ? 200 : 207;
-  return NextResponse.json(result, { status });
+  return NextResponse.json(
+    { contextItemId, status: "accepted" },
+    { status: 202 }
+  );
 }
