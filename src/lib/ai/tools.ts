@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { searchContext } from "@/lib/db/search";
+import { searchContext, searchContextChunks } from "@/lib/db/search";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +29,30 @@ export function createTools(supabase: AnySupabase, orgId: string) {
         "Search the team knowledge base for relevant documents, meetings, messages, and notes. Call this first to find what context exists before answering.",
       inputSchema: searchContextSchema,
       execute: async ({ query, limit, filters }: z.infer<typeof searchContextSchema>) => {
+        // Try chunk-based search first (richer context), fall back to item-level
+        const chunkResults = await searchContextChunks(
+          supabase as Parameters<typeof searchContextChunks>[0],
+          orgId,
+          query,
+          limit ?? 8,
+          filters
+        );
+
+        if (chunkResults.length > 0) {
+          return chunkResults.map((r) => ({
+            id: r.context_item_id,
+            title: r.title,
+            source_type: r.source_type,
+            content_type: r.content_type,
+            rrf_score: r.rrf_score,
+            description_short: r.description_short,
+            parent_content: r.parent_content,
+            source_url: r.source_url,
+            source_created_at: r.source_created_at,
+          }));
+        }
+
+        // Fallback to original item-level search
         const results = await searchContext(
           supabase as Parameters<typeof searchContext>[0],
           orgId,
