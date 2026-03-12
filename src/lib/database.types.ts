@@ -252,6 +252,53 @@ export type Database = {
           },
         ]
       }
+      context_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          context_item_id: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          org_id: string
+          parent_content: string
+          search_tsv: unknown
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          context_item_id: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          parent_content: string
+          search_tsv?: unknown
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          context_item_id?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          parent_content?: string
+          search_tsv?: unknown
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_chunks_context_item_id_fkey"
+            columns: ["context_item_id"]
+            isOneToOne: false
+            referencedRelation: "context_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_items: {
         Row: {
           content_hash: string | null

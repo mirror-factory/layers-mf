@@ -1,4 +1,11 @@
 import { inngest } from "@/lib/inngest/client";
+import { generateObject } from "ai";
+import { extractionModel } from "@/lib/ai/config";
+import { generateEmbedding, generateEmbeddings } from "@/lib/ai/embed";
+import { chunkDocument } from "@/lib/pipeline/chunker";
+import { ExtractionSchema } from "@/lib/pipeline/extraction-schema";
+import { createAdminClient } from "@/lib/supabase/server";
+import { createInboxItems } from "@/lib/inbox";
 
 export const processContextFunction = inngest.createFunction(
   {
@@ -9,8 +16,129 @@ export const processContextFunction = inngest.createFunction(
   { event: "context/item.created" },
   async ({ event, step }) => {
     const { contextItemId, orgId } = event.data;
+    const supabase = createAdminClient();
 
-    // Placeholder — will be filled in Phase 2 with chunking pipeline
-    return { contextItemId, orgId, status: "placeholder" };
+    // Step 1: Fetch and validate
+    const item = await step.run("fetch-item", async () => {
+      const { data, error } = await supabase
+        .from("context_items")
+        .select(
+          "id, raw_content, title, source_type, content_hash, status"
+        )
+        .eq("id", contextItemId)
+        .single();
+
+      if (error || !data) throw new Error(`Item not found: ${contextItemId}`);
+
+      await supabase
+        .from("context_items")
+        .update({ status: "processing" })
+        .eq("id", contextItemId);
+
+      return data;
+    });
+
+    // Step 2: Extract metadata with AI
+    const extraction = await step.run("extract-metadata", async () => {
+      const truncated = (item.raw_content ?? "").slice(0, 12_000);
+      const { object } = await generateObject({
+        model: extractionModel,
+        schema: ExtractionSchema,
+        prompt: `You are extracting structured information from a document.
+
+Filename/Title: ${item.title}
+
+Document content:
+${truncated}
+
+Extract the title, summaries, entities, sentiment, and an executive summary. Be specific and factual.`,
+      });
+
+      await supabase
+        .from("context_items")
+        .update({
+          title: object.title,
+          description_short: object.description_short,
+          description_long: object.description_long,
+          entities: object.entities,
+        })
+        .eq("id", contextItemId);
+
+      return object;
+    });
+
+    // Step 3: Chunk document and insert into context_chunks
+    const chunks = await step.run("chunk-document", async () => {
+      const rawChunks = chunkDocument(
+        item.raw_content ?? "",
+        extraction.title
+      );
+
+      // Delete old chunks if reprocessing
+      await supabase
+        .from("context_chunks")
+        .delete()
+        .eq("context_item_id", contextItemId);
+
+      // Insert chunks without embeddings
+      const rows = rawChunks.map((c) => ({
+        org_id: orgId,
+        context_item_id: contextItemId,
+        chunk_index: c.chunkIndex,
+        content: c.content,
+        parent_content: c.parentContent,
+        metadata: c.metadata as Record<string, string | number>,
+      }));
+
+      const { data: inserted } = await supabase
+        .from("context_chunks")
+        .insert(rows)
+        .select("id, content");
+
+      return inserted ?? [];
+    });
+
+    // Step 4: Batch embed all chunks
+    await step.run("embed-chunks", async () => {
+      if (chunks.length === 0) return;
+
+      const texts = chunks.map((c: { content: string }) => c.content);
+      const embeddings = await generateEmbeddings(texts);
+
+      // Update each chunk with its embedding
+      for (let i = 0; i < chunks.length; i++) {
+        await supabase
+          .from("context_chunks")
+          .update({ embedding: embeddings[i] as unknown as string })
+          .eq("id", chunks[i].id);
+      }
+    });
+
+    // Step 5: Also update the context_item embedding (backward compat)
+    await step.run("embed-item", async () => {
+      const embedding = await generateEmbedding(item.raw_content ?? "");
+
+      await supabase
+        .from("context_items")
+        .update({
+          embedding: embedding as unknown as string,
+          status: "ready",
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", contextItemId);
+    });
+
+    // Step 6: Create inbox items
+    await step.run("create-inbox", async () => {
+      await createInboxItems(
+        supabase,
+        orgId,
+        contextItemId,
+        extraction,
+        item.source_type
+      );
+    });
+
+    return { contextItemId, status: "ready", chunkCount: chunks.length };
   }
 );
