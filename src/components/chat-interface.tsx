@@ -238,7 +238,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             if (!text && toolParts.length === 0 && m.role !== "user") return null;
 
             return (
-              <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+              <div key={m.id} data-testid={m.role === "user" ? "user-message" : "assistant-message"} className={cn("flex gap-3", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 <div
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
@@ -253,7 +253,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} />
+                        <div key={i} data-testid="tool-call">
+                          <ToolCallCard part={part} />
+                        </div>
                       ))}
                     </div>
                   )}
@@ -302,7 +304,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         <div className="border-t p-3 sm:p-4">
           <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9">
+              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -315,6 +317,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </Select>
             <div className="flex gap-2 sm:gap-3 flex-1">
               <textarea
+                data-testid="chat-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about your documents, meetings, or team…"
@@ -327,7 +330,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   }
                 }}
               />
-              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()} data-testid="chat-submit">
                 <Send className="h-4 w-4" />
               </Button>
             </div>

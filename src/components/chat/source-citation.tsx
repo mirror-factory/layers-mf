@@ -48,7 +48,7 @@ export function SourceCitation({ sources, maxVisible = 4 }: SourceCitationProps)
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-wrap gap-1.5 px-1">
+      <div className="flex flex-wrap gap-1.5 px-1" data-testid="source-citation">
         {visible.map((s) => {
           const date = formatDate(s.source_created_at);
           return (
