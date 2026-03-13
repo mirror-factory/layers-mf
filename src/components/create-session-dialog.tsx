@@ -53,12 +53,12 @@ export function CreateSessionDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" data-testid="create-session-button">
           <Plus className="h-4 w-4 mr-1" />
           New Session
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent data-testid="create-session-dialog">
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
         </DialogHeader>

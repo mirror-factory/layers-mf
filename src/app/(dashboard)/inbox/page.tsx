@@ -18,7 +18,7 @@ export default async function InboxPage() {
   return (
     <div className="p-8 max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold mb-1">Inbox</h1>
+        <h1 data-testid="inbox-page-heading" className="text-2xl font-semibold mb-1">Inbox</h1>
         <p className="text-muted-foreground text-sm">
           Action items, decisions, and mentions surfaced by your agents.
         </p>

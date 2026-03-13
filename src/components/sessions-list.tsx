@@ -32,9 +32,9 @@ function timeAgo(dateStr: string): string {
 
 export function SessionsList({ sessions }: { sessions: Session[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div data-testid="sessions-list" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {sessions.map((s) => (
-        <Link key={s.id} href={`/sessions/${s.id}`}>
+        <Link key={s.id} href={`/sessions/${s.id}`} data-testid="session-item">
           <Card className="p-4 hover:border-primary/30 transition-colors cursor-pointer">
             <div className="flex items-start gap-3">
               <FolderKanban className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />

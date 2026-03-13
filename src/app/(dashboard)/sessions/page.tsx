@@ -26,7 +26,7 @@ export default async function SessionsPage() {
     <div className="flex flex-col p-8 gap-6 min-h-screen">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Sessions</h1>
+          <h1 data-testid="sessions-page-heading" className="text-2xl font-semibold mb-1">Sessions</h1>
           <p className="text-muted-foreground text-sm">
             Focused workspaces with scoped context and chat.
           </p>
@@ -35,7 +35,7 @@ export default async function SessionsPage() {
       </div>
 
       {!sessions || sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
+        <div data-testid="sessions-empty-state" className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
           <FolderKanban className="h-12 w-12 mb-4 opacity-30" />
           <p className="text-sm font-medium text-foreground">No sessions yet</p>
           <p className="text-xs mt-1 max-w-xs text-center">

@@ -48,7 +48,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
 
   if (visible.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+      <div data-testid="inbox-empty-state" className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Inbox className="h-10 w-10 mb-3 opacity-30" />
         <p className="text-sm">All caught up — no items in your inbox.</p>
       </div>
@@ -56,10 +56,11 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div data-testid="inbox-items-list" className="space-y-2">
       {visible.map((item) => (
         <div
           key={item.id}
+          data-testid="inbox-item"
           className={cn(
             "flex items-start gap-4 rounded-lg border p-4 bg-card transition-opacity",
             item.status === "read" && "opacity-60"

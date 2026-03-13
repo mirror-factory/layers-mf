@@ -86,7 +86,7 @@ export default function ActionsPage() {
   return (
     <div className="p-8 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1">Action Items</h1>
+        <h1 data-testid="actions-page-heading" className="text-2xl font-semibold mb-1">Action Items</h1>
         <p className="text-muted-foreground text-sm">
           Tasks extracted from your documents, meetings, and messages.
         </p>
@@ -139,7 +139,7 @@ export default function ActionsPage() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <div data-testid="actions-empty-state" className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <CheckSquare className="h-10 w-10 mb-3 opacity-30" />
           <p className="text-sm font-medium text-foreground">No action items found</p>
           <p className="text-xs mt-1">
@@ -149,7 +149,7 @@ export default function ActionsPage() {
       ) : (
         <>
           <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+            <table data-testid="actions-table" className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="w-10 px-4 py-2" />

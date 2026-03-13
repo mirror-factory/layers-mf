@@ -258,7 +258,7 @@ export function SessionWorkspace({
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div data-testid="session-workspace" className="flex h-full overflow-hidden">
       {/* Left: context panel */}
       <aside className="w-64 shrink-0 border-r flex flex-col bg-card">
         <div className="px-4 py-3 border-b">

@@ -77,7 +77,7 @@ export default async function AnalyticsPage() {
     <div className="p-4 sm:p-6 lg:p-8 w-full max-w-5xl space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold mb-1">Analytics</h1>
+          <h1 data-testid="analytics-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Analytics</h1>
           <p className="text-muted-foreground text-sm">
             KPIs and quality metrics for your organization.
           </p>
@@ -102,7 +102,7 @@ export default async function AnalyticsPage() {
           runs={runs}
         />
       ) : (
-        <Tabs defaultValue="context" className="w-full">
+        <Tabs data-testid="analytics-tabs" defaultValue="context" className="w-full">
           <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
             <TabsTrigger value="context">Context Health</TabsTrigger>
             <TabsTrigger value="agent">Agent</TabsTrigger>

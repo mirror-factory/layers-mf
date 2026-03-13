@@ -64,7 +64,7 @@ export function ActionItemRow({ item, onStatusChange }: ActionItemRowProps) {
   }
 
   return (
-    <tr className={cn("hover:bg-muted/30 group", item.status === "cancelled" && "opacity-50")}>
+    <tr data-testid="action-item-row" className={cn("hover:bg-muted/30 group", item.status === "cancelled" && "opacity-50")}>
       {/* Status toggle */}
       <td className="px-4 py-2.5 w-10">
         <button
