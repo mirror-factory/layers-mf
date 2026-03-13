@@ -160,13 +160,13 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="connect-panel">
       {/* Connect button */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground" data-testid="integrations-count">
           {integrations.length} integration{integrations.length !== 1 ? "s" : ""} connected
         </p>
-        <Button onClick={handleConnect} disabled={connecting}>
+        <Button onClick={handleConnect} disabled={connecting} data-testid="connect-button">
           {connecting ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -182,7 +182,7 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
 
       {/* Integration cards */}
       {integrations.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="integrations-list">
           {integrations.map((integration) => (
             <IntegrationCard
               key={integration.id}
@@ -196,7 +196,7 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground" data-testid="integrations-empty">
           <Plug className="h-10 w-10 mb-3 opacity-30" />
           <p className="text-sm font-medium text-foreground">
             No integrations connected

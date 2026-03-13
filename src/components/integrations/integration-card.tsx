@@ -132,7 +132,7 @@ export function IntegrationCard({
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-4" data-testid={`integration-card-${integration.provider}`}>
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div className={`mt-0.5 ${meta?.color ?? "text-muted-foreground"}`}>
@@ -145,7 +145,7 @@ export function IntegrationCard({
             <span className="text-sm font-medium">
               {meta?.label ?? integration.provider}
             </span>
-            <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
+            <Badge variant={status.variant} className="text-[10px] px-1.5 py-0" data-testid={`integration-status-${integration.provider}`}>
               {integration.status === "active" && (
                 <Check className="h-2.5 w-2.5 mr-0.5" />
               )}
@@ -185,6 +185,7 @@ export function IntegrationCard({
             onClick={() => onSync(integration)}
             disabled={syncing || disconnecting}
             className="h-7 text-xs"
+            data-testid={`sync-button-${integration.provider}`}
           >
             {syncing ? (
               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -199,6 +200,7 @@ export function IntegrationCard({
             onClick={handleDisconnect}
             disabled={syncing || disconnecting}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            data-testid={`disconnect-button-${integration.provider}`}
           >
             {disconnecting ? (
               <Loader2 className="h-3 w-3 animate-spin" />
