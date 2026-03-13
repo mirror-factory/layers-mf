@@ -57,18 +57,35 @@ export async function POST(request: NextRequest) {
     return new Response("No organization found", { status: 400 });
   }
 
-  const body = await request.json();
-  const uiMessages: UIMessage[] = body.messages ?? [];
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response("Invalid JSON body", { status: 400 });
+  }
+
+  if (!Array.isArray(body.messages)) {
+    return new Response("Invalid messages", { status: 400 });
+  }
+
+  const uiMessages: UIMessage[] = body.messages;
 
   if (uiMessages.length === 0) {
     return new Response("Invalid messages", { status: 400 });
   }
 
-  const modelId = ALLOWED_MODELS.has(body.model)
+  // Validate each message has a role
+  for (const msg of uiMessages) {
+    if (!msg.role || !["user", "assistant", "system"].includes(msg.role)) {
+      return new Response("Invalid message: missing or invalid role", { status: 400 });
+    }
+  }
+
+  const modelId = ALLOWED_MODELS.has(body.model as string)
     ? (body.model as string)
     : "anthropic/claude-haiku-4-5-20251001";
 
-  const conversationId: string | null = body.conversationId ?? null;
+  const conversationId: string | null = (body.conversationId as string) ?? null;
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");

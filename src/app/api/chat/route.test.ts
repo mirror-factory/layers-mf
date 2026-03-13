@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Use vi.hoisted so mock fns are available inside hoisted vi.mock factories
-const { mockGetUser, mockFrom } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockRateLimit } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockFrom: vi.fn(),
+  mockRateLimit: vi.fn().mockReturnValue({ success: true, remaining: 9 }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -42,6 +43,10 @@ vi.mock("ai", () => {
 
 vi.mock("@ai-sdk/gateway", () => ({
   gateway: vi.fn().mockReturnValue("mock-model"),
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimit: mockRateLimit,
 }));
 
 import { POST } from "./route";
@@ -210,5 +215,166 @@ describe("POST /api/chat", () => {
         uiMessages: expect.any(Array),
       })
     );
+  });
+
+  // --- Edge case tests (PROD-186) ---
+
+  it("returns 400 when messages is not an array", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(makeRequest({ messages: "not-an-array" }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid messages");
+  });
+
+  it("returns 400 when messages is null", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(makeRequest({ messages: null }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid messages");
+  });
+
+  it("returns 400 when a message has missing role", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(
+      makeRequest({
+        messages: [{ parts: [{ type: "text", text: "hi" }] }],
+      })
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid message: missing or invalid role");
+  });
+
+  it("returns 400 when a message has an invalid role", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(
+      makeRequest({
+        messages: [{ role: "hacker", parts: [{ type: "text", text: "hi" }] }],
+      })
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid message: missing or invalid role");
+  });
+
+  it("handles large conversation history (100+ messages) without error", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const messages = Array.from({ length: 120 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      parts: [{ type: "text", text: `Message ${i}` }],
+    }));
+
+    const res = await POST(makeRequest({ messages }));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 400 for invalid JSON body", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/chat", {
+      method: "POST",
+      body: "not valid json{{{",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid JSON body");
+  });
+
+  it("returns 400 when body has no messages field", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(makeRequest({ model: "openai/gpt-4o" }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid messages");
+  });
+
+  it("accepts valid assistant role in messages", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+        }),
+      }),
+    });
+
+    const res = await POST(
+      makeRequest({
+        messages: [
+          { role: "user", parts: [{ type: "text", text: "hi" }] },
+          { role: "assistant", parts: [{ type: "text", text: "hello" }] },
+          { role: "user", parts: [{ type: "text", text: "question" }] },
+        ],
+      })
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-rate" } }, error: null });
+    mockRateLimit.mockReturnValueOnce({ success: false, remaining: 0 });
+
+    const res = await POST(
+      makeRequest({
+        messages: [{ role: "user", parts: [{ type: "text", text: "hi" }] }],
+      })
+    );
+
+    expect(res.status).toBe(429);
+    expect(await res.text()).toBe("Too many requests");
   });
 });

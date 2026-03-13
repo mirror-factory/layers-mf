@@ -167,4 +167,65 @@ describe("GET /api/chat/history", () => {
     const body = await res.json();
     expect(body.error).toBe("DB error");
   });
+
+  it("queries with conversation_id filter when provided", async () => {
+    setupAuthenticatedUser();
+    const orgBuilder = createQueryBuilder({ data: null, error: null });
+    orgBuilder.single = vi.fn().mockResolvedValue({ data: { org_id: "org-1" } });
+
+    const chatBuilder = createQueryBuilder({ data: mockRows, error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") return orgBuilder;
+      if (table === "chat_messages") return chatBuilder;
+      return {};
+    });
+
+    const res = await GET(
+      makeRequest("http://localhost:3000/api/chat/history?conversation_id=conv-1")
+    );
+    expect(res.status).toBe(200);
+    expect(mockFrom).toHaveBeenCalledWith("chat_messages");
+  });
+
+  it("returns null-scoped messages when no session_id or conversation_id provided", async () => {
+    setupAuthenticatedUser();
+    const orgBuilder = createQueryBuilder({ data: null, error: null });
+    orgBuilder.single = vi.fn().mockResolvedValue({ data: { org_id: "org-1" } });
+
+    const chatBuilder = createQueryBuilder({ data: [], error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") return orgBuilder;
+      if (table === "chat_messages") return chatBuilder;
+      return {};
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns messages with correct createdAt field", async () => {
+    setupAuthenticatedUser();
+    const orgBuilder = createQueryBuilder({ data: null, error: null });
+    orgBuilder.single = vi.fn().mockResolvedValue({ data: { org_id: "org-1" } });
+
+    const chatBuilder = createQueryBuilder({
+      data: [mockRows[0]],
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") return orgBuilder;
+      if (table === "chat_messages") return chatBuilder;
+      return {};
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[0]).toHaveProperty("createdAt");
+  });
 });
