@@ -209,4 +209,85 @@ describe("POST /api/team/invite", () => {
     const body = await res.json();
     expect(body.email).toBe("new@test.com");
   });
+
+  it("returns 400 for missing email field", async () => {
+    mockOwner();
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    const res = await POST(makePostRequest({ role: "member" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for empty string email", async () => {
+    mockOwner();
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    const res = await POST(makePostRequest({ email: "" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for invalid role value", async () => {
+    mockOwner();
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    const res = await POST(makePostRequest({ email: "test@test.com", role: "superadmin" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("defaults role to member when not provided", async () => {
+    mockOwner();
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    mockAdminFrom.mockReturnValue({
+      upsert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: "inv-2",
+              email: "default@test.com",
+              role: "member",
+              status: "pending",
+              created_at: "2026-03-08",
+              expires_at: "2026-03-15",
+            },
+            error: null,
+          }),
+        }),
+      }),
+    });
+    mockInviteUserByEmail.mockResolvedValue({ data: {}, error: null });
+    const res = await POST(makePostRequest({ email: "default@test.com" }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.role).toBe("member");
+  });
+
+  it("returns 500 when upsert fails", async () => {
+    mockOwner();
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    mockAdminFrom.mockReturnValue({
+      upsert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "DB error" },
+          }),
+        }),
+      }),
+    });
+    const res = await POST(makePostRequest({ email: "fail@test.com" }));
+    expect(res.status).toBe(500);
+  });
+
+  it("returns 400 for no organization found", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-no-org", email: "noorg@test.com" } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await POST(makePostRequest({ email: "test@test.com" }));
+    expect(res.status).toBe(400);
+  });
 });

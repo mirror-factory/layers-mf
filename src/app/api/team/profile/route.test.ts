@@ -126,4 +126,41 @@ describe("PATCH /api/team/profile", () => {
     const res = await PATCH(makePatchRequest({ displayName: "New" }));
     expect(res.status).toBe(500);
   });
+
+  it("returns 400 when display name exceeds max length", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+    const res = await PATCH(makePatchRequest({ displayName: "a".repeat(101) }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when password exceeds max length", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+    const res = await PATCH(makePatchRequest({ password: "a".repeat(129) }));
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts display name at max length boundary", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+    mockUpdateUser.mockResolvedValue({ error: null });
+    const res = await PATCH(makePatchRequest({ displayName: "a".repeat(100) }));
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts password at min length boundary", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+    mockUpdateUser.mockResolvedValue({ error: null });
+    const res = await PATCH(makePatchRequest({ password: "a".repeat(8) }));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns user profile with null user_metadata", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { ...mockUser, user_metadata: null } },
+      error: null,
+    });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.displayName).toBe("");
+  });
 });

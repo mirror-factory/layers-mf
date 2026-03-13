@@ -64,4 +64,76 @@ describe("logAudit", () => {
       logAudit(client, { orgId: "org-3", action: "test.action" })
     ).not.toThrow();
   });
+
+  it("passes correct table name to from()", () => {
+    const { client, fromFn } = createMockSupabase();
+
+    logAudit(client, { orgId: "org-1", action: "any.action" });
+
+    expect(fromFn).toHaveBeenCalledTimes(1);
+    expect(fromFn).toHaveBeenCalledWith("audit_log");
+  });
+
+  it("handles explicit null userId and resourceId", () => {
+    const { client, insertFn } = createMockSupabase();
+
+    logAudit(client, {
+      orgId: "org-4",
+      userId: null,
+      action: "system.cleanup",
+      resourceType: null,
+      resourceId: null,
+    });
+
+    expect(insertFn).toHaveBeenCalledWith({
+      org_id: "org-4",
+      user_id: null,
+      action: "system.cleanup",
+      resource_type: null,
+      resource_id: null,
+      metadata: {},
+    });
+  });
+
+  it("preserves complex metadata objects", () => {
+    const { client, insertFn } = createMockSupabase();
+    const complexMeta = {
+      changes: { before: { name: "old" }, after: { name: "new" } },
+      tags: ["important", "reviewed"],
+      count: 42,
+    };
+
+    logAudit(client, {
+      orgId: "org-5",
+      userId: "user-5",
+      action: "context.update",
+      resourceType: "context_item",
+      resourceId: "ci-5",
+      metadata: complexMeta,
+    });
+
+    expect(insertFn).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: complexMeta })
+    );
+  });
+
+  it("handles different action types correctly", () => {
+    const actions = [
+      "context.create",
+      "context.delete",
+      "context.update",
+      "session.start",
+      "session.end",
+      "member.invite",
+      "member.remove",
+    ];
+
+    for (const action of actions) {
+      const { client, insertFn } = createMockSupabase();
+      logAudit(client, { orgId: "org-6", action });
+      expect(insertFn).toHaveBeenCalledWith(
+        expect.objectContaining({ action })
+      );
+    }
+  });
 });

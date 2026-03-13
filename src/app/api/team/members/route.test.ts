@@ -198,4 +198,154 @@ describe("DELETE /api/team/members", () => {
     );
     expect(res.status).toBe(200);
   });
+
+  it("returns 400 for invalid UUID format", async () => {
+    mockOwner();
+    const res = await DELETE(makeDeleteRequest({ userId: "not-a-uuid" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when admin delete fails", async () => {
+    mockOwner();
+    mockAdminFrom.mockReturnValue({
+      delete: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
+        }),
+      }),
+    });
+    const res = await DELETE(makeDeleteRequest({ userId: OTHER_UUID }));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("DB error");
+  });
+
+  it("returns 400 when no organization found", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-no-org", email: "noorg@test.com" } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await DELETE(makeDeleteRequest({ userId: OTHER_UUID }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/team/members — edge cases", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 when user has no organization", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-no-org", email: "noorg@test.com" } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await GET();
+    expect(res.status).toBe(400);
+  });
+
+  it("returns empty array for team with no other members", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: OWNER_UUID, email: "owner@test.com" } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockImplementation((_col: string, val: string) => {
+          if (val === OWNER_UUID) {
+            return {
+              single: vi.fn().mockResolvedValue({
+                data: { org_id: "org-1", role: "owner" },
+              }),
+            };
+          }
+          // For org_id eq — return empty members list
+          return {
+            data: [],
+            error: null,
+            single: vi.fn().mockResolvedValue({
+              data: { org_id: "org-1", role: "owner" },
+            }),
+          };
+        }),
+      }),
+    });
+    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns 500 when members query fails", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: OWNER_UUID, email: "owner@test.com" } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockImplementation((_col: string, val: string) => {
+          if (val === OWNER_UUID) {
+            return {
+              single: vi.fn().mockResolvedValue({
+                data: { org_id: "org-1", role: "owner" },
+              }),
+            };
+          }
+          return {
+            data: null,
+            error: { message: "Query failed" },
+            single: vi.fn().mockResolvedValue({
+              data: { org_id: "org-1", role: "owner" },
+            }),
+          };
+        }),
+      }),
+    });
+    const res = await GET();
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("PATCH /api/team/members — edge cases", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 for invalid UUID in userId", async () => {
+    mockOwner();
+    const res = await PATCH(makePatchRequest({ userId: "bad-id", role: "admin" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for invalid role value", async () => {
+    mockOwner();
+    const res = await PATCH(makePatchRequest({ userId: OTHER_UUID, role: "superadmin" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when admin update fails", async () => {
+    mockOwner();
+    mockAdminFrom.mockReturnValue({
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
+        }),
+      }),
+    });
+    const res = await PATCH(makePatchRequest({ userId: OTHER_UUID, role: "admin" }));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("DB error");
+  });
 });
