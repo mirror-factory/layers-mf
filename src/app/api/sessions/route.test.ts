@@ -101,4 +101,102 @@ describe("POST /api/sessions", () => {
     const body = await res.json();
     expect(body.name).toBe("Test");
   });
+
+  it("returns 400 when name is missing", async () => {
+    mockAuthenticatedUser();
+    const res = await POST(makePostRequest({ goal: "Some goal" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBeDefined();
+  });
+
+  it("returns 400 when goal is missing", async () => {
+    mockAuthenticatedUser();
+    const res = await POST(makePostRequest({ name: "Session" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBeDefined();
+  });
+
+  it("returns 400 when body is empty", async () => {
+    mockAuthenticatedUser();
+    const res = await POST(makePostRequest({}));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when no org membership", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await POST(makePostRequest({ name: "Test", goal: "Goal" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when insert fails", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      return {
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: "DB error" },
+            }),
+          }),
+        }),
+      };
+    });
+    const res = await POST(makePostRequest({ name: "Test", goal: "Goal" }));
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("GET /api/sessions — empty list", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 200 with empty array when no sessions exist", async () => {
+    mockAuthenticatedUser();
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns 500 when query fails", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: null, error: { message: "Query failed" } }),
+          }),
+        }),
+      };
+    });
+    const res = await GET();
+    expect(res.status).toBe(500);
+  });
 });

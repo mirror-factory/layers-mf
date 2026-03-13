@@ -167,4 +167,193 @@ describe("POST /api/sessions/[id]/members", () => {
     expect(body.id).toBe("sm-2");
     expect(body.role).toBe("member");
   });
+
+  it("returns 400 when user has no org", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await POST(
+      makePostRequest({ user_id: "f47ac10b-58cc-4372-a567-0d02b2c3d479" }),
+      { params: mockParams },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when session not found for POST", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const res = await POST(
+      makePostRequest({ user_id: "f47ac10b-58cc-4372-a567-0d02b2c3d479" }),
+      { params: mockParams },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when target user not in same org", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null }),
+              }),
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const res = await POST(
+      makePostRequest({ user_id: "f47ac10b-58cc-4372-a567-0d02b2c3d479" }),
+      { params: mockParams },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 409 when adding duplicate member", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { org_id: "org-1", user_id: "u-target" } }),
+              }),
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "session_members") {
+        return {
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { code: "23505", message: "duplicate key" },
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const res = await POST(
+      makePostRequest({ user_id: "f47ac10b-58cc-4372-a567-0d02b2c3d479" }),
+      { params: mockParams },
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toContain("already a member");
+  });
+});
+
+describe("GET /api/sessions/[id]/members — edge cases", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 when user has no org", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    });
+    const res = await GET(makeGetRequest(), { params: mockParams });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns empty array when session has no members", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "org_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: "sess-1" } }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "session_members") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const res = await GET(makeGetRequest(), { params: mockParams });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
 });

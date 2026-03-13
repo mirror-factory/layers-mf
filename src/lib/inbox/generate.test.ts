@@ -430,4 +430,164 @@ describe("generateInboxForUser (integration)", () => {
     const count = await generateInboxForUser(supabase, "org-1", "user-1", new Date().toISOString());
     expect(count).toBe(0);
   });
+
+  it("returns 0 when AI generates items but all are duplicates", async () => {
+    const { generateText } = await import("ai");
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      output: [AI_GENERATED_ITEMS[0]], // just one action_item for ctx-1
+    });
+
+    const insertMock = vi.fn();
+
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "context_items") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  gte: vi.fn().mockReturnValue({
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue({ data: SEED_CONTEXT_ITEMS, error: null }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "inbox_items") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockReturnValue({
+                      lt: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                      }),
+                    }),
+                  }),
+                  in: vi.fn().mockResolvedValue({
+                    data: [{ context_item_id: "ctx-1", type: "action_item" }],
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+            insert: insertMock,
+          };
+        }
+        return {};
+      }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const count = await generateInboxForUser(supabase, "org-1", "user-1", new Date().toISOString());
+    expect(count).toBe(0);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("truncates titles longer than 255 characters", async () => {
+    const { generateText } = await import("ai");
+    const longTitle = "A".repeat(300);
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      output: [{
+        title: longTitle,
+        body: "Test body",
+        type: "new_context",
+        priority: "low",
+        context_item_id: "ctx-2",
+      }],
+    });
+
+    const insertMock = vi.fn().mockResolvedValue({ error: null });
+
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "context_items") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  gte: vi.fn().mockReturnValue({
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue({ data: SEED_CONTEXT_ITEMS, error: null }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "inbox_items") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockReturnValue({
+                      lt: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                      }),
+                    }),
+                  }),
+                  in: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+            }),
+            insert: insertMock,
+          };
+        }
+        return {};
+      }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const count = await generateInboxForUser(supabase, "org-1", "user-1", new Date().toISOString());
+    expect(count).toBe(1);
+    const insertedRows = insertMock.mock.calls[0][0];
+    expect(insertedRows[0].title.length).toBe(255);
+  });
+});
+
+describe("generateInboxItemsAI — categorization", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("handles only overdue items (no recent context)", async () => {
+    const { generateText } = await import("ai");
+    const overdueResult: GeneratedInboxItem[] = [
+      {
+        title: "OVERDUE: Review design mockups",
+        body: "Unread for over 48 hours.",
+        type: "overdue",
+        priority: "urgent",
+        context_item_id: "ctx-old",
+      },
+    ];
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({ output: overdueResult });
+
+    const result = await generateInboxItemsAI([], SEED_OVERDUE_ITEMS);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("overdue");
+    expect(result[0].priority).toBe("urgent");
+  });
+
+  it("handles only recent items (no overdue)", async () => {
+    const { generateText } = await import("ai");
+    const recentResult: GeneratedInboxItem[] = [
+      {
+        title: "New context item",
+        body: "A new item appeared.",
+        type: "new_context",
+        priority: "low",
+        context_item_id: "ctx-2",
+      },
+    ];
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({ output: recentResult });
+
+    const result = await generateInboxItemsAI(SEED_CONTEXT_ITEMS, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("new_context");
+  });
 });

@@ -250,4 +250,138 @@ describe("computeHealthSummary", () => {
     );
     expect(summary.status).toBe("warn");
   });
+
+  it("includes source KPIs in summary", () => {
+    const summary = computeHealthSummary(makeContextHealth(), makeAgentMetrics());
+    expect(summary.sources.length).toBe(3);
+  });
+
+  it("returns pass with zero agent runs and healthy context", () => {
+    const summary = computeHealthSummary(
+      makeContextHealth(),
+      makeAgentMetrics({ total_runs: 0 })
+    );
+    expect(summary.status).toBe("pass");
+    expect(summary.agent).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe("evaluateThreshold — edge cases", () => {
+  it("exact warn value is warn (gte)", () => {
+    expect(evaluateThreshold(0.85, THRESHOLDS.pipeline_success_rate)).toBe("warn");
+  });
+
+  it("exact warn value is warn (lte)", () => {
+    expect(evaluateThreshold(0.15, THRESHOLDS.error_rate)).toBe("warn");
+  });
+
+  it("value of 0 is pass for lte direction", () => {
+    expect(evaluateThreshold(0, THRESHOLDS.error_rate)).toBe("pass");
+  });
+
+  it("value of 1.0 is pass for gte direction", () => {
+    expect(evaluateThreshold(1.0, THRESHOLDS.pipeline_success_rate)).toBe("pass");
+  });
+
+  it("negative value fails for gte direction", () => {
+    expect(evaluateThreshold(-0.1, THRESHOLDS.pipeline_success_rate)).toBe("fail");
+  });
+});
+
+describe("computeContextHealthKpis — edge cases", () => {
+  it("handles all-zero pipeline data", () => {
+    const kpis = computeContextHealthKpis(
+      makeContextHealth({
+        pipeline: { total: 0, ready: 0, error: 0, pending: 0, processing: 0, success_rate: 0 },
+      })
+    );
+    const pipeline = kpis.find((k) => k.name === "Pipeline Success Rate")!;
+    expect(pipeline.status).toBe("fail");
+    expect(pipeline.value).toBe(0);
+  });
+
+  it("content completeness warns at 0.8", () => {
+    const kpis = computeContextHealthKpis(makeContextHealth({ content_completeness: 0.8 }));
+    const cc = kpis.find((k) => k.name === "Content Completeness")!;
+    expect(cc.status).toBe("warn");
+  });
+
+  it("extraction quality fails at low topics_rate", () => {
+    const kpis = computeContextHealthKpis(
+      makeContextHealth({
+        extraction_quality: {
+          has_entities: 0,
+          has_topics: 0,
+          has_action_items: 0,
+          has_people: 0,
+          has_decisions: 0,
+          ready_count: 100,
+          topics_rate: 0.3,
+        },
+      })
+    );
+    const eq = kpis.find((k) => k.name === "Extraction Quality (Topics)")!;
+    expect(eq.status).toBe("fail");
+  });
+});
+
+describe("computeSourceKpis — edge cases", () => {
+  it("returns empty array for empty sources", () => {
+    const kpis = computeSourceKpis([]);
+    expect(kpis).toHaveLength(0);
+  });
+
+  it("warns for borderline source", () => {
+    const kpis = computeSourceKpis([
+      { source_type: "email", total: 20, ready: 16, error_count: 4, pending: 0, processing: 0, success_rate: 0.8 },
+    ]);
+    expect(kpis[0].status).toBe("warn");
+  });
+});
+
+describe("computeAgentKpis — edge cases", () => {
+  it("step limit warns between thresholds", () => {
+    const kpis = computeAgentKpis(
+      makeAgentMetrics({
+        rates: { search_utilization: 0.93, no_tool: 0.02, error: 0.03, step_limit: 0.20, doc_retrieval: 0.45 },
+      })
+    );
+    const sl = kpis.find((k) => k.name === "Step Limit Rate")!;
+    expect(sl.status).toBe("warn");
+  });
+
+  it("no-tool rate fails when too high", () => {
+    const kpis = computeAgentKpis(
+      makeAgentMetrics({
+        rates: { search_utilization: 0.93, no_tool: 0.20, error: 0.03, step_limit: 0.08, doc_retrieval: 0.45 },
+      })
+    );
+    const nt = kpis.find((k) => k.name === "No-Tool Rate")!;
+    expect(nt.status).toBe("fail");
+  });
+
+  it("doc retrieval rate is always pass (informational)", () => {
+    const kpis = computeAgentKpis(
+      makeAgentMetrics({
+        rates: { search_utilization: 0.93, no_tool: 0.02, error: 0.03, step_limit: 0.08, doc_retrieval: 0.0 },
+      })
+    );
+    const dr = kpis.find((k) => k.name === "Doc Retrieval Rate")!;
+    expect(dr.status).toBe("pass");
+    expect(dr.value).toBe(0.0);
+  });
+
+  it("duration warns between thresholds", () => {
+    const kpis = computeAgentKpis(
+      makeAgentMetrics({
+        averages: { steps: 3, input_tokens: 5000, output_tokens: 1500, duration_ms: 20_000 },
+      })
+    );
+    const dur = kpis.find((k) => k.name === "Avg Duration")!;
+    expect(dur.status).toBe("warn");
+  });
 });

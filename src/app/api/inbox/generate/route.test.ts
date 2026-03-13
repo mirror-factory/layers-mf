@@ -81,4 +81,46 @@ describe("POST /api/inbox/generate", () => {
     expect(body.errors).toHaveLength(1);
     expect(body.errors[0]).toContain("AI quota exceeded");
   });
+
+  it("returns generated=0 users=0 when no org members exist", async () => {
+    // Override the mock to return empty members
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          data: [],
+          error: null,
+        }),
+      }),
+    });
+
+    const res = await POST(
+      makeRequest({ authorization: "Bearer test-secret" })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.generated).toBe(0);
+    expect(body.users).toBe(0);
+  });
+
+  it("returns 500 when members query fails", async () => {
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          data: null,
+          error: { message: "DB connection lost" },
+        }),
+      }),
+    });
+
+    const res = await POST(
+      makeRequest({ authorization: "Bearer test-secret" })
+    );
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toContain("DB connection lost");
+  });
 });
