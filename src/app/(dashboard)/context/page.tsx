@@ -28,7 +28,7 @@ export default async function ContextPage() {
     <div className="flex flex-col p-8 gap-6 min-h-screen">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Context Library</h1>
+          <h1 data-testid="context-page-heading" className="text-2xl font-semibold mb-1">Context Library</h1>
           <p className="text-muted-foreground text-sm">
             All documents, transcripts, and files available to your agents.
           </p>

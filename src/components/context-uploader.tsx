@@ -49,6 +49,7 @@ export function ContextUploader() {
   return (
     <div className="space-y-3">
       <div
+        data-testid="upload-dropzone"
         className={cn(
           "relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors",
           dragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50",
@@ -68,6 +69,7 @@ export function ContextUploader() {
         </p>
         <p className="text-xs text-muted-foreground mb-4">PDF, DOCX, TXT, or Markdown — max 10 MB</p>
         <Button
+          data-testid="upload-browse-button"
           variant="outline"
           size="sm"
           onClick={() => inputRef.current?.click()}
@@ -77,6 +79,7 @@ export function ContextUploader() {
         </Button>
         <input
           ref={inputRef}
+          data-testid="upload-file-input"
           type="file"
           accept={ACCEPTED}
           className="hidden"
@@ -85,7 +88,7 @@ export function ContextUploader() {
       </div>
 
       {message && (
-        <p className={cn("text-sm", message.ok ? "text-green-600" : "text-destructive")}>
+        <p data-testid="upload-message" className={cn("text-sm", message.ok ? "text-green-600" : "text-destructive")}>
           {message.text}
         </p>
       )}

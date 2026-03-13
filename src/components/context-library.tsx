@@ -101,7 +101,7 @@ function normalizeSource(source: string) {
 export function ContextLibrary({ items }: Props) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
+      <div data-testid="context-empty-state" className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
         <FileText className="h-12 w-12 mb-4 opacity-30" />
         <p className="text-sm font-medium text-foreground">No documents yet</p>
         <p className="text-xs mt-1 max-w-xs text-center">
@@ -241,9 +241,10 @@ export function ContextLibrary({ items }: Props) {
   const someChecked = checkedIds.size > 0;
 
   return (
-    <div className="flex h-full min-h-0 gap-0 overflow-hidden flex-col md:flex-row">
+    <div data-testid="context-library" className="flex h-full min-h-0 gap-0 overflow-hidden flex-col md:flex-row">
       {/* Left: source folders */}
       <aside
+        data-testid="context-source-sidebar"
         className={cn(
           "shrink-0 border-r bg-card flex flex-col",
           "md:w-52 md:flex",
@@ -255,6 +256,7 @@ export function ContextLibrary({ items }: Props) {
         </div>
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           <button
+            data-testid="source-filter-all"
             onClick={() => handleSourceChange("all")}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
@@ -275,6 +277,7 @@ export function ContextLibrary({ items }: Props) {
             return (
               <button
                 key={key}
+                data-testid={`source-filter-${key}`}
                 onClick={() => handleSourceChange(key)}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
@@ -306,6 +309,7 @@ export function ContextLibrary({ items }: Props) {
                 <Filter className="h-4 w-4" />
               </button>
               <Checkbox
+                data-testid="context-select-all"
                 checked={allVisibleChecked}
                 onCheckedChange={toggleAll}
                 aria-label="Select all"
@@ -317,10 +321,11 @@ export function ContextLibrary({ items }: Props) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
+              <span data-testid="context-item-count" className="text-xs text-muted-foreground">
                 {processed.length} item{processed.length !== 1 ? "s" : ""}
               </span>
               <Button
+                data-testid="context-export-button"
                 variant="outline"
                 size="icon"
                 className="h-7 w-7"
@@ -338,7 +343,7 @@ export function ContextLibrary({ items }: Props) {
               value={contentTypeFilter}
               onValueChange={(v) => { setContentTypeFilter(v); setVisibleCount(PAGE_SIZE); }}
             >
-              <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectTrigger data-testid="content-type-filter" className="h-8 w-[150px] text-xs">
                 <SelectValue placeholder="Content type" />
               </SelectTrigger>
               <SelectContent>
@@ -355,7 +360,7 @@ export function ContextLibrary({ items }: Props) {
               value={sort}
               onValueChange={(v) => { setSort(v as SortOption); setVisibleCount(PAGE_SIZE); }}
             >
-              <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectTrigger data-testid="sort-filter" className="h-8 w-[130px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -414,7 +419,7 @@ export function ContextLibrary({ items }: Props) {
               <p className="text-sm">Nothing here yet</p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div data-testid="context-items-list" className="divide-y">
               {visible.map((item) => {
                 const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
                 const StatusIcon = status.icon;
@@ -423,12 +428,14 @@ export function ContextLibrary({ items }: Props) {
                 return (
                   <div
                     key={item.id}
+                    data-testid={`context-item-${item.id}`}
                     className={cn(
                       "flex items-start gap-3 px-5 py-3.5 hover:bg-accent/30 transition-colors",
                       isChecked && "bg-primary/5",
                     )}
                   >
                     <Checkbox
+                      data-testid={`context-item-checkbox-${item.id}`}
                       checked={isChecked}
                       onCheckedChange={() => toggleItem(item.id)}
                       className="mt-0.5 shrink-0"
@@ -474,12 +481,13 @@ export function ContextLibrary({ items }: Props) {
 
         {/* Floating action bar */}
         {someChecked && (
-          <div className="border-t bg-card px-5 py-2.5 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
+          <div data-testid="bulk-action-bar" className="border-t bg-card px-5 py-2.5 flex items-center justify-between">
+            <span data-testid="bulk-selection-count" className="text-sm text-muted-foreground">
               {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
               <Button
+                data-testid="bulk-cancel-button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setCheckedIds(new Set())}
@@ -488,7 +496,7 @@ export function ContextLibrary({ items }: Props) {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" disabled={deleting}>
+                  <Button data-testid="bulk-delete-button" variant="destructive" size="sm" disabled={deleting}>
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                     Delete
                   </Button>

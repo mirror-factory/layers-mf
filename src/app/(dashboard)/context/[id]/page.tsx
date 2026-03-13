@@ -78,7 +78,7 @@ export default async function ContextDetailPage({
     (entities.decisions?.length ?? 0) > 0;
 
   return (
-    <div className="flex flex-col p-4 sm:p-8 gap-6 max-w-4xl mx-auto">
+    <div data-testid="context-detail-page" className="flex flex-col p-4 sm:p-8 gap-6 max-w-4xl mx-auto">
       {/* Back link */}
       <Link
         href="/context"
@@ -104,7 +104,7 @@ export default async function ContextDetailPage({
             {item.status}
           </Badge>
         </div>
-        <h1 className="text-2xl font-semibold">{item.title}</h1>
+        <h1 data-testid="context-detail-title" className="text-2xl font-semibold">{item.title}</h1>
         {item.description_short && (
           <p className="text-muted-foreground">{item.description_short}</p>
         )}
