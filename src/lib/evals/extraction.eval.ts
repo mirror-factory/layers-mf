@@ -140,6 +140,107 @@ describe.skipIf(!hasGatewayKey)("Extraction Eval (PROD-133)", () => {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Entity extraction coverage: people, dates, topics
+  // ---------------------------------------------------------------------------
+  it("extraction covers people entities", { timeout: 30_000 }, async () => {
+    // Pick the first transcript that has expected people
+    const transcript = TRANSCRIPTS[0];
+    const expected = EXPECTED_EXTRACTIONS.find((e) => e.id === transcript.id);
+    if (!expected) return;
+
+    const extraction = await extractStructured(
+      transcript.transcript,
+      transcript.filename
+    );
+
+    // Check that people are mentioned somewhere in the extraction output
+    const extractionText = JSON.stringify(extraction).toLowerCase();
+    let foundCount = 0;
+    for (const person of expected.people) {
+      const lastName = person.split(" ").pop()!.toLowerCase();
+      if (extractionText.includes(lastName)) {
+        foundCount++;
+      }
+    }
+
+    const personRecall = foundCount / expected.people.length;
+    console.log(
+      `\nPerson recall for ${transcript.id}: ${(personRecall * 100).toFixed(0)}% (${foundCount}/${expected.people.length})`
+    );
+    // At least 50% of expected people should appear somewhere
+    expect(personRecall).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("extraction covers topic entities", { timeout: 30_000 }, async () => {
+    const transcript = TRANSCRIPTS[0];
+    const expected = EXPECTED_EXTRACTIONS.find((e) => e.id === transcript.id);
+    if (!expected) return;
+
+    const extraction = await extractStructured(
+      transcript.transcript,
+      transcript.filename
+    );
+
+    const extractionText = JSON.stringify(extraction).toLowerCase();
+    let foundCount = 0;
+    for (const topic of expected.topics) {
+      // Check if the core keyword of the topic appears
+      const keywords = topic.toLowerCase().split(/\s+/);
+      const found = keywords.some((kw) => kw.length > 3 && extractionText.includes(kw));
+      if (found) foundCount++;
+    }
+
+    const topicRecall = foundCount / expected.topics.length;
+    console.log(
+      `\nTopic recall for ${transcript.id}: ${(topicRecall * 100).toFixed(0)}% (${foundCount}/${expected.topics.length})`
+    );
+    expect(topicRecall).toBeGreaterThanOrEqual(0.4);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Fixture diversity check
+  // ---------------------------------------------------------------------------
+  it("fixtures cover diverse content types", () => {
+    const ids = TRANSCRIPTS.map((t) => t.id);
+    const uniquePrefixes = new Set(ids.map((id) => id.split("-")[0]));
+
+    console.log(`\nFixture diversity:`);
+    console.log(`  Total transcripts: ${TRANSCRIPTS.length}`);
+    console.log(`  Unique prefixes: ${[...uniquePrefixes].join(", ")}`);
+    console.log(`  Expected extractions: ${EXPECTED_EXTRACTIONS.length}`);
+
+    // Should have at least 3 different content categories
+    expect(uniquePrefixes.size).toBeGreaterThanOrEqual(3);
+    // All transcripts should have expected extractions
+    expect(EXPECTED_EXTRACTIONS.length).toBe(TRANSCRIPTS.length);
+  });
+
+  it("expected extractions cover all entity types", () => {
+    let totalPeople = 0;
+    let totalTopics = 0;
+    let totalActions = 0;
+    let totalDecisions = 0;
+
+    for (const exp of EXPECTED_EXTRACTIONS) {
+      totalPeople += exp.people.length;
+      totalTopics += exp.topics.length;
+      totalActions += exp.action_items.length;
+      totalDecisions += exp.decisions.length;
+    }
+
+    console.log(`\nEntity coverage across all fixtures:`);
+    console.log(`  People: ${totalPeople}`);
+    console.log(`  Topics: ${totalTopics}`);
+    console.log(`  Action items: ${totalActions}`);
+    console.log(`  Decisions: ${totalDecisions}`);
+
+    expect(totalPeople).toBeGreaterThan(0);
+    expect(totalTopics).toBeGreaterThan(0);
+    expect(totalActions).toBeGreaterThan(0);
+    expect(totalDecisions).toBeGreaterThan(0);
+  });
+
   // Aggregate scoring
   it("aggregate: action item recall above baseline", () => {
     expect(results.length).toBeGreaterThan(0);
