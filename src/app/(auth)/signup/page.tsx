@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { validatePassword } from "../reset-password/password-validation";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -51,6 +52,14 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Validate password strength
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      setLoading(false);
+      return;
+    }
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -136,6 +145,11 @@ export default function SignupPage() {
                 autoComplete="new-password"
                 minLength={8}
               />
+              {password.length > 0 && validatePassword(password) && (
+                <p className="text-xs text-muted-foreground">
+                  {validatePassword(password)}
+                </p>
+              )}
             </div>
             {error && (
               <p className={cn("text-sm text-destructive")}>{error}</p>

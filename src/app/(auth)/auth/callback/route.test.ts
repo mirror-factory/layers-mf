@@ -143,4 +143,96 @@ describe("GET /auth/callback", () => {
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
   });
+
+  it("redirects with error when code is expired", async () => {
+    mockExchangeCode.mockResolvedValue({
+      error: { message: "Authorization code has expired" },
+    });
+
+    const res = await GET(makeRequest({ code: "expired-code" }));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("auth_callback_failed");
+  });
+
+  it("redirects with error when code exchange returns server error", async () => {
+    mockExchangeCode.mockResolvedValue({
+      error: { message: "server_error", status: 500 },
+    });
+
+    const res = await GET(makeRequest({ code: "server-error-code" }));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("auth_callback_failed");
+  });
+
+  it("handles user with no email gracefully (skips invitation check)", async () => {
+    mockExchangeCode.mockResolvedValue({ error: null });
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-1", email: null } },
+    });
+
+    const res = await GET(makeRequest({ code: "valid-code" }));
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+    // Should NOT have called adminFrom since user has no email
+    expect(mockAdminFrom).not.toHaveBeenCalled();
+  });
+
+  it("handles getUser returning null user gracefully", async () => {
+    mockExchangeCode.mockResolvedValue({ error: null });
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+
+    const res = await GET(makeRequest({ code: "valid-code" }));
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+    expect(mockAdminFrom).not.toHaveBeenCalled();
+  });
+
+  it("handles invitation acceptance failure gracefully (still redirects)", async () => {
+    mockExchangeCode.mockResolvedValue({ error: null });
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-1", email: "test@test.com" } },
+    });
+    mockAdminFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            data: [{ id: "inv-1" }],
+          }),
+        }),
+      }),
+    });
+    mockRpc.mockResolvedValue({ error: { message: "RPC failed" } });
+
+    const res = await GET(makeRequest({ code: "valid-code" }));
+    // Should still redirect successfully even if invitation acceptance fails
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+  });
+
+  it("handles invitation query failure gracefully (still redirects)", async () => {
+    mockExchangeCode.mockResolvedValue({ error: null });
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "u-1", email: "test@test.com" } },
+    });
+    mockAdminFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "DB error" },
+          }),
+        }),
+      }),
+    });
+
+    const res = await GET(makeRequest({ code: "valid-code" }));
+    // Should still redirect even if invitation query fails
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
 });
