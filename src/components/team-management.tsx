@@ -124,7 +124,7 @@ export function TeamManagement({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="team-management">
       {/* Members */}
       <Card>
         <CardHeader>
@@ -134,11 +134,12 @@ export function TeamManagement({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="member-list">
             {members.map((m) => (
               <div
                 key={m.id}
                 className="flex items-center justify-between gap-4 py-2"
+                data-testid="member-row"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-sm truncate">{m.email}</span>
@@ -213,7 +214,7 @@ export function TeamManagement({
                   <SelectItem value="member">Member</SelectItem>
                 </SelectContent>
               </Select>
-              <Button type="submit" disabled={inviting}>
+              <Button type="submit" disabled={inviting} data-testid="invite-btn">
                 {inviting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (

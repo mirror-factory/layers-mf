@@ -40,7 +40,7 @@ export default function AuditPage() {
   }, [offset, fetchEntries]);
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-5xl" data-testid="audit-page">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-1">Audit Log</h1>
         <p className="text-muted-foreground text-sm">
@@ -61,7 +61,7 @@ export default function AuditPage() {
       ) : (
         <>
           <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-testid="audit-table">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Action</th>

@@ -82,7 +82,7 @@ export function ProfileSettings({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="profile-settings">
       {/* Profile */}
       <Card>
         <CardHeader>
@@ -93,7 +93,7 @@ export function ProfileSettings({
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" value={email} disabled />
+              <Input id="email" value={email} disabled data-testid="profile-email" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="displayName">Display name</Label>
@@ -103,10 +103,11 @@ export function ProfileSettings({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
                 required
+                data-testid="profile-display-name"
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving} data-testid="profile-save-btn">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save
             </Button>
