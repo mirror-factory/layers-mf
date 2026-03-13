@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { createTools } from "./tools";
 
-// Mock searchContext
+// Mock searchContext and searchContextChunks
 vi.mock("@/lib/db/search", () => ({
+  searchContextChunks: vi.fn().mockResolvedValue([]),
   searchContext: vi.fn().mockResolvedValue([
     {
       id: "doc-1",

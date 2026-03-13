@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockFrom } = vi.hoisted(() => ({
+const { mockFrom, mockInngestSend } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
+  mockInngestSend: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: vi.fn(() => ({ from: mockFrom })),
+}));
+
+vi.mock("@/lib/inngest/client", () => ({
+  inngest: { send: mockInngestSend },
 }));
 
 import { POST } from "./route";
@@ -114,15 +119,17 @@ describe("POST /api/webhooks/ingest", () => {
     );
 
     expect(mockFrom).toHaveBeenCalledWith("context_items");
-    expect(insertMock).toHaveBeenCalledWith({
-      org_id: "org-1",
-      title: "Zap Doc",
-      raw_content: "body text",
-      source_type: "zapier",
-      content_type: "document",
-      status: "pending",
-      source_metadata: metadata,
-    });
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        org_id: "org-1",
+        title: "Zap Doc",
+        raw_content: "body text",
+        source_type: "zapier",
+        content_type: "document",
+        status: "pending",
+        source_metadata: metadata,
+      })
+    );
   });
 
   it("returns 500 when database insert fails", async () => {

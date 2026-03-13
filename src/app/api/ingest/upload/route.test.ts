@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetUser, mockFrom, mockParseFile, mockExtract, mockEmbed, mockCreateInbox } =
+const { mockGetUser, mockFrom, mockParseFile, mockInngestSend } =
   vi.hoisted(() => ({
     mockGetUser: vi.fn(),
     mockFrom: vi.fn(),
     mockParseFile: vi.fn(),
-    mockExtract: vi.fn(),
-    mockEmbed: vi.fn(),
-    mockCreateInbox: vi.fn(),
+    mockInngestSend: vi.fn().mockResolvedValue(undefined),
   }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -21,16 +19,12 @@ vi.mock("@/lib/ingest/parse", () => ({
   parseFile: mockParseFile,
 }));
 
-vi.mock("@/lib/ai/extract", () => ({
-  extractStructured: mockExtract,
+vi.mock("@/lib/inngest/client", () => ({
+  inngest: { send: mockInngestSend },
 }));
 
-vi.mock("@/lib/ai/embed", () => ({
-  generateEmbedding: mockEmbed,
-}));
-
-vi.mock("@/lib/inbox", () => ({
-  createInboxItems: mockCreateInbox,
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimit: vi.fn().mockReturnValue({ success: true }),
 }));
 
 import { POST } from "./route";
@@ -79,12 +73,6 @@ function mockAuthenticated(orgId = "org-1") {
   });
 }
 
-const sampleExtraction = {
-  title: "Q3 Report",
-  description_short: "Quarterly report",
-  description_long: "Full quarterly performance report",
-  entities: { people: [], topics: ["finance"], action_items: [], decisions: [] },
-};
 
 describe("POST /api/ingest/upload", () => {
   beforeEach(() => {
@@ -147,31 +135,19 @@ describe("POST /api/ingest/upload", () => {
     expect(body.error).toBe("Unsupported format");
   });
 
-  it("returns 200 with status ready on successful upload", async () => {
+  it("returns 202 with status accepted on successful upload", async () => {
     mockAuthenticated();
     mockParseFile.mockResolvedValue({ text: "parsed content", contentType: "document" });
-    mockExtract.mockResolvedValue(sampleExtraction);
-    mockEmbed.mockResolvedValue([0.1, 0.2, 0.3]);
-    mockCreateInbox.mockResolvedValue(undefined);
 
     const file = new File(["hello world"], "report.txt", { type: "text/plain" });
     const res = await POST(makeUploadRequest(file));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const body = await res.json();
-    expect(body).toEqual({ id: "ci-1", status: "ready" });
-  });
-
-  it("returns 207 when AI processing fails after insert", async () => {
-    mockAuthenticated();
-    mockParseFile.mockResolvedValue({ text: "parsed content", contentType: "document" });
-    mockExtract.mockRejectedValue(new Error("AI unavailable"));
-
-    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
-    const res = await POST(makeUploadRequest(file));
-    expect(res.status).toBe(207);
-    const body = await res.json();
-    expect(body.id).toBe("ci-1");
-    expect(body.status).toBe("error");
+    expect(body).toEqual({ id: "ci-1", status: "accepted" });
+    expect(mockInngestSend).toHaveBeenCalledWith({
+      name: "context/item.created",
+      data: { contextItemId: "ci-1", orgId: "org-1" },
+    });
   });
 
   it("inserts context_item with correct fields", async () => {
@@ -202,20 +178,19 @@ describe("POST /api/ingest/upload", () => {
     });
 
     mockParseFile.mockResolvedValue({ text: "meeting notes content", contentType: "meeting_transcript" });
-    mockExtract.mockResolvedValue(sampleExtraction);
-    mockEmbed.mockResolvedValue([0.1, 0.2]);
-    mockCreateInbox.mockResolvedValue(undefined);
 
     const file = new File(["meeting notes"], "meeting.txt", { type: "text/plain" });
     await POST(makeUploadRequest(file));
 
-    expect(insertMock).toHaveBeenCalledWith({
-      org_id: "org-1",
-      source_type: "upload",
-      title: "meeting.txt",
-      raw_content: "meeting notes content",
-      content_type: "meeting_transcript",
-      status: "processing",
-    });
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        org_id: "org-1",
+        source_type: "upload",
+        title: "meeting.txt",
+        raw_content: "meeting notes content",
+        content_type: "meeting_transcript",
+        status: "pending",
+      })
+    );
   });
 });
