@@ -2,11 +2,11 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User,
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
-  LayoutGrid,
+  LayoutGrid, ThumbsUp, ThumbsDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -134,6 +134,142 @@ function ToolCallCard({ part }: { part: ToolPart }) {
   );
 }
 
+const FEEDBACK_REASONS = [
+  { value: "wrong_answer", label: "Wrong answer" },
+  { value: "wrong_source", label: "Wrong source" },
+  { value: "outdated", label: "Outdated info" },
+  { value: "missing_context", label: "Missing context" },
+] as const;
+
+function MessageFeedback({
+  messageId,
+  conversationId,
+}: {
+  messageId: string;
+  conversationId?: string | null;
+}) {
+  const [selected, setSelected] = useState<"positive" | "negative" | null>(null);
+  const [showReasons, setShowReasons] = useState(false);
+  const [thanksVisible, setThanksVisible] = useState(false);
+
+  const submitFeedback = useCallback(
+    async (feedback: "positive" | "negative", reason?: string) => {
+      try {
+        await fetch("/api/chat/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageId,
+            conversationId: conversationId ?? null,
+            feedback,
+            reason: reason ?? null,
+          }),
+        });
+      } catch {
+        // fire and forget
+      }
+    },
+    [messageId, conversationId]
+  );
+
+  const handleThumbsUp = useCallback(() => {
+    if (selected) return;
+    setSelected("positive");
+    setShowReasons(false);
+    setThanksVisible(true);
+    submitFeedback("positive");
+    setTimeout(() => setThanksVisible(false), 2000);
+  }, [selected, submitFeedback]);
+
+  const handleThumbsDown = useCallback(() => {
+    if (selected) return;
+    setSelected("negative");
+    setShowReasons(true);
+  }, [selected]);
+
+  const handleReason = useCallback(
+    (reason: string) => {
+      setShowReasons(false);
+      setThanksVisible(true);
+      submitFeedback("negative", reason);
+      setTimeout(() => setThanksVisible(false), 2000);
+    },
+    [submitFeedback]
+  );
+
+  const handleSkipReason = useCallback(() => {
+    setShowReasons(false);
+    setThanksVisible(true);
+    submitFeedback("negative");
+    setTimeout(() => setThanksVisible(false), 2000);
+  }, [submitFeedback]);
+
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      <div className={cn("flex items-center gap-0.5", !selected && "md:opacity-0 md:group-hover:opacity-100 transition-opacity")}>
+        <button
+          type="button"
+          onClick={handleThumbsUp}
+          disabled={!!selected}
+          className={cn(
+            "p-1 rounded hover:bg-accent transition-colors",
+            selected === "positive"
+              ? "text-green-600 dark:text-green-400"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+          aria-label="Thumbs up"
+          data-testid="feedback-thumbs-up"
+        >
+          <ThumbsUp className={cn("h-3.5 w-3.5", selected === "positive" && "fill-current")} />
+        </button>
+        <button
+          type="button"
+          onClick={handleThumbsDown}
+          disabled={!!selected}
+          className={cn(
+            "p-1 rounded hover:bg-accent transition-colors",
+            selected === "negative"
+              ? "text-red-600 dark:text-red-400"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+          aria-label="Thumbs down"
+          data-testid="feedback-thumbs-down"
+        >
+          <ThumbsDown className={cn("h-3.5 w-3.5", selected === "negative" && "fill-current")} />
+        </button>
+      </div>
+
+      {showReasons && (
+        <div className="flex items-center gap-1 flex-wrap" data-testid="feedback-reasons">
+          {FEEDBACK_REASONS.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => handleReason(r.value)}
+              className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              {r.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleSkipReason}
+            className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+          >
+            Skip
+          </button>
+        </div>
+      )}
+
+      {thanksVisible && (
+        <span className="text-[10px] text-muted-foreground animate-in fade-in">
+          Thanks for feedback
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface ChatInterfaceProps {
   conversationId?: string | null;
 }
@@ -237,8 +373,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
             if (!text && toolParts.length === 0 && m.role !== "user") return null;
 
+            const isLastAssistant =
+              m.role === "assistant" &&
+              m === messages.filter((msg) => msg.role === "assistant").at(-1);
+            const isStreaming = isLastAssistant && isLoading;
+
             return (
-              <div key={m.id} data-testid={m.role === "user" ? "user-message" : "assistant-message"} className={cn("flex gap-3", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+              <div key={m.id} data-testid={m.role === "user" ? "user-message" : "assistant-message"} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 <div
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
@@ -277,6 +418,14 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   {/* Source citations */}
                   {sources.length > 0 && (
                     <SourceCitation sources={sources} />
+                  )}
+
+                  {/* Feedback buttons — assistant messages only, not while streaming */}
+                  {m.role === "assistant" && !isStreaming && text && (
+                    <MessageFeedback
+                      messageId={m.id}
+                      conversationId={conversationId}
+                    />
                   )}
                 </div>
               </div>

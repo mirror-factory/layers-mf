@@ -55,6 +55,7 @@ interface ContextItem {
   content_type: string;
   status: string;
   ingested_at: string;
+  user_tags?: string[] | null;
 }
 
 interface Props {
@@ -453,9 +454,16 @@ export function ContextLibrary({ items }: Props) {
                             {item.description_short}
                           </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {item.content_type.replace(/_/g, " ")} · {new Date(item.ingested_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            {item.content_type.replace(/_/g, " ")} · {new Date(item.ingested_at).toLocaleDateString()}
+                          </p>
+                          {item.user_tags && item.user_tags.length > 0 && item.user_tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                       <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-1", status.className)} />
                     </Link>

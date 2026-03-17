@@ -18,7 +18,7 @@ export default async function ContextPage() {
   const { data: items } = member
     ? await supabase
         .from("context_items")
-        .select("id, title, description_short, source_type, content_type, status, ingested_at")
+        .select("id, title, description_short, source_type, content_type, status, ingested_at, user_tags")
         .eq("org_id", member.org_id)
         .order("ingested_at", { ascending: false })
         .limit(200)

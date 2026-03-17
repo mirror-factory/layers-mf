@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContextAnnotations } from "@/components/context-annotations";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -56,7 +57,7 @@ export default async function ContextDetailPage({
   const { data: item } = await supabase
     .from("context_items")
     .select(
-      "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at",
+      "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
     )
     .eq("id", id)
     .eq("org_id", member.org_id)
@@ -104,7 +105,12 @@ export default async function ContextDetailPage({
             {item.status}
           </Badge>
         </div>
-        <h1 data-testid="context-detail-title" className="text-2xl font-semibold">{item.title}</h1>
+        <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
+          {item.user_title ?? item.title}
+        </h1>
+        {item.user_title && (
+          <p className="text-sm text-muted-foreground">Original: {item.title}</p>
+        )}
         {item.description_short && (
           <p className="text-muted-foreground">{item.description_short}</p>
         )}
@@ -167,6 +173,16 @@ export default async function ContextDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* User Annotations */}
+      <ContextAnnotations
+        itemId={item.id}
+        userTitle={item.user_title ?? null}
+        userNotes={item.user_notes ?? null}
+        userTags={item.user_tags ?? []}
+        trustWeight={item.trust_weight ?? 1.0}
+        aiTitle={item.title}
+      />
     </div>
   );
 }
