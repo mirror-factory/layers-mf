@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Calendar,
   Rocket,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -358,6 +359,21 @@ const SECTIONS: FeatureSection[] = [
         description:
           "Handles checkout completions, subscription changes, payment failures. Credits added automatically.",
       },
+      {
+        title: "Usage History",
+        description:
+          "Track AI operation history with period toggle (today/week/month). Breakdown by operation type and model. Token counts, credit costs, and estimated USD.",
+      },
+      {
+        title: "Credit Balance in Sidebar",
+        description:
+          "Real-time credit balance display in sidebar navigation. Yellow warning at <50 credits, red at <10 with 'Upgrade' prompt.",
+      },
+      {
+        title: "Credit Deduction",
+        description:
+          "Automatic credit deduction on every AI call — chat (1), extraction (2), embedding (0.5). 402 response when insufficient. Per-item deduction during sync.",
+      },
     ],
   },
   {
@@ -375,6 +391,16 @@ const SECTIONS: FeatureSection[] = [
         description:
           "Search utilization, error rates, latency. Every chat request logged with model, tokens, duration.",
       },
+      {
+        title: "Webhook Health",
+        description:
+          "Per-provider webhook delivery stats — success rate, last received, avg/day. Alerts when a provider goes silent for 24+ hours.",
+      },
+      {
+        title: "Content Health Dashboard",
+        description:
+          "Knowledge base health score (0-100). Freshness breakdown (fresh/aging/stale/very-stale), per-source and per-type metrics, stale items list with action recommendations.",
+      },
     ],
   },
   {
@@ -391,6 +417,21 @@ const SECTIONS: FeatureSection[] = [
         title: "Team Management",
         description:
           "Owner/admin/member roles, email invitations, profile settings, paginated audit log.",
+      },
+      {
+        title: "Organization Settings",
+        description:
+          "Edit org name, view stats (members, items, integrations). Danger zone with typed-confirmation delete for owners only.",
+      },
+      {
+        title: "Rate Limiting",
+        description:
+          "Per-org tier-based rate limits — free (50/hr), starter (500/hr), pro (5000/hr). Standard X-RateLimit headers. 429 with retry-after.",
+      },
+      {
+        title: "Webhook Verification",
+        description:
+          "HMAC-SHA256 for Linear and Nango, Ed25519 for Discord, Stripe signature verification. Idempotency dedup prevents duplicate processing.",
       },
     ],
   },
@@ -439,6 +480,94 @@ const SECTIONS: FeatureSection[] = [
         title: "CI Pipeline",
         description:
           "GitHub Actions: typecheck + lint + test on every PR. Husky pre-commit hooks. Zero TODO/FIXME in codebase.",
+      },
+    ],
+  },
+  {
+    icon: Bell,
+    title: "Notifications & Digest",
+    subtitle: "Morning digest, notification preferences, and email delivery",
+    features: [
+      {
+        title: "Daily Digest Email",
+        description:
+          "Morning email summarizing new content, action items, and overdue tasks. Generated via cron at 7 AM. Preview available in-app.",
+      },
+      {
+        title: "Notification Preferences",
+        description:
+          "Per-user settings: toggle daily digest, mention alerts, action item alerts, new context alerts, weekly summary. Custom digest delivery time.",
+      },
+      {
+        title: "Digest Preview",
+        description:
+          "Preview your morning digest in-app before it sends. See exactly what would be emailed with real data from the last 24 hours.",
+      },
+    ],
+  },
+  {
+    icon: Code2,
+    title: "Developer Experience",
+    subtitle:
+      "63 API endpoints, keyboard shortcuts, command palette, and export",
+    features: [
+      {
+        title: "63 API Endpoints",
+        description:
+          "Comprehensive API across 13 categories — chat, context, sessions, inbox, integrations, billing, settings, analytics, webhooks. Full docs at /api-docs.",
+      },
+      {
+        title: "Command Palette",
+        description:
+          "Cmd+K opens 20 navigation commands with keyword search. Quick actions: upload document, new session, connect integration.",
+      },
+      {
+        title: "Keyboard Shortcuts",
+        description:
+          "? opens shortcut reference. G+H/C/S/I/A for two-key navigation. Shortcut hints in command palette.",
+      },
+      {
+        title: "Export System",
+        description:
+          "Export context items, sessions, or search results as Markdown or JSON. Download files with proper formatting and metadata.",
+      },
+      {
+        title: "SEO & Metadata",
+        description:
+          "Title templates on all 32 pages, Open Graph tags, robots noindex until launch. Custom error and 404 pages.",
+      },
+      {
+        title: "Mobile Responsive",
+        description:
+          "Chat and session workspace sidebars collapse to slide-out drawers. Consistent padding, horizontal table scroll, responsive grids across all pages.",
+      },
+    ],
+  },
+  {
+    icon: Sparkles,
+    title: "Session Intelligence",
+    subtitle:
+      "AI-powered insights and cross-source connection discovery",
+    features: [
+      {
+        title: "Session Insights",
+        description:
+          "AI-generated insights surfaced in session workspace — new content alerts, cross-source connections, contradictions, action items. Dismiss or pin per insight.",
+      },
+      {
+        title: "Cross-Source Connections",
+        description:
+          "AI finds relationships between items from different sources. Types: supports, contradicts, extends, updates, depends_on. Auto-generates session insights.",
+      },
+      {
+        title: "Entity Visualization",
+        description:
+          "Interactive entity chips on context detail pages — people (blue), topics (purple), decisions (amber), projects (green). Click to search across library.",
+      },
+      {
+        title: "Saved Searches",
+        description:
+          "Save search queries with filters as named quick-access chips in the context library. Share with team or keep personal.",
       },
     ],
   },

@@ -252,14 +252,14 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const response = createAgentUIStreamResponse({
+  const response = await createAgentUIStreamResponse({
     agent,
     uiMessages,
   });
 
   // Attach rate limit headers to the streaming response
-  const headers = rateLimitHeaders(rateLimitResult);
-  for (const [key, value] of Object.entries(headers)) {
+  const rlHeaders = rateLimitHeaders(rateLimitResult);
+  for (const [key, value] of Object.entries(rlHeaders)) {
     response.headers.set(key, value);
   }
 
