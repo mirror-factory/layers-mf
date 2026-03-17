@@ -30,6 +30,8 @@ interface Issue {
 
 interface Sprint {
   name: string;
+  /** Summary of what the sprint covered */
+  description?: string;
   /** If set the sprint is collapsed and shows this description instead */
   archived?: string;
   archivedLink?: string;
@@ -38,8 +40,26 @@ interface Sprint {
 
 const SPRINTS: Sprint[] = [
   {
-    name: "Sprint 1-3 — Prototype (Archived in PROD-127)",
-    archived: "All 70 issues archived. See PROD-127 for full list.",
+    name: "Sprint 1 — Foundation + Context Library (Mar 5-8)",
+    description:
+      "Built the entire foundation: Next.js 16 app with Supabase (18 migrations), full auth system (login, signup, OAuth, password reset), context library with file upload (PDF, DOCX, TXT, MD), 7-step Inngest AI pipeline (extract → chunk → embed → inbox → link), 4-step onboarding flow, and the core database schema (organizations, context_items with pgvector, sessions, inbox_items, action_items, audit_log).",
+    archived: "22 issues archived in PROD-127.",
+    archivedLink: "https://linear.app/mirror-factory/issue/PROD-127",
+    issues: [],
+  },
+  {
+    name: "Sprint 2 — Integrations + Chat (Mar 9-11)",
+    description:
+      "Connected 4 external tools via Nango: Google Drive (push notifications, incremental sync), Linear (GraphQL, HMAC webhooks), Discord (Ed25519 webhooks, message batching), and Granola (webhook daemon). Built the full chat interface with ToolLoopAgent, hybrid search (vector + full-text with RRF), multi-model selector (Haiku/Sonnet/Opus/GPT-4o/Gemini), source citations, tool call panels, and multi-conversation support with AI Elements UI.",
+    archived: "24 issues archived in PROD-127.",
+    archivedLink: "https://linear.app/mirror-factory/issue/PROD-127",
+    issues: [],
+  },
+  {
+    name: "Sprint 3 — Inbox + Sessions + Team + Billing + Testing (Mar 12-16)",
+    description:
+      "Shipped inbox (AI-driven prioritization, extraction-based items, deduplication), sessions (CRUD, scoped chat, auto-linking via AI), team management (roles, invitations, profile settings, audit log), Stripe billing (3 credit packages, webhooks), analytics dashboard (KPIs, agent metrics, context health), actions page, API docs, command palette, breadcrumbs, theme toggle, error boundaries, and a comprehensive testing overhaul — 492 unit tests, 13 E2E specs, 5 AI eval suites (extraction, retrieval, agent, performance, context health).",
+    archived: "54 issues (including 11 testing epics + 18 sub-tasks) archived in PROD-127.",
     archivedLink: "https://linear.app/mirror-factory/issue/PROD-127",
     issues: [],
   },
@@ -296,20 +316,27 @@ export default function IssuesPage() {
           </CardHeader>
           <CardContent>
             {sprint.archived ? (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <Archive className="h-4 w-4 shrink-0" />
-                <span>{sprint.archived}</span>
-                {sprint.archivedLink && (
-                  <a
-                    href={sprint.archivedLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    View on Linear
-                  </a>
+              <div className="space-y-3">
+                {sprint.description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {sprint.description}
+                  </p>
                 )}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t">
+                  <Archive className="h-3.5 w-3.5 shrink-0" />
+                  <span>{sprint.archived}</span>
+                  {sprint.archivedLink && (
+                    <a
+                      href={sprint.archivedLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View on Linear
+                    </a>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto -mx-6 px-6">
