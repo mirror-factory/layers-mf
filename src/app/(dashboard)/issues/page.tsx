@@ -64,7 +64,9 @@ const SPRINTS: Sprint[] = [
     issues: [],
   },
   {
-    name: "Sprint 4 — Production Readiness",
+    name: "Sprint 4 — Production Readiness (Mar 17)",
+    description:
+      "Everything needed to go live: credit deduction middleware enforcing credits on every AI call (chat, extraction, embedding), usage logging tracking tokens/cost/credits per operation, per-org tier-based rate limiting (free 50/hr, starter 500, pro 5000) with standard headers, usage history UI with period toggle and model breakdown, webhook idempotency preventing duplicate processing across all providers, Nango HMAC signature verification, selective sync config letting users choose which channels/repos/folders to sync, production setup documentation with full checklist, and E2E tests for billing, settings, and all 32 pages.",
     issues: [
       { id: "PROD-222", title: "Credit deduction middleware", status: "Done", linearUrl: "https://linear.app/mirror-factory/issue/PROD-222" },
       { id: "PROD-223", title: "Usage logging on AI calls", status: "Done", linearUrl: "https://linear.app/mirror-factory/issue/PROD-223" },
@@ -85,7 +87,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Sprint 5 — Integrations Expansion",
+    name: "Sprint 5 — Integrations Expansion (Mar 17)",
+    description:
+      "Extended the platform with notification preferences (per-user toggles for digest, mentions, action items with time picker), daily digest email system (generation utility, HTML template, cron at 7 AM, in-app preview), SEO metadata on all 32 pages with OG tags, mobile responsive polish (chat and session sidebars become slide-out drawers, consistent padding across all settings pages, horizontal table scroll), custom error/404 pages, command palette expanded to 20 commands with keyword search, API docs expanded from ~30 to 63 endpoints across 13 categories, and webhook health dashboard showing per-provider delivery stats with silence alerts.",
     issues: [
       { id: null, title: "Notification preferences + settings page", status: "Done", linearUrl: null },
       { id: null, title: "Daily digest email generation + preview", status: "Done", linearUrl: null },
@@ -95,7 +99,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Sprint 6 — Session Agents + Monitoring",
+    name: "Sprint 6 — Session Agents + Monitoring (Mar 17)",
+    description:
+      "AI-powered session intelligence: session insights surface cross-source connections, contradictions, and new content alerts directly in the workspace sidebar. Cross-source connection finder uses AI to detect relationships between items from different tools (supports, contradicts, extends, updates, depends_on) and auto-generates insights. Also shipped org settings with danger zone delete, saved searches with team sharing and chip UI, interactive entity visualization (click people/topics/decisions to search), Markdown/JSON export on context detail, library, and session pages, and keyboard shortcuts panel with two-key navigation sequences.",
     issues: [
       { id: null, title: "Session insights data model + API + UI", status: "Done", linearUrl: null },
       { id: null, title: "Cross-source connection finder (AI)", status: "Done", linearUrl: null },
@@ -107,7 +113,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Context Engineering Architecture",
+    name: "Context Engineering Architecture (Mar 17)",
+    description:
+      "Fundamental rearchitecture of how Layers handles content. Phase 1: versioning schema with append-only history table (no embeddings stored = 80% storage savings), user overlay columns that sync never overwrites. Phase 2: SHA-256 content hashing with field-level diff — skips re-embedding on metadata-only changes, saving AI credits. Phase 3: weekly rolling windows for Slack/Discord messages — no more data loss on re-sync. Phase 4: source trust weighting (sliders 0.1-2.0), user annotations, chat feedback. Phase 5: multi-query expansion, trust-weighted ranking, freshness decay with content-type-specific half-lives. Phase 6: version history timeline UI, content health dashboard (0-100 score). Backed by 628-line architecture doc with diagrams.",
     issues: [
       { id: null, title: "Phase 1: Schema — versioning columns + versions table", status: "Done", linearUrl: null },
       { id: null, title: "Phase 2: Change detection — SHA-256 hashing + field diff", status: "Done", linearUrl: null },
@@ -119,7 +127,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Integration Overhaul",
+    name: "Integration Overhaul (Mar 17)",
+    description:
+      "Complete overhaul of the integration system. SSE streaming replaces the old spinner with real-time per-item progress bars and elapsed time. Google Drive expanded from 3 Google-native types to 8 (added PDFs via pdf-parse, DOCX via mammoth, XLSX, TXT, Markdown, CSV). Slack and GitHub limits significantly increased. Nango webhook handler rebuilt as primary ingestion path with 6 provider-specific data mappers and idempotent dedup. Background sync trigger API enables non-blocking sync. Integration catalog page documents every provider's content types, capabilities, and limits. Onboarding updated with all 6 active providers plus Coming Soon badges.",
     issues: [
       { id: null, title: "SSE streaming sync progress", status: "Done", linearUrl: null },
       { id: null, title: "Google Drive expanded (PDFs, DOCX, XLSX, TXT, MD, CSV)", status: "Done", linearUrl: null },
@@ -133,7 +143,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Super-Admin Platform",
+    name: "Super-Admin Platform (Mar 17)",
+    description:
+      "Platform-level configuration for the CTO. Model pricing table with actual costs from Vercel AI Gateway (30+ models). Credit configuration with editable USD-per-credit rate and profit margin slider (0-100%) with live preview showing cost vs revenue. Credit packages editor (add/remove tiers, set Stripe price IDs). Platform stats dashboard showing total orgs, users, items, credits used, and cost-vs-revenue breakdown. Dynamic credit costs read from DB with 5-minute cache — change pricing without code deploys. Nango CLI initialized with 6 pre-built integration templates ready to customize.",
     issues: [
       { id: null, title: "Platform config table (model pricing, credits, packages)", status: "Done", linearUrl: null },
       { id: null, title: "Admin config API (super-admin gated)", status: "Done", linearUrl: null },
@@ -144,14 +156,18 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Presentation",
+    name: "Presentation (Mar 17)",
+    description:
+      "Board-ready presentation pages with GSAP scroll animations. Features page shows 91 features across 16 categories with animated counters, sprint timeline (9 sprints with progress bar), honest assessment (strengths + risks with severity), success metrics, and P4 backlog. Use cases page has 6 interactive walkthroughs with animated flow diagrams — morning briefing, cross-source search, sprint management, team onboarding, post-meeting pipeline, and weekly leadership review — plus an animated data flow diagram showing the full ingestion-to-retrieval pipeline.",
     issues: [
       { id: null, title: "Features page (91 features, 16 categories, GSAP animations)", status: "Done", linearUrl: null },
       { id: null, title: "Use cases page (6 walkthroughs + data flow diagram)", status: "Done", linearUrl: null },
     ],
   },
   {
-    name: "Sprint 7 — Ditto Personalization (Upcoming)",
+    name: "Sprint 7 — Ditto Personalization (Upcoming, Apr 28-May 9)",
+    description:
+      "Each user gets a personal AI agent called Ditto that learns their preferences. Track what they search, click, and dismiss to build a preference vector. Weekly Inngest cron generates a Ditto profile (interests, working hours, communication style, priority topics). Profile influences inbox ranking and search boost — users who click Linear issues often see Linear content ranked higher. Ditto profile page shows learned preferences with manual override controls. 'For You' widget on the dashboard proactively suggests relevant content. Chat personality adapts to user preference (formal/casual, brief/detailed). Foundation already laid: trust weighting, annotations, and feedback signals are live.",
     issues: [
       { id: "PROD-168", title: "Ditto personal AI agent", status: "Backlog", linearUrl: "https://linear.app/mirror-factory/issue/PROD-168" },
       { id: null, title: "User interaction tracking", status: "Planned", linearUrl: null },
@@ -166,7 +182,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Sprint 8 — Self-Service (Upcoming)",
+    name: "Sprint 8 — Self-Service + External Teams (Upcoming, May 12-23)",
+    description:
+      "Open Layers to external teams. Public signup flow with plan selection (Free: 50 credits/mo, Starter: 500, Pro: 5000). Stripe subscriptions with proration on plan changes. Monthly credit reset cron with carry-over (up to 2x monthly allocation). Organization settings expansion (slug, billing email, data export). API key management for programmatic access. Plan selection page with feature comparison table. Landing page for unauthenticated users with hero, feature highlights, and CTA. Success metric: first external team signs up and reaches active use within 48 hours.",
     issues: [
       { id: null, title: "Public signup with plan selection", status: "Planned", linearUrl: null },
       { id: null, title: "Subscription management API", status: "Planned", linearUrl: null },
@@ -178,7 +196,9 @@ const SPRINTS: Sprint[] = [
     ],
   },
   {
-    name: "Sprint 9 — Canvas + Polish (Upcoming)",
+    name: "Sprint 9 — Canvas UI + Polish (Upcoming, May 26-Jun 5)",
+    description:
+      "Spatial canvas workspace for visual content exploration. Drag context items onto an infinite pan/zoom canvas, resize and reposition, draw connections between related items. AI auto-layout groups items by topic clusters using embedding similarity. PDF export for sharing. Final UX polish pass across every page (spacing, typography, color consistency). Accessibility audit (ARIA labels, focus management, contrast). Onboarding improvements based on user feedback. Comprehensive user guide documentation. Full regression E2E suite on production. Launch checklist (security audit, monitoring, backups, incident runbook). Target: 3-5 external teams actively using Layers.",
     issues: [
       { id: null, title: "Canvas data model + API", status: "Planned", linearUrl: null },
       { id: null, title: "Canvas workspace UI (drag/zoom)", status: "Planned", linearUrl: null },
