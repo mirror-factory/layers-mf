@@ -46,7 +46,7 @@ const CATEGORIES: Category[] = [
         method: "POST",
         path: "/api/chat",
         description:
-          "Send a message and receive a streamed AI response with tool calling (search_context, get_document).",
+          "Send a message and receive a streamed AI response with tool calling (search_context, get_document). Supports multi-model routing.",
         auth: "session",
         rateLimit: "10 req / 60s per user",
         body: {
@@ -55,6 +55,20 @@ const CATEGORIES: Category[] = [
           "conversationId? (string | null)": "Optional conversation to continue.",
         },
         response: "Server-Sent Event stream (AI response)",
+      },
+      {
+        method: "POST",
+        path: "/api/chat/feedback",
+        description:
+          "Submit feedback on an AI chat response. Logs to audit trail for quality monitoring.",
+        auth: "session",
+        body: {
+          "messageId (string)": "Required. ID of the message to rate.",
+          'feedback ("positive" | "negative")': "Required. Feedback type.",
+          'reason? ("wrong_answer" | "wrong_source" | "outdated" | "missing_context")': "Optional reason for negative feedback.",
+          "conversationId? (string)": "Optional conversation reference.",
+        },
+        response: "{ success: true }",
       },
       {
         method: "GET",
@@ -125,10 +139,52 @@ const CATEGORIES: Category[] = [
         method: "GET",
         path: "/api/context/[id]",
         description:
-          "Fetch full context item details including raw content and entities.",
+          "Fetch full context item details including raw content, entities, and processing status.",
         auth: "session",
         response:
-          "{ id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at }",
+          "{ id, title, description_short, description_long, source_type, source_id, content_type, raw_content, entities, status, ingested_at, processed_at }",
+      },
+      {
+        method: "GET",
+        path: "/api/context/[id]/annotations",
+        description:
+          "Get user annotations for a context item (custom title, notes, tags, trust weight).",
+        auth: "session",
+        response:
+          "{ user_title, user_notes, user_tags: string[], trust_weight: number }",
+      },
+      {
+        method: "PATCH",
+        path: "/api/context/[id]/annotations",
+        description:
+          "Update user annotations on a context item. All fields optional.",
+        auth: "session",
+        body: {
+          "user_title? (string | null)": "Custom title, max 200 chars.",
+          "user_notes? (string | null)": "User notes, max 2000 chars.",
+          "user_tags? (string[])": "Tags array, max 20 tags, each max 50 chars.",
+          "trust_weight? (number)": "Weight between 0.1 and 2.0.",
+        },
+        response:
+          "{ user_title, user_notes, user_tags: string[], trust_weight: number }",
+      },
+      {
+        method: "GET",
+        path: "/api/context/[id]/versions",
+        description:
+          "List version history for a context item, ordered by version number descending. Max 50.",
+        auth: "session",
+        response:
+          "{ versions: { version_number, title, change_type, changed_fields, changed_by, created_at, content_preview }[], total }",
+      },
+      {
+        method: "GET",
+        path: "/api/context/[id]/versions/[num]",
+        description:
+          "Get a specific version of a context item with full content and metadata.",
+        auth: "session",
+        response:
+          "{ version_number, title, raw_content, content_hash, source_metadata, change_type, changed_fields, changed_by, created_at, source_updated_at }",
       },
       {
         method: "DELETE",
@@ -145,6 +201,47 @@ const CATEGORIES: Category[] = [
         auth: "session",
         params: { 'format ("json" | "csv")': 'Default: "json".' },
         response: "JSON array or CSV file download",
+      },
+      {
+        method: "POST",
+        path: "/api/context/search",
+        description:
+          "Semantic + keyword hybrid search across context items using RRF scoring.",
+        auth: "session",
+        body: {
+          "query (string)": "Required. Search query text.",
+          "limit? (number)": "Results count, 1–50. Default 10.",
+          "filters? (SearchFilters)": "Optional filters by source_type, content_type, etc.",
+        },
+        response:
+          "{ results: { id, title, descriptionShort, sourceType, contentType, relevanceScore, sourceUrl }[] }",
+      },
+      {
+        method: "POST",
+        path: "/api/context/process",
+        description:
+          "Trigger AI extraction and embedding pipeline for a context item via Inngest.",
+        auth: "session",
+        body: {
+          "contextItemId (string)": "Required. UUID of the context item to process.",
+        },
+        response: '{ contextItemId, status: "accepted" } — 202',
+      },
+    ],
+  },
+  {
+    label: "Ingestion",
+    value: "ingestion",
+    endpoints: [
+      {
+        method: "POST",
+        path: "/api/ingest/upload",
+        description:
+          "Upload a file (PDF, DOCX, TXT, etc.), extract text, embed, and create a context item. Max 10 MB.",
+        auth: "session",
+        rateLimit: "10 req / 60s per user",
+        body: { "file (File)": "Multipart form field. Max 10 MB." },
+        response: '{ id, status: "ready" | "error", error? }',
       },
     ],
   },
@@ -225,6 +322,128 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
+    label: "Inbox",
+    value: "inbox",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/actions",
+        description:
+          "List action items extracted from context. Supports filtering by status and source type.",
+        auth: "session",
+        params: {
+          'status? ("pending" | "done" | "cancelled")': "Filter by action status.",
+          "sourceType? (string)": "Filter by source type.",
+          "limit? (number)": "Max results, 1–200. Default 100.",
+          "offset? (number)": "Pagination offset. Default 0.",
+        },
+        response:
+          "{ contextItemId, actionIndex, text, status, sourceType, ... }[]",
+      },
+      {
+        method: "PATCH",
+        path: "/api/actions",
+        description:
+          "Update the status of a specific action item.",
+        auth: "session",
+        body: {
+          "contextItemId (string)": "Required. UUID of the parent context item.",
+          "actionIndex (number)": "Required. Index of the action item.",
+          'status ("pending" | "done" | "cancelled")': "Required. New status.",
+        },
+        response: "{ ok: true }",
+      },
+      {
+        method: "POST",
+        path: "/api/inbox/generate",
+        description:
+          "Generate personalized inbox items for all users from the last 24 hours of context. Cron endpoint.",
+        auth: "cron-secret",
+        response: "{ generated: number, users: number, errors?: string[] }",
+      },
+    ],
+  },
+  {
+    label: "Integrations",
+    value: "integrations",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/integrations",
+        description: "List all connected integrations for the organization.",
+        auth: "session",
+        response:
+          "{ id, provider, nango_connection_id, status, last_sync_at, created_at }[]",
+      },
+      {
+        method: "DELETE",
+        path: "/api/integrations/[id]",
+        description: "Disconnect and remove an integration. Verifies org ownership.",
+        auth: "session",
+        response: "204 No Content",
+      },
+      {
+        method: "GET",
+        path: "/api/integrations/[id]/config",
+        description: "Get the sync configuration for a specific integration.",
+        auth: "session",
+        response: "{ id, provider, sync_config: object }",
+      },
+      {
+        method: "PATCH",
+        path: "/api/integrations/[id]/config",
+        description: "Update sync configuration for an integration. Merges with existing config.",
+        auth: "session",
+        body: {
+          "sync_config (object)": "Required. Config object to merge with existing settings.",
+        },
+        response: "{ sync_config: object }",
+      },
+      {
+        method: "POST",
+        path: "/api/integrations/connect-session",
+        description: "Create a Nango Connect session for OAuth integration flows.",
+        auth: "session",
+        response: "{ sessionToken: string }",
+      },
+      {
+        method: "POST",
+        path: "/api/integrations/save-connection",
+        description: "Save a Nango integration connection to the database.",
+        auth: "session",
+        body: {
+          "connectionId (string)": "Nango connection ID.",
+          "provider (string)": 'Provider name (e.g. "github", "google-drive").',
+        },
+        response: "{ ok: true }",
+      },
+      {
+        method: "POST",
+        path: "/api/integrations/sync",
+        description:
+          "Fetch data from an integrated service, extract, embed, and save as context items. Supports github, google-drive, slack, granola, linear, discord.",
+        auth: "session",
+        body: {
+          "connectionId (string)": "Nango connection ID.",
+          "provider (string)": "Provider name.",
+        },
+        response: "Server-Sent Event stream with progress updates",
+      },
+      {
+        method: "POST",
+        path: "/api/integrations/sync-trigger",
+        description:
+          "Trigger a background sync via Nango for an integration. Falls back to streaming sync if trigger fails.",
+        auth: "session",
+        body: {
+          "connectionId (string)": "Nango connection ID.",
+          "provider (string)": "Provider name.",
+        },
+        response: '{ status: "triggered", message, fallback? } — 202',
+      },
+    ],
+  },
+  {
     label: "Team",
     value: "team",
     endpoints: [
@@ -300,62 +519,99 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    label: "Integrations",
-    value: "integrations",
+    label: "Billing",
+    value: "billing",
     endpoints: [
       {
-        method: "POST",
-        path: "/api/integrations/connect-session",
-        description: "Create a Nango Connect session for OAuth integration flows.",
+        method: "GET",
+        path: "/api/billing/credits",
+        description: "Get the organization's current credit balance and Stripe status.",
         auth: "session",
-        response: "{ sessionToken: string }",
+        response: "{ credits: number, hasStripeCustomer: boolean, orgId: string }",
       },
       {
         method: "POST",
-        path: "/api/integrations/save-connection",
-        description: "Save a Nango integration connection to the database.",
+        path: "/api/billing/checkout",
+        description: "Create a Stripe checkout session to purchase credits. Owner/admin only.",
         auth: "session",
         body: {
-          "connectionId (string)": "Nango connection ID.",
-          "provider (string)": 'Provider name (e.g. "github", "google-drive").',
+          "packageId (string)": "Required. ID of the credit package to purchase.",
         },
-        response: "{ ok: true }",
+        response: "{ url: string }",
       },
       {
-        method: "POST",
-        path: "/api/integrations/sync",
+        method: "GET",
+        path: "/api/billing/usage",
         description:
-          "Fetch data from an integrated service, extract, embed, and save as context items. Supports github, google-drive, slack, granola, linear.",
+          "Get usage statistics: tokens, costs, and credits broken down by period, operation, and model.",
         auth: "session",
-        body: {
-          "connectionId (string)": "Nango connection ID.",
-          "provider (string)": "Provider name.",
-        },
-        response: "{ processed: number, fetched: number, debug: string[] }",
+        response:
+          "{ today, thisWeek, thisMonth: { total_tokens, total_cost, total_credits, operations }, byOperation: [...], byModel: [...] }",
       },
     ],
   },
   {
-    label: "Ingestion",
-    value: "ingestion",
+    label: "Settings",
+    value: "settings",
     endpoints: [
       {
-        method: "POST",
-        path: "/api/ingest/upload",
+        method: "GET",
+        path: "/api/settings/source-weights",
         description:
-          "Upload a file (PDF, DOCX, TXT, etc.), extract text, embed, and create a context item. Max 10 MB.",
+          "Get trust weights for each context source type (linear, github, slack, etc.).",
         auth: "session",
-        rateLimit: "10 req / 60s per user",
-        body: { "file (File)": "Multipart form field. Max 10 MB." },
-        response: '{ id, status: "ready" | "error", error? }',
+        response: "{ weights: Record<string, number> }",
       },
       {
-        method: "POST",
-        path: "/api/inbox/generate",
+        method: "PATCH",
+        path: "/api/settings/source-weights",
         description:
-          "Cron endpoint to generate personalized inbox items for all users from the last 24 h of context.",
-        auth: "cron-secret",
-        response: "{ generated: number, users: number, errors?: string[] }",
+          "Update the trust weight for a specific source type. Applies to all context items from that source.",
+        auth: "session",
+        body: {
+          "provider (string)": "Required. Source type name.",
+          "weight (number)": "Required. Weight between 0.1 and 2.0.",
+        },
+        response: "{ success: true, provider, weight }",
+      },
+      {
+        method: "GET",
+        path: "/api/settings/notifications",
+        description:
+          "Get notification preferences for the current user. Creates defaults if none exist.",
+        auth: "session",
+        response:
+          "{ digest_enabled, digest_time, email_on_mention, email_on_action_item, email_on_new_context, weekly_summary }",
+      },
+      {
+        method: "PATCH",
+        path: "/api/settings/notifications",
+        description: "Update notification preferences. All fields optional.",
+        auth: "session",
+        body: {
+          "digest_enabled? (boolean)": "Enable/disable daily digest.",
+          "digest_time? (string)": "HH:MM format for digest delivery.",
+          "email_on_mention? (boolean)": "Email when mentioned.",
+          "email_on_action_item? (boolean)": "Email for new action items.",
+          "email_on_new_context? (boolean)": "Email for new context items.",
+          "weekly_summary? (boolean)": "Enable/disable weekly summary.",
+        },
+        response: "{ success: true }",
+      },
+    ],
+  },
+  {
+    label: "Analytics",
+    value: "analytics",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/analytics/content-health",
+        description:
+          "Get content health analytics: freshness distribution, staleness by source and content type, health score.",
+        auth: "session",
+        response:
+          "{ total, byFreshness: { fresh, aging, stale, veryStale }, bySource: [...], byContentType: [...], staleItems: [...], healthScore: number }",
       },
     ],
   },
@@ -363,6 +619,61 @@ const CATEGORIES: Category[] = [
     label: "Webhooks",
     value: "webhooks",
     endpoints: [
+      {
+        method: "POST",
+        path: "/api/webhooks/stripe",
+        description:
+          "Stripe webhook handler. Processes checkout.session.completed, subscription updates/deletions, and failed payments. Idempotent.",
+        auth: "webhook-secret",
+        body: {
+          "(raw body)": "Stripe event payload. Verified via stripe-signature header.",
+        },
+        response: "{ received: true }",
+      },
+      {
+        method: "POST",
+        path: "/api/webhooks/linear",
+        description:
+          "Linear webhook handler. Processes Issue, Comment, Project, and Cycle events (create/update/remove). Runs AI extraction pipeline.",
+        auth: "webhook-secret",
+        body: {
+          "(raw body)": "Linear event payload. Verified via linear-signature HMAC-SHA256 header.",
+        },
+        response: "{ received: true }",
+      },
+      {
+        method: "POST",
+        path: "/api/webhooks/discord",
+        description:
+          "Discord webhook handler. Responds to PING verification, processes MESSAGE_CREATE and THREAD_CREATE events. Runs AI extraction pipeline.",
+        auth: "webhook-secret",
+        body: {
+          "(raw body)": "Discord interaction/event payload. Verified via Ed25519 signature.",
+        },
+        response: "{ received: true } or { type: 1 } for PING",
+      },
+      {
+        method: "POST",
+        path: "/api/webhooks/nango",
+        description:
+          "Nango webhook for auth and sync completion events. Processes context extraction from connected integrations.",
+        auth: "none",
+        body: {
+          "type": '"auth" or "sync" event payload from Nango.',
+        },
+        response: "{ received: true, event?, queued?, processed? }",
+      },
+      {
+        method: "POST",
+        path: "/api/webhooks/google-drive",
+        description:
+          "Google Drive push notification receiver. Processes file changes for watched Drive resources. Runs AI extraction pipeline.",
+        auth: "none",
+        body: {
+          "(push notification)": "Google Drive change notification with X-Goog-* headers.",
+        },
+        response: "{ received: true, channelId, resourceId, resourceState }",
+      },
       {
         method: "POST",
         path: "/api/webhooks/ingest",
@@ -376,17 +687,6 @@ const CATEGORIES: Category[] = [
           "metadata? (object)": "Optional extra metadata.",
         },
         response: '{ id, status: "accepted" }',
-      },
-      {
-        method: "POST",
-        path: "/api/webhooks/nango",
-        description:
-          "Webhook fired by Nango on auth completion and sync completion. Processes context extraction.",
-        auth: "none",
-        body: {
-          "type": '"auth" or "sync" event payload from Nango.',
-        },
-        response: "{ received: true, event?, queued?, processed? }",
       },
     ],
   },
@@ -415,6 +715,14 @@ const CATEGORIES: Category[] = [
         },
         response:
           "{ id, user_id, action, resource_type, resource_id, metadata, created_at }[]",
+      },
+      {
+        method: "GET",
+        path: "/api/cron/digest",
+        description:
+          "Alias for inbox/generate. Vercel Cron-compatible endpoint that generates daily digest inbox items.",
+        auth: "cron-secret",
+        response: "{ generated: number, users: number, errors?: string[] }",
       },
     ],
   },
