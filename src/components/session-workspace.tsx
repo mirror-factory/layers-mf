@@ -35,6 +35,7 @@ import {
   type ToolPart,
 } from "@/components/ai-elements/tool";
 import { AddContextPicker } from "@/components/add-context-picker";
+import { SessionInsights } from "@/components/session-insights";
 
 type ContextItem = {
   id: string;
@@ -370,6 +371,9 @@ export function SessionWorkspace({
             </div>
           </div>
         </div>
+
+        {/* Insights panel */}
+        <SessionInsights sessionId={session.id} />
 
         <div className="px-4 py-2 border-b flex items-center justify-between">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

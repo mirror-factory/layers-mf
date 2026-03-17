@@ -26,6 +26,7 @@ import {
   Menu,
   X,
   Coins,
+  Building,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/team", label: "Team", icon: Users },
+  { href: "/settings/org", label: "Organization", icon: Building },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/settings/source-trust", label: "Source Trust", icon: SlidersHorizontal },

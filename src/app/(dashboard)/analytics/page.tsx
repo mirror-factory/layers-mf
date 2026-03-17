@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContextHealthPanel } from "./_components/context-health-panel";
 import { AgentAnalyticsPanel } from "./_components/agent-analytics-panel";
 import { RetrievalPanel } from "./_components/retrieval-panel";
+import { WebhookHealth } from "@/components/webhook-health";
 import type { ContextHealthData, AgentMetricsData, IntegrationHealthItem } from "@/lib/kpi/compute";
 import { computeHealthSummary } from "@/lib/kpi/compute";
 
@@ -139,6 +140,9 @@ export default async function AnalyticsPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Webhook Health section */}
+      <WebhookHealth />
     </div>
   );
 }
