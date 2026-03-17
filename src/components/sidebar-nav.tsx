@@ -179,6 +179,20 @@ export function SidebarNav({
             </Link>
           )}
 
+          {/* Super-admin link */}
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              pathname === "/admin"
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <Shield className="h-4 w-4" />
+            Admin
+          </Link>
+
           <ThemeToggle />
           <button
             onClick={handleSignOut}

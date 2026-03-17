@@ -8,7 +8,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/tests/setup.ts"],
-    exclude: ["node_modules", "e2e/**", "**/*.spec.ts"],
+    exclude: ["node_modules", "e2e/**", "**/*.spec.ts", "nango-integrations/**", "**/nango-integrations/**"],
+    root: ".",
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

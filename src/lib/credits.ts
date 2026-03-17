@@ -1,14 +1,69 @@
 import { createAdminClient } from "@/lib/supabase/server";
 
-/** Credit costs per operation */
+/** Credit costs per operation (hardcoded fallbacks) */
 export const CREDIT_COSTS = {
   chat: 1,
   extraction: 2,
   embedding: 0.5,
   inbox_generation: 1,
+  query_expansion: 0.2,
 } as const;
 
 export type CreditOperation = keyof typeof CREDIT_COSTS;
+
+// ─── Dynamic config cache ────────────────────────────────────────────
+
+interface CachedConfig {
+  operations: Record<string, { base_credits: number; per_1k_tokens: number }>;
+  fetchedAt: number;
+}
+
+let configCache: CachedConfig | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function fetchCreditConfig(): Promise<CachedConfig["operations"] | null> {
+  // Return cached if still fresh
+  if (configCache && Date.now() - configCache.fetchedAt < CACHE_TTL_MS) {
+    return configCache.operations;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminDb = createAdminClient() as any;
+    const { data, error } = await adminDb
+      .from("platform_config")
+      .select("value")
+      .eq("key", "credit_config")
+      .single();
+
+    if (error || !data?.value) return null;
+
+    const value = data.value as { operations?: CachedConfig["operations"] };
+    if (!value.operations) return null;
+
+    configCache = { operations: value.operations, fetchedAt: Date.now() };
+    return value.operations;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get the credit cost for an operation from platform_config.
+ * Falls back to hardcoded CREDIT_COSTS if config is unavailable.
+ * Results are cached for 5 minutes.
+ */
+export async function getOperationCost(operation: string): Promise<number> {
+  const ops = await fetchCreditConfig();
+
+  if (ops && ops[operation]) {
+    return ops[operation].base_credits;
+  }
+
+  // Fallback to hardcoded
+  const fallback = CREDIT_COSTS[operation as CreditOperation];
+  return fallback ?? 1;
+}
 
 export class InsufficientCreditsError extends Error {
   public balance: number;
