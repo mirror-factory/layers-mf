@@ -1429,6 +1429,24 @@ export default function FeaturesPage() {
         </div>
       </AnimatedSection>
 
+      {/* Use Cases CTA */}
+      <AnimatedSection className="mb-16">
+        <Card className="p-6 text-center border-primary/20 bg-primary/[0.02]">
+          <h3 className="font-semibold mb-2">See Layers in Action</h3>
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            6 real-world walkthroughs showing how teams use Layers day-to-day —
+            from morning briefings to weekly reviews.
+          </p>
+          <a
+            href="/features/use-cases"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            View Use Cases
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        </Card>
+      </AnimatedSection>
+
       {/* Footer */}
       <div className="pt-8 border-t text-center text-xs text-muted-foreground">
         <p className="font-medium">
