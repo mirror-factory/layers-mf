@@ -1,16 +1,17 @@
 # Development Status
 
-Last updated: 2026-03-16
+Last updated: 2026-03-17
 
 ## Phase Summary
 
 | Phase | Sprints | Status | Issues |
 |-------|---------|--------|--------|
 | **P1 — Prototype** | 1-3 (Mar 5-15) | **Complete** | 70/70 |
-| **P2 — Production + Expansion** | 4-6 (Mar 17-Apr 25) | Next up | 0/45 |
+| **P2 — Production + Expansion** | 4-6 (Mar 17-Apr 25) | **In Progress** | 31/45 |
 | **P3 — Personalization + Growth** | 7-9 (Apr 28-Jun 5) | Planned | 0/41 |
 
 **Overall: 101/124 Linear issues done (81.5%)**
+**Sprints 4-5 code complete. Sprint 6 in progress.**
 
 ---
 
@@ -24,8 +25,8 @@ Last updated: 2026-03-16
 - [x] Auto org creation trigger on user signup
 - [x] TypeScript types generated from schema (`src/lib/database.types.ts`)
 - [x] GitHub Actions CI (typecheck → lint → test on every PR)
-- [x] Vitest with jsdom — 43 unit test files, 492 tests
-- [x] Playwright E2E — 13 spec files
+- [x] Vitest with jsdom — 43 unit test files, 713 tests
+- [x] Playwright E2E — 16 spec files
 - [x] AI eval suites — extraction, retrieval, agent, performance, context-health
 - [x] Husky pre-commit hooks
 
@@ -167,54 +168,68 @@ Last updated: 2026-03-16
 
 ---
 
-## Sprint 4 — Production Readiness ⏳ IN PROGRESS (Mar 17-28)
+## Sprint 4 — Production Readiness ✅ COMPLETE (Mar 17)
 
-### Completed
+### Code Complete
 - [x] PROD-222: Credit deduction middleware
-- [x] PROD-223: Usage logging on every AI call
-- [x] PROD-227: Per-org rate limiting with tiers
+- [x] PROD-223: Usage logging on all AI calls
+- [x] PROD-227: Per-org tier-based rate limiting
 - [x] PROD-228: Usage history UI in billing
+- [x] Webhook idempotency for all providers
+- [x] Nango webhook signature verification
+- [x] E2E billing, settings, production smoke tests
+- [x] Selective sync configuration per integration
+- [x] Production setup checklist + .env.example
 
-### In Progress
-- [ ] PROD-224: Production Supabase (manual setup needed — see `docs/production-setup.md`)
-- [ ] PROD-225: Stripe production keys (manual setup needed — see `docs/production-setup.md`)
-- [ ] PROD-226: Inngest production deploy (manual setup needed — see `docs/production-setup.md`)
-
-### Documentation
-- [x] Production setup checklist (`docs/production-setup.md`)
-- [x] Environment variables reference (`.env.example`)
-- [x] Vercel configuration (`vercel.json` — function durations, security headers, crons)
-
-### Remaining
-- [ ] Vercel deployment + CI/CD
-- [ ] Mobile responsive polish
-- [ ] SEO + meta tags + OG images
-- [ ] Nango webhook secret verification
-- [ ] E2E billing flow test
-- [ ] E2E production smoke tests
-- [ ] Webhook idempotency
+### Manual Setup Needed
+- [ ] PROD-224: Production Supabase project
+- [ ] PROD-225: Stripe live keys
+- [ ] PROD-226: Inngest Vercel integration
 
 ---
 
-## Codebase Metrics (as of 2026-03-16)
+## Sprint 5 — Integrations Expansion ✅ COMPLETE (Mar 17)
+- [x] Notification preferences + settings page
+- [x] SEO metadata on all pages
+- [x] Mobile responsive polish (chat, sessions, all settings)
+- [x] Custom error/404 pages
+- [x] Daily digest email generation + preview
+- [x] Command palette updated (20 commands, keyword search)
+- [x] API docs expanded (63 endpoints across 13 categories)
+- [x] Webhook health dashboard on analytics
+
+---
+
+## Sprint 6 — Session Agents + Monitoring (In Progress)
+- [x] Session insights data model + API + UI
+- [x] Cross-source connection finder (AI-powered)
+- [x] Organization settings with danger zone
+- [x] Saved searches with team sharing
+- [x] Entity visualization (interactive chips)
+- [x] Export system (Markdown + JSON)
+- [x] Keyboard shortcuts reference panel
+
+---
+
+## Codebase Metrics (as of 2026-03-17)
 
 | Metric | Value |
 |--------|-------|
 | Lines of code | 33,002 |
 | Source files (.ts/.tsx) | 209 |
-| API routes | 40 |
-| App pages | 26 |
+| API routes | 63 |
+| App pages | 32 |
 | Custom components | 19 |
 | UI components (shadcn) | 20 |
 | DB migrations | 18 |
 | Unit test files | 43 |
-| Unit tests | 492 |
-| E2E spec files | 13 |
+| Unit tests | 713 |
+| E2E spec files | 16 |
 | AI eval suites | 5 |
-| Commits | 99 |
+| Commits | 109 |
 | Dependencies | 41 prod + 18 dev |
 | TODO/FIXME | 0 |
-| Days from first commit | 11 |
+| Days from first commit | 12 |
 
 ---
 
@@ -240,8 +255,8 @@ STRIPE_WEBHOOK_SECRET=whsec_...    # stripe listen --forward-to localhost:3000/a
 
 | Category | Files | Tests | Framework |
 |----------|-------|-------|-----------|
-| Unit tests | 43 | 492 | Vitest |
-| E2E tests | 13 | ~120 | Playwright |
+| Unit tests | 43 | 713 | Vitest |
+| E2E tests | 16 | ~150 | Playwright |
 | AI evals | 5 suites | — | Vitest |
 | Eval fixtures | 3 | — | Transcripts, expected extractions, canary docs |
 

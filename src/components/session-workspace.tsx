@@ -36,6 +36,7 @@ import {
 } from "@/components/ai-elements/tool";
 import { AddContextPicker } from "@/components/add-context-picker";
 import { SessionInsights } from "@/components/session-insights";
+import { ExportDropdown } from "@/components/export-dropdown";
 
 type ContextItem = {
   id: string;
@@ -290,9 +291,12 @@ export function SessionWorkspace({
           <h2 className="text-sm font-semibold truncate">{session.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{session.goal}</p>
           <div className="flex items-center justify-between mt-1.5">
-            <Badge variant={STATUS_VARIANT[session.status] ?? "outline"} className="text-[10px]">
-              {session.status}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant={STATUS_VARIANT[session.status] ?? "outline"} className="text-[10px]">
+                {session.status}
+              </Badge>
+              <ExportDropdown sessionId={session.id} label="Export session" />
+            </div>
             <div className="flex items-center gap-1">
               {/* Member avatars */}
               {members.slice(0, 3).map((m) => (

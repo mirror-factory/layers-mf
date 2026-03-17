@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SavedSearches } from "@/components/saved-searches";
+import { ExportDropdown } from "@/components/export-dropdown";
 
 interface ContextItem {
   id: string;
@@ -340,16 +341,10 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
               <span data-testid="context-item-count" className="text-xs text-muted-foreground">
                 {processed.length} item{processed.length !== 1 ? "s" : ""}
               </span>
-              <Button
-                data-testid="context-export-button"
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => window.open("/api/context/export?format=json", "_blank")}
-                aria-label="Export context"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </Button>
+              <ExportDropdown
+                itemIds={checkedIds.size > 0 ? [...checkedIds] : undefined}
+                query={checkedIds.size === 0 && searchQuery.trim() ? searchQuery.trim() : undefined}
+              />
             </div>
           </div>
 
@@ -558,6 +553,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
               {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
+              <ExportDropdown itemIds={[...checkedIds]} label="Export selected" />
               <Button
                 data-testid="bulk-cancel-button"
                 variant="ghost"

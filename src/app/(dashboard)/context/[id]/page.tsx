@@ -10,12 +10,14 @@ import {
   Hash,
   GitBranch,
   Mic,
+  Download,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextAnnotations } from "@/components/context-annotations";
 import { ContextVersionHistory } from "@/components/context-version-history";
 import { EntityChips } from "@/components/entity-chips";
+import { ExportDropdown } from "@/components/export-dropdown";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -123,6 +125,7 @@ export default async function ContextDetailPage({
               {versionCount} {versionCount === 1 ? "version" : "versions"}
             </Badge>
           )}
+          <ExportDropdown itemIds={[item.id]} />
         </div>
         {item.user_title && (
           <p className="text-sm text-muted-foreground">Original: {item.title}</p>

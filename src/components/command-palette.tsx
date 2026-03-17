@@ -38,16 +38,17 @@ interface CommandEntry {
   label: string;
   icon: LucideIcon;
   keywords?: string;
+  shortcut?: string;
 }
 
 const NAVIGATION: CommandEntry[] = [
-  { href: "/", label: "Home", icon: Home, keywords: "dashboard overview" },
-  { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge" },
+  { href: "/", label: "Home", icon: Home, keywords: "dashboard overview", shortcut: "G H" },
+  { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge", shortcut: "G C" },
   { href: "/chat", label: "Chat", icon: MessageSquare, keywords: "conversation ai assistant" },
-  { href: "/sessions", label: "Sessions", icon: FolderKanban, keywords: "projects workspace" },
-  { href: "/inbox", label: "Inbox", icon: Inbox, keywords: "messages notifications" },
+  { href: "/sessions", label: "Sessions", icon: FolderKanban, keywords: "projects workspace", shortcut: "G S" },
+  { href: "/inbox", label: "Inbox", icon: Inbox, keywords: "messages notifications", shortcut: "G I" },
   { href: "/actions", label: "Actions", icon: Zap, keywords: "tasks automations" },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "metrics usage stats" },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "metrics usage stats", shortcut: "G A" },
   { href: "/analytics/health", label: "Content Health", icon: HeartPulse, keywords: "quality freshness analytics" },
   { href: "/integrations", label: "Integrations", icon: Plug, keywords: "connect apps services" },
   { href: "/features", label: "Features", icon: Sparkles, keywords: "capabilities roadmap" },
@@ -90,14 +91,26 @@ export function CommandPalette() {
   }
 
   function renderItems(items: CommandEntry[]) {
-    return items.map(({ href, label, icon: Icon, keywords }) => (
+    return items.map(({ href, label, icon: Icon, keywords, shortcut }) => (
       <CommandItem
         key={href}
         value={`${label} ${keywords ?? ""}`}
         onSelect={() => navigate(href)}
       >
         <Icon className="mr-2 h-4 w-4" />
-        {label}
+        <span className="flex-1">{label}</span>
+        {shortcut && (
+          <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+            {shortcut.split(" ").map((key, i) => (
+              <kbd
+                key={i}
+                className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[11px]"
+              >
+                {key}
+              </kbd>
+            ))}
+          </span>
+        )}
       </CommandItem>
     ));
   }

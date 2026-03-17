@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CommandPalette } from "@/components/command-palette";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 
 export default async function DashboardLayout({
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
         {children}
       </main>
       <CommandPalette />
+      <KeyboardShortcuts />
     </div>
   );
 }
