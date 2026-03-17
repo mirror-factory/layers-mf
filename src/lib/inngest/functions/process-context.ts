@@ -2,6 +2,7 @@ import { inngest } from "@/lib/inngest/client";
 import { generateObject } from "ai";
 import { extractionModel } from "@/lib/ai/config";
 import { generateEmbedding, generateEmbeddings } from "@/lib/ai/embed";
+import { findCrossSourceConnections } from "@/lib/ai/cross-source";
 import { chunkDocument } from "@/lib/pipeline/chunker";
 import {
   ExtractionSchema,
@@ -213,11 +214,88 @@ Return matches only for sessions where this content would be useful. If none mat
       return links.map((l) => l.session_id);
     });
 
+    // Step 8: Find cross-source connections
+    const connections = await step.run("find-connections", async () => {
+      return findCrossSourceConnections(contextItemId, orgId, {
+        maxCandidates: 5,
+        supabase,
+      });
+    });
+
+    // Create session insights for any significant connections
+    if (connections.length > 0) {
+      await step.run("create-connection-insights", async () => {
+        // Collect all related item IDs from connections
+        const relatedItemIds = [
+          ...new Set(connections.map((c) => c.item_b_id)),
+        ];
+
+        // Find sessions that contain the new item or any related items
+        const allItemIds = [contextItemId, ...relatedItemIds];
+        const { data: sessionLinks } = await supabase
+          .from("session_context_links")
+          .select("session_id, context_item_id")
+          .in("context_item_id", allItemIds);
+
+        if (!sessionLinks || sessionLinks.length === 0) return;
+
+        // Get unique session IDs
+        const sessionIds = [
+          ...new Set(sessionLinks.map((l: { session_id: string }) => l.session_id)),
+        ];
+
+        // Create an insight per session for the most significant connections
+        const insightRows = sessionIds.map((sessionId: string) => {
+          const criticalConnections = connections.filter(
+            (c) => c.severity === "critical"
+          );
+          const importantConnections = connections.filter(
+            (c) => c.severity === "important"
+          );
+          const topConnections =
+            criticalConnections.length > 0
+              ? criticalConnections
+              : importantConnections.length > 0
+                ? importantConnections
+                : connections;
+
+          const severity =
+            criticalConnections.length > 0
+              ? "critical"
+              : importantConnections.length > 0
+                ? "important"
+                : "info";
+
+          const descriptions = topConnections
+            .map((c) => `[${c.type}] ${c.description}`)
+            .join("; ");
+
+          return {
+            org_id: orgId,
+            session_id: sessionId,
+            insight_type: "cross_source_connection",
+            title: `Cross-source connection found (${topConnections.length} link${topConnections.length > 1 ? "s" : ""})`,
+            description: descriptions,
+            severity,
+            source_item_ids: [contextItemId],
+            related_item_ids: relatedItemIds,
+            status: "active",
+            metadata: { connections },
+          };
+        });
+
+        if (insightRows.length > 0) {
+          await supabase.from("session_insights").insert(insightRows);
+        }
+      });
+    }
+
     return {
       contextItemId,
       status: "ready",
       chunkCount: chunks.length,
       linkedSessions,
+      connectionCount: connections.length,
     };
   }
 );

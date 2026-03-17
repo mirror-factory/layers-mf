@@ -24,6 +24,7 @@ import {
   X,
   Download,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SavedSearches } from "@/components/saved-searches";
 
 interface ContextItem {
   id: string;
@@ -60,6 +62,7 @@ interface ContextItem {
 
 interface Props {
   items: ContextItem[];
+  initialSearch?: string;
 }
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -99,7 +102,7 @@ function normalizeSource(source: string) {
   return source;
 }
 
-export function ContextLibrary({ items }: Props) {
+export function ContextLibrary({ items, initialSearch = "" }: Props) {
   if (items.length === 0) {
     return (
       <div data-testid="context-empty-state" className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
@@ -127,6 +130,7 @@ export function ContextLibrary({ items }: Props) {
   const [selected, setSelected] = useState<string>("all");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("newest");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -152,12 +156,22 @@ export function ContextLibrary({ items }: Props) {
 
   const sources = Object.keys(groups).sort();
 
-  // Filter → sort → paginate
+  // Filter → search → sort → paginate
   const processed = useMemo(() => {
     let result = selected === "all" ? items : (groups[selected] ?? []);
 
     if (contentTypeFilter !== "all") {
       result = result.filter((i) => i.content_type === contentTypeFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (i) =>
+          i.title.toLowerCase().includes(q) ||
+          (i.description_short && i.description_short.toLowerCase().includes(q)) ||
+          (i.user_tags && i.user_tags.some((t) => t.toLowerCase().includes(q))),
+      );
     }
 
     const sorted = [...result];
@@ -175,16 +189,17 @@ export function ContextLibrary({ items }: Props) {
     }
 
     return sorted;
-  }, [items, groups, selected, contentTypeFilter, sort]);
+  }, [items, groups, selected, contentTypeFilter, searchQuery, sort]);
 
   const visible = processed.slice(0, visibleCount);
   const hasMore = visibleCount < processed.length;
 
-  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest";
+  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest" || searchQuery.trim() !== "";
 
   function clearFilters() {
     setContentTypeFilter("all");
     setSort("newest");
+    setSearchQuery("");
     setVisibleCount(PAGE_SIZE);
   }
 
@@ -338,8 +353,45 @@ export function ContextLibrary({ items }: Props) {
             </div>
           </div>
 
+          {/* Saved searches */}
+          <SavedSearches
+            currentQuery={searchQuery}
+            currentFilters={contentTypeFilter !== "all" ? { content_type: contentTypeFilter } : {}}
+            onApply={(query, filters) => {
+              setSearchQuery(query);
+              if (filters.content_type) {
+                setContentTypeFilter(filters.content_type);
+              }
+              if (filters.source_type) {
+                const normalized = filters.source_type === "gdrive" ? "google-drive" : filters.source_type === "github-app" ? "github" : filters.source_type;
+                setSelected(normalized);
+              }
+              setVisibleCount(PAGE_SIZE);
+            }}
+          />
+
           {/* Filter bar */}
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                data-testid="context-search-input"
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(PAGE_SIZE); }}
+                className="h-8 w-[180px] rounded-md border border-input bg-background pl-8 pr-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
             <Select
               value={contentTypeFilter}
               onValueChange={(v) => { setContentTypeFilter(v); setVisibleCount(PAGE_SIZE); }}
@@ -384,6 +436,18 @@ export function ContextLibrary({ items }: Props) {
           {/* Active filter pills */}
           {hasActiveFilters && (
             <div className="flex items-center gap-1.5 flex-wrap">
+              {searchQuery.trim() && (
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  Search: {searchQuery}
+                  <button
+                    onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
+                    className="ml-0.5 hover:text-foreground"
+                    aria-label="Remove search filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
               {contentTypeFilter !== "all" && (
                 <Badge variant="secondary" className="gap-1 text-xs font-normal">
                   {contentTypeFilter.replace(/_/g, " ")}

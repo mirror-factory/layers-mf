@@ -7,7 +7,11 @@ import { ContextLibrary } from "@/components/context-library";
 import { FileText, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default async function ContextPage() {
+export default async function ContextPage(props: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  const initialSearch = searchParams?.search ?? "";
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -54,7 +58,7 @@ export default async function ContextPage() {
         </div>
       ) : (
         <div className="rounded-lg border overflow-hidden" style={{ height: "calc(100vh - 240px)" }}>
-          <ContextLibrary items={items} />
+          <ContextLibrary items={items} initialSearch={initialSearch} />
         </div>
       )}
     </div>

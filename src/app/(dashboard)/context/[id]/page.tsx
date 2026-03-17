@@ -10,15 +10,12 @@ import {
   Hash,
   GitBranch,
   Mic,
-  Users,
-  Tag,
-  ListChecks,
-  Scale,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextAnnotations } from "@/components/context-annotations";
 import { ContextVersionHistory } from "@/components/context-version-history";
+import { EntityChips } from "@/components/entity-chips";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -36,6 +33,8 @@ interface Entities {
   topics?: string[];
   action_items?: string[];
   decisions?: string[];
+  projects?: string[];
+  dates?: string[];
 }
 
 export default async function ContextDetailPage({
@@ -84,7 +83,9 @@ export default async function ContextDetailPage({
     (entities.people?.length ?? 0) > 0 ||
     (entities.topics?.length ?? 0) > 0 ||
     (entities.action_items?.length ?? 0) > 0 ||
-    (entities.decisions?.length ?? 0) > 0;
+    (entities.decisions?.length ?? 0) > 0 ||
+    (entities.projects?.length ?? 0) > 0 ||
+    (entities.dates?.length ?? 0) > 0;
 
   return (
     <div data-testid="context-detail-page" className="flex flex-col p-4 sm:p-8 gap-6 max-w-4xl mx-auto">
@@ -151,28 +152,14 @@ export default async function ContextDetailPage({
 
       {/* Entities */}
       {hasEntities && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <EntitySection
-            title="Topics"
-            icon={Tag}
-            items={entities.topics}
-          />
-          <EntitySection
-            title="People"
-            icon={Users}
-            items={entities.people}
-          />
-          <EntitySection
-            title="Action Items"
-            icon={ListChecks}
-            items={entities.action_items}
-          />
-          <EntitySection
-            title="Decisions"
-            icon={Scale}
-            items={entities.decisions}
-          />
-        </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Extracted Entities</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EntityChips entities={entities} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Raw content */}
@@ -208,33 +195,3 @@ export default async function ContextDetailPage({
   );
 }
 
-function EntitySection({
-  title,
-  icon: Icon,
-  items,
-}: {
-  title: string;
-  icon: React.ElementType;
-  items?: string[];
-}) {
-  if (!items || items.length === 0) return null;
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-1">
-          {items.map((item, i) => (
-            <li key={i} className="text-sm text-muted-foreground">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-}
