@@ -84,9 +84,9 @@ export default function ActionsPage() {
   const doneCount = items.filter((i) => i.status === "done").length;
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 sm:p-8 max-w-5xl">
       <div className="mb-6">
-        <h1 data-testid="actions-page-heading" className="text-2xl font-semibold mb-1">Action Items</h1>
+        <h1 data-testid="actions-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Action Items</h1>
         <p className="text-muted-foreground text-sm">
           Tasks extracted from your documents, meetings, and messages.
         </p>

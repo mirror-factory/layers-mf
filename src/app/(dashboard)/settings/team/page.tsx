@@ -1,3 +1,5 @@
+export const metadata = { title: "Team Settings" };
+
 import { createClient } from "@/lib/supabase/server";
 import { TeamManagement } from "@/components/team-management";
 
@@ -16,9 +18,9 @@ export default async function TeamSettingsPage() {
   if (!member) return null;
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold mb-1">Team</h1>
+    <div className="p-4 sm:p-8 max-w-2xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-semibold mb-1">Team</h1>
         <p className="text-muted-foreground text-sm">
           Manage your organization members and invitations.
         </p>

@@ -1,3 +1,5 @@
+export const metadata = { title: "Profile Settings" };
+
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSettings } from "@/components/profile-settings";
 
@@ -8,9 +10,9 @@ export default async function ProfileSettingsPage() {
   if (!user) return null;
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold mb-1">Profile</h1>
+    <div className="p-4 sm:p-8 max-w-2xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-semibold mb-1">Profile</h1>
         <p className="text-muted-foreground text-sm">
           Manage your account settings and password.
         </p>

@@ -1,3 +1,5 @@
+export const metadata = { title: "Integrations" };
+
 import { createClient } from "@/lib/supabase/server";
 import { ConnectPanel } from "@/components/integrations/connect-panel";
 import { IntegrationCatalog } from "@/components/integrations/integration-catalog";

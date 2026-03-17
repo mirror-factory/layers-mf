@@ -1,3 +1,5 @@
+export const metadata = { title: "Analytics" };
+
 import Link from "next/link";
 import { HeartPulse } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";

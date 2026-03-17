@@ -1,3 +1,5 @@
+export const metadata = { title: "Inbox" };
+
 import { createClient } from "@/lib/supabase/server";
 import { InboxList } from "@/components/inbox-list";
 
@@ -16,9 +18,9 @@ export default async function InboxPage() {
     .limit(50);
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="mb-8">
-        <h1 data-testid="inbox-page-heading" className="text-2xl font-semibold mb-1">Inbox</h1>
+    <div className="p-4 sm:p-8 max-w-3xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 data-testid="inbox-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Inbox</h1>
         <p className="text-muted-foreground text-sm">
           Action items, decisions, and mentions surfaced by your agents.
         </p>

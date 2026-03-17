@@ -431,7 +431,7 @@ export function ContextLibrary({ items }: Props) {
                     key={item.id}
                     data-testid={`context-item-${item.id}`}
                     className={cn(
-                      "flex items-start gap-3 px-5 py-3.5 hover:bg-accent/30 transition-colors",
+                      "flex items-start gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-accent/30 transition-colors",
                       isChecked && "bg-primary/5",
                     )}
                   >
@@ -489,7 +489,7 @@ export function ContextLibrary({ items }: Props) {
 
         {/* Floating action bar */}
         {someChecked && (
-          <div data-testid="bulk-action-bar" className="border-t bg-card px-5 py-2.5 flex items-center justify-between">
+          <div data-testid="bulk-action-bar" className="sticky bottom-0 border-t bg-card px-3 sm:px-5 py-2.5 flex items-center justify-between">
             <span data-testid="bulk-selection-count" className="text-sm text-muted-foreground">
               {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
             </span>

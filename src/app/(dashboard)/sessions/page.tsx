@@ -1,3 +1,5 @@
+export const metadata = { title: "Sessions" };
+
 import { createClient } from "@/lib/supabase/server";
 import { SessionsList } from "@/components/sessions-list";
 import { CreateSessionDialog } from "@/components/create-session-dialog";
@@ -23,10 +25,10 @@ export default async function SessionsPage() {
     : { data: [] };
 
   return (
-    <div className="flex flex-col p-8 gap-6 min-h-screen">
-      <div className="flex items-start justify-between">
+    <div className="flex flex-col p-4 sm:p-8 gap-4 sm:gap-6 min-h-screen">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 data-testid="sessions-page-heading" className="text-2xl font-semibold mb-1">Sessions</h1>
+          <h1 data-testid="sessions-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Sessions</h1>
           <p className="text-muted-foreground text-sm">
             Focused workspaces with scoped context and chat.
           </p>

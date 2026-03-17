@@ -7,8 +7,31 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "layers-mf",
-  description: "A Next.js app",
+  title: {
+    default: "Layers — AI Context Platform",
+    template: "%s | Layers",
+  },
+  description:
+    "The operating system for AI-native teams. Connect every tool into a single context layer with intelligent agents.",
+  keywords: [
+    "AI",
+    "context",
+    "knowledge management",
+    "team collaboration",
+    "RAG",
+  ],
+  authors: [{ name: "Mirror Factory" }],
+  openGraph: {
+    title: "Layers — AI Context Platform",
+    description:
+      "Connect every tool into a single context layer with intelligent agents.",
+    siteName: "Layers",
+    type: "website",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({

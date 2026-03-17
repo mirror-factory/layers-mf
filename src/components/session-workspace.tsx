@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Send, Loader2, Bot, User, FileText, X, Users, UserPlus,
+  Send, Loader2, Bot, User, FileText, X, Users, UserPlus, PanelLeft,
   Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -160,6 +160,7 @@ export function SessionWorkspace({
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Load session members
@@ -258,10 +259,33 @@ export function SessionWorkspace({
   }
 
   return (
-    <div data-testid="session-workspace" className="flex h-full overflow-hidden">
+    <div data-testid="session-workspace" className="flex h-full overflow-hidden relative">
+      {/* Mobile backdrop for context panel */}
+      {contextPanelOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setContextPanelOpen(false)}
+        />
+      )}
+
       {/* Left: context panel */}
-      <aside className="w-64 shrink-0 border-r flex flex-col bg-card">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r flex flex-col bg-card transition-transform duration-200 md:static md:translate-x-0",
+          contextPanelOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
         <div className="px-4 py-3 border-b">
+          <div className="flex items-center justify-between mb-1 md:hidden">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Context Panel</span>
+            <button
+              onClick={() => setContextPanelOpen(false)}
+              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label="Close context panel"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <h2 className="text-sm font-semibold truncate">{session.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{session.goal}</p>
           <div className="flex items-center justify-between mt-1.5">
@@ -395,7 +419,21 @@ export function SessionWorkspace({
 
       {/* Center: chat */}
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Mobile context panel toggle */}
+        <div className="flex items-center gap-2 px-4 py-2 border-b md:hidden">
+          <button
+            onClick={() => setContextPanelOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <PanelLeft className="h-3.5 w-3.5" />
+            Context ({linked.length})
+          </button>
+          <span className="flex-1" />
+          <Badge variant={STATUS_VARIANT[session.status] ?? "outline"} className="text-[10px]">
+            {session.status}
+          </Badge>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {!historyLoaded && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
@@ -473,10 +511,10 @@ export function SessionWorkspace({
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t p-4">
-          <div className="flex gap-3 max-w-3xl mx-auto">
+        <div className="border-t p-3 sm:p-4">
+          <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-36 shrink-0 text-xs h-9">
+              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -487,24 +525,26 @@ export function SessionWorkspace({
                 ))}
               </SelectContent>
             </Select>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your session documents…"
-              rows={1}
-              className="flex-1 resize-none rounded-lg border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2 sm:gap-3 flex-1">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your session documents…"
+                rows={1}
+                className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">Enter to send · Shift+Enter for new line</p>
+          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line</p>
         </div>
       </div>
     </div>
