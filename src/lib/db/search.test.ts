@@ -13,7 +13,13 @@ vi.mock("@/lib/ai/embed", () => ({
   generateEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
 }));
 
-const mockResults: SearchResult[] = [
+// Mock query expansion (skip expansion in search tests by default)
+vi.mock("@/lib/ai/query-expansion", () => ({
+  expandQuery: vi.fn().mockImplementation((q: string) => Promise.resolve([q])),
+}));
+
+/** Raw RPC results (before trust/freshness post-processing) */
+const mockRpcResults = [
   {
     id: "1",
     title: "Q3 Planning",
@@ -38,9 +44,30 @@ const mockResults: SearchResult[] = [
   },
 ];
 
-function createMockSupabase(rpcData: SearchResult[] | null, rpcError: Error | null = null) {
+/** Trust weight lookup data returned by the batch query */
+const mockTrustWeightRows = [
+  { id: "1", trust_weight: 1.0, processed_at: new Date().toISOString() },
+  { id: "2", trust_weight: 1.0, processed_at: new Date().toISOString() },
+];
+
+/** Full SearchResult shape (with trust/freshness fields) for assertion helpers */
+const mockResults: SearchResult[] = mockRpcResults.map((r) => ({
+  ...r,
+  trust_weight: 1.0,
+  days_ago: 0,
+}));
+
+function createMockSupabase(
+  rpcData: Record<string, unknown>[] | null,
+  rpcError: Error | null = null,
+  trustRows = mockTrustWeightRows
+) {
   const rpcFn = vi.fn().mockResolvedValue({ data: rpcData, error: rpcError });
-  return { rpc: rpcFn } as unknown as Parameters<typeof searchContext>[0];
+  // Chain for: supabase.from("context_items").select(...).in(...)
+  const inFn = vi.fn().mockResolvedValue({ data: trustRows, error: null });
+  const selectFn = vi.fn().mockReturnValue({ in: inFn });
+  const fromFn = vi.fn().mockReturnValue({ select: selectFn });
+  return { rpc: rpcFn, from: fromFn } as unknown as Parameters<typeof searchContext>[0];
 }
 
 describe("searchContext", () => {
@@ -53,11 +80,13 @@ describe("searchContext", () => {
 
   it("uses hybrid RPC when AI_GATEWAY_API_KEY is set", async () => {
     process.env.AI_GATEWAY_API_KEY = "test-key";
-    const supabase = createMockSupabase(mockResults);
+    const supabase = createMockSupabase(mockRpcResults);
 
     const results = await searchContext(supabase, "org-1", "planning", 5);
 
-    expect(results).toEqual(mockResults);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toHaveProperty("trust_weight");
+    expect(results[0]).toHaveProperty("days_ago");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((supabase as any).rpc).toHaveBeenCalledWith("hybrid_search", {
       p_org_id: "org-1",
@@ -73,11 +102,13 @@ describe("searchContext", () => {
 
   it("uses text-only RPC when AI_GATEWAY_API_KEY is not set", async () => {
     delete process.env.AI_GATEWAY_API_KEY;
-    const supabase = createMockSupabase(mockResults);
+    const supabase = createMockSupabase(mockRpcResults);
 
     const results = await searchContext(supabase, "org-1", "planning");
 
-    expect(results).toEqual(mockResults);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toHaveProperty("trust_weight");
+    expect(results[0]).toHaveProperty("days_ago");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((supabase as any).rpc).toHaveBeenCalledWith("hybrid_search_text", {
       p_org_id: "org-1",
@@ -92,7 +123,7 @@ describe("searchContext", () => {
 
   it("passes filters to RPC call", async () => {
     delete process.env.AI_GATEWAY_API_KEY;
-    const supabase = createMockSupabase(mockResults);
+    const supabase = createMockSupabase(mockRpcResults);
 
     await searchContext(supabase, "org-1", "planning", 10, {
       sourceType: "upload",
@@ -151,6 +182,8 @@ describe("buildContextBlock", () => {
       source_url: null,
       source_created_at: null,
       rrf_score: 0.5,
+      trust_weight: 1.0,
+      days_ago: 0,
     };
     const block = buildContextBlock([result]);
     expect(block).toContain("(no summary)");
@@ -174,7 +207,8 @@ describe("searchContextChunks", () => {
     process.env = { ...originalEnv };
   });
 
-  const mockChunkResults: ChunkSearchResult[] = [
+  /** Raw chunk RPC results (no trust/freshness fields) */
+  const mockRpcChunkResults = [
     {
       id: "c1",
       context_item_id: "1",
@@ -202,11 +236,15 @@ describe("searchContextChunks", () => {
   ];
 
   function createMockChunkSupabase(
-    rpcData: ChunkSearchResult[] | null,
-    rpcError: Error | null = null
+    rpcData: Record<string, unknown>[] | null,
+    rpcError: Error | null = null,
+    trustRows = mockTrustWeightRows
   ) {
     const rpcFn = vi.fn().mockResolvedValue({ data: rpcData, error: rpcError });
-    return { rpc: rpcFn } as unknown as Parameters<typeof searchContextChunks>[0];
+    const inFn = vi.fn().mockResolvedValue({ data: trustRows, error: null });
+    const selectFn = vi.fn().mockReturnValue({ in: inFn });
+    const fromFn = vi.fn().mockReturnValue({ select: selectFn });
+    return { rpc: rpcFn, from: fromFn } as unknown as Parameters<typeof searchContextChunks>[0];
   }
 
   it("returns empty array for nonsense query when RPC returns no results", async () => {
@@ -219,7 +257,7 @@ describe("searchContextChunks", () => {
 
   it("passes sourceType filter to hybrid_search_chunks RPC", async () => {
     process.env.AI_GATEWAY_API_KEY = "test-key";
-    const supabase = createMockChunkSupabase(mockChunkResults);
+    const supabase = createMockChunkSupabase(mockRpcChunkResults);
 
     await searchContextChunks(supabase, "org-1", "planning", 10, {
       sourceType: "upload",
@@ -237,7 +275,7 @@ describe("searchContextChunks", () => {
 
   it("passes contentType filter to hybrid_search_chunks RPC", async () => {
     process.env.AI_GATEWAY_API_KEY = "test-key";
-    const supabase = createMockChunkSupabase(mockChunkResults);
+    const supabase = createMockChunkSupabase(mockRpcChunkResults);
 
     await searchContextChunks(supabase, "org-1", "planning", 10, {
       contentType: "document",
@@ -255,7 +293,7 @@ describe("searchContextChunks", () => {
 
   it("passes date range filters to hybrid_search_chunks RPC", async () => {
     process.env.AI_GATEWAY_API_KEY = "test-key";
-    const supabase = createMockChunkSupabase(mockChunkResults);
+    const supabase = createMockChunkSupabase(mockRpcChunkResults);
 
     await searchContextChunks(supabase, "org-1", "planning", 10, {
       dateFrom: "2026-01-01",
@@ -274,7 +312,7 @@ describe("searchContextChunks", () => {
 
   it("passes limit=1 to RPC and returns at most 1 result", async () => {
     process.env.AI_GATEWAY_API_KEY = "test-key";
-    const singleResult = [mockChunkResults[0]];
+    const singleResult = [mockRpcChunkResults[0]];
     const supabase = createMockChunkSupabase(singleResult);
 
     const results = await searchContextChunks(supabase, "org-1", "planning", 1);
@@ -290,9 +328,12 @@ describe("searchContextChunks", () => {
   it("falls back to text search when AI_GATEWAY_API_KEY is not set", async () => {
     delete process.env.AI_GATEWAY_API_KEY;
     // When no API key, searchContextChunks calls searchContext (text-only),
-    // which calls hybrid_search_text RPC
-    const rpcFn = vi.fn().mockResolvedValue({ data: mockResults, error: null });
-    const supabase = { rpc: rpcFn } as unknown as Parameters<typeof searchContextChunks>[0];
+    // which calls hybrid_search_text RPC then fetches trust_weight via from()
+    const rpcFn = vi.fn().mockResolvedValue({ data: mockRpcResults, error: null });
+    const inFn = vi.fn().mockResolvedValue({ data: mockTrustWeightRows, error: null });
+    const selectFn = vi.fn().mockReturnValue({ in: inFn });
+    const fromFn = vi.fn().mockReturnValue({ select: selectFn });
+    const supabase = { rpc: rpcFn, from: fromFn } as unknown as Parameters<typeof searchContextChunks>[0];
 
     const results = await searchContextChunks(supabase, "org-1", "planning");
 
@@ -305,11 +346,13 @@ describe("searchContextChunks", () => {
       })
     );
 
-    // Results should be mapped to ChunkSearchResult shape
-    expect(results.length).toBe(mockResults.length);
+    // Results should be mapped to ChunkSearchResult shape with trust/freshness
+    expect(results.length).toBe(mockRpcResults.length);
     for (const r of results) {
       expect(r).toHaveProperty("context_item_id");
       expect(r).toHaveProperty("parent_content");
+      expect(r).toHaveProperty("trust_weight");
+      expect(r).toHaveProperty("days_ago");
     }
   });
 
@@ -319,8 +362,11 @@ describe("searchContextChunks", () => {
     const rpcFn = vi
       .fn()
       .mockResolvedValueOnce({ data: null, error: new Error("chunks table missing") })
-      .mockResolvedValueOnce({ data: mockResults, error: null });
-    const supabase = { rpc: rpcFn } as unknown as Parameters<typeof searchContextChunks>[0];
+      .mockResolvedValueOnce({ data: mockRpcResults, error: null });
+    const inFn = vi.fn().mockResolvedValue({ data: mockTrustWeightRows, error: null });
+    const selectFn = vi.fn().mockReturnValue({ in: inFn });
+    const fromFn = vi.fn().mockReturnValue({ select: selectFn });
+    const supabase = { rpc: rpcFn, from: fromFn } as unknown as Parameters<typeof searchContextChunks>[0];
 
     const results = await searchContextChunks(supabase, "org-1", "planning");
 
@@ -330,7 +376,7 @@ describe("searchContextChunks", () => {
       expect.any(Object)
     );
     // Results should be mapped from the fallback
-    expect(results.length).toBe(mockResults.length);
+    expect(results.length).toBe(mockRpcResults.length);
   });
 });
 
@@ -352,6 +398,8 @@ describe("buildChunkContextBlock", () => {
         source_url: null,
         source_created_at: null,
         rrf_score: 0.9,
+        trust_weight: 1.0,
+        days_ago: 0,
       },
       {
         id: "c2",
@@ -364,6 +412,8 @@ describe("buildChunkContextBlock", () => {
         source_url: null,
         source_created_at: null,
         rrf_score: 0.8,
+        trust_weight: 1.0,
+        days_ago: 0,
       },
     ];
 

@@ -35,7 +35,8 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           orgId,
           query,
           limit ?? 8,
-          filters
+          filters,
+          true // enable multi-query expansion
         );
 
         if (chunkResults.length > 0) {
@@ -45,6 +46,8 @@ export function createTools(supabase: AnySupabase, orgId: string) {
             source_type: r.source_type,
             content_type: r.content_type,
             rrf_score: r.rrf_score,
+            trust_weight: r.trust_weight,
+            days_ago: r.days_ago,
             description_short: r.description_short,
             parent_content: r.parent_content,
             source_url: r.source_url,
@@ -58,7 +61,8 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           orgId,
           query,
           limit ?? 8,
-          filters
+          filters,
+          true // enable multi-query expansion
         );
         return results.map((r) => ({
           id: r.id,
@@ -66,6 +70,8 @@ export function createTools(supabase: AnySupabase, orgId: string) {
           source_type: r.source_type,
           content_type: r.content_type,
           rrf_score: r.rrf_score,
+          trust_weight: r.trust_weight,
+          days_ago: r.days_ago,
           description_short: r.description_short,
           source_url: r.source_url,
           source_created_at: r.source_created_at,

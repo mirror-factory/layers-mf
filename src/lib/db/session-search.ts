@@ -60,5 +60,7 @@ export async function searchSessionContext(
       .includes(query.toLowerCase())
       ? 0.05
       : 0.02,
+    trust_weight: 1.0,
+    days_ago: 0,
   }));
 }
