@@ -48,6 +48,21 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
   });
 }
 
+/** Read all SSE events from a streaming response and return the parsed events */
+async function readSSE(res: Response): Promise<Record<string, unknown>[]> {
+  const text = await res.text();
+  return text
+    .split("\n")
+    .filter((line) => line.startsWith("data: "))
+    .map((line) => JSON.parse(line.slice(6)));
+}
+
+/** Read SSE and return the last event (usually the "complete" event) */
+async function readSSEResult(res: Response): Promise<Record<string, unknown>> {
+  const events = await readSSE(res);
+  return events[events.length - 1] ?? {};
+}
+
 function mockAuthenticatedUser() {
   mockGetUser.mockResolvedValue({
     data: { user: { id: "u-1" } },
@@ -132,13 +147,15 @@ describe("POST /api/integrations/sync", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 400 for unknown provider", async () => {
+  it("returns error event for unknown provider", async () => {
     mockAuthenticatedUser();
     mockIntegrationLookup();
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "notion" }));
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toContain("No fetch strategy");
+    expect(res.status).toBe(200);
+    const events = await readSSE(res);
+    const errorEvent = events.find((e) => e.phase === "error");
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent!.message).toContain("No fetch strategy");
   });
 });
 
@@ -168,7 +185,7 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
     expect(body.processed).toBe(1);
 
@@ -177,13 +194,13 @@ describe("POST /api/integrations/sync — Slack", () => {
     expect(mockNangoProxy).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "/api/conversations.list",
-        params: { types: "public_channel", limit: "10" },
+        params: { types: "public_channel", limit: "20" },
       })
     );
     expect(mockNangoProxy).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "/api/conversations.history",
-        params: { channel: "C123", limit: "50" },
+        params: { channel: "C123", limit: "200" },
       })
     );
   });
@@ -195,7 +212,7 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
@@ -213,16 +230,16 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
-  it("limits to 3 channels even when more are returned", async () => {
+  it("limits to 20 channels even when more are returned", async () => {
     mockAuthenticatedUser();
     mockIntegrationLookup();
     mockAdminDbForProcessing();
 
-    const channels = Array.from({ length: 6 }, (_, i) => ({
+    const channels = Array.from({ length: 25 }, (_, i) => ({
       id: `C${i}`,
       name: `channel-${i}`,
     }));
@@ -230,8 +247,8 @@ describe("POST /api/integrations/sync — Slack", () => {
     const longMsg = "A".repeat(60);
 
     mockNangoProxy.mockResolvedValueOnce({ data: { channels } });
-    // Only 3 channels should be fetched
-    for (let i = 0; i < 3; i++) {
+    // Only 20 channels should be fetched
+    for (let i = 0; i < 20; i++) {
       mockNangoProxy.mockResolvedValueOnce({
         data: { messages: [{ ts: "1", text: longMsg }] },
       });
@@ -239,8 +256,9 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
-    // 1 call for conversations.list + 3 for conversations.history
-    expect(mockNangoProxy).toHaveBeenCalledTimes(4);
+    await readSSEResult(res); // consume full stream
+    // 1 call for conversations.list + 20 for conversations.history
+    expect(mockNangoProxy).toHaveBeenCalledTimes(21);
   });
 
   it("creates context_item with source_type=slack and content_type=message", async () => {
@@ -291,14 +309,15 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
+    await readSSEResult(res); // consume stream before checking mocks
 
     // Verify insert was called with correct source_type and content_type
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         source_type: "slack",
         content_type: "message",
-        source_id: "slack-C999",
-        title: "#eng — recent messages",
+        source_id: expect.stringContaining("slack-C999-"),
+        title: expect.stringContaining("#eng — recent messages"),
       })
     );
   });
@@ -315,7 +334,7 @@ describe("POST /api/integrations/sync — Slack", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "slack" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 });
@@ -340,7 +359,7 @@ describe("POST /api/integrations/sync — GitHub", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "github" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
     expect(body.processed).toBe(1);
   });
@@ -371,7 +390,7 @@ describe("POST /api/integrations/sync — Google Drive", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "google-drive" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
     expect(body.processed).toBe(1);
   });
@@ -404,7 +423,7 @@ describe("POST /api/integrations/sync — Granola", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
     expect(body.processed).toBe(1);
 
@@ -423,7 +442,7 @@ describe("POST /api/integrations/sync — Granola", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
@@ -441,7 +460,7 @@ describe("POST /api/integrations/sync — Granola", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
@@ -497,6 +516,7 @@ describe("POST /api/integrations/sync — Granola", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
     expect(res.status).toBe(200);
+    await readSSEResult(res); // consume stream before checking mocks
 
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -530,7 +550,7 @@ describe("POST /api/integrations/sync — Granola", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "granola" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
   });
 });
@@ -563,7 +583,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
     expect(body.processed).toBe(1);
 
@@ -582,7 +602,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
@@ -600,7 +620,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.processed).toBe(0);
   });
 
@@ -660,6 +680,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
+    await readSSEResult(res); // consume stream before checking mocks
 
     // Verify insert was called with correct source_type and content_type
     expect(insertMock).toHaveBeenCalledWith(
@@ -700,7 +721,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
   });
 
@@ -730,7 +751,7 @@ describe("POST /api/integrations/sync — Linear", () => {
 
     const res = await POST(makeRequest({ connectionId: "c-1", provider: "linear" }));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readSSEResult(res);
     expect(body.fetched).toBe(1);
   });
 });

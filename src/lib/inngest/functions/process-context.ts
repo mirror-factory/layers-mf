@@ -3,7 +3,10 @@ import { generateObject } from "ai";
 import { extractionModel } from "@/lib/ai/config";
 import { generateEmbedding, generateEmbeddings } from "@/lib/ai/embed";
 import { chunkDocument } from "@/lib/pipeline/chunker";
-import { ExtractionSchema } from "@/lib/pipeline/extraction-schema";
+import {
+  ExtractionSchema,
+  SessionMatchSchema,
+} from "@/lib/pipeline/extraction-schema";
 import { createAdminClient } from "@/lib/supabase/server";
 import { createInboxItems } from "@/lib/inbox";
 
@@ -139,6 +142,82 @@ Extract the title, summaries, entities, sentiment, and an executive summary. Be 
       );
     });
 
-    return { contextItemId, status: "ready", chunkCount: chunks.length };
+    // Step 7: Auto-link to active sessions
+    const linkedSessions = await step.run("link-sessions", async () => {
+      const { data: sessions } = await supabase
+        .from("sessions")
+        .select("id, name, goal")
+        .eq("org_id", orgId)
+        .eq("status", "active");
+
+      if (!sessions || sessions.length === 0) return [];
+
+      const sessionList = sessions
+        .map(
+          (s: { id: string; name: string; goal: string }) =>
+            `- ${s.id}: "${s.name}" — ${s.goal}`
+        )
+        .join("\n");
+
+      const { object } = await generateObject({
+        model: extractionModel,
+        schema: SessionMatchSchema,
+        prompt: `You are matching a piece of content to active work sessions. Only match if the content is genuinely relevant (score >= 0.5).
+
+Content title: ${extraction.title}
+Content summary: ${extraction.summary}
+Topics: ${extraction.entities.topics.join(", ")}
+Projects: ${extraction.entities.projects.join(", ")}
+
+Active sessions:
+${sessionList}
+
+Return matches only for sessions where this content would be useful. If none match, return an empty matches array.`,
+      });
+
+      const relevant = object.matches.filter((m) => m.relevanceScore >= 0.5);
+      if (relevant.length === 0) return [];
+
+      const validSessionIds = new Set(
+        sessions.map((s: { id: string }) => s.id)
+      );
+      const links = relevant
+        .filter((m) => validSessionIds.has(m.sessionId))
+        .map((m) => ({
+          session_id: m.sessionId,
+          context_item_id: contextItemId,
+          relevance_score: m.relevanceScore,
+          added_by: "system",
+        }));
+
+      if (links.length > 0) {
+        const { data: existing } = await supabase
+          .from("session_context_links")
+          .select("session_id")
+          .eq("context_item_id", contextItemId)
+          .in(
+            "session_id",
+            links.map((l) => l.session_id)
+          );
+
+        const existingIds = new Set(
+          (existing ?? []).map((e: { session_id: string }) => e.session_id)
+        );
+        const newLinks = links.filter((l) => !existingIds.has(l.session_id));
+
+        if (newLinks.length > 0) {
+          await supabase.from("session_context_links").insert(newLinks);
+        }
+      }
+
+      return links.map((l) => l.session_id);
+    });
+
+    return {
+      contextItemId,
+      status: "ready",
+      chunkCount: chunks.length,
+      linkedSessions,
+    };
   }
 );

@@ -8,19 +8,22 @@ import { OnboardingShell } from "@/components/onboarding-shell";
 import { cn } from "@/lib/utils";
 
 const TOOLS = [
-  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", icon: "📅" },
-  { id: "linear", name: "Linear", description: "Import issues and projects", icon: "◆" },
-  { id: "notion", name: "Notion", description: "Connect docs and wikis", icon: "📝" },
-  { id: "slack", name: "Slack", description: "Link channels and threads", icon: "💬" },
-  { id: "github", name: "GitHub", description: "Track repos and PRs", icon: "⚙️" },
-  { id: "google-drive", name: "Google Drive", description: "Access shared files", icon: "📁" },
+  { id: "google-drive", name: "Google Drive", description: "Docs, Sheets, Slides, PDFs", icon: "📁", available: true },
+  { id: "linear", name: "Linear", description: "Import issues and projects", icon: "◆", available: true },
+  { id: "slack", name: "Slack", description: "Link channels and threads", icon: "💬", available: true },
+  { id: "github", name: "GitHub", description: "Track repos and PRs", icon: "⚙️", available: true },
+  { id: "granola", name: "Granola", description: "Meeting transcripts", icon: "🎙️", available: true },
+  { id: "discord", name: "Discord", description: "Server messages and channels", icon: "🎮", available: true },
+  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", icon: "📅", available: false },
+  { id: "notion", name: "Notion", description: "Connect docs and wikis", icon: "📝", available: false },
 ] as const;
 
 export default function ConnectToolsPage() {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  function toggle(id: string) {
+  function toggle(id: string, available: boolean) {
+    if (!available) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -43,15 +46,21 @@ export default function ConnectToolsPage() {
             {TOOLS.map((tool) => (
               <button
                 key={tool.id}
-                onClick={() => toggle(tool.id)}
+                onClick={() => toggle(tool.id, tool.available)}
+                disabled={!tool.available}
                 className={cn(
-                  "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all hover:bg-accent/50",
+                  "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all",
+                  tool.available && "hover:bg-accent/50 cursor-pointer",
+                  !tool.available && "opacity-60 cursor-not-allowed",
                   selected.has(tool.id) && "border-primary bg-primary/5 ring-1 ring-primary"
                 )}
               >
                 <div className="flex w-full items-center justify-between">
                   <span className="text-lg">{tool.icon}</span>
-                  {selected.has(tool.id) && (
+                  {!tool.available && (
+                    <span className="text-[10px] text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">Coming Soon</span>
+                  )}
+                  {tool.available && selected.has(tool.id) && (
                     <span className="text-xs text-primary font-medium">Selected</span>
                   )}
                 </div>

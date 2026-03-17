@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ConnectPanel } from "@/components/integrations/connect-panel";
+import { IntegrationCatalog } from "@/components/integrations/integration-catalog";
 
 export default async function IntegrationsPage() {
   const supabase = await createClient();
@@ -23,8 +24,12 @@ export default async function IntegrationsPage() {
         .order("created_at", { ascending: false })
     : { data: [] };
 
+  const connectedProviders = new Set(
+    (integrations ?? []).map((i) => i.provider)
+  );
+
   return (
-    <div className="p-4 sm:p-8 max-w-3xl" data-testid="integrations-page">
+    <div className="p-4 sm:p-8 max-w-4xl" data-testid="integrations-page">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-1" data-testid="integrations-heading">Integrations</h1>
         <p className="text-muted-foreground text-sm">
@@ -33,6 +38,10 @@ export default async function IntegrationsPage() {
         </p>
       </div>
       <ConnectPanel initialIntegrations={integrations ?? []} />
+
+      <div className="mt-12">
+        <IntegrationCatalog connectedProviders={connectedProviders} />
+      </div>
     </div>
   );
 }

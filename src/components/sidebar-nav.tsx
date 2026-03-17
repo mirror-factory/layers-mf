@@ -18,6 +18,7 @@ import {
   Users,
   UserCog,
   Shield,
+  CreditCard,
   FileCode2,
   CheckSquare,
   Menu,
@@ -36,7 +37,9 @@ const NAV_ITEMS = [
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
+  { href: "/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
+  { href: "/features", label: "Features", icon: Layers },
   { href: "/api-docs", label: "API Docs", icon: FileCode2 },
 ];
 

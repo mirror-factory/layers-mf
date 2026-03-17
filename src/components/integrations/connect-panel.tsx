@@ -1,12 +1,13 @@
 "use client";
 
 import Nango from "@nangohq/frontend";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plug, Loader2 } from "lucide-react";
 import {
   IntegrationCard,
   type Integration,
+  type SyncProgress,
 } from "@/components/integrations/integration-card";
 
 interface ConnectPanelProps {
@@ -20,6 +21,11 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncResults, setSyncResults] = useState<Record<string, string>>({});
   const [syncDebug, setSyncDebug] = useState<Record<string, string[]>>({});
+  const [syncProgress, setSyncProgress] = useState<Record<string, SyncProgress>>({});
+  const [backgroundSyncStatus, setBackgroundSyncStatus] = useState<
+    Record<string, "idle" | "triggered" | "polling" | "complete" | "timeout" | "error">
+  >({});
+  const pollTimers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   const fetchIntegrations = useCallback(async () => {
     const res = await fetch("/api/integrations");
@@ -104,10 +110,108 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
     }
   }
 
+  // Clean up polling timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(pollTimers.current).forEach(clearInterval);
+    };
+  }, []);
+
+  async function handleSyncTrigger(integration: Integration): Promise<boolean> {
+    try {
+      const res = await fetch("/api/integrations/sync-trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          connectionId: integration.nango_connection_id,
+          provider: integration.provider,
+        }),
+      });
+
+      if (!res.ok) {
+        // Background trigger not available — fall back to streaming
+        return false;
+      }
+
+      const data = await res.json();
+      if (data.fallback) {
+        // Server fell back to streaming sync; let caller use streaming instead
+        return false;
+      }
+
+      // Background sync triggered successfully — start polling
+      const originalSyncAt = integration.last_sync_at;
+      setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "triggered" }));
+
+      const startTime = Date.now();
+      const POLL_INTERVAL = 3000;
+      const MAX_POLL_DURATION = 60000;
+
+      // Clear any existing poll for this integration
+      if (pollTimers.current[integration.id]) {
+        clearInterval(pollTimers.current[integration.id]);
+      }
+
+      pollTimers.current[integration.id] = setInterval(async () => {
+        const elapsed = Date.now() - startTime;
+
+        if (elapsed >= MAX_POLL_DURATION) {
+          clearInterval(pollTimers.current[integration.id]);
+          delete pollTimers.current[integration.id];
+          setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "timeout" }));
+          // Clear timeout status after 5 seconds
+          setTimeout(() => {
+            setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "idle" }));
+          }, 5000);
+          return;
+        }
+
+        setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "polling" }));
+
+        try {
+          const pollRes = await fetch("/api/integrations");
+          if (!pollRes.ok) return;
+
+          const updated: Integration[] = await pollRes.json();
+          const current = updated.find((i) => i.id === integration.id);
+
+          if (current) {
+            setIntegrations(updated);
+
+            if (current.last_sync_at && current.last_sync_at !== originalSyncAt) {
+              // Sync completed
+              clearInterval(pollTimers.current[integration.id]);
+              delete pollTimers.current[integration.id];
+              setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "complete" }));
+              // Clear complete status after 5 seconds
+              setTimeout(() => {
+                setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "idle" }));
+              }, 5000);
+            }
+          }
+        } catch {
+          // Polling fetch failed; keep trying
+        }
+      }, POLL_INTERVAL);
+
+      return true;
+    } catch {
+      setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "error" }));
+      setTimeout(() => {
+        setBackgroundSyncStatus((prev) => ({ ...prev, [integration.id]: "idle" }));
+      }, 3000);
+      return false;
+    }
+  }
+
   async function handleSync(integration: Integration) {
     setSyncing(integration.id);
     setSyncResults((prev) => ({ ...prev, [integration.id]: "" }));
     setSyncDebug((prev) => ({ ...prev, [integration.id]: [] }));
+    setSyncProgress((prev) => ({
+      ...prev,
+      [integration.id]: { phase: "fetching", message: "Starting sync..." },
+    }));
 
     try {
       const res = await fetch("/api/integrations/sync", {
@@ -119,31 +223,110 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
         }),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        const label =
-          data.processed > 0
-            ? `${data.processed} item${data.processed === 1 ? "" : "s"} synced`
-            : "Nothing new to import";
-        setSyncResults((prev) => ({ ...prev, [integration.id]: label }));
-        if (data.debug?.length) {
-          setSyncDebug((prev) => ({
-            ...prev,
-            [integration.id]: data.debug,
-          }));
-        }
-        await fetchIntegrations();
-      } else {
+      if (!res.ok) {
+        // Non-streaming error response (auth errors, validation, etc.)
+        const data = await res.json().catch(() => ({ error: "Sync failed" }));
         setSyncResults((prev) => ({
           ...prev,
           [integration.id]: data.error ?? "Sync failed",
         }));
+        setSyncProgress((prev) => ({
+          ...prev,
+          [integration.id]: { phase: "error", message: data.error ?? "Sync failed" },
+        }));
+        return;
       }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setSyncResults((prev) => ({
+          ...prev,
+          [integration.id]: "Sync failed — no stream",
+        }));
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines from buffer
+        const lines = buffer.split("\n");
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+
+            if (data.phase === "fetching") {
+              setSyncProgress((prev) => ({
+                ...prev,
+                [integration.id]: {
+                  phase: "fetching",
+                  message: data.message,
+                },
+              }));
+            } else if (data.phase === "processing") {
+              setSyncProgress((prev) => ({
+                ...prev,
+                [integration.id]: {
+                  phase: "processing",
+                  current: data.current,
+                  total: data.total,
+                  title: data.title,
+                },
+              }));
+            } else if (data.phase === "complete") {
+              const label =
+                data.processed > 0
+                  ? `${data.processed} item${data.processed === 1 ? "" : "s"} synced`
+                  : "Nothing new to import";
+              setSyncResults((prev) => ({ ...prev, [integration.id]: label }));
+              setSyncProgress((prev) => ({
+                ...prev,
+                [integration.id]: {
+                  phase: "complete",
+                  processed: data.processed,
+                  fetched: data.fetched,
+                },
+              }));
+            } else if (data.phase === "error") {
+              // Individual item errors — don't stop the sync, just note it
+              setSyncProgress((prev) => ({
+                ...prev,
+                [integration.id]: {
+                  ...prev[integration.id],
+                  phase: prev[integration.id]?.phase === "processing"
+                    ? "processing"
+                    : "error",
+                  message: data.message,
+                },
+              }));
+            }
+          } catch {
+            // Skip malformed SSE lines
+          }
+        }
+      }
+
+      await fetchIntegrations();
     } catch {
       setSyncResults((prev) => ({
         ...prev,
         [integration.id]: "Sync failed",
+      }));
+      setSyncProgress((prev) => ({
+        ...prev,
+        [integration.id]: { phase: "error", message: "Sync failed" },
       }));
     } finally {
       setSyncing(null);
@@ -172,7 +355,7 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
           ) : (
             <Plug className="h-4 w-4 mr-2" />
           )}
-          {connecting ? "Connecting…" : "Connect"}
+          {connecting ? "Connecting..." : "Connect"}
         </Button>
       </div>
 
@@ -188,10 +371,13 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
               key={integration.id}
               integration={integration}
               onSync={handleSync}
+              onSyncTrigger={handleSyncTrigger}
               onDisconnect={handleDisconnect}
               syncing={syncing === integration.id}
               syncResult={syncResults[integration.id]}
               syncDebug={syncDebug[integration.id]}
+              syncProgress={syncProgress[integration.id]}
+              backgroundSyncStatus={backgroundSyncStatus[integration.id] ?? "idle"}
             />
           ))}
         </div>

@@ -53,7 +53,7 @@ stable
 as $$
   select
     ci.id as context_item_id,
-    idx.ordinality - 1 as action_index,
+    (idx.ordinality - 1)::int as action_index,
     idx.val::text as task,
     coalesce(ais.status, 'pending') as status,
     ci.source_type,
@@ -61,11 +61,15 @@ as $$
     ci.title as source_title,
     ci.source_created_at,
     ais.completed_at
-  from context_items ci,
-    lateral jsonb_array_elements(ci.entities->'action_items') with ordinality as idx(val, ordinality)
-  left join action_item_status ais
-    on ais.context_item_id = ci.id
-    and ais.action_index = idx.ordinality - 1
+  from context_items ci
+  cross join lateral jsonb_array_elements(ci.entities->'action_items') with ordinality as idx(val, ordinality)
+  left join lateral (
+    select s.status, s.completed_at
+    from action_item_status s
+    where s.context_item_id = ci.id
+      and s.action_index = (idx.ordinality - 1)::int
+    limit 1
+  ) ais on true
   where ci.org_id = p_org_id
     and ci.status = 'ready'
     and ci.entities is not null

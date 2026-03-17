@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { nango } from "@/lib/nango/client";
-import { extractStructured } from "@/lib/ai/extract";
-import { generateEmbedding } from "@/lib/ai/embed";
-import { createInboxItems } from "@/lib/inbox";
+import { inngest } from "@/lib/inngest/client";
+import { mapNangoRecord } from "@/lib/integrations/nango-mappers";
+import {
+  computeContentHash,
+  detectChanges,
+  createVersion,
+} from "@/lib/versioning";
 
 export const maxDuration = 60;
 
@@ -73,7 +77,8 @@ export async function POST(request: NextRequest) {
 
   // ── SYNC EVENT ──────────────────────────────────────────────────────────────
   // Fires when Nango finishes syncing records for a connection.
-  // Look up orgId from our integrations table via the Nango connectionId.
+  // This is the primary ingestion path: fetch records, map, dedupe, and
+  // dispatch to the Inngest pipeline for async processing.
   if (
     payload.type === "sync" &&
     payload.syncName &&
@@ -82,7 +87,9 @@ export async function POST(request: NextRequest) {
     payload.providerConfigKey
   ) {
     const connectionId = payload.connectionId;
+    const provider = payload.providerConfigKey;
 
+    // 1. Look up the integration to get org_id
     const { data: integration } = await supabase
       .from("integrations")
       .select("org_id")
@@ -90,99 +97,210 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!integration) {
+      console.error(
+        `[nango-webhook] Unknown connectionId: ${connectionId} (provider: ${provider})`
+      );
       return NextResponse.json({ error: "Unknown connectionId" }, { status: 404 });
     }
 
     const orgId = integration.org_id;
 
-    const response = await nango.listRecords<NangoRecord>({
-      providerConfigKey: payload.providerConfigKey,
-      connectionId,
-      model: payload.model,
-      modifiedAfter: payload.modifiedAfter,
-    });
+    // 2. Fetch the synced records from Nango
+    let records: NangoRecord[] = [];
+    try {
+      const response = await nango.listRecords<NangoRecord>({
+        providerConfigKey: provider,
+        connectionId,
+        model: payload.model,
+        modifiedAfter: payload.modifiedAfter,
+      });
+      records = response.records ?? [];
+    } catch (err) {
+      console.error(
+        `[nango-webhook] Failed to fetch records from Nango:`,
+        err instanceof Error ? err.message : err
+      );
+      // Return 200 so Nango doesn't retry — the records will come in next sync
+      return NextResponse.json({ received: true, error: "fetch_failed", processed: 0 });
+    }
 
-    const records = response.records ?? [];
     if (records.length === 0) {
       return NextResponse.json({ received: true, processed: 0 });
     }
 
+    console.log(
+      `[nango-webhook] Processing ${records.length} records from ${provider} (sync: ${payload.syncName}, connection: ${connectionId})`
+    );
+
+    // 3. Update last_sync_at on the integration
     await supabase
       .from("integrations")
       .update({ last_sync_at: new Date().toISOString() })
       .eq("nango_connection_id", connectionId);
 
-    // Process fire-and-forget so webhook returns quickly
-    (async () => {
-      for (const record of records) {
-        try {
-          const sourceId = String(record.id ?? "");
-          const title = String(record.title ?? record.name ?? "Untitled");
-          const content = String(
-            record.transcript ?? record.content ?? record.body ?? record.description ?? ""
+    // 4. Map, dedupe, insert, and dispatch to Inngest
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    const inngestEvents: { name: string; data: Record<string, unknown> }[] = [];
+
+    for (const record of records) {
+      try {
+        // Map the raw Nango record to our schema
+        const mapped = mapNangoRecord(provider, record as Record<string, unknown>);
+        if (!mapped) {
+          skipped++;
+          continue;
+        }
+
+        // Check for existing record (idempotency)
+        const { data: existing } = await supabase
+          .from("context_items")
+          .select("id, raw_content, content_hash, title, source_metadata")
+          .eq("org_id", orgId)
+          .eq("source_type", provider)
+          .eq("source_id", mapped.source_id)
+          .maybeSingle();
+
+        if (existing) {
+          // Detect what changed using content-hash comparison
+          const changes = detectChanges(
+            {
+              raw_content: existing.raw_content as string | null,
+              content_hash: existing.content_hash as string | null,
+              title: existing.title as string,
+              source_metadata: (existing.source_metadata as Record<string, unknown> | null),
+            },
+            {
+              raw_content: mapped.raw_content,
+              title: mapped.title,
+              source_metadata: mapped.source_metadata,
+            }
           );
-          const sourceCreatedAt = (record.created_at ?? record.started_at ?? null) as string | null;
 
-          if (!content) continue;
+          if (!changes.changed) {
+            skipped++;
+            continue;
+          }
 
-          const { data: item, error } = await supabase
+          // Version the old state before overwriting
+          await createVersion(
+            supabase,
+            existing.id,
+            orgId,
+            {
+              title: existing.title as string,
+              raw_content: existing.raw_content as string | null,
+              content_hash: existing.content_hash as string | null,
+              source_metadata: existing.source_metadata,
+            },
+            changes.changeType,
+            changes.changedFields,
+            `webhook:${provider}`
+          );
+
+          if (changes.contentChanged) {
+            // Content changed — update and re-process via Inngest
+            await supabase
+              .from("context_items")
+              .update({
+                raw_content: mapped.raw_content,
+                title: mapped.title,
+                status: "pending",
+                content_hash: computeContentHash(mapped.raw_content),
+                updated_at: new Date().toISOString(),
+                source_metadata: mapped.source_metadata as import("@/lib/database.types").Json ?? undefined,
+                source_created_at: mapped.source_created_at,
+              })
+              .eq("id", existing.id);
+
+            inngestEvents.push({
+              name: "context/item.created",
+              data: { contextItemId: existing.id, orgId },
+            });
+            updated++;
+          } else {
+            // Metadata-only change — update metadata, skip expensive AI re-processing
+            await supabase
+              .from("context_items")
+              .update({
+                title: mapped.title,
+                updated_at: new Date().toISOString(),
+                source_metadata: mapped.source_metadata as import("@/lib/database.types").Json ?? undefined,
+              })
+              .eq("id", existing.id);
+            updated++;
+          }
+        } else {
+          // New record — insert with content hash
+          const { data: inserted, error } = await supabase
             .from("context_items")
-            .upsert(
-              {
-                org_id: orgId,
-                source_type: payload.providerConfigKey!,
-                source_id: sourceId,
-                nango_connection_id: connectionId,
-                title,
-                raw_content: content,
-                content_type: contentTypeFor(payload.providerConfigKey!),
-                status: "processing",
-                source_created_at: sourceCreatedAt,
-              },
-              { onConflict: "org_id,source_type,source_id" }
-            )
-            .select()
+            .insert({
+              org_id: orgId,
+              source_type: provider,
+              source_id: mapped.source_id,
+              nango_connection_id: connectionId,
+              title: mapped.title,
+              raw_content: mapped.raw_content,
+              content_type: mapped.content_type,
+              content_hash: computeContentHash(mapped.raw_content),
+              status: "pending",
+              source_created_at: mapped.source_created_at,
+              source_metadata: mapped.source_metadata as import("@/lib/database.types").Json ?? undefined,
+            })
+            .select("id")
             .single();
 
-          if (error || !item) continue;
+          if (error || !inserted) {
+            console.error(
+              `[nango-webhook] DB insert failed for ${provider}/${mapped.source_id}:`,
+              error?.message ?? "no row returned"
+            );
+            continue;
+          }
 
-          const [extraction, embedding] = await Promise.all([
-            extractStructured(content, title),
-            generateEmbedding(content),
-          ]);
-
-          await supabase
-            .from("context_items")
-            .update({
-              title: extraction.title,
-              description_short: extraction.description_short,
-              description_long: extraction.description_long,
-              entities: extraction.entities,
-              embedding: embedding as unknown as string,
-              status: "ready",
-              processed_at: new Date().toISOString(),
-            })
-            .eq("id", item.id);
-
-          await createInboxItems(supabase, orgId, item.id, extraction, payload.providerConfigKey!);
-        } catch (err) {
-          console.error("Nango record processing error:", err);
+          inngestEvents.push({
+            name: "context/item.created",
+            data: { contextItemId: inserted.id, orgId },
+          });
+          created++;
         }
+      } catch (err) {
+        console.error(
+          `[nango-webhook] Error processing record ${record.id} from ${provider}:`,
+          err instanceof Error ? err.message : err
+        );
+        // Continue processing remaining records
       }
-    })();
+    }
 
-    return NextResponse.json({ received: true, queued: records.length });
+    // 5. Send all Inngest events in a single batch
+    if (inngestEvents.length > 0) {
+      try {
+        await inngest.send(inngestEvents);
+        console.log(
+          `[nango-webhook] Dispatched ${inngestEvents.length} events to Inngest (${created} new, ${updated} updated)`
+        );
+      } catch (err) {
+        console.error(
+          `[nango-webhook] Failed to send Inngest events:`,
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
+    console.log(
+      `[nango-webhook] Done: ${created} created, ${updated} updated, ${skipped} skipped (provider: ${provider})`
+    );
+
+    return NextResponse.json({
+      received: true,
+      created,
+      updated,
+      skipped,
+      total: records.length,
+    });
   }
 
   return NextResponse.json({ received: true });
-}
-
-function contentTypeFor(provider: string): string {
-  switch (provider) {
-    case "granola": return "meeting_transcript";
-    case "linear": return "issue";
-    case "github": return "issue";
-    case "slack": return "message";
-    default: return "document";
-  }
 }

@@ -11,7 +11,16 @@ import {
   batchMessagesToContent,
   buildChannelMetadata,
 } from "@/lib/integrations/discord";
+import { windowedSourceId, currentWeekLabel } from "@/lib/integrations/message-windows";
 import type { Json } from "@/lib/database.types";
+import {
+  computeContentHash,
+  detectChanges,
+  createVersion,
+} from "@/lib/versioning";
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
+import * as XLSX from "xlsx";
 
 export const maxDuration = 60;
 
@@ -46,7 +55,7 @@ async function fetchGitHub(
     return [];
   }
 
-  for (const repo of repos.slice(0, 4)) {
+  for (const repo of repos.slice(0, 10)) {
     try {
       const res = await nango.proxy<
         { number: number; title: string; body: string | null; created_at: string }[]
@@ -55,10 +64,10 @@ async function fetchGitHub(
         providerConfigKey: provider,
         connectionId,
         endpoint: `/repos/${repo.full_name}/issues`,
-        params: { per_page: "15", state: "all" },
+        params: { per_page: "30", state: "all" },
       });
 
-      for (const issue of (res.data ?? []).slice(0, 8)) {
+      for (const issue of (res.data ?? []).slice(0, 15)) {
         if (!issue.body) continue;
         records.push({
           id: `${repo.full_name}#${issue.number}`,
@@ -72,15 +81,34 @@ async function fetchGitHub(
     }
   }
 
-  return records.slice(0, 20);
+  return records.slice(0, 30);
 }
 
 // ── Google Drive ────────────────────────────────────────────────────────────
-// MIME types we can export as plain text
+// MIME types we can export as plain text (Google-native files)
 const GDRIVE_EXPORTABLE: Record<string, string> = {
   "application/vnd.google-apps.document":     "text/plain",
   "application/vnd.google-apps.spreadsheet":  "text/csv",
   "application/vnd.google-apps.presentation": "text/plain",
+};
+
+// Uploaded file MIME types we can download and parse
+const GDRIVE_DOWNLOADABLE = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+]);
+
+const GDRIVE_FRIENDLY_NAMES: Record<string, string> = {
+  "application/pdf": "PDF",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+  "text/plain": "TXT",
+  "text/markdown": "Markdown",
+  "text/csv": "CSV",
 };
 
 async function fetchGoogleDrive(
@@ -109,14 +137,14 @@ async function fetchGoogleDrive(
       connectionId,
       endpoint: "/drive/v3/files",
       params: {
-        q: "trashed=false and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.presentation')",
+        q: "trashed=false and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.presentation' or mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/plain' or mimeType='text/markdown' or mimeType='text/csv')",
         fields: "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,lastModifyingUser(displayName,emailAddress))",
         pageSize: "100",
         orderBy: "modifiedTime desc",
       },
     });
     files = res.data?.files ?? [];
-    debug.push(`Found ${files.length} exportable Google files in Drive`);
+    debug.push(`Found ${files.length} files in Drive`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     debug.push(`Drive API error: ${msg}`);
@@ -125,25 +153,80 @@ async function fetchGoogleDrive(
 
   for (const file of files) {
     const exportMime = GDRIVE_EXPORTABLE[file.mimeType];
-    if (!exportMime) {
+    const isDownloadable = GDRIVE_DOWNLOADABLE.has(file.mimeType);
+
+    if (!exportMime && !isDownloadable) {
       const friendly = file.mimeType.split(".").pop() ?? file.mimeType;
-      debug.push(`Skipped: ${file.name} (${friendly} — not exportable)`);
+      debug.push(`Skipped: ${file.name} (${friendly} — unsupported file type)`);
       continue;
     }
+
     try {
-      const res = await nango.proxy<string>({
-        method: "GET",
-        providerConfigKey: provider,
-        connectionId,
-        endpoint: `/drive/v3/files/${file.id}/export`,
-        params: { mimeType: exportMime },
-      });
-      const content = typeof res.data === "string" ? res.data.trim() : "";
+      let content = "";
+
+      if (exportMime) {
+        // Google-native files: use export endpoint
+        const res = await nango.proxy<string>({
+          method: "GET",
+          providerConfigKey: provider,
+          connectionId,
+          endpoint: `/drive/v3/files/${file.id}/export`,
+          params: { mimeType: exportMime },
+        });
+        content = typeof res.data === "string" ? res.data.trim() : "";
+      } else {
+        // Uploaded files: download via alt=media
+        const res = await nango.proxy<ArrayBuffer>({
+          method: "GET",
+          providerConfigKey: provider,
+          connectionId,
+          endpoint: `/drive/v3/files/${file.id}`,
+          params: { alt: "media" },
+          responseType: "arraybuffer",
+        });
+
+        const buffer = Buffer.from(res.data);
+
+        switch (file.mimeType) {
+          case "application/pdf": {
+            const parsed = await pdfParse(buffer);
+            content = parsed.text.trim();
+            break;
+          }
+          case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+            const parsed = await mammoth.extractRawText({ buffer });
+            content = parsed.value.trim();
+            break;
+          }
+          case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+            const workbook = XLSX.read(buffer, { type: "buffer" });
+            const sheetName = workbook.SheetNames[0];
+            if (sheetName) {
+              content = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]).trim();
+            }
+            break;
+          }
+          case "text/plain":
+          case "text/markdown":
+          case "text/csv": {
+            content = buffer.toString("utf-8").trim();
+            break;
+          }
+        }
+      }
+
       if (content.length < 30) {
         debug.push(`Skipped: ${file.name} (empty content)`);
         continue;
       }
-      debug.push(`Imported: ${file.name} (${content.length} chars)`);
+
+      const friendlyType = GDRIVE_FRIENDLY_NAMES[file.mimeType]
+        ?? file.mimeType.split(".").pop()
+        ?? file.mimeType;
+      debug.push(
+        `Imported: ${file.name} (${friendlyType}, ${content.length.toLocaleString()} chars)`
+      );
+
       records.push({
         id: file.id,
         title: file.name,
@@ -182,7 +265,7 @@ async function fetchSlack(
       providerConfigKey: provider,
       connectionId,
       endpoint: "/api/conversations.list",
-      params: { types: "public_channel", limit: "10" },
+      params: { types: "public_channel", limit: "20" },
     });
     channels = res.data?.channels ?? [];
   } catch (err) {
@@ -190,7 +273,7 @@ async function fetchSlack(
     return [];
   }
 
-  for (const channel of channels.slice(0, 3)) {
+  for (const channel of channels.slice(0, 20)) {
     try {
       const res = await nango.proxy<{
         messages: { ts: string; text?: string; user?: string }[];
@@ -199,7 +282,7 @@ async function fetchSlack(
         providerConfigKey: provider,
         connectionId,
         endpoint: "/api/conversations.history",
-        params: { channel: channel.id, limit: "50" },
+        params: { channel: channel.id, limit: "200" },
       });
 
       const msgs = (res.data?.messages ?? [])
@@ -209,9 +292,10 @@ async function fetchSlack(
 
       if (msgs.length < 50) continue;
 
+      const weekLabel = currentWeekLabel();
       records.push({
-        id: `slack-${channel.id}`,
-        title: `#${channel.name} — recent messages`,
+        id: windowedSourceId("slack", channel.id),
+        title: `#${channel.name} — recent messages (${weekLabel})`,
         content: msgs.slice(0, 12000),
       });
     } catch {
@@ -384,9 +468,10 @@ async function fetchDiscord(
           BigInt(msg.id) > BigInt(latest.id) ? msg : latest
         ).id;
 
+        const weekLabel = currentWeekLabel();
         records.push({
-          id: `discord-channel-${channel.id}`,
-          title: `#${channel.name} — ${guild.name}`,
+          id: windowedSourceId("discord-channel", channel.id),
+          title: `#${channel.name} — ${guild.name} (${weekLabel})`,
           content,
           sourceCreatedAt: humanMessages[0]?.timestamp ?? null,
           sourceMetadata: buildChannelMetadata(
@@ -450,123 +535,262 @@ export async function POST(request: NextRequest) {
   const orgId = integration.org_id;
   const adminDb = createAdminClient();
 
-  // Fetch raw records from the provider via Nango proxy
-  let rawRecords: RawRecord[] = [];
-  let debugLines: string[] = [];
-
-  if (provider.includes("github")) {
-    rawRecords = await fetchGitHub(provider, connectionId);
-  } else if (provider === "google-drive") {
-    const result = await fetchGoogleDrive(provider, connectionId);
-    rawRecords = result.records;
-    debugLines = result.debug;
-  } else if (provider === "slack") {
-    rawRecords = await fetchSlack(provider, connectionId);
-  } else if (provider === "granola") {
-    rawRecords = await fetchGranola(provider, connectionId);
-  } else if (provider === "linear") {
-    rawRecords = await fetchLinear(provider, connectionId);
-  } else if (provider === "discord") {
-    rawRecords = await fetchDiscord(provider, connectionId);
-  } else {
-    return NextResponse.json({ error: `No fetch strategy for provider: ${provider}` }, { status: 400 });
+  // Helper to format an SSE event
+  function sseEvent(data: Record<string, unknown>): string {
+    return `data: ${JSON.stringify(data)}\n\n`;
   }
 
-  if (rawRecords.length === 0) {
-    return NextResponse.json({ processed: 0, debug: debugLines });
-  }
-
-  const contentType = contentTypeFor(provider);
-  let processed = 0;
-
-  for (const record of rawRecords) {
-    try {
-      // Check if already exists (partial unique index doesn't work reliably with upsert)
-      const { data: existing } = await adminDb
-        .from("context_items")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("source_type", provider)
-        .eq("source_id", record.id)
-        .maybeSingle();
-
-      let item: { id: string } | null = null;
-
-      if (existing) {
-        // Already exists — re-process it and refresh content
-        item = existing;
-        await adminDb
-          .from("context_items")
-          .update({
-            status: "processing",
-            raw_content: record.content,
-            title: record.title,
-            ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
-          })
-          .eq("id", existing.id);
-      } else {
-        const { data: inserted, error } = await adminDb
-          .from("context_items")
-          .insert({
-            org_id: orgId,
-            source_type: provider,
-            source_id: record.id,
-            nango_connection_id: connectionId,
-            title: record.title,
-            raw_content: record.content,
-            content_type: contentType,
-            status: "processing",
-            source_created_at: record.sourceCreatedAt ?? null,
-            ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
-          })
-          .select("id")
-          .single();
-
-        if (error || !inserted) {
-          debugLines.push(`DB insert error for "${record.title}": ${error?.message ?? "no row returned"}`);
-          continue;
-        }
-        item = inserted;
-      }
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const emit = (data: Record<string, unknown>) => {
+        controller.enqueue(encoder.encode(sseEvent(data)));
+      };
 
       try {
-        const [extraction, embedding] = await Promise.all([
-          extractStructured(record.content, record.title),
-          generateEmbedding(record.content),
-        ]);
+        // Fetch raw records from the provider via Nango proxy
+        let rawRecords: RawRecord[] = [];
+        const debugLines: string[] = [];
 
-        await adminDb
-          .from("context_items")
-          .update({
-            title: extraction.title,
-            description_short: extraction.description_short,
-            description_long: extraction.description_long,
-            entities: extraction.entities,
-            embedding: embedding as unknown as string,
-            status: "ready",
-            processed_at: new Date().toISOString(),
-          })
-          .eq("id", item.id);
+        emit({ phase: "fetching", provider, message: `Fetching data from ${provider}...` });
 
-        await createInboxItems(adminDb, orgId, item.id, extraction, provider);
-        processed++;
+        if (provider.includes("github")) {
+          rawRecords = await fetchGitHub(provider, connectionId);
+        } else if (provider === "google-drive") {
+          const result = await fetchGoogleDrive(provider, connectionId);
+          rawRecords = result.records;
+          debugLines.push(...result.debug);
+        } else if (provider === "slack") {
+          rawRecords = await fetchSlack(provider, connectionId);
+        } else if (provider === "granola") {
+          rawRecords = await fetchGranola(provider, connectionId);
+        } else if (provider === "linear") {
+          rawRecords = await fetchLinear(provider, connectionId);
+        } else if (provider === "discord") {
+          rawRecords = await fetchDiscord(provider, connectionId);
+        } else {
+          emit({ phase: "error", message: `No fetch strategy for provider: ${provider}` });
+          controller.close();
+          return;
+        }
+
+        emit({
+          phase: "fetching",
+          provider,
+          message: `Found ${rawRecords.length} item${rawRecords.length === 1 ? "" : "s"}`,
+        });
+
+        if (rawRecords.length === 0) {
+          emit({ phase: "complete", processed: 0, fetched: 0, skipped: 0 });
+          controller.close();
+          return;
+        }
+
+        const contentType = contentTypeFor(provider);
+        let processed = 0;
+        const total = rawRecords.length;
+
+        for (let i = 0; i < rawRecords.length; i++) {
+          const record = rawRecords[i];
+          const current = i + 1;
+
+          emit({
+            phase: "processing",
+            current,
+            total,
+            title: record.title,
+          });
+
+          try {
+            // Check if already exists (partial unique index doesn't work reliably with upsert)
+            const { data: existing } = await adminDb
+              .from("context_items")
+              .select("id, raw_content, content_hash, title, source_metadata")
+              .eq("org_id", orgId)
+              .eq("source_type", provider)
+              .eq("source_id", record.id)
+              .maybeSingle();
+
+            let item: { id: string } | null = null;
+
+            if (existing) {
+              // ── Change detection ────────────────────────────────────────
+              // For message streams, compute merged content first
+              let mergedContent = record.content;
+              if (contentType === "message" && existing.raw_content) {
+                const existingLines = new Set(
+                  (existing.raw_content as string).split("\n")
+                );
+                const newLines = record.content
+                  .split("\n")
+                  .filter((line) => !existingLines.has(line));
+
+                if (newLines.length === 0) {
+                  // No new content — skip entirely
+                  emit({ phase: "processing", current, total, title: record.title + " (unchanged, skipped)" });
+                  continue;
+                }
+
+                mergedContent = (
+                  (existing.raw_content as string) +
+                  "\n" +
+                  newLines.join("\n")
+                ).slice(0, 12000);
+              }
+
+              const changes = detectChanges(
+                {
+                  raw_content: existing.raw_content as string | null,
+                  content_hash: existing.content_hash as string | null,
+                  title: existing.title as string,
+                  source_metadata: (existing.source_metadata as Record<string, unknown> | null),
+                },
+                {
+                  raw_content: mergedContent,
+                  title: record.title,
+                  source_metadata: (record.sourceMetadata as Record<string, unknown> | null) ?? null,
+                }
+              );
+
+              if (!changes.changed) {
+                // Skip entirely — save AI credits
+                emit({ phase: "processing", current, total, title: record.title + " (unchanged, skipped)" });
+                continue;
+              }
+
+              // Version the old state before overwriting
+              await createVersion(
+                adminDb,
+                existing.id,
+                orgId,
+                {
+                  title: existing.title as string,
+                  raw_content: existing.raw_content as string | null,
+                  content_hash: existing.content_hash as string | null,
+                  source_metadata: existing.source_metadata,
+                },
+                changes.changeType,
+                changes.changedFields,
+                `sync:${provider}`
+              );
+
+              item = existing;
+
+              if (changes.contentChanged) {
+                // Content changed — full re-process (extract + embed)
+                await adminDb
+                  .from("context_items")
+                  .update({
+                    raw_content: mergedContent,
+                    title: record.title,
+                    status: "processing",
+                    content_hash: computeContentHash(mergedContent),
+                    updated_at: new Date().toISOString(),
+                    ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
+                  })
+                  .eq("id", existing.id);
+                // Continue to AI extraction + embedding below
+              } else {
+                // Metadata-only change — update metadata, skip expensive AI
+                await adminDb
+                  .from("context_items")
+                  .update({
+                    title: record.title,
+                    updated_at: new Date().toISOString(),
+                    ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
+                  })
+                  .eq("id", existing.id);
+                emit({ phase: "processing", current, total, title: record.title + " (metadata only)" });
+                processed++;
+                continue; // Skip AI extraction + embedding
+              }
+            } else {
+              const { data: inserted, error } = await adminDb
+                .from("context_items")
+                .insert({
+                  org_id: orgId,
+                  source_type: provider,
+                  source_id: record.id,
+                  nango_connection_id: connectionId,
+                  title: record.title,
+                  raw_content: record.content,
+                  content_type: contentType,
+                  content_hash: computeContentHash(record.content),
+                  status: "processing",
+                  source_created_at: record.sourceCreatedAt ?? null,
+                  ...(record.sourceMetadata ? { source_metadata: record.sourceMetadata } : {}),
+                })
+                .select("id")
+                .single();
+
+              if (error || !inserted) {
+                debugLines.push(`DB insert error for "${record.title}": ${error?.message ?? "no row returned"}`);
+                continue;
+              }
+              item = inserted;
+            }
+
+            try {
+              const [extraction, embedding] = await Promise.all([
+                extractStructured(record.content, record.title),
+                generateEmbedding(record.content),
+              ]);
+
+              await adminDb
+                .from("context_items")
+                .update({
+                  title: extraction.title,
+                  description_short: extraction.description_short,
+                  description_long: extraction.description_long,
+                  entities: extraction.entities,
+                  embedding: embedding as unknown as string,
+                  status: "ready",
+                  processed_at: new Date().toISOString(),
+                })
+                .eq("id", item.id);
+
+              await createInboxItems(adminDb, orgId, item.id, extraction, provider);
+              processed++;
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              debugLines.push(`AI error for "${record.title}": ${msg}`);
+              emit({ phase: "error", message: `Failed to process "${record.title}"`, title: record.title });
+              await adminDb.from("context_items").update({ status: "error" }).eq("id", item.id);
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            debugLines.push(`Error for "${record.title}": ${msg}`);
+            emit({ phase: "error", message: `Error for "${record.title}": ${msg}`, title: record.title });
+          }
+        }
+
+        if (processed > 0) {
+          await adminDb
+            .from("integrations")
+            .update({ last_sync_at: new Date().toISOString() })
+            .eq("nango_connection_id", connectionId);
+        }
+
+        emit({
+          phase: "complete",
+          processed,
+          fetched: total,
+          skipped: total - processed,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        debugLines.push(`AI error for "${record.title}": ${msg}`);
-        await adminDb.from("context_items").update({ status: "error" }).eq("id", item.id);
+        controller.enqueue(encoder.encode(sseEvent({ phase: "error", message: msg })));
+      } finally {
+        controller.close();
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      debugLines.push(`Error for "${record.title}": ${msg}`);
-    }
-  }
+    },
+  });
 
-  if (processed > 0) {
-    await adminDb
-      .from("integrations")
-      .update({ last_sync_at: new Date().toISOString() })
-      .eq("nango_connection_id", connectionId);
-  }
-
-  return NextResponse.json({ processed, fetched: rawRecords.length, debug: debugLines });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }

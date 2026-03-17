@@ -7,13 +7,78 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      action_item_status: {
+        Row: {
+          action_index: number
+          completed_at: string | null
+          completed_by: string | null
+          context_item_id: string
+          id: string
+          org_id: string
+          status: string
+        }
+        Insert: {
+          action_index: number
+          completed_at?: string | null
+          completed_by?: string | null
+          context_item_id: string
+          id?: string
+          org_id: string
+          status?: string
+        }
+        Update: {
+          action_index?: number
+          completed_at?: string | null
+          completed_by?: string | null
+          context_item_id?: string
+          id?: string
+          org_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_item_status_context_item_id_fkey"
+            columns: ["context_item_id"]
+            isOneToOne: false
+            referencedRelation: "context_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_item_status_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_runs: {
         Row: {
           created_at: string
@@ -69,89 +134,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      ai_usage: {
-        Row: {
-          cost_cents: number
-          created_at: string | null
-          feature: string
-          id: string
-          input_tokens: number
-          metadata: Json | null
-          model: string
-          note_id: string | null
-          output_tokens: number
-          user_id: string | null
-        }
-        Insert: {
-          cost_cents?: number
-          created_at?: string | null
-          feature: string
-          id?: string
-          input_tokens?: number
-          metadata?: Json | null
-          model: string
-          note_id?: string | null
-          output_tokens?: number
-          user_id?: string | null
-        }
-        Update: {
-          cost_cents?: number
-          created_at?: string | null
-          feature?: string
-          id?: string
-          input_tokens?: number
-          metadata?: Json | null
-          model?: string
-          note_id?: string | null
-          output_tokens?: number
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_usage_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      api_keys: {
-        Row: {
-          created_at: string
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          key_hash: string
-          key_prefix: string
-          last_used_at: string | null
-          name: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          key_hash: string
-          key_prefix: string
-          last_used_at?: string | null
-          name?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          key_hash?: string
-          key_prefix?: string
-          last_used_at?: string | null
-          name?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       audit_log: {
         Row: {
@@ -258,7 +240,9 @@ export type Database = {
           content: string
           context_item_id: string
           created_at: string | null
+          embedded_at: string | null
           embedding: string | null
+          embedding_model: string | null
           id: string
           metadata: Json | null
           org_id: string
@@ -270,7 +254,9 @@ export type Database = {
           content: string
           context_item_id: string
           created_at?: string | null
+          embedded_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
           id?: string
           metadata?: Json | null
           org_id: string
@@ -282,7 +268,9 @@ export type Database = {
           content?: string
           context_item_id?: string
           created_at?: string | null
+          embedded_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
           id?: string
           metadata?: Json | null
           org_id?: string
@@ -299,6 +287,69 @@ export type Database = {
           },
         ]
       }
+      context_item_versions: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          changed_fields: string[] | null
+          content_hash: string | null
+          context_item_id: string
+          created_at: string
+          id: string
+          org_id: string
+          raw_content: string | null
+          source_metadata: Json | null
+          source_updated_at: string | null
+          title: string
+          version_number: number
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          changed_fields?: string[] | null
+          content_hash?: string | null
+          context_item_id: string
+          created_at?: string
+          id?: string
+          org_id: string
+          raw_content?: string | null
+          source_metadata?: Json | null
+          source_updated_at?: string | null
+          title: string
+          version_number: number
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          changed_fields?: string[] | null
+          content_hash?: string | null
+          context_item_id?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          raw_content?: string | null
+          source_metadata?: Json | null
+          source_updated_at?: string | null
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_item_versions_context_item_id_fkey"
+            columns: ["context_item_id"]
+            isOneToOne: false
+            referencedRelation: "context_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "context_item_versions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_items: {
         Row: {
           content_hash: string | null
@@ -307,6 +358,7 @@ export type Database = {
           description_short: string | null
           embedding: string | null
           entities: Json | null
+          freshness_at: string | null
           id: string
           ingested_at: string
           nango_connection_id: string | null
@@ -320,6 +372,12 @@ export type Database = {
           source_type: string
           status: string
           title: string
+          trust_weight: number
+          updated_at: string | null
+          user_notes: string | null
+          user_tags: string[] | null
+          user_title: string | null
+          version_number: number
         }
         Insert: {
           content_hash?: string | null
@@ -328,6 +386,7 @@ export type Database = {
           description_short?: string | null
           embedding?: string | null
           entities?: Json | null
+          freshness_at?: string | null
           id?: string
           ingested_at?: string
           nango_connection_id?: string | null
@@ -341,6 +400,12 @@ export type Database = {
           source_type: string
           status?: string
           title: string
+          trust_weight?: number
+          updated_at?: string | null
+          user_notes?: string | null
+          user_tags?: string[] | null
+          user_title?: string | null
+          version_number?: number
         }
         Update: {
           content_hash?: string | null
@@ -349,6 +414,7 @@ export type Database = {
           description_short?: string | null
           embedding?: string | null
           entities?: Json | null
+          freshness_at?: string | null
           id?: string
           ingested_at?: string
           nango_connection_id?: string | null
@@ -362,6 +428,12 @@ export type Database = {
           source_type?: string
           status?: string
           title?: string
+          trust_weight?: number
+          updated_at?: string | null
+          user_notes?: string | null
+          user_tags?: string[] | null
+          user_title?: string | null
+          version_number?: number
         }
         Relationships: [
           {
@@ -404,89 +476,6 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      credit_balances: {
-        Row: {
-          balance: number
-          created_at: string
-          credits_reset_at: string | null
-          id: string
-          monthly_credits: number
-          overage_rate: number
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          subscription_status: string | null
-          tier: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          balance?: number
-          created_at?: string
-          credits_reset_at?: string | null
-          id?: string
-          monthly_credits?: number
-          overage_rate?: number
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
-          tier?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          balance?: number
-          created_at?: string
-          credits_reset_at?: string | null
-          id?: string
-          monthly_credits?: number
-          overage_rate?: number
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
-          tier?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      folders: {
-        Row: {
-          color: string | null
-          created_at: string | null
-          id: string
-          name: string
-          parent_id: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string | null
-          id?: string
-          name: string
-          parent_id?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string | null
-          id?: string
-          name?: string
-          parent_id?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "folders_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "folders"
             referencedColumns: ["id"]
           },
         ]
@@ -598,126 +587,6 @@ export type Database = {
           },
         ]
       }
-      margin_configs: {
-        Row: {
-          created_at: string
-          global_margin_percent: number
-          id: string
-          model_overrides: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          global_margin_percent?: number
-          id?: string
-          model_overrides?: Json
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          global_margin_percent?: number
-          id?: string
-          model_overrides?: Json
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      note_tags: {
-        Row: {
-          note_id: string
-          tag_id: string
-        }
-        Insert: {
-          note_id: string
-          tag_id: string
-        }
-        Update: {
-          note_id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "note_tags_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notes: {
-        Row: {
-          content: Json | null
-          content_text: string | null
-          created_at: string
-          deleted_at: string | null
-          folder_id: string | null
-          id: string
-          is_archived: boolean | null
-          is_deleted: boolean | null
-          is_pinned: boolean | null
-          pinned_at: string | null
-          title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          content?: Json | null
-          content_text?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          folder_id?: string | null
-          id?: string
-          is_archived?: boolean | null
-          is_deleted?: boolean | null
-          is_pinned?: boolean | null
-          pinned_at?: string | null
-          title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          content?: Json | null
-          content_text?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          folder_id?: string | null
-          id?: string
-          is_archived?: boolean | null
-          is_deleted?: boolean | null
-          is_pinned?: boolean | null
-          pinned_at?: string | null
-          title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_folder_id_fkey"
-            columns: ["folder_id"]
-            isOneToOne: false
-            referencedRelation: "folders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       org_invitations: {
         Row: {
           accepted_at: string | null
@@ -815,69 +684,6 @@ export type Database = {
           name?: string
           slug?: string
           stripe_customer_id?: string | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      session_analytics: {
-        Row: {
-          ai_calls: number | null
-          created_at: string | null
-          features_used: Json | null
-          id: string
-          notes_created: number | null
-          notes_edited: number | null
-          session_end: string | null
-          session_start: string
-          user_id: string | null
-        }
-        Insert: {
-          ai_calls?: number | null
-          created_at?: string | null
-          features_used?: Json | null
-          id?: string
-          notes_created?: number | null
-          notes_edited?: number | null
-          session_end?: string | null
-          session_start?: string
-          user_id?: string | null
-        }
-        Update: {
-          ai_calls?: number | null
-          created_at?: string | null
-          features_used?: Json | null
-          id?: string
-          notes_created?: number | null
-          notes_edited?: number | null
-          session_end?: string | null
-          session_start?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -999,133 +805,14 @@ export type Database = {
           },
         ]
       }
-      tags: {
-        Row: {
-          color: string | null
-          created_at: string | null
-          id: string
-          name: string
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string | null
-          id?: string
-          name: string
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string | null
-          id?: string
-          name?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      usage_logs: {
-        Row: {
-          api_key_id: string | null
-          cost_usd: number | null
-          created_at: string
-          credits_used: number | null
-          error_message: string | null
-          id: string
-          input_tokens: number | null
-          latency_ms: number | null
-          metadata: Json | null
-          model_id: string
-          output_tokens: number | null
-          provider: string
-          request_type: string
-          status: string | null
-          total_tokens: number | null
-          user_id: string | null
-        }
-        Insert: {
-          api_key_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          credits_used?: number | null
-          error_message?: string | null
-          id?: string
-          input_tokens?: number | null
-          latency_ms?: number | null
-          metadata?: Json | null
-          model_id: string
-          output_tokens?: number | null
-          provider: string
-          request_type: string
-          status?: string | null
-          total_tokens?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          api_key_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          credits_used?: number | null
-          error_message?: string | null
-          id?: string
-          input_tokens?: number | null
-          latency_ms?: number | null
-          metadata?: Json | null
-          model_id?: string
-          output_tokens?: number | null
-          provider?: string
-          request_type?: string
-          status?: string | null
-          total_tokens?: number | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "usage_logs_api_key_id_fkey"
-            columns: ["api_key_id"]
-            isOneToOne: false
-            referencedRelation: "api_keys"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
-      admin_ai_usage_summary: {
-        Row: {
-          day: string | null
-          model: string | null
-          total_calls: number | null
-          total_cost_cents: number | null
-          total_input_tokens: number | null
-          total_output_tokens: number | null
-        }
-        Relationships: []
-      }
-      user_ai_usage_summary: {
-        Row: {
-          day: string | null
-          model: string | null
-          total_calls: number | null
-          total_cost_cents: number | null
-          total_input_tokens: number | null
-          total_output_tokens: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       accept_invitation: {
         Args: { accepting_user_id: string; invitation_id: string }
         Returns: undefined
-      }
-      add_credits: {
-        Args: { p_amount: number; p_user_id: string }
-        Returns: number
-      }
-      deduct_credits: {
-        Args: { p_amount: number; p_user_id: string }
-        Returns: number
       }
       get_action_items: {
         Args: {
@@ -1154,10 +841,6 @@ export type Database = {
       get_context_health: { Args: { p_org_id: string }; Returns: Json }
       get_integration_health: { Args: { p_org_id: string }; Returns: Json }
       get_user_org_ids: { Args: never; Returns: string[] }
-      has_sufficient_credits: {
-        Args: { p_required: number; p_user_id: string }
-        Returns: boolean
-      }
       hybrid_search: {
         Args: {
           p_content_type?: string
@@ -1174,6 +857,30 @@ export type Database = {
           description_long: string
           description_short: string
           id: string
+          rrf_score: number
+          source_created_at: string
+          source_type: string
+          source_url: string
+          title: string
+        }[]
+      }
+      hybrid_search_chunks: {
+        Args: {
+          p_content_type?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_org_id: string
+          p_query_embedding: string
+          p_query_text: string
+          p_source_type?: string
+        }
+        Returns: {
+          content_type: string
+          context_item_id: string
+          description_short: string
+          id: string
+          parent_content: string
           rrf_score: number
           source_created_at: string
           source_type: string
@@ -1362,7 +1069,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
+
