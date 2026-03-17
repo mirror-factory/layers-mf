@@ -285,7 +285,7 @@ Return matches only for sessions where this content would be useful. If none mat
         });
 
         if (insightRows.length > 0) {
-          await supabase.from("session_insights").insert(insightRows);
+          await (supabase as any).from("session_insights").insert(insightRows);
         }
       });
     }
