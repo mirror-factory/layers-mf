@@ -49,6 +49,16 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimit: mockRateLimit,
 }));
 
+vi.mock("@/lib/credits", () => ({
+  checkCredits: vi.fn().mockResolvedValue({ sufficient: true, balance: 100 }),
+  deductCredits: vi.fn().mockResolvedValue(99),
+  CREDIT_COSTS: { chat: 1, extraction: 2, embedding: 0.5, inbox_generation: 1 },
+}));
+
+vi.mock("@/lib/ai/usage", () => ({
+  logUsage: vi.fn(),
+}));
+
 import { POST } from "./route";
 import { NextRequest } from "next/server";
 

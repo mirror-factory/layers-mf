@@ -160,6 +160,11 @@ Last updated: 2026-03-16
 - [x] Sync trigger API for immediate background sync
 - [x] Migration plan documented in `docs/plans/2026-03-17-nango-sync-migration.md`
 
+### Phase 6: Lifecycle UI
+- [x] Version history API + timeline component on context detail pages
+- [x] Content health dashboard with freshness metrics
+- [x] Stale items list with action recommendations
+
 ---
 
 ## Sprint 4 — Production Readiness ⏳ NEXT (Mar 17-28)

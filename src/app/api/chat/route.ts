@@ -4,6 +4,8 @@ import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools } from "@/lib/ai/tools";
 import { rateLimit } from "@/lib/rate-limit";
+import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
+import { logUsage } from "@/lib/ai/usage";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -55,6 +57,19 @@ export async function POST(request: NextRequest) {
 
   if (!member) {
     return new Response("No organization found", { status: 400 });
+  }
+
+  // Credit check — block if insufficient
+  const creditCheck = await checkCredits(member.org_id, CREDIT_COSTS.chat);
+  if (!creditCheck.sufficient) {
+    return new Response(
+      JSON.stringify({
+        error: "Insufficient credits",
+        balance: creditCheck.balance,
+        required: CREDIT_COSTS.chat,
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   let body: Record<string, unknown>;
@@ -152,6 +167,27 @@ export async function POST(request: NextRequest) {
       }
     },
     onFinish: () => {
+      // Deduct credits on successful completion
+      void deductCredits(orgId, CREDIT_COSTS.chat, "chat").catch((err) => {
+        console.error("[chat] credit deduction failed:", err);
+      });
+
+      // Log usage for billing/analytics
+      logUsage({
+        orgId,
+        userId,
+        operation: "chat",
+        model: modelId,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        creditsUsed: CREDIT_COSTS.chat,
+        metadata: {
+          stepCount: runStepCount,
+          durationMs: Date.now() - startTime,
+          toolCalls: Object.entries(toolCallCounts).map(([tool, count]) => ({ tool, count })),
+        },
+      });
+
       const toolCallsArray = Object.entries(toolCallCounts).map(([tool, count]) => ({ tool, count }));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       void (adminDb as any)

@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextAnnotations } from "@/components/context-annotations";
+import { ContextVersionHistory } from "@/components/context-version-history";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -54,14 +55,21 @@ export default async function ContextDetailPage({
 
   if (!member) notFound();
 
-  const { data: item } = await supabase
-    .from("context_items")
-    .select(
-      "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
-    )
-    .eq("id", id)
-    .eq("org_id", member.org_id)
-    .single();
+  const [{ data: item }, { count: versionCount }] = await Promise.all([
+    supabase
+      .from("context_items")
+      .select(
+        "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
+      )
+      .eq("id", id)
+      .eq("org_id", member.org_id)
+      .single(),
+    supabase
+      .from("context_item_versions")
+      .select("id", { count: "exact", head: true })
+      .eq("context_item_id", id)
+      .eq("org_id", member.org_id),
+  ]);
 
   if (!item) notFound();
 
@@ -105,9 +113,16 @@ export default async function ContextDetailPage({
             {item.status}
           </Badge>
         </div>
-        <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
-          {item.user_title ?? item.title}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
+            {item.user_title ?? item.title}
+          </h1>
+          {(versionCount ?? 0) > 0 && (
+            <Badge variant="outline" className="text-xs">
+              {versionCount} {versionCount === 1 ? "version" : "versions"}
+            </Badge>
+          )}
+        </div>
         {item.user_title && (
           <p className="text-sm text-muted-foreground">Original: {item.title}</p>
         )}
@@ -182,6 +197,12 @@ export default async function ContextDetailPage({
         userTags={item.user_tags ?? []}
         trustWeight={item.trust_weight ?? 1.0}
         aiTitle={item.title}
+      />
+
+      {/* Version History */}
+      <ContextVersionHistory
+        itemId={item.id}
+        versionCount={versionCount ?? 0}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { extractionModel } from "./config";
+import { logUsage } from "./usage";
 
 const expansionSchema = z.object({
   alternatives: z
@@ -19,7 +20,10 @@ const expansionSchema = z.object({
  * Returns [original, ...alternatives]. For very short queries
  * (< 3 words), skips expansion and returns just [original].
  */
-export async function expandQuery(query: string): Promise<string[]> {
+export async function expandQuery(
+  query: string,
+  opts?: { orgId?: string; userId?: string }
+): Promise<string[]> {
   const trimmed = query.trim();
 
   // Skip expansion for very short queries
@@ -28,7 +32,7 @@ export async function expandQuery(query: string): Promise<string[]> {
   }
 
   try {
-    const { object } = await generateObject({
+    const result = await generateObject({
       model: extractionModel,
       schema: expansionSchema,
       prompt: `Given this search query, generate 2-4 alternative phrasings that might match relevant documents. Include synonyms, related terms, and different ways to ask the same question. Keep each alternative concise (under 30 words).
@@ -36,7 +40,19 @@ export async function expandQuery(query: string): Promise<string[]> {
 Query: "${trimmed}"`,
     });
 
-    const validAlternatives = object.alternatives.filter(
+    if (opts?.orgId) {
+      logUsage({
+        orgId: opts.orgId,
+        userId: opts.userId,
+        operation: "query_expansion",
+        model: "anthropic/claude-haiku-4-5-20251001",
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+        metadata: { query: trimmed },
+      });
+    }
+
+    const validAlternatives = result.object.alternatives.filter(
       (alt) => typeof alt === "string" && alt.trim().length > 0
     );
 

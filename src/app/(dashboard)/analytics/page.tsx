@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { HeartPulse } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContextHealthPanel } from "./_components/context-health-panel";
@@ -82,11 +84,20 @@ export default async function AnalyticsPage() {
             KPIs and quality metrics for your organization.
           </p>
         </div>
-        {summary && (
-          <span className={`inline-flex items-center self-start rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[summary.status]}`}>
-            {STATUS_LABEL[summary.status]}
-          </span>
-        )}
+        <div className="flex items-center gap-3 self-start">
+          {summary && (
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[summary.status]}`}>
+              {STATUS_LABEL[summary.status]}
+            </span>
+          )}
+          <Link
+            href="/analytics/health"
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <HeartPulse className="h-3.5 w-3.5" />
+            Content Health
+          </Link>
+        </div>
       </div>
 
       {!hasRpcData ? (

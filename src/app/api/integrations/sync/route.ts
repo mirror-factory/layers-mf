@@ -18,6 +18,7 @@ import {
   detectChanges,
   createVersion,
 } from "@/lib/versioning";
+import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
@@ -590,6 +591,31 @@ export async function POST(request: NextRequest) {
         let processed = 0;
         const total = rawRecords.length;
 
+        // Credit check: each AI-processed item costs extraction (2) + embedding (0.5) = 2.5 credits
+        const creditCostPerItem = CREDIT_COSTS.extraction + CREDIT_COSTS.embedding;
+        const totalCreditCost = total * creditCostPerItem;
+        const creditCheck = await checkCredits(orgId, creditCostPerItem);
+        let creditsRemaining = creditCheck.balance;
+
+        if (!creditCheck.sufficient) {
+          emit({
+            phase: "error",
+            message: `Insufficient credits. Balance: ${creditCheck.balance}, need at least ${creditCostPerItem} per item.`,
+          });
+          controller.close();
+          return;
+        }
+
+        // If not enough credits for all items, warn and process what we can
+        const maxAffordable = Math.floor(creditsRemaining / creditCostPerItem);
+        if (maxAffordable < total) {
+          emit({
+            phase: "fetching",
+            provider,
+            message: `Only ${maxAffordable} of ${total} items can be processed with current credit balance (${creditsRemaining})`,
+          });
+        }
+
         for (let i = 0; i < rawRecords.length; i++) {
           const record = rawRecords[i];
           const current = i + 1;
@@ -731,6 +757,18 @@ export async function POST(request: NextRequest) {
             }
 
             try {
+              // Check credits before AI processing
+              if (creditsRemaining < creditCostPerItem) {
+                emit({
+                  phase: "processing",
+                  current,
+                  total,
+                  title: record.title + " (skipped — insufficient credits)",
+                });
+                await adminDb.from("context_items").update({ status: "pending" }).eq("id", item.id);
+                continue;
+              }
+
               const [extraction, embedding] = await Promise.all([
                 extractStructured(record.content, record.title),
                 generateEmbedding(record.content),
@@ -748,6 +786,20 @@ export async function POST(request: NextRequest) {
                   processed_at: new Date().toISOString(),
                 })
                 .eq("id", item.id);
+
+              // Deduct credits after successful AI processing
+              try {
+                creditsRemaining = await deductCredits(orgId, creditCostPerItem, `sync:${provider}`);
+              } catch {
+                // Deduction failed (race condition) — stop processing more
+                emit({
+                  phase: "processing",
+                  current,
+                  total,
+                  title: record.title + " (credits exhausted)",
+                });
+                break;
+              }
 
               await createInboxItems(adminDb, orgId, item.id, extraction, provider);
               processed++;

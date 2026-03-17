@@ -37,6 +37,37 @@ vi.mock("@/lib/inbox", () => ({
   createInboxItems: mockCreateInbox,
 }));
 
+vi.mock("@/lib/credits", () => ({
+  checkCredits: vi.fn().mockResolvedValue({ sufficient: true, balance: 1000 }),
+  deductCredits: vi.fn().mockResolvedValue(999),
+  CREDIT_COSTS: { chat: 1, extraction: 2, embedding: 0.5, inbox_generation: 1 },
+}));
+
+vi.mock("@/lib/versioning", () => ({
+  computeContentHash: vi.fn().mockReturnValue("hash123"),
+  detectChanges: vi.fn().mockReturnValue({
+    changed: false,
+    contentChanged: false,
+    metadataChanged: false,
+    changedFields: [],
+    changeType: "no_change",
+  }),
+  createVersion: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("pdf-parse", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("mammoth", () => ({
+  default: { extractRawText: vi.fn() },
+}));
+
+vi.mock("xlsx", () => ({
+  read: vi.fn(),
+  utils: { sheet_to_csv: vi.fn() },
+}));
+
 import { POST } from "./route";
 import { NextRequest } from "next/server";
 
