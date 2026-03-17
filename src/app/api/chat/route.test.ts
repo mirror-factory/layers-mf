@@ -47,6 +47,8 @@ vi.mock("@ai-sdk/gateway", () => ({
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: mockRateLimit,
+  checkRateLimit: vi.fn().mockReturnValue({ allowed: true, remaining: 49, resetAt: new Date(Date.now() + 3600000), limit: 50 }),
+  rateLimitHeaders: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock("@/lib/credits", () => ({
@@ -376,7 +378,20 @@ describe("POST /api/chat", () => {
 
   it("returns 429 when rate limit is exceeded", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-rate" } }, error: null });
-    mockRateLimit.mockReturnValueOnce({ success: false, remaining: 0 });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: "org-rate" } }),
+        }),
+      }),
+    });
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    (checkRateLimit as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAt: new Date(Date.now() + 60000),
+      limit: 50,
+    });
 
     const res = await POST(
       makeRequest({
@@ -385,6 +400,7 @@ describe("POST /api/chat", () => {
     );
 
     expect(res.status).toBe(429);
-    expect(await res.text()).toBe("Too many requests");
+    const body = await res.json();
+    expect(body.error).toContain("Rate limit");
   });
 });

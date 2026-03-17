@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { BillingSettings } from "@/components/billing-settings";
+import { UsageHistory } from "@/components/usage-history";
+import { Separator } from "@/components/ui/separator";
 
 export default async function BillingSettingsPage() {
   const supabase = await createClient();
@@ -28,6 +30,10 @@ export default async function BillingSettingsPage() {
         </p>
       </div>
       <BillingSettings isOwnerOrAdmin={isOwnerOrAdmin} />
+
+      <Separator className="my-8" />
+
+      <UsageHistory />
     </div>
   );
 }

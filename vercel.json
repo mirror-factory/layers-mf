@@ -4,5 +4,65 @@
       "path": "/api/inbox/generate",
       "schedule": "0 7 * * *"
     }
+  ],
+  "functions": {
+    "src/app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/chat/session/[id]/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ingest/upload/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/integrations/*/sync/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/webhooks/*/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/inbox/generate/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
   ]
 }

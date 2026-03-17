@@ -167,17 +167,25 @@ Last updated: 2026-03-16
 
 ---
 
-## Sprint 4 — Production Readiness ⏳ NEXT (Mar 17-28)
+## Sprint 4 — Production Readiness ⏳ IN PROGRESS (Mar 17-28)
 
-8 backlog issues in Linear:
+### Completed
+- [x] PROD-222: Credit deduction middleware
+- [x] PROD-223: Usage logging on every AI call
+- [x] PROD-227: Per-org rate limiting with tiers
+- [x] PROD-228: Usage history UI in billing
 
-- [ ] PROD-222: Credit deduction middleware (Urgent)
-- [ ] PROD-223: Usage logging on every AI call (High)
-- [ ] PROD-224: Production Supabase migration (Urgent)
-- [ ] PROD-225: Stripe production configuration (High)
-- [ ] PROD-226: Inngest production setup (High)
-- [ ] PROD-227: API rate limiting per-org (Medium)
-- [ ] PROD-228: Usage history UI in billing (High)
+### In Progress
+- [ ] PROD-224: Production Supabase (manual setup needed — see `docs/production-setup.md`)
+- [ ] PROD-225: Stripe production keys (manual setup needed — see `docs/production-setup.md`)
+- [ ] PROD-226: Inngest production deploy (manual setup needed — see `docs/production-setup.md`)
+
+### Documentation
+- [x] Production setup checklist (`docs/production-setup.md`)
+- [x] Environment variables reference (`.env.example`)
+- [x] Vercel configuration (`vercel.json` — function durations, security headers, crons)
+
+### Remaining
 - [ ] Vercel deployment + CI/CD
 - [ ] Mobile responsive polish
 - [ ] SEO + meta tags + OG images

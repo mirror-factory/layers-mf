@@ -3,7 +3,7 @@ import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } fr
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools } from "@/lib/ai/tools";
-import { rateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
 import type { Json } from "@/lib/database.types";
@@ -41,14 +41,6 @@ export async function POST(request: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { success, remaining } = rateLimit(`chat:${user.id}`, 10, 60_000);
-  if (!success) {
-    return new Response("Too many requests", {
-      status: 429,
-      headers: { "X-RateLimit-Remaining": "0" },
-    });
-  }
-
   const { data: member } = await supabase
     .from("org_members")
     .select("org_id")
@@ -57,6 +49,27 @@ export async function POST(request: NextRequest) {
 
   if (!member) {
     return new Response("No organization found", { status: 400 });
+  }
+
+  // Per-org tier-based rate limiting (hardcoded "free" until subscription tier lookup)
+  const rateLimitResult = checkRateLimit(member.org_id, "free");
+  if (!rateLimitResult.allowed) {
+    const retryAfter = Math.ceil(
+      (rateLimitResult.resetAt.getTime() - Date.now()) / 1000,
+    );
+    return new Response(
+      JSON.stringify({
+        error: "Rate limit exceeded",
+        retryAfter,
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          ...rateLimitHeaders(rateLimitResult),
+        },
+      },
+    );
   }
 
   // Credit check — block if insufficient
@@ -239,8 +252,16 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return createAgentUIStreamResponse({
+  const response = createAgentUIStreamResponse({
     agent,
     uiMessages,
   });
+
+  // Attach rate limit headers to the streaming response
+  const headers = rateLimitHeaders(rateLimitResult);
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+
+  return response;
 }

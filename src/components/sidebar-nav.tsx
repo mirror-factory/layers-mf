@@ -24,6 +24,7 @@ import {
   CheckSquare,
   Menu,
   X,
+  Coins,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -56,11 +57,22 @@ export function SidebarNav({
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  // Fetch credit balance
+  useEffect(() => {
+    fetch("/api/billing/credits")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.credits != null) setCredits(data.credits);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -141,6 +153,28 @@ export function SidebarNav({
         {/* User */}
         <div className="border-t p-3 space-y-1">
           <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>
+
+          {/* Credit balance */}
+          {credits !== null && (
+            <Link
+              href="/settings/billing"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                credits < 10
+                  ? "text-red-500"
+                  : credits < 50
+                    ? "text-yellow-500"
+                    : "text-muted-foreground"
+              )}
+            >
+              <Coins className="h-4 w-4" />
+              <span>{credits.toLocaleString()} credits</span>
+              {credits < 10 && (
+                <span className="ml-auto text-xs font-medium">Upgrade</span>
+              )}
+            </Link>
+          )}
+
           <ThemeToggle />
           <button
             onClick={handleSignOut}
