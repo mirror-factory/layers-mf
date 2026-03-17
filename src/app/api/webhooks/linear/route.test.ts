@@ -28,6 +28,12 @@ vi.mock("@/lib/nango/client", () => ({
   nango: { proxy: vi.fn() },
 }));
 
+vi.mock("@/lib/webhook-dedup", () => ({
+  claimWebhookEvent: vi.fn().mockResolvedValue(true),
+  completeWebhookEvent: vi.fn().mockResolvedValue(undefined),
+  hashPayload: vi.fn().mockReturnValue("mock-hash"),
+}));
+
 import { POST } from "./route";
 import { NextRequest } from "next/server";
 

@@ -12,11 +12,13 @@ import {
   FileText,
   BarChart3,
   Mic,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SyncConfigDialog } from "@/components/integrations/sync-config-dialog";
 
 export interface Integration {
   id: string;
@@ -163,6 +165,7 @@ export function IntegrationCard({
   backgroundSyncStatus = "idle",
 }: IntegrationCardProps) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
 
   async function handleSyncClick() {
     // Try background trigger first, fall back to streaming sync
@@ -313,6 +316,17 @@ export function IntegrationCard({
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
           <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfigOpen(true)}
+            disabled={syncing || disconnecting}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            data-testid={`configure-button-${integration.provider}`}
+            title="Configure sync"
+          >
+            <Settings className="h-3 w-3" />
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={handleSyncClick}
@@ -347,6 +361,13 @@ export function IntegrationCard({
           </Button>
         </div>
       </div>
+
+      <SyncConfigDialog
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        integrationId={integration.id}
+        provider={integration.provider}
+      />
     </Card>
   );
 }

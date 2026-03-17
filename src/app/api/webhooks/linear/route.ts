@@ -10,6 +10,7 @@ import {
   buildIssueMetadata,
   buildCommentContent,
 } from "@/lib/integrations/linear";
+import { claimWebhookEvent, completeWebhookEvent, hashPayload } from "@/lib/webhook-dedup";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -49,13 +50,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Linear doesn't provide a unique delivery ID in headers,
+  // so derive one from the event data (type + action + data.id + createdAt)
+  const dataId = (event.data as Record<string, unknown>)?.id as string | undefined;
+  const eventId = dataId
+    ? `${event.type}-${event.action}-${dataId}`
+    : hashPayload(rawBody);
+  const eventTypeLabel = `${event.type}.${event.action}`;
+
+  // Idempotency: skip if already processed
+  const isNew = await claimWebhookEvent("linear", eventId, eventTypeLabel);
+  if (!isNew) {
+    return NextResponse.json({ received: true, deduplicated: true });
+  }
+
   // Return 200 immediately, process async
   const response = NextResponse.json({ received: true });
 
   // Fire-and-forget processing
-  processWebhookEvent(event).catch((err) => {
-    console.error("[webhook:linear] Processing error:", err);
-  });
+  processWebhookEvent(event)
+    .then(() => completeWebhookEvent("linear", eventId, "completed"))
+    .catch((err) => {
+      console.error("[webhook:linear] Processing error:", err);
+      completeWebhookEvent("linear", eventId, "failed");
+    });
 
   return response;
 }

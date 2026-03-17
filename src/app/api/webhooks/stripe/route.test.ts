@@ -15,6 +15,12 @@ vi.mock("@/lib/audit", () => ({
   logAudit: vi.fn(),
 }));
 
+vi.mock("@/lib/webhook-dedup", () => ({
+  claimWebhookEvent: vi.fn().mockResolvedValue(true),
+  completeWebhookEvent: vi.fn().mockResolvedValue(undefined),
+  hashPayload: vi.fn().mockReturnValue("mock-hash"),
+}));
+
 const mockConstructEvent = vi.fn();
 vi.mock("@/lib/stripe", () => ({
   stripe: {

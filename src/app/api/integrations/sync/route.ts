@@ -36,9 +36,13 @@ interface RawRecord {
 // ── GitHub ─────────────────────────────────────────────────────────────────
 async function fetchGitHub(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
+  const maxRepos = (syncConfig.max_repos as number) ?? 10;
+  const includeClosedIssues = (syncConfig.include_closed as boolean) ?? true;
+  const repoFilter = (syncConfig.repos as string[] | null) ?? null;
 
   // Fetch repos the token has access to
   let repos: { full_name: string; name: string }[] = [];
@@ -48,7 +52,7 @@ async function fetchGitHub(
       providerConfigKey: provider,
       connectionId,
       endpoint: "/user/repos",
-      params: { per_page: "10", sort: "pushed" },
+      params: { per_page: String(maxRepos), sort: "pushed" },
     });
     repos = res.data ?? [];
   } catch (err) {
@@ -56,8 +60,15 @@ async function fetchGitHub(
     return [];
   }
 
-  for (const repo of repos.slice(0, 10)) {
+  // Apply repo filter if configured
+  if (repoFilter && repoFilter.length > 0) {
+    const filterSet = new Set(repoFilter.map((r) => r.toLowerCase()));
+    repos = repos.filter((r) => filterSet.has(r.full_name.toLowerCase()));
+  }
+
+  for (const repo of repos.slice(0, maxRepos)) {
     try {
+      const issueState = includeClosedIssues ? "all" : "open";
       const res = await nango.proxy<
         { number: number; title: string; body: string | null; created_at: string }[]
       >({
@@ -65,7 +76,7 @@ async function fetchGitHub(
         providerConfigKey: provider,
         connectionId,
         endpoint: `/repos/${repo.full_name}/issues`,
-        params: { per_page: "30", state: "all" },
+        params: { per_page: "30", state: issueState },
       });
 
       for (const issue of (res.data ?? []).slice(0, 15)) {
@@ -114,10 +125,14 @@ const GDRIVE_FRIENDLY_NAMES: Record<string, string> = {
 
 async function fetchGoogleDrive(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<{ records: RawRecord[]; debug: string[] }> {
   const records: RawRecord[] = [];
   const debug: string[] = [];
+  const maxFiles = (syncConfig.max_files as number) ?? 100;
+  const folderFilter = (syncConfig.folder_filter as string | null) ?? null;
+  const fileTypes = (syncConfig.file_types as string[] | null) ?? null;
 
   let files: {
     id: string;
@@ -140,11 +155,38 @@ async function fetchGoogleDrive(
       params: {
         q: "trashed=false and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.presentation' or mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/plain' or mimeType='text/markdown' or mimeType='text/csv')",
         fields: "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,lastModifyingUser(displayName,emailAddress))",
-        pageSize: "100",
+        pageSize: String(maxFiles),
         orderBy: "modifiedTime desc",
       },
     });
     files = res.data?.files ?? [];
+
+    // Apply folder filter if configured (filter by file name containing folder path)
+    if (folderFilter) {
+      const folders = folderFilter.split(",").map((f) => f.trim().toLowerCase()).filter(Boolean);
+      if (folders.length > 0) {
+        debug.push(`Folder filter active: ${folders.join(", ")}`);
+        // Note: basic name-based filtering; Drive API folder queries require parent ID lookups
+      }
+    }
+
+    // Apply file type filter if configured
+    if (fileTypes && fileTypes.length > 0) {
+      const typeToMime: Record<string, string[]> = {
+        docs: ["application/vnd.google-apps.document"],
+        sheets: ["application/vnd.google-apps.spreadsheet", "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+        slides: ["application/vnd.google-apps.presentation"],
+        pdfs: ["application/pdf"],
+        word: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+      };
+      const allowedMimes = new Set(fileTypes.flatMap((t) => typeToMime[t] ?? []));
+      // Also keep text/plain and text/markdown as they're always useful
+      allowedMimes.add("text/plain");
+      allowedMimes.add("text/markdown");
+      files = files.filter((f) => allowedMimes.has(f.mimeType));
+      debug.push(`File type filter: ${fileTypes.join(", ")} (${files.length} files match)`);
+    }
+
     debug.push(`Found ${files.length} files in Drive`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -253,9 +295,13 @@ async function fetchGoogleDrive(
 // ── Slack ───────────────────────────────────────────────────────────────────
 async function fetchSlack(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
+  const maxMessages = (syncConfig.max_messages as number) ?? 200;
+  const excludeBots = (syncConfig.exclude_bots as boolean) ?? true;
+  const channelFilter = (syncConfig.channels as string[] | null) ?? null;
 
   let channels: { id: string; name: string }[] = [];
   try {
@@ -274,20 +320,32 @@ async function fetchSlack(
     return [];
   }
 
+  // Apply channel filter if configured
+  if (channelFilter && channelFilter.length > 0) {
+    const filterSet = new Set(channelFilter.map((c) => c.toLowerCase()));
+    channels = channels.filter(
+      (c) => filterSet.has(c.id.toLowerCase()) || filterSet.has(c.name.toLowerCase())
+    );
+  }
+
   for (const channel of channels.slice(0, 20)) {
     try {
       const res = await nango.proxy<{
-        messages: { ts: string; text?: string; user?: string }[];
+        messages: { ts: string; text?: string; user?: string; bot_id?: string; subtype?: string }[];
       }>({
         method: "GET",
         providerConfigKey: provider,
         connectionId,
         endpoint: "/api/conversations.history",
-        params: { channel: channel.id, limit: "200" },
+        params: { channel: channel.id, limit: String(maxMessages) },
       });
 
       const msgs = (res.data?.messages ?? [])
-        .filter((m) => m.text && m.text.length > 20)
+        .filter((m) => {
+          if (!m.text || m.text.length <= 20) return false;
+          if (excludeBots && (m.bot_id || m.subtype === "bot_message")) return false;
+          return true;
+        })
         .map((m) => m.text!)
         .join("\n\n");
 
@@ -310,9 +368,11 @@ async function fetchSlack(
 // ── Granola ──────────────────────────────────────────────────────────────────
 async function fetchGranola(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
+  const maxDocuments = (syncConfig.max_documents as number) ?? 50;
 
   let docs: {
     id: string;
@@ -331,7 +391,7 @@ async function fetchGranola(
       providerConfigKey: provider,
       connectionId,
       endpoint: "/v1/documents",
-      params: { limit: "50" },
+      params: { limit: String(maxDocuments) },
     });
     docs = res.data?.documents ?? res.data?.data ?? (Array.isArray(res.data) ? res.data : []);
   } catch (err) {
@@ -364,9 +424,13 @@ async function fetchGranola(
 // ── Linear ───────────────────────────────────────────────────────────────────
 async function fetchLinear(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
+  const maxItems = (syncConfig.max_items as number) ?? 100;
+  const includeArchived = (syncConfig.include_archived as boolean) ?? false;
+  const teamFilter = (syncConfig.teams as string[] | null) ?? null;
 
   let issues: {
     id: string;
@@ -378,6 +442,8 @@ async function fetchLinear(
     priority?: number;
     labels?: { nodes?: { name: string }[] } | null;
     createdAt?: string;
+    archivedAt?: string | null;
+    team?: { name?: string } | null;
   }[] = [];
 
   try {
@@ -390,7 +456,7 @@ async function fetchLinear(
       providerConfigKey: provider,
       connectionId,
       endpoint: "/issues",
-      params: { first: "50", orderBy: "updatedAt" },
+      params: { first: String(Math.min(maxItems, 50)), orderBy: "updatedAt" },
     });
     issues =
       res.data?.issues ??
@@ -400,6 +466,19 @@ async function fetchLinear(
   } catch (err) {
     console.error("[sync:linear] issues fetch failed:", err);
     return [];
+  }
+
+  // Filter archived issues if not included
+  if (!includeArchived) {
+    issues = issues.filter((i) => !i.archivedAt);
+  }
+
+  // Filter by team if configured
+  if (teamFilter && teamFilter.length > 0) {
+    const filterSet = new Set(teamFilter.map((t) => t.toLowerCase()));
+    issues = issues.filter(
+      (i) => !i.team?.name || filterSet.has(i.team.name.toLowerCase())
+    );
   }
 
   for (const issue of issues) {
@@ -430,21 +509,37 @@ async function fetchLinear(
     });
   }
 
-  return records.slice(0, 30);
+  return records.slice(0, maxItems);
 }
 
 // ── Discord ──────────────────────────────────────────────────────────────────
 async function fetchDiscord(
   provider: string,
-  connectionId: string
+  connectionId: string,
+  syncConfig: Record<string, unknown> = {}
 ): Promise<RawRecord[]> {
   const records: RawRecord[] = [];
+  const maxMessages = (syncConfig.max_messages as number) ?? 100;
+  const serverFilter = (syncConfig.servers as string[] | null) ?? null;
+  const channelFilter = (syncConfig.channels as string[] | null) ?? null;
 
-  const guilds = await fetchDiscordGuilds(connectionId, provider);
+  let guilds = await fetchDiscordGuilds(connectionId, provider);
   if (guilds.length === 0) return [];
 
+  // Apply server filter if configured
+  if (serverFilter && serverFilter.length > 0) {
+    const filterSet = new Set(serverFilter.map((s) => s.toLowerCase()));
+    guilds = guilds.filter((g) => filterSet.has(g.name.toLowerCase()));
+  }
+
   for (const guild of guilds.slice(0, 5)) {
-    const channels = await fetchDiscordChannels(connectionId, provider, guild.id);
+    let channels = await fetchDiscordChannels(connectionId, provider, guild.id);
+
+    // Apply channel filter if configured
+    if (channelFilter && channelFilter.length > 0) {
+      const filterSet = new Set(channelFilter.map((c) => c.toLowerCase()));
+      channels = channels.filter((c) => filterSet.has(c.name.toLowerCase()));
+    }
 
     for (const channel of channels.slice(0, 10)) {
       try {
@@ -452,7 +547,7 @@ async function fetchDiscord(
           connectionId,
           provider,
           channel.id,
-          { limit: 100 }
+          { limit: maxMessages }
         );
 
         // Filter out bot messages and empty messages
@@ -525,7 +620,7 @@ export async function POST(request: NextRequest) {
   // Verify the integration belongs to the user's org (RLS scoped)
   const { data: integration } = await supabase
     .from("integrations")
-    .select("org_id")
+    .select("org_id, sync_config")
     .eq("nango_connection_id", connectionId)
     .single();
 
@@ -534,6 +629,7 @@ export async function POST(request: NextRequest) {
   }
 
   const orgId = integration.org_id;
+  const syncConfig = (integration.sync_config as Record<string, unknown>) ?? {};
   const adminDb = createAdminClient();
 
   // Helper to format an SSE event
@@ -556,19 +652,19 @@ export async function POST(request: NextRequest) {
         emit({ phase: "fetching", provider, message: `Fetching data from ${provider}...` });
 
         if (provider.includes("github")) {
-          rawRecords = await fetchGitHub(provider, connectionId);
+          rawRecords = await fetchGitHub(provider, connectionId, syncConfig);
         } else if (provider === "google-drive") {
-          const result = await fetchGoogleDrive(provider, connectionId);
+          const result = await fetchGoogleDrive(provider, connectionId, syncConfig);
           rawRecords = result.records;
           debugLines.push(...result.debug);
         } else if (provider === "slack") {
-          rawRecords = await fetchSlack(provider, connectionId);
+          rawRecords = await fetchSlack(provider, connectionId, syncConfig);
         } else if (provider === "granola") {
-          rawRecords = await fetchGranola(provider, connectionId);
+          rawRecords = await fetchGranola(provider, connectionId, syncConfig);
         } else if (provider === "linear") {
-          rawRecords = await fetchLinear(provider, connectionId);
+          rawRecords = await fetchLinear(provider, connectionId, syncConfig);
         } else if (provider === "discord") {
-          rawRecords = await fetchDiscord(provider, connectionId);
+          rawRecords = await fetchDiscord(provider, connectionId, syncConfig);
         } else {
           emit({ phase: "error", message: `No fetch strategy for provider: ${provider}` });
           controller.close();

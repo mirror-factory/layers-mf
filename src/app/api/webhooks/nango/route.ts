@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { nango } from "@/lib/nango/client";
 import { inngest } from "@/lib/inngest/client";
@@ -8,11 +9,35 @@ import {
   detectChanges,
   createVersion,
 } from "@/lib/versioning";
+import { claimWebhookEvent, completeWebhookEvent, hashPayload } from "@/lib/webhook-dedup";
 
 export const maxDuration = 60;
 
-// Nango HMAC signatures are deprecated (removed Jan 2025).
-// Webhook authenticity is handled by Nango's signed delivery mechanism.
+// ── HMAC Signature Verification ─────────────────────────────────────────────
+
+/**
+ * Verify Nango webhook HMAC-SHA256 signature.
+ * Nango sends the signature as a hex-encoded HMAC of the raw body
+ * in the `x-nango-signature` header.
+ */
+export function verifyNangoSignature(
+  body: string,
+  signature: string,
+  secret: string
+): boolean {
+  if (!body || !signature || !secret) return false;
+
+  const expected = createHmac("sha256", secret).update(body).digest("hex");
+
+  try {
+    const sigBuf = Buffer.from(signature, "hex");
+    const expectedBuf = Buffer.from(expected, "hex");
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return timingSafeEqual(sigBuf, expectedBuf);
+  } catch {
+    return false;
+  }
+}
 
 interface NangoWebhookPayload {
   type: "auth" | "sync" | string;
@@ -39,9 +64,25 @@ interface NangoRecord {
 }
 
 export async function POST(request: NextRequest) {
+  // Read raw body for signature verification (must happen before JSON parse)
+  const rawBody = await request.text();
+  const signature = request.headers.get("x-nango-signature") ?? "";
+
+  const webhookSecret = process.env.NANGO_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    if (!verifyNangoSignature(rawBody, signature, webhookSecret)) {
+      console.warn("[nango-webhook] Invalid signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+  } else {
+    console.warn(
+      "[nango-webhook] NANGO_WEBHOOK_SECRET not configured — skipping signature verification"
+    );
+  }
+
   let payload: NangoWebhookPayload;
   try {
-    payload = await request.json();
+    payload = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -61,6 +102,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing auth webhook fields" }, { status: 400 });
     }
 
+    // Idempotency for auth events
+    const authEventId = `auth-${connectionId}-${provider}`;
+    const isNew = await claimWebhookEvent("nango", authEventId, "auth.creation");
+    if (!isNew) {
+      return NextResponse.json({ received: true, deduplicated: true });
+    }
+
     await supabase.from("integrations").upsert(
       {
         org_id: orgId,
@@ -72,6 +120,7 @@ export async function POST(request: NextRequest) {
       { onConflict: "org_id,provider" }
     );
 
+    await completeWebhookEvent("nango", authEventId, "completed");
     return NextResponse.json({ received: true, event: "auth" });
   }
 
@@ -88,6 +137,13 @@ export async function POST(request: NextRequest) {
   ) {
     const connectionId = payload.connectionId;
     const provider = payload.providerConfigKey;
+
+    // Idempotency for sync events — use syncName + connectionId + modifiedAfter as key
+    const syncEventId = `sync-${payload.syncName}-${connectionId}-${payload.modifiedAfter ?? "initial"}`;
+    const isNewSync = await claimWebhookEvent("nango", syncEventId, `sync.${payload.syncName}`);
+    if (!isNewSync) {
+      return NextResponse.json({ received: true, deduplicated: true });
+    }
 
     // 1. Look up the integration to get org_id
     const { data: integration } = await supabase
@@ -292,6 +348,8 @@ export async function POST(request: NextRequest) {
     console.log(
       `[nango-webhook] Done: ${created} created, ${updated} updated, ${skipped} skipped (provider: ${provider})`
     );
+
+    await completeWebhookEvent("nango", syncEventId, "completed");
 
     return NextResponse.json({
       received: true,

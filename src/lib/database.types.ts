@@ -805,6 +805,36 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          id: string
+          provider: string
+          event_id: string
+          event_type: string | null
+          status: string
+          processed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          provider: string
+          event_id: string
+          event_type?: string | null
+          status?: string
+          processed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          provider?: string
+          event_id?: string
+          event_type?: string | null
+          status?: string
+          processed_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

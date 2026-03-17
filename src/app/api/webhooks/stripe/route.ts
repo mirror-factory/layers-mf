@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { claimWebhookEvent, completeWebhookEvent } from "@/lib/webhook-dedup";
 import type Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
@@ -26,8 +27,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // Idempotency: skip if already processed
+  const isNew = await claimWebhookEvent("stripe", event.id, event.type);
+  if (!isNew) {
+    return NextResponse.json({ received: true, deduplicated: true });
+  }
+
   const supabase = createAdminClient();
 
+  try {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -99,6 +107,13 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+  }
+
+  await completeWebhookEvent("stripe", event.id, "completed");
+  } catch (err) {
+    await completeWebhookEvent("stripe", event.id, "failed");
+    console.error("[webhook:stripe] Processing error:", err);
+    return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

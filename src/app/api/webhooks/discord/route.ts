@@ -8,6 +8,7 @@ import {
   batchMessagesToContent,
   buildMessageMetadata,
 } from "@/lib/integrations/discord";
+import { claimWebhookEvent, completeWebhookEvent } from "@/lib/webhook-dedup";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -98,13 +99,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  // Idempotency: use the event data id (message id, thread id, etc.)
+  const dataId = (eventData as Record<string, unknown>).id as string | undefined;
+  const eventId = dataId ? `${eventType}-${dataId}` : `${eventType}-${Date.now()}`;
+  const isNew = await claimWebhookEvent("discord", eventId, eventType);
+  if (!isNew) {
+    return NextResponse.json({ received: true, deduplicated: true });
+  }
+
   // Return 200 immediately, process async
   const response = NextResponse.json({ received: true });
 
   // Fire-and-forget processing
-  processDiscordEvent(eventType, eventData).catch((err) => {
-    console.error("[webhook:discord] Processing error:", err);
-  });
+  processDiscordEvent(eventType, eventData)
+    .then(() => completeWebhookEvent("discord", eventId, "completed"))
+    .catch((err) => {
+      console.error("[webhook:discord] Processing error:", err);
+      completeWebhookEvent("discord", eventId, "failed");
+    });
 
   return response;
 }
