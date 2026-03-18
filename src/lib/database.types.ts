@@ -587,6 +587,56 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          digest_enabled: boolean
+          digest_time: string
+          email_on_action_item: boolean
+          email_on_mention: boolean
+          email_on_new_context: boolean
+          id: string
+          org_id: string
+          updated_at: string
+          user_id: string
+          weekly_summary: boolean
+        }
+        Insert: {
+          created_at?: string
+          digest_enabled?: boolean
+          digest_time?: string
+          email_on_action_item?: boolean
+          email_on_mention?: boolean
+          email_on_new_context?: boolean
+          id?: string
+          org_id: string
+          updated_at?: string
+          user_id: string
+          weekly_summary?: boolean
+        }
+        Update: {
+          created_at?: string
+          digest_enabled?: boolean
+          digest_time?: string
+          email_on_action_item?: boolean
+          email_on_mention?: boolean
+          email_on_new_context?: boolean
+          id?: string
+          org_id?: string
+          updated_at?: string
+          user_id?: string
+          weekly_summary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_invitations: {
         Row: {
           accepted_at: string | null
@@ -687,6 +737,71 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_config: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json | null
+          id: string
+          is_shared: boolean
+          name: string
+          org_id: string
+          query: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_shared?: boolean
+          name: string
+          org_id: string
+          query: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_shared?: boolean
+          name?: string
+          org_id?: string
+          query?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_searches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_context_links: {
         Row: {
           added_by: string
@@ -719,6 +834,72 @@ export type Database = {
           },
           {
             foreignKeyName: "session_context_links_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_insights: {
+        Row: {
+          created_at: string
+          description: string
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          insight_type: string
+          metadata: Json | null
+          org_id: string
+          related_item_ids: string[] | null
+          session_id: string
+          severity: string
+          source_item_ids: string[] | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          insight_type: string
+          metadata?: Json | null
+          org_id: string
+          related_item_ids?: string[] | null
+          session_id: string
+          severity?: string
+          source_item_ids?: string[] | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          insight_type?: string
+          metadata?: Json | null
+          org_id?: string
+          related_item_ids?: string[] | null
+          session_id?: string
+          severity?: string
+          source_item_ids?: string[] | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_insights_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_insights_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
@@ -805,33 +986,86 @@ export type Database = {
           },
         ]
       }
-      webhook_events: {
+      usage_logs: {
         Row: {
-          id: string
-          provider: string
-          event_id: string
-          event_type: string | null
-          status: string
-          processed_at: string | null
+          cost_usd: number | null
           created_at: string
+          credits_used: number | null
+          id: string
+          input_tokens: number | null
+          metadata: Json | null
+          model: string
+          operation: string
+          org_id: string
+          output_tokens: number | null
+          total_tokens: number | null
+          user_id: string | null
         }
         Insert: {
-          id?: string
-          provider: string
-          event_id: string
-          event_type?: string | null
-          status?: string
-          processed_at?: string | null
+          cost_usd?: number | null
           created_at?: string
+          credits_used?: number | null
+          id?: string
+          input_tokens?: number | null
+          metadata?: Json | null
+          model: string
+          operation: string
+          org_id: string
+          output_tokens?: number | null
+          total_tokens?: number | null
+          user_id?: string | null
         }
         Update: {
+          cost_usd?: number | null
+          created_at?: string
+          credits_used?: number | null
           id?: string
-          provider?: string
+          input_tokens?: number | null
+          metadata?: Json | null
+          model?: string
+          operation?: string
+          org_id?: string
+          output_tokens?: number | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string | null
+          id: string
+          processed_at: string | null
+          provider: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type?: string | null
+          id?: string
+          processed_at?: string | null
+          provider: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
           event_id?: string
           event_type?: string | null
-          status?: string
+          id?: string
           processed_at?: string | null
-          created_at?: string
+          provider?: string
+          status?: string
         }
         Relationships: []
       }

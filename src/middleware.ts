@@ -42,8 +42,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/reset-password");
   const isOnboardingPath = pathname.startsWith("/onboarding");
 
-  // Redirect unauthenticated users to login
-  if (!user && !isAuthPath && !isPublicPath) {
+  // API routes handle auth internally — don't redirect them
+  const isApiPath = pathname.startsWith("/api/");
+
+  // Redirect unauthenticated users to login (except API routes)
+  if (!user && !isAuthPath && !isPublicPath && !isApiPath) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
