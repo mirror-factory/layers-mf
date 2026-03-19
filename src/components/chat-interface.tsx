@@ -336,7 +336,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!historyLoaded && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+            <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
               <p className="text-xs">Loading conversation…</p>
             </div>
@@ -442,7 +442,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           )}
 
           {error && (
-            <p className="text-sm text-destructive text-center">
+            <p role="alert" className="text-sm text-destructive text-center">
               {error.message ?? "Something went wrong."}
             </p>
           )}
@@ -453,7 +453,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         <div className="border-t p-3 sm:p-4">
           <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector">
+              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -467,6 +467,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <div className="flex gap-2 sm:gap-3 flex-1">
               <textarea
                 data-testid="chat-input"
+                aria-label="Chat message input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about your documents, meetings, or team…"
@@ -479,7 +480,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   }
                 }}
               />
-              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()} data-testid="chat-submit">
+              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()} data-testid="chat-submit" aria-label="Send message">
                 <Send className="h-4 w-4" />
               </Button>
             </div>

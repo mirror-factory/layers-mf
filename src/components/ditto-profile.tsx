@@ -117,7 +117,7 @@ export function DittoProfileView() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground py-12">
+      <div role="status" aria-label="Loading profile" className="flex items-center gap-2 text-muted-foreground py-12">
         <Bot className="h-5 w-5 animate-pulse" />
         <span>Loading profile...</span>
       </div>
@@ -144,6 +144,7 @@ export function DittoProfileView() {
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
+            aria-label="Regenerate Ditto profile"
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
           >
             <RefreshCw
@@ -154,6 +155,7 @@ export function DittoProfileView() {
           <button
             onClick={handleReset}
             disabled={saving}
+            aria-label="Reset profile to defaults"
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -216,6 +218,7 @@ export function DittoProfileView() {
         <div className="flex gap-2">
           <input
             type="text"
+            aria-label="Add new interest"
             value={newInterest}
             onChange={(e) => setNewInterest(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addInterest()}
@@ -306,8 +309,9 @@ export function DittoProfileView() {
       <div>
         <h2 className="text-sm font-medium mb-3">Working Hours</h2>
         <div className="flex items-center gap-3">
-          <label className="text-sm text-muted-foreground">Start</label>
+          <label htmlFor="working-hours-start" className="text-sm text-muted-foreground">Start</label>
           <select
+            id="working-hours-start"
             value={profile.working_hours.start}
             onChange={(e) =>
               handlePatch({
@@ -325,8 +329,9 @@ export function DittoProfileView() {
               </option>
             ))}
           </select>
-          <label className="text-sm text-muted-foreground">End</label>
+          <label htmlFor="working-hours-end" className="text-sm text-muted-foreground">End</label>
           <select
+            id="working-hours-end"
             value={profile.working_hours.end}
             onChange={(e) =>
               handlePatch({

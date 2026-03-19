@@ -105,7 +105,7 @@ export default function ActionsPage() {
 
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectTrigger className="w-32 h-8 text-xs" aria-label="Filter by status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -117,7 +117,7 @@ export default function ActionsPage() {
           </Select>
 
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectTrigger className="w-32 h-8 text-xs" aria-label="Filter by source">
               <SelectValue placeholder="Source" />
             </SelectTrigger>
             <SelectContent>
@@ -135,16 +135,22 @@ export default function ActionsPage() {
 
       {/* Table */}
       {loading && items.length === 0 ? (
-        <div className="flex items-center justify-center py-16">
+        <div role="status" aria-label="Loading action items" className="flex items-center justify-center py-16">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
         <div data-testid="actions-empty-state" className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <CheckSquare className="h-10 w-10 mb-3 opacity-30" />
+          <CheckSquare className="h-12 w-12 mb-4 opacity-30" />
           <p className="text-sm font-medium text-foreground">No action items found</p>
-          <p className="text-xs mt-1">
-            Action items will appear here as documents are processed.
+          <p className="text-xs mt-1 max-w-xs text-center">
+            Action items are automatically extracted from your documents, meetings, and messages as they are processed.
           </p>
+          <a
+            href="/context?upload=true"
+            className="mt-4 inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+          >
+            Upload a document
+          </a>
         </div>
       ) : (
         <>

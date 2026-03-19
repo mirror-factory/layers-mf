@@ -40,22 +40,45 @@ export async function POST(req: NextRequest) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const orgId = session.metadata?.org_id;
-      const credits = parseInt(session.metadata?.credits ?? "0", 10);
 
-      if (orgId && credits > 0) {
-        await supabase.rpc("add_credits", {
-          p_user_id: orgId,
-          p_amount: credits,
-        });
+      if (session.mode === "subscription" && orgId) {
+        // Subscription checkout — store customer ID
+        const customerId = session.customer as string;
+        await supabase
+          .from("organizations")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", orgId);
 
         logAudit(supabase, {
           orgId,
           userId: session.metadata?.user_id ?? null,
-          action: "credits.purchased",
+          action: "subscription.created",
           resourceType: "organization",
           resourceId: orgId,
-          metadata: { credits, session_id: session.id },
+          metadata: {
+            plan: session.metadata?.plan,
+            session_id: session.id,
+            customer_id: customerId,
+          },
         });
+      } else {
+        // One-time credit purchase
+        const credits = parseInt(session.metadata?.credits ?? "0", 10);
+        if (orgId && credits > 0) {
+          await supabase.rpc("add_credits", {
+            p_user_id: orgId,
+            p_amount: credits,
+          });
+
+          logAudit(supabase, {
+            orgId,
+            userId: session.metadata?.user_id ?? null,
+            action: "credits.purchased",
+            resourceType: "organization",
+            resourceId: orgId,
+            metadata: { credits, session_id: session.id },
+          });
+        }
       }
       break;
     }

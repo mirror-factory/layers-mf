@@ -69,8 +69,11 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
   if (visible.length === 0) {
     return (
       <div data-testid="inbox-empty-state" className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <Inbox className="h-10 w-10 mb-3 opacity-30" />
-        <p className="text-sm">All caught up — no items in your inbox.</p>
+        <Inbox className="h-12 w-12 mb-4 opacity-30" />
+        <p className="text-sm font-medium text-foreground">All caught up</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          No action items, decisions, or mentions right now. New items will appear as your agents process documents and meetings.
+        </p>
       </div>
     );
   }
@@ -107,7 +110,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
           <div className="flex items-center gap-1 shrink-0">
             {item.source_url && (
               <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                <a href={item.source_url} target="_blank" rel="noopener noreferrer">
+                <a href={item.source_url} target="_blank" rel="noopener noreferrer" aria-label="Open source link">
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </Button>
@@ -117,7 +120,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
               size="icon"
               className="h-8 w-8 text-green-600 hover:text-green-700"
               onClick={() => updateStatus(item.id, "acted")}
-              title="Mark as acted"
+              aria-label="Mark as acted"
             >
               <CheckCheck className="h-3.5 w-3.5" />
             </Button>
@@ -126,7 +129,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
               size="icon"
               className="h-8 w-8"
               onClick={() => updateStatus(item.id, "dismissed")}
-              title="Dismiss"
+              aria-label="Dismiss"
             >
               <X className="h-3.5 w-3.5" />
             </Button>

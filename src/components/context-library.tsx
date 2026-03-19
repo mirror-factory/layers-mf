@@ -294,6 +294,8 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
           <button
             data-testid="source-filter-all"
             onClick={() => handleSourceChange("all")}
+            aria-label="Show all items"
+            aria-pressed={selected === "all"}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
               selected === "all"
@@ -315,6 +317,8 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 key={key}
                 data-testid={`source-filter-${key}`}
                 onClick={() => handleSourceChange(key)}
+                aria-label={`Filter by ${meta.label}`}
+                aria-pressed={selected === key}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   selected === key
@@ -391,6 +395,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
               <input
                 data-testid="context-search-input"
                 type="text"
+                aria-label="Search context library"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(PAGE_SIZE); }}
@@ -410,7 +415,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
               value={contentTypeFilter}
               onValueChange={(v) => { setContentTypeFilter(v); setVisibleCount(PAGE_SIZE); }}
             >
-              <SelectTrigger data-testid="content-type-filter" className="h-8 w-[150px] text-xs">
+              <SelectTrigger data-testid="content-type-filter" className="h-8 w-[150px] text-xs" aria-label="Filter by content type">
                 <SelectValue placeholder="Content type" />
               </SelectTrigger>
               <SelectContent>
@@ -427,7 +432,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
               value={sort}
               onValueChange={(v) => { setSort(v as SortOption); setVisibleCount(PAGE_SIZE); }}
             >
-              <SelectTrigger data-testid="sort-filter" className="h-8 w-[130px] text-xs">
+              <SelectTrigger data-testid="sort-filter" className="h-8 w-[130px] text-xs" aria-label="Sort order">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -494,11 +499,20 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
         <div className="flex-1 overflow-y-auto">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-              <FileText className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-sm">Nothing here yet</p>
+              <Search className="h-10 w-10 mb-3 opacity-30" />
+              <p className="text-sm font-medium text-foreground">No matching items</p>
+              <p className="text-xs mt-1">Try adjusting your filters or search query.</p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-3 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           ) : (
-            <div data-testid="context-items-list" className="divide-y">
+            <div data-testid="context-items-list" className="divide-y" role="list">
               {visible.map((item) => {
                 const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
                 const StatusIcon = status.icon;
@@ -507,6 +521,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 return (
                   <div
                     key={item.id}
+                    role="listitem"
                     data-testid={`context-item-${item.id}`}
                     className={cn(
                       "flex items-start gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-accent/30 transition-colors",

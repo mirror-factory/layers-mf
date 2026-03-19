@@ -30,6 +30,7 @@ import {
   Coins,
   Building,
   Bot,
+  BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -53,6 +54,7 @@ const NAV_ITEMS = [
   { href: "/settings/api-keys", label: "API Keys", icon: Key },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
   { href: "/features", label: "Features", icon: Layers },
+  { href: "/guide", label: "Guide", icon: BookOpen },
   { href: "/api-docs", label: "API Docs", icon: FileCode2 },
 ];
 
@@ -97,7 +99,7 @@ export function SidebarNav({
         <button
           onClick={() => setOpen(true)}
           className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          aria-label="Open navigation"
+          aria-label="Toggle navigation menu"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -142,11 +144,12 @@ export function SidebarNav({
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
+        <nav className="flex-1 space-y-1 p-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
+              aria-current={pathname === href ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 pathname === href
@@ -188,6 +191,7 @@ export function SidebarNav({
           {/* Super-admin link */}
           <Link
             href="/admin"
+            aria-current={pathname === "/admin" ? "page" : undefined}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
               pathname === "/admin"

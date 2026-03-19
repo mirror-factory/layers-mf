@@ -105,7 +105,7 @@ export function NotificationSettings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div role="status" aria-label="Loading notification preferences" className="flex items-center justify-center py-16">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -113,7 +113,7 @@ export function NotificationSettings() {
 
   if (!prefs) {
     return (
-      <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+      <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
         {error ?? "Failed to load preferences"}
       </div>
     );

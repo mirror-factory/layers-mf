@@ -90,14 +90,16 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto">
           {loading && (
-            <div className="flex items-center justify-center py-8">
+            <div role="status" aria-label="Loading conversations" className="flex items-center justify-center py-8">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           )}
 
           {!loading && conversations.length === 0 && (
-            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-              No conversations yet.
+            <div className="flex flex-col items-center px-4 py-8 text-center text-muted-foreground">
+              <MessageSquare className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-xs font-medium text-foreground">No conversations yet</p>
+              <p className="text-[11px] mt-1">Start a new conversation to ask questions across your context.</p>
             </div>
           )}
 
@@ -119,6 +121,7 @@ export default function ChatPage() {
                   e.stopPropagation();
                   deleteConversation(conv.id);
                 }}
+                aria-label={`Delete conversation: ${conv.title || "New conversation"}`}
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />

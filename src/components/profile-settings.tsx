@@ -103,10 +103,11 @@ export function ProfileSettings({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
                 required
+                aria-required="true"
                 data-testid="profile-display-name"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p id="profile-error" role="alert" className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={saving} data-testid="profile-save-btn">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save
@@ -133,6 +134,8 @@ export function ProfileSettings({
                 placeholder="Minimum 8 characters"
                 minLength={8}
                 required
+                aria-required="true"
+                aria-describedby={passwordError ? "password-error" : undefined}
               />
             </div>
             <div className="space-y-2">
@@ -145,10 +148,12 @@ export function ProfileSettings({
                 placeholder="Repeat password"
                 minLength={8}
                 required
+                aria-required="true"
+                aria-describedby={passwordError ? "password-error" : undefined}
               />
             </div>
             {passwordError && (
-              <p className="text-sm text-destructive">{passwordError}</p>
+              <p id="password-error" role="alert" className="text-sm text-destructive">{passwordError}</p>
             )}
             <Button type="submit" disabled={savingPassword}>
               {savingPassword && <Loader2 className="h-4 w-4 animate-spin" />}

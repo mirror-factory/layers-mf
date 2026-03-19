@@ -204,8 +204,8 @@ const SPRINTS: Sprint[] = [
       { id: null, title: "Canvas workspace UI (drag/zoom)", status: "Planned", linearUrl: null },
       { id: null, title: "Export system — PDF support", status: "Planned", linearUrl: null },
       { id: null, title: "Final UX polish + accessibility", status: "Planned", linearUrl: null },
-      { id: null, title: "User guide documentation", status: "Planned", linearUrl: null },
-      { id: null, title: "Launch checklist", status: "Planned", linearUrl: null },
+      { id: null, title: "User guide documentation (/guide page)", status: "Done", linearUrl: null },
+      { id: null, title: "Launch checklist (docs/launch-checklist.md)", status: "Done", linearUrl: null },
     ],
   },
 ];
