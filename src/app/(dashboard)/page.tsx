@@ -16,6 +16,7 @@ import {
   Mic,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DittoSuggestions } from "@/components/ditto-suggestions";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -121,6 +122,9 @@ export default async function HomePage() {
           href="/integrations"
         />
       </div>
+
+      {/* For You suggestions — only show if user has context items */}
+      {totalDocs > 0 && <DittoSuggestions />}
 
       {/* Recent items */}
       <div className="grid gap-6 lg:grid-cols-2">

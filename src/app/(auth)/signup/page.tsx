@@ -8,7 +8,32 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { validatePassword } from "../reset-password/password-validation";
+
+const PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    price: "$0/mo",
+    features: ["50 credits/month", "1 user", "3 integrations"],
+    available: true,
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    price: "$19/mo",
+    features: ["500 credits/month", "5 users", "Unlimited integrations"],
+    available: false,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: "$49/mo",
+    features: ["5,000 credits/month", "Unlimited users", "Priority support"],
+    available: false,
+  },
+] as const;
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -27,6 +52,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<string>("free");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -65,7 +91,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        data: { org_name: orgName },
+        data: { org_name: orgName, plan: selectedPlan },
       },
     });
 
@@ -151,6 +177,43 @@ export default function SignupPage() {
                 </p>
               )}
             </div>
+            {/* Plan selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Choose a plan</label>
+              <div className="grid grid-cols-3 gap-2">
+                {PLANS.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => plan.available && setSelectedPlan(plan.id)}
+                    className={cn(
+                      "relative rounded-md border p-3 text-left text-xs transition-colors",
+                      selectedPlan === plan.id
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "hover:bg-accent",
+                      !plan.available && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="font-semibold">{plan.name}</div>
+                    <div className="text-muted-foreground">{plan.price}</div>
+                    <ul className="mt-2 space-y-1">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-1">
+                          <Check className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {!plan.available && (
+                      <span className="mt-2 inline-block text-[10px] font-medium text-muted-foreground">
+                        Coming Soon
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {error && (
               <p className={cn("text-sm text-destructive")}>{error}</p>
             )}

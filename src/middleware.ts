@@ -32,7 +32,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public paths that don't require auth
-  const isPublicPath = pathname.startsWith("/sprint-progress");
+  const isPublicPath =
+    pathname === "/" ||
+    pathname.startsWith("/sprint-progress") ||
+    pathname.startsWith("/features") ||
+    pathname.startsWith("/pricing");
 
   const isAuthPath =
     pathname.startsWith("/login") ||
@@ -59,6 +63,9 @@ export async function middleware(request: NextRequest) {
   if (user && isOnboardingPath) {
     return supabaseResponse;
   }
+
+  // Forward pathname to server components via header
+  supabaseResponse.headers.set("x-pathname", pathname);
 
   return supabaseResponse;
 }

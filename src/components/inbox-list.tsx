@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CheckCheck, ExternalLink, X, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { trackInteraction } from "@/lib/tracking";
 
 type InboxItem = {
   id: string;
@@ -38,6 +39,25 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
   const supabase = createClient();
 
   async function updateStatus(id: string, status: "read" | "acted" | "dismissed") {
+    const item = items.find((i) => i.id === id);
+    if (status === "dismissed" && item) {
+      trackInteraction({
+        type: "dismiss",
+        resourceType: "inbox_item",
+        resourceId: id,
+        sourceType: item.source_type ?? undefined,
+        metadata: { itemType: item.type, priority: item.priority },
+      });
+    }
+    if (status === "acted" && item) {
+      trackInteraction({
+        type: "click",
+        resourceType: "inbox_item",
+        resourceId: id,
+        sourceType: item.source_type ?? undefined,
+        metadata: { itemType: item.type, priority: item.priority },
+      });
+    }
     setItems((prev) => prev.filter((i) => (status === "dismissed" ? i.id !== id : true)).map((i) =>
       i.id === id ? { ...i, status } : i
     ));

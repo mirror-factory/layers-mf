@@ -356,6 +356,15 @@ describe("generateInboxForUser (integration)", () => {
             insert: insertMock,
           };
         }
+        if (table === "ditto_profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          };
+        }
         return {};
       }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -422,6 +431,15 @@ describe("generateInboxForUser (integration)", () => {
             }),
           };
         }
+        if (table === "ditto_profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          };
+        }
         return {};
       }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -476,6 +494,15 @@ describe("generateInboxForUser (integration)", () => {
               }),
             }),
             insert: insertMock,
+          };
+        }
+        if (table === "ditto_profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
           };
         }
         return {};
@@ -537,6 +564,15 @@ describe("generateInboxForUser (integration)", () => {
               }),
             }),
             insert: insertMock,
+          };
+        }
+        if (table === "ditto_profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
           };
         }
         return {};

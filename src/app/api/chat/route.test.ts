@@ -72,6 +72,28 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
   });
 }
 
+const interactionsMock = {
+  insert: vi.fn().mockReturnValue({
+    then: vi.fn().mockImplementation((cb: (r: { error: null }) => void) => { cb({ error: null }); return { catch: vi.fn() }; }),
+  }),
+};
+
+/** Setup mockFrom to handle both org_members and user_interactions */
+function mockFromWithOrg(orgId = "org-1") {
+  mockFrom.mockImplementation((table: string) => {
+    if (table === "user_interactions") return interactionsMock;
+    // Default: org_members or chat_messages
+    return {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { org_id: orgId } }),
+        }),
+      }),
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    };
+  });
+}
+
 describe("POST /api/chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -117,13 +139,7 @@ describe("POST /api/chat", () => {
 
   it("falls back to default model when unknown model is provided", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const { gateway } = await import("@ai-sdk/gateway");
 
@@ -140,13 +156,7 @@ describe("POST /api/chat", () => {
 
   it("uses the requested model when it is in the allowlist", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const { gateway } = await import("@ai-sdk/gateway");
 
@@ -162,13 +172,7 @@ describe("POST /api/chat", () => {
 
   it("returns 200 streaming response for valid request", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const res = await POST(
       makeRequest({
@@ -181,13 +185,7 @@ describe("POST /api/chat", () => {
 
   it("wires createTools with supabase client and org_id", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-42" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg("org-42");
 
     const { createTools } = await import("@/lib/ai/tools");
 
@@ -205,13 +203,7 @@ describe("POST /api/chat", () => {
 
   it("passes agent to createAgentUIStreamResponse", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const { createAgentUIStreamResponse } = await import("ai");
 
@@ -301,13 +293,7 @@ describe("POST /api/chat", () => {
 
   it("handles large conversation history (100+ messages) without error", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const messages = Array.from({ length: 120 }, (_, i) => ({
       role: i % 2 === 0 ? "user" : "assistant",
@@ -356,13 +342,7 @@ describe("POST /api/chat", () => {
 
   it("accepts valid assistant role in messages", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: "org-1" } }),
-        }),
-      }),
-    });
+    mockFromWithOrg();
 
     const res = await POST(
       makeRequest({

@@ -91,13 +91,21 @@ export async function fetchExistingInboxKeys(
   );
 }
 
+export type DittoProfileContext = {
+  interests?: string[];
+  preferred_sources?: Record<string, number>;
+  priority_topics?: string[];
+};
+
 /**
  * Uses AI to generate prioritized inbox items from recent context + overdue items.
  * All AI calls go through Vercel AI Gateway only.
+ * When a Ditto profile is provided, personalization context is injected into the prompt.
  */
 export async function generateInboxItemsAI(
   recentItems: { id: string; title: string; description_short: string | null; source_type: string; content_type: string; entities: unknown }[],
-  overdueItems: { id: string; title: string; context_item_id: string | null; created_at: string }[]
+  overdueItems: { id: string; title: string; context_item_id: string | null; created_at: string }[],
+  profileContext?: DittoProfileContext
 ): Promise<GeneratedInboxItem[]> {
   if (recentItems.length === 0 && overdueItems.length === 0) return [];
 
@@ -122,11 +130,23 @@ export async function generateInboxItemsAI(
           .join("\n")
       : "None";
 
+  const personalizationBlock =
+    profileContext &&
+    (profileContext.interests?.length ||
+      profileContext.priority_topics?.length ||
+      Object.keys(profileContext.preferred_sources ?? {}).length)
+      ? `\n## User preferences (Ditto profile)
+The user is interested in: ${(profileContext.interests ?? []).join(", ") || "unknown"}
+They prefer content from: ${Object.entries(profileContext.preferred_sources ?? {}).map(([s, w]) => `${s} (${w})`).join(", ") || "no preference"}
+Their priority topics are: ${(profileContext.priority_topics ?? []).join(", ") || "none set"}
+Boost priority for items matching these preferences.\n`
+      : "";
+
   const { output } = await generateText({
     model: gateway("anthropic/claude-haiku-4-5-20251001"),
     output: Output.array({ element: InboxItemSchema }),
     prompt: `You are generating prioritized inbox items for a knowledge worker.
-
+${personalizationBlock}
 ## Recent context items (ingested in the last 24h)
 ${recentBlock || "None"}
 
@@ -157,14 +177,27 @@ export async function generateInboxForUser(
   userId: string,
   since: string
 ): Promise<number> {
-  const [recentItems, overdueItems] = await Promise.all([
+  const [recentItems, overdueItems, profileResult] = await Promise.all([
     fetchRecentContextItems(supabase, orgId, since),
     fetchOverdueActionItems(supabase, orgId, userId),
+    supabase
+      .from("ditto_profiles")
+      .select("interests, preferred_sources, priority_topics")
+      .eq("user_id", userId)
+      .single(),
   ]);
 
   if (recentItems.length === 0 && overdueItems.length === 0) return 0;
 
-  const generated = await generateInboxItemsAI(recentItems, overdueItems);
+  const profileContext: DittoProfileContext | undefined = profileResult.data
+    ? {
+        interests: profileResult.data.interests as string[] | undefined,
+        preferred_sources: profileResult.data.preferred_sources as Record<string, number> | undefined,
+        priority_topics: profileResult.data.priority_topics as string[] | undefined,
+      }
+    : undefined;
+
+  const generated = await generateInboxItemsAI(recentItems, overdueItems, profileContext);
   if (generated.length === 0) return 0;
 
   // Deduplicate: check which context_item_id + type combos already exist

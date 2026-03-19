@@ -136,6 +136,23 @@ export async function POST(request: NextRequest) {
   const orgId = member.org_id;
   const userId = user.id;
 
+  // Track chat query as a user interaction (fire-and-forget)
+  if (query) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (supabase as any)
+      .from("user_interactions")
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        interaction_type: "chat_query",
+        query,
+        metadata: { model: modelId, conversationId },
+      })
+      .then(({ error }: { error: { message: string } | null }) => {
+        if (error) console.error("[chat] interaction tracking failed:", error.message);
+      });
+  }
+
   // Save the new user message (last in array)
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
   const lastUserText = lastUserMsg

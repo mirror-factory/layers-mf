@@ -18,6 +18,7 @@ import { ContextAnnotations } from "@/components/context-annotations";
 import { ContextVersionHistory } from "@/components/context-version-history";
 import { EntityChips } from "@/components/entity-chips";
 import { ExportDropdown } from "@/components/export-dropdown";
+import { DwellTracker } from "@/components/dwell-tracker";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -91,6 +92,14 @@ export default async function ContextDetailPage({
 
   return (
     <div data-testid="context-detail-page" className="flex flex-col p-4 sm:p-8 gap-6 max-w-4xl mx-auto">
+      {/* Dwell time tracking */}
+      <DwellTracker
+        resourceType="context_item"
+        resourceId={item.id}
+        sourceType={item.source_type}
+        contentType={item.content_type}
+      />
+
       {/* Back link */}
       <Link
         href="/context"

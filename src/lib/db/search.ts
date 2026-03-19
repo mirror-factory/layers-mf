@@ -24,6 +24,12 @@ export type SearchFilters = {
   dateTo?: string; // ISO 8601
 };
 
+/** Optional user profile for personalized search boosting */
+export type UserProfile = {
+  preferred_sources?: Record<string, number>;
+  priority_topics?: string[];
+};
+
 // --- Freshness decay configuration ---
 
 /** Half-life in days: after this many days, freshness factor = 0.5 */
@@ -58,19 +64,30 @@ export async function searchContext(
   query: string,
   limit = 10,
   filters?: SearchFilters,
-  expandQueries = false
+  expandQueries = false,
+  userProfile?: UserProfile
 ): Promise<SearchResult[]> {
+  let results: SearchResult[];
+
   if (expandQueries) {
     const queries = await expandQuery(query);
     if (queries.length > 1) {
       const allResults = await Promise.all(
         queries.map((q) => searchContextSingle(supabase, orgId, q, limit, filters))
       );
-      return deduplicateResults(allResults.flat(), limit, (r) => r.id);
+      results = deduplicateResults(allResults.flat(), limit, (r) => r.id);
+    } else {
+      results = await searchContextSingle(supabase, orgId, query, limit, filters);
     }
+  } else {
+    results = await searchContextSingle(supabase, orgId, query, limit, filters);
   }
 
-  return searchContextSingle(supabase, orgId, query, limit, filters);
+  if (userProfile) {
+    results = applyProfileBoost(results, userProfile);
+  }
+
+  return results;
 }
 
 /** Raw result from the RPC before trust/freshness adjustments */
@@ -294,6 +311,30 @@ function deduplicateResults<T extends { rrf_score: number }>(
   return Array.from(bestByKey.values())
     .sort((a, b) => b.rrf_score - a.rrf_score)
     .slice(0, limit);
+}
+
+/**
+ * Apply user profile preferences as a post-processing boost on search scores.
+ * preferred_sources: score *= (0.5 + preferenceScore) — up to 1.5x boost, 0.5x for non-preferred
+ * Only applied when userProfile is provided; default behavior unchanged.
+ */
+function applyProfileBoost<T extends { rrf_score: number; source_type: string }>(
+  results: T[],
+  profile: UserProfile
+): T[] {
+  const sources = profile.preferred_sources;
+  if (!sources || Object.keys(sources).length === 0) return results;
+
+  const boosted = results.map((r) => {
+    const preferenceScore = sources[r.source_type];
+    if (preferenceScore !== undefined) {
+      return { ...r, rrf_score: r.rrf_score * (0.5 + preferenceScore) };
+    }
+    return r;
+  });
+
+  boosted.sort((a, b) => b.rrf_score - a.rrf_score);
+  return boosted;
 }
 
 export function buildChunkContextBlock(results: ChunkSearchResult[]): string {

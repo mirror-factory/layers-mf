@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import { SavedSearches } from "@/components/saved-searches";
 import { ExportDropdown } from "@/components/export-dropdown";
+import { trackInteraction } from "@/lib/tracking";
 
 interface ContextItem {
   id: string;
@@ -136,6 +137,24 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const [sourceOpen, setSourceOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+
+  // Debounced search tracking
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      trackInteraction({
+        type: "search",
+        query: searchQuery.trim(),
+        metadata: { resultCount: processed.length, page: "/context" },
+      });
+    }, 1000);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   // Derive unique content types from items
   const contentTypes = useMemo(
@@ -504,6 +523,16 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                     <Link
                       href={`/context/${item.id}`}
                       className="flex items-start gap-3 flex-1 min-w-0"
+                      onClick={() => {
+                        trackInteraction({
+                          type: "click",
+                          resourceType: "context_item",
+                          resourceId: item.id,
+                          sourceType: item.source_type,
+                          contentType: item.content_type,
+                          metadata: { fromPage: "/context" },
+                        });
+                      }}
                     >
                       <ContentIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">

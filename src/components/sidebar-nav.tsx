@@ -20,6 +20,7 @@ import {
   Shield,
   Bell,
   CreditCard,
+  Key,
   SlidersHorizontal,
   FileCode2,
   CheckSquare,
@@ -28,11 +29,13 @@ import {
   X,
   Coins,
   Building,
+  Bot,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
+  { href: "/ditto", label: "Ditto", icon: Bot },
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/sessions", label: "Sessions", icon: FolderKanban },
@@ -47,6 +50,7 @@ const NAV_ITEMS = [
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/settings/source-trust", label: "Source Trust", icon: SlidersHorizontal },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
+  { href: "/settings/api-keys", label: "API Keys", icon: Key },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
   { href: "/features", label: "Features", icon: Layers },
   { href: "/api-docs", label: "API Docs", icon: FileCode2 },
