@@ -1,9 +1,5 @@
 import Link from "next/link";
 
-export const metadata = {
-  title: "Layers — The Operating System for AI-Native Teams",
-};
-
 export default function MarketingLayout({
   children,
 }: {
