@@ -290,24 +290,204 @@ describe("mapNangoRecord", () => {
     });
   });
 
+  // ── Google Calendar ──────────────────────────────────────────────────
+
+  describe("google-calendar", () => {
+    it("maps a calendar event with all fields", () => {
+      const result = mapNangoRecord("google-calendar", {
+        id: "event-abc123",
+        summary: "Weekly standup",
+        description: "Discuss sprint progress and blockers for the current iteration.",
+        start: { dateTime: "2026-03-22T10:00:00-04:00" },
+        end: { dateTime: "2026-03-22T10:30:00-04:00" },
+        attendees: [
+          { email: "alfonso@example.com", displayName: "Alfonso" },
+          { email: "dev2@example.com", displayName: "Dev2" },
+        ],
+        location: "Conference Room A",
+        hangoutLink: "https://meet.google.com/abc-defg-hij",
+        status: "confirmed",
+        creator: { email: "alfonso@example.com", displayName: "Alfonso" },
+        created: "2026-03-15T09:00:00Z",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.source_id).toBe("event-abc123");
+      expect(result!.title).toBe("Weekly standup");
+      expect(result!.content_type).toBe("calendar_event");
+      expect(result!.raw_content).toContain("Event: Weekly standup");
+      expect(result!.raw_content).toContain("When: 2026-03-22T10:00:00-04:00");
+      expect(result!.raw_content).toContain("Where: Conference Room A");
+      expect(result!.raw_content).toContain("Attendees: alfonso@example.com, dev2@example.com");
+      expect(result!.raw_content).toContain("Meet: https://meet.google.com/abc-defg-hij");
+      expect(result!.raw_content).toContain("Discuss sprint progress");
+      expect(result!.source_created_at).toBe("2026-03-15T09:00:00Z");
+      expect(result!.source_metadata).toMatchObject({
+        location: "Conference Room A",
+        status: "confirmed",
+      });
+    });
+
+    it("handles event with no attendees", () => {
+      const result = mapNangoRecord("google-calendar", {
+        id: "event-solo",
+        summary: "Focus time block for deep work on the integration layer",
+        start: { dateTime: "2026-03-22T14:00:00-04:00" },
+        end: { dateTime: "2026-03-22T16:00:00-04:00" },
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("Focus time block for deep work on the integration layer");
+      expect(result!.raw_content).not.toContain("Attendees:");
+      expect(result!.source_metadata).toMatchObject({
+        attendees: null,
+        location: null,
+      });
+    });
+
+    it("handles all-day event (date vs dateTime)", () => {
+      const result = mapNangoRecord("google-calendar", {
+        id: "event-allday",
+        summary: "Company offsite retreat and team building exercises",
+        start: { date: "2026-04-01" },
+        end: { date: "2026-04-02" },
+        location: "Miami Beach Resort",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.raw_content).toContain("When: 2026-04-01 — 2026-04-02");
+      expect(result!.raw_content).toContain("Where: Miami Beach Resort");
+      expect(result!.source_metadata).toMatchObject({
+        start: { date: "2026-04-01" },
+        end: { date: "2026-04-02" },
+      });
+    });
+  });
+
+  // ── Notion ───────────────────────────────────────────────────────────
+
+  describe("notion", () => {
+    it("maps a Notion page with title and content", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-abc-123",
+        object: "page",
+        title: "Project Roadmap",
+        content: "This is the full project roadmap covering Q2 milestones, feature priorities, and team assignments for the quarter.",
+        url: "https://www.notion.so/Project-Roadmap-abc123",
+        created_time: "2026-02-01T10:00:00Z",
+        last_edited_time: "2026-03-20T14:30:00Z",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.source_id).toBe("page-abc-123");
+      expect(result!.title).toBe("Project Roadmap");
+      expect(result!.content_type).toBe("document");
+      expect(result!.raw_content).toContain("project roadmap");
+      expect(result!.source_created_at).toBe("2026-02-01T10:00:00Z");
+      expect(result!.source_metadata).toEqual({
+        url: "https://www.notion.so/Project-Roadmap-abc123",
+        last_edited_time: "2026-03-20T14:30:00Z",
+        type: "page",
+      });
+    });
+
+    it("returns null for page with no content", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-empty",
+        title: "Empty Page",
+        content: "",
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null for page with short content", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-short",
+        title: "Short Page",
+        content: "Too short",
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("extracts title from properties.title", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-props-title",
+        object: "page",
+        properties: {
+          title: {
+            type: "title",
+            title: [{ plain_text: "Design System Docs" }],
+          },
+        },
+        content: "The design system documentation covers all component patterns, color tokens, and typography scales used across the app.",
+        last_edited_time: "2026-03-18T12:00:00Z",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("Design System Docs");
+      expect(result!.content_type).toBe("document");
+    });
+
+    it("extracts title from properties.Name", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-props-name",
+        object: "page",
+        properties: {
+          Name: {
+            type: "title",
+            title: [{ plain_text: "Sprint Planning Notes" }],
+          },
+        },
+        content: "Sprint planning notes covering velocity estimates, story points, and backlog grooming decisions for this iteration.",
+        created_time: "2026-03-15T09:00:00Z",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("Sprint Planning Notes");
+    });
+
+    it("uses markdown field when content is absent", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-markdown",
+        title: "Markdown Page",
+        markdown: "# Heading\n\nThis is markdown content from a Notion page that has enough characters to pass the threshold.",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.raw_content).toContain("# Heading");
+    });
+
+    it("defaults to Untitled when no title is available", () => {
+      const result = mapNangoRecord("notion", {
+        id: "page-no-title",
+        content: "Content without a title field but still long enough to pass the minimum character threshold for mapping.",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("Untitled");
+    });
+  });
+
   // ── Generic / unknown provider ────────────────────────────────────────
 
   describe("unknown provider", () => {
     it("uses generic mapper for unknown providers", () => {
-      const result = mapNangoRecord("notion", {
-        id: "page-1",
-        title: "My Notion Page",
-        content: "This is enough content from Notion to pass the minimum character threshold for the generic mapper.",
+      const result = mapNangoRecord("some-unknown-provider", {
+        id: "item-1",
+        title: "Unknown Provider Item",
+        content: "This is enough content from an unknown provider to pass the minimum character threshold for the generic mapper.",
       });
 
       expect(result).not.toBeNull();
-      expect(result!.title).toBe("My Notion Page");
+      expect(result!.title).toBe("Unknown Provider Item");
       expect(result!.content_type).toBe("document");
     });
 
     it("returns null for unknown provider with short content", () => {
-      const result = mapNangoRecord("notion", {
-        id: "page-2",
+      const result = mapNangoRecord("some-unknown-provider", {
+        id: "item-2",
         title: "Empty",
         content: "x",
       });

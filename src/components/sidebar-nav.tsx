@@ -32,6 +32,7 @@ import {
   Bot,
   BookOpen,
   Sparkles,
+  PanelTop,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/sessions", label: "Sessions", icon: FolderKanban },
   { href: "/agents", label: "Agents", icon: Sparkles },
+  { href: "/canvas", label: "Canvas", icon: PanelTop },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/actions", label: "Actions", icon: CheckSquare },
   { href: "/issues", label: "Issues", icon: ListChecks },

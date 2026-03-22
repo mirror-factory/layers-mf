@@ -181,7 +181,7 @@ describe("POST /api/integrations/sync", () => {
   it("returns error event for unknown provider", async () => {
     mockAuthenticatedUser();
     mockIntegrationLookup();
-    const res = await POST(makeRequest({ connectionId: "c-1", provider: "notion" }));
+    const res = await POST(makeRequest({ connectionId: "c-1", provider: "some-unknown-provider" }));
     expect(res.status).toBe(200);
     const events = await readSSE(res);
     const errorEvent = events.find((e) => e.phase === "error");

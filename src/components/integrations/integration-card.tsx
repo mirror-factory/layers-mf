@@ -14,6 +14,8 @@ import {
   Mic,
   Settings,
   Brain,
+  Calendar,
+  StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -96,6 +98,18 @@ const PROVIDER_META: Record<
     description: "Meeting transcripts and notes",
     icon: Mic,
     color: "text-amber-600 dark:text-amber-400",
+  },
+  "google-calendar": {
+    label: "Google Calendar",
+    description: "Meetings, events, and scheduling",
+    icon: Calendar,
+    color: "text-green-600 dark:text-green-400",
+  },
+  notion: {
+    label: "Notion",
+    description: "Pages, databases, and wikis",
+    icon: StickyNote,
+    color: "text-stone-700 dark:text-stone-300",
   },
   "layers-ai": {
     label: "Layers AI",

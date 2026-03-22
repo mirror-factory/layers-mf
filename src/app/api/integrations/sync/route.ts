@@ -512,6 +512,152 @@ async function fetchLinear(
   return records.slice(0, maxItems);
 }
 
+// ── Notion ──────────────────────────────────────────────────────────────────
+
+function notionRichTextToPlain(richText: unknown[]): string {
+  return (richText ?? []).map((t: unknown) => (t as { plain_text?: string }).plain_text ?? "").join("");
+}
+
+function notionBlocksToText(blocks: unknown[]): string {
+  return blocks.map((block: unknown) => {
+    const b = block as Record<string, unknown>;
+    const type = b.type as string;
+    const data = b[type] as Record<string, unknown> | undefined;
+    if (!data) return "";
+
+    switch (type) {
+      case "paragraph": return notionRichTextToPlain(data.rich_text as unknown[]);
+      case "heading_1": return `# ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "heading_2": return `## ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "heading_3": return `### ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "bulleted_list_item": return `- ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "numbered_list_item": return `1. ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "to_do": return `[${data.checked ? "x" : " "}] ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "toggle": return `> ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "code": return `\`\`\`${(data.language as string) ?? ""}\n${notionRichTextToPlain(data.rich_text as unknown[])}\n\`\`\``;
+      case "quote": return `> ${notionRichTextToPlain(data.rich_text as unknown[])}`;
+      case "callout": return notionRichTextToPlain(data.rich_text as unknown[]);
+      case "divider": return "---";
+      default: return "";
+    }
+  }).filter(Boolean).join("\n\n");
+}
+
+async function fetchNotion(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  // Notion uses POST for search
+  let pages: {
+    id: string;
+    object: string;
+    url?: string;
+    created_time?: string;
+    last_edited_time?: string;
+    properties?: Record<string, unknown>;
+  }[] = [];
+
+  try {
+    const res = await nango.proxy<{
+      results: typeof pages;
+    }>({
+      method: "POST",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/v1/search",
+      headers: { "Notion-Version": "2022-06-28" },
+      data: {
+        page_size: 50,
+        sort: { direction: "descending", timestamp: "last_edited_time" },
+      },
+    });
+    pages = (res.data?.results ?? []).filter(
+      (r) => r.object === "page"
+    );
+  } catch (err) {
+    console.error("[sync:notion] search failed:", err);
+    return [];
+  }
+
+  for (const page of pages.slice(0, 50)) {
+    try {
+      // Extract title from properties
+      const props = page.properties ?? {};
+      let title = "Untitled";
+      for (const val of Object.values(props)) {
+        const prop = val as Record<string, unknown>;
+        if (prop.type === "title") {
+          const titleArr = prop.title as { plain_text?: string }[];
+          if (titleArr?.[0]?.plain_text) {
+            title = titleArr[0].plain_text;
+            break;
+          }
+        }
+      }
+
+      // Fetch page blocks
+      const blocksRes = await nango.proxy<{
+        results: unknown[];
+      }>({
+        method: "GET",
+        providerConfigKey: provider,
+        connectionId,
+        endpoint: `/v1/blocks/${page.id}/children`,
+        headers: { "Notion-Version": "2022-06-28" },
+        params: { page_size: "100" },
+      });
+
+      const blocks = blocksRes.data?.results ?? [];
+      let content = notionBlocksToText(blocks);
+
+      // Recursively fetch child blocks (max depth 1 more level)
+      for (const block of blocks) {
+        const b = block as Record<string, unknown>;
+        if (b.has_children) {
+          try {
+            const childRes = await nango.proxy<{
+              results: unknown[];
+            }>({
+              method: "GET",
+              providerConfigKey: provider,
+              connectionId,
+              endpoint: `/v1/blocks/${b.id}/children`,
+              headers: { "Notion-Version": "2022-06-28" },
+              params: { page_size: "100" },
+            });
+            const childText = notionBlocksToText(childRes.data?.results ?? []);
+            if (childText) {
+              content += "\n\n" + childText;
+            }
+          } catch {
+            // skip inaccessible child blocks
+          }
+        }
+      }
+
+      if (content.length < 30) continue;
+
+      records.push({
+        id: page.id,
+        title,
+        content: content.slice(0, 12000),
+        sourceCreatedAt: page.created_time ?? null,
+        sourceMetadata: {
+          url: page.url ?? null,
+          last_edited_time: page.last_edited_time ?? null,
+          type: page.object,
+        } satisfies Json,
+      });
+    } catch {
+      // skip inaccessible pages
+    }
+  }
+
+  return records;
+}
+
 // ── Discord ──────────────────────────────────────────────────────────────────
 async function fetchDiscord(
   provider: string,
@@ -588,6 +734,95 @@ async function fetchDiscord(
   return records;
 }
 
+// ── Google Calendar ──────────────────────────────────────────────────────
+async function fetchGoogleCalendar(
+  provider: string,
+  connectionId: string
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+
+  const now = new Date();
+  const timeMin = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  let events: {
+    id: string;
+    summary?: string;
+    description?: string;
+    start?: { dateTime?: string; date?: string };
+    end?: { dateTime?: string; date?: string };
+    attendees?: { email?: string; displayName?: string }[];
+    location?: string;
+    hangoutLink?: string;
+    status?: string;
+    creator?: { email?: string; displayName?: string };
+    created?: string;
+  }[] = [];
+
+  try {
+    const res = await nango.proxy<{
+      items: typeof events;
+    }>({
+      method: "GET",
+      providerConfigKey: provider,
+      connectionId,
+      endpoint: "/calendar/v3/calendars/primary/events",
+      params: {
+        timeMin,
+        timeMax,
+        maxResults: "100",
+        singleEvents: "true",
+        orderBy: "startTime",
+      },
+    });
+    events = res.data?.items ?? [];
+  } catch (err) {
+    console.error("[sync:google-calendar] events fetch failed:", err);
+    return [];
+  }
+
+  for (const event of events) {
+    const summary = event.summary ?? "Untitled Event";
+    const start = event.start?.dateTime ?? event.start?.date ?? "";
+    const end = event.end?.dateTime ?? event.end?.date ?? "";
+    const attendees = (event.attendees ?? [])
+      .map((a) => a.email ?? a.displayName ?? "")
+      .filter(Boolean)
+      .join(", ");
+    const description = event.description ?? "";
+    const location = event.location ?? "";
+
+    const content = [
+      `Event: ${summary}`,
+      `When: ${start} — ${end}`,
+      location ? `Where: ${location}` : "",
+      attendees ? `Attendees: ${attendees}` : "",
+      event.hangoutLink ? `Meet: ${event.hangoutLink}` : "",
+      description ? `\nDescription:\n${description}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    records.push({
+      id: event.id ?? String(Date.now()),
+      title: summary,
+      content: content.slice(0, 12000),
+      sourceCreatedAt: event.created ?? null,
+      sourceMetadata: {
+        start: event.start ?? null,
+        end: event.end ?? null,
+        attendees: event.attendees ?? null,
+        location: event.location ?? null,
+        hangoutLink: event.hangoutLink ?? null,
+        status: event.status ?? null,
+        creator: event.creator ?? null,
+      } satisfies Json,
+    });
+  }
+
+  return records;
+}
+
 function contentTypeFor(provider: string): string {
   if (provider.includes("github")) return "issue";
   switch (provider) {
@@ -595,8 +830,10 @@ function contentTypeFor(provider: string): string {
     case "slack":        return "message";
     case "discord":      return "message";
     case "linear":       return "issue";
-    case "granola":      return "meeting_transcript";
-    default:             return "document";
+    case "granola":           return "meeting_transcript";
+    case "google-calendar":   return "calendar_event";
+    case "notion":            return "document";
+    default:                  return "document";
   }
 }
 
@@ -665,6 +902,10 @@ export async function POST(request: NextRequest) {
           rawRecords = await fetchLinear(provider, connectionId, syncConfig);
         } else if (provider === "discord") {
           rawRecords = await fetchDiscord(provider, connectionId, syncConfig);
+        } else if (provider === "google-calendar") {
+          rawRecords = await fetchGoogleCalendar(provider, connectionId);
+        } else if (provider === "notion") {
+          rawRecords = await fetchNotion(provider, connectionId);
         } else {
           emit({ phase: "error", message: `No fetch strategy for provider: ${provider}` });
           controller.close();

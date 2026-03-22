@@ -14,8 +14,8 @@ const TOOLS = [
   { id: "github", name: "GitHub", description: "Track repos and PRs", icon: "⚙️", available: true },
   { id: "granola", name: "Granola", description: "Meeting transcripts", icon: "🎙️", available: true },
   { id: "discord", name: "Discord", description: "Server messages and channels", icon: "🎮", available: true },
-  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", icon: "📅", available: false },
-  { id: "notion", name: "Notion", description: "Connect docs and wikis", icon: "📝", available: false },
+  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", icon: "📅", available: true },
+  { id: "notion", name: "Notion", description: "Connect docs and wikis", icon: "📝", available: true },
 ] as const;
 
 export default function ConnectToolsPage() {
