@@ -38,11 +38,11 @@ export async function GET() {
     .eq("user_id", user.id)
     .single();
 
-  const interests: string[] = profile?.interests ?? DEFAULT_PROFILE.interests;
-  const preferredSources: Record<string, number> =
-    profile?.preferred_sources ?? DEFAULT_PROFILE.preferred_sources;
-  const priorityTopics: string[] =
-    profile?.priority_topics ?? DEFAULT_PROFILE.priority_topics;
+  const interests = (profile?.interests as string[] | null) ?? DEFAULT_PROFILE.interests;
+  const preferredSources = (profile?.preferred_sources as Record<string, number> | null) ??
+    DEFAULT_PROFILE.preferred_sources;
+  const priorityTopics = (profile?.priority_topics as string[] | null) ??
+    DEFAULT_PROFILE.priority_topics;
   const confidence: number = profile?.confidence ?? 0;
 
   // 2. Fetch items the user has already clicked or dismissed (to exclude)

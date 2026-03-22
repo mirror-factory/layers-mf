@@ -176,6 +176,165 @@ export type Database = {
           },
         ]
       }
+      canvas_connections: {
+        Row: {
+          canvas_id: string
+          created_at: string
+          from_item_id: string
+          id: string
+          label: string | null
+          style: Json | null
+          to_item_id: string
+        }
+        Insert: {
+          canvas_id: string
+          created_at?: string
+          from_item_id: string
+          id?: string
+          label?: string | null
+          style?: Json | null
+          to_item_id: string
+        }
+        Update: {
+          canvas_id?: string
+          created_at?: string
+          from_item_id?: string
+          id?: string
+          label?: string | null
+          style?: Json | null
+          to_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_connections_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_connections_from_item_id_fkey"
+            columns: ["from_item_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_connections_to_item_id_fkey"
+            columns: ["to_item_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_items: {
+        Row: {
+          canvas_id: string
+          color: string | null
+          content: string | null
+          context_item_id: string | null
+          created_at: string
+          height: number
+          id: string
+          item_type: string
+          style: Json | null
+          updated_at: string
+          width: number
+          x: number
+          y: number
+        }
+        Insert: {
+          canvas_id: string
+          color?: string | null
+          content?: string | null
+          context_item_id?: string | null
+          created_at?: string
+          height?: number
+          id?: string
+          item_type?: string
+          style?: Json | null
+          updated_at?: string
+          width?: number
+          x?: number
+          y?: number
+        }
+        Update: {
+          canvas_id?: string
+          color?: string | null
+          content?: string | null
+          context_item_id?: string | null
+          created_at?: string
+          height?: number
+          id?: string
+          item_type?: string
+          style?: Json | null
+          updated_at?: string
+          width?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_items_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_items_context_item_id_fkey"
+            columns: ["context_item_id"]
+            isOneToOne: false
+            referencedRelation: "context_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvases: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+          settings: Json | null
+          updated_at: string
+          viewport: Json | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+          settings?: Json | null
+          updated_at?: string
+          viewport?: Json | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          settings?: Json | null
+          updated_at?: string
+          viewport?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: Json
@@ -473,6 +632,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ditto_profiles: {
+        Row: {
+          communication_style: string | null
+          confidence: number | null
+          created_at: string
+          detail_level: string | null
+          id: string
+          interaction_count: number | null
+          interests: Json | null
+          last_generated_at: string | null
+          org_id: string
+          preferred_sources: Json | null
+          priority_topics: Json | null
+          updated_at: string
+          user_id: string
+          working_hours: Json | null
+        }
+        Insert: {
+          communication_style?: string | null
+          confidence?: number | null
+          created_at?: string
+          detail_level?: string | null
+          id?: string
+          interaction_count?: number | null
+          interests?: Json | null
+          last_generated_at?: string | null
+          org_id: string
+          preferred_sources?: Json | null
+          priority_topics?: Json | null
+          updated_at?: string
+          user_id: string
+          working_hours?: Json | null
+        }
+        Update: {
+          communication_style?: string | null
+          confidence?: number | null
+          created_at?: string
+          detail_level?: string | null
+          id?: string
+          interaction_count?: number | null
+          interests?: Json | null
+          last_generated_at?: string | null
+          org_id?: string
+          preferred_sources?: Json | null
+          priority_topics?: Json | null
+          updated_at?: string
+          user_id?: string
+          working_hours?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ditto_profiles_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1032,6 +1250,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "usage_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_interactions: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          id: string
+          interaction_type: string
+          metadata: Json | null
+          org_id: string
+          query: string | null
+          resource_id: string | null
+          resource_type: string | null
+          source_type: string | null
+          user_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          interaction_type: string
+          metadata?: Json | null
+          org_id: string
+          query?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          source_type?: string | null
+          user_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          metadata?: Json | null
+          org_id?: string
+          query?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          source_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_interactions_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"

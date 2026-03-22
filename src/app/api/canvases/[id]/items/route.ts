@@ -21,7 +21,7 @@ const updateItemSchema = z.object({
   height: z.number().optional(),
   color: z.string().max(50).optional(),
   content: z.string().max(10000).optional(),
-  style: z.record(z.unknown()).optional(),
+  style: z.record(z.string(), z.unknown()).optional(),
 });
 
 const deleteItemSchema = z.object({

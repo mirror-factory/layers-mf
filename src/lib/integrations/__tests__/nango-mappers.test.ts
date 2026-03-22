@@ -470,6 +470,80 @@ describe("mapNangoRecord", () => {
     });
   });
 
+  // ── Gmail ──────────────────────────────────────────────────────────
+
+  describe("gmail", () => {
+    it("maps email with subject, from, to, body", () => {
+      const result = mapNangoRecord("gmail", {
+        id: "msg-001",
+        subject: "Q2 Planning Follow-up",
+        from: "alfonso@example.com",
+        to: "team@example.com",
+        date: "Mon, 20 Mar 2026 10:00:00 -0400",
+        body: "Hey team, here are the action items from our Q2 planning session. Please review the attached roadmap and provide feedback by Friday.",
+        threadId: "thread-abc",
+        internalDate: "1742475600000",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.source_id).toBe("msg-001");
+      expect(result!.title).toBe("Q2 Planning Follow-up");
+      expect(result!.content_type).toBe("email_thread");
+      expect(result!.raw_content).toContain("From: alfonso@example.com");
+      expect(result!.raw_content).toContain("To: team@example.com");
+      expect(result!.raw_content).toContain("Subject: Q2 Planning Follow-up");
+      expect(result!.raw_content).toContain("action items from our Q2 planning");
+      expect(result!.source_metadata).toMatchObject({
+        threadId: "thread-abc",
+        from: "alfonso@example.com",
+        to: "team@example.com",
+        subject: "Q2 Planning Follow-up",
+      });
+    });
+
+    it("handles email with no body (uses snippet)", () => {
+      const result = mapNangoRecord("gmail", {
+        id: "msg-002",
+        subject: "Meeting reminder for tomorrow morning standup",
+        from: "calendar@google.com",
+        to: "alfonso@example.com",
+        snippet: "Don't forget about the standup meeting tomorrow at 9 AM. Please prepare your status update.",
+        threadId: "thread-def",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("Meeting reminder for tomorrow morning standup");
+      expect(result!.raw_content).toContain("Don't forget about the standup");
+      expect(result!.content_type).toBe("email_thread");
+    });
+
+    it("handles missing headers gracefully", () => {
+      const result = mapNangoRecord("gmail", {
+        id: "msg-003",
+        body: "This is an email body with enough content to pass the minimum character threshold for the mapper to process it.",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.title).toBe("No Subject");
+      expect(result!.raw_content).toContain("Subject: No Subject");
+      expect(result!.source_metadata).toMatchObject({
+        from: null,
+        to: null,
+        subject: "No Subject",
+      });
+    });
+
+    it("returns null for email with very short content", () => {
+      const result = mapNangoRecord("gmail", {
+        id: "msg-004",
+        subject: "Hi",
+        body: "ok",
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
   // ── Generic / unknown provider ────────────────────────────────────────
 
   describe("unknown provider", () => {

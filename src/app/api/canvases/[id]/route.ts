@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/database.types";
 
 const updateCanvasSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -12,7 +13,7 @@ const updateCanvasSchema = z.object({
       zoom: z.number().min(0.1).max(10),
     })
     .optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(
@@ -104,7 +105,12 @@ export async function PATCH(
 
   const { data: canvas, error } = await supabase
     .from("canvases")
-    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .update({
+      ...parsed.data,
+      viewport: parsed.data.viewport as unknown as Json,
+      settings: parsed.data.settings as unknown as Json,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id)
     .eq("org_id", member.org_id)
     .select("id, name, description, viewport, settings, updated_at")

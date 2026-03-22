@@ -337,6 +337,53 @@ function mapNotion(record: Record<string, unknown>): MappedRecord | null {
   };
 }
 
+// ── Gmail ───────────────────────────────────────────────────────────────
+
+function mapGmail(record: Record<string, unknown>): MappedRecord | null {
+  const subject = String(record.subject ?? record.title ?? "No Subject");
+  const from = String(record.from ?? "");
+  const to = String(record.to ?? "");
+  const date = String(record.date ?? "");
+  const snippet = String(record.snippet ?? "");
+
+  // Body can come from multiple fields
+  const bodyRaw = String(record.body ?? record.content ?? record.text ?? "").trim();
+
+  const contentParts = [
+    from ? `From: ${from}` : "",
+    to ? `To: ${to}` : "",
+    date ? `Date: ${date}` : "",
+    `Subject: ${subject}`,
+    "",
+    bodyRaw || snippet,
+  ].filter((line, idx) => {
+    // Keep the empty line separator (index 4) and non-empty lines
+    if (idx === 4) return true;
+    return line.length > 0;
+  });
+
+  const content = contentParts.join("\n").trim();
+  if (content.length < MIN_CONTENT_LENGTH) return null;
+
+  return {
+    source_id: String(record.id ?? ""),
+    title: subject,
+    raw_content: content.slice(0, 12_000),
+    content_type: "email_thread",
+    source_created_at:
+      (record.internalDate as string) ??
+      (record.created_at as string) ??
+      (record.date as string) ??
+      null,
+    source_metadata: {
+      threadId: record.threadId ?? null,
+      from: from || null,
+      to: to || null,
+      subject,
+    },
+  };
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -364,6 +411,8 @@ export function mapNangoRecord(
       return mapGoogleCalendar(record);
     case "notion":
       return mapNotion(record);
+    case "gmail":
+      return mapGmail(record);
     default:
       // Generic fallback — try common field names
       return mapGeneric(provider, record);

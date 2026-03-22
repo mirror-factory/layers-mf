@@ -6,7 +6,7 @@ import { DEFAULT_PROFILE } from "@/lib/ditto/profile";
 const PatchSchema = z
   .object({
     interests: z.array(z.string()).optional(),
-    preferred_sources: z.record(z.number()).optional(),
+    preferred_sources: z.record(z.string(), z.number()).optional(),
     communication_style: z.enum(["formal", "casual", "balanced"]).optional(),
     detail_level: z.enum(["brief", "moderate", "detailed"]).optional(),
     priority_topics: z.array(z.string()).optional(),

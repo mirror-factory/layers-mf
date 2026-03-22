@@ -16,6 +16,7 @@ import {
   Brain,
   Calendar,
   StickyNote,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -110,6 +111,12 @@ const PROVIDER_META: Record<
     description: "Pages, databases, and wikis",
     icon: StickyNote,
     color: "text-stone-700 dark:text-stone-300",
+  },
+  gmail: {
+    label: "Gmail",
+    description: "Email threads and messages",
+    icon: Mail,
+    color: "text-red-600 dark:text-red-400",
   },
   "layers-ai": {
     label: "Layers AI",

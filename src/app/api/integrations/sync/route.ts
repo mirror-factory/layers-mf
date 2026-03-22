@@ -734,6 +734,99 @@ async function fetchDiscord(
   return records;
 }
 
+// ── Gmail ────────────────────────────────────────────────────────────────
+async function fetchGmail(
+  provider: string,
+  connectionId: string,
+  syncConfig?: Record<string, unknown>
+): Promise<RawRecord[]> {
+  const records: RawRecord[] = [];
+  const maxResults = (syncConfig?.max_messages as number) ?? 50;
+
+  // List recent messages via Gmail API
+  const listRes = await nango.proxy<{
+    messages?: { id: string; threadId: string }[];
+  }>({
+    method: "GET",
+    providerConfigKey: provider,
+    connectionId,
+    endpoint: "/gmail/v1/users/me/messages",
+    params: { maxResults: String(maxResults), q: "newer_than:7d" },
+  });
+
+  const messageIds = listRes.data?.messages ?? [];
+
+  for (const msg of messageIds.slice(0, 30)) {
+    try {
+      const msgRes = await nango.proxy<{
+        id: string;
+        threadId: string;
+        snippet: string;
+        payload: {
+          headers: { name: string; value: string }[];
+          body?: { data?: string };
+          parts?: { mimeType: string; body?: { data?: string } }[];
+        };
+        internalDate: string;
+      }>({
+        method: "GET",
+        providerConfigKey: provider,
+        connectionId,
+        endpoint: `/gmail/v1/users/me/messages/${msg.id}`,
+        params: { format: "full" },
+      });
+
+      const headers = msgRes.data?.payload?.headers ?? [];
+      const subject = headers.find(h => h.name.toLowerCase() === "subject")?.value ?? "No Subject";
+      const from = headers.find(h => h.name.toLowerCase() === "from")?.value ?? "";
+      const to = headers.find(h => h.name.toLowerCase() === "to")?.value ?? "";
+      const date = headers.find(h => h.name.toLowerCase() === "date")?.value ?? "";
+
+      // Extract body text
+      let body = "";
+      const payload = msgRes.data?.payload;
+      if (payload?.body?.data) {
+        body = Buffer.from(payload.body.data, "base64url").toString("utf-8");
+      } else if (payload?.parts) {
+        const textPart = payload.parts.find(p => p.mimeType === "text/plain");
+        if (textPart?.body?.data) {
+          body = Buffer.from(textPart.body.data, "base64url").toString("utf-8");
+        }
+      }
+
+      if (body.length < 30 && !msgRes.data?.snippet) continue;
+
+      const content = [
+        `From: ${from}`,
+        `To: ${to}`,
+        `Date: ${date}`,
+        `Subject: ${subject}`,
+        "",
+        body || msgRes.data?.snippet || "",
+      ].join("\n").slice(0, 12000);
+
+      records.push({
+        id: msg.id,
+        title: subject,
+        content,
+        sourceCreatedAt: msgRes.data?.internalDate
+          ? new Date(Number(msgRes.data.internalDate)).toISOString()
+          : null,
+        sourceMetadata: {
+          threadId: msg.threadId,
+          from,
+          to,
+          subject,
+        } satisfies Json,
+      });
+    } catch {
+      // Skip unreadable messages
+    }
+  }
+
+  return records;
+}
+
 // ── Google Calendar ──────────────────────────────────────────────────────
 async function fetchGoogleCalendar(
   provider: string,
@@ -833,6 +926,7 @@ function contentTypeFor(provider: string): string {
     case "granola":           return "meeting_transcript";
     case "google-calendar":   return "calendar_event";
     case "notion":            return "document";
+    case "gmail":             return "email_thread";
     default:                  return "document";
   }
 }
@@ -906,6 +1000,8 @@ export async function POST(request: NextRequest) {
           rawRecords = await fetchGoogleCalendar(provider, connectionId);
         } else if (provider === "notion") {
           rawRecords = await fetchNotion(provider, connectionId);
+        } else if (provider === "gmail") {
+          rawRecords = await fetchGmail(provider, connectionId, syncConfig);
         } else {
           emit({ phase: "error", message: `No fetch strategy for provider: ${provider}` });
           controller.close();

@@ -9,7 +9,7 @@ export const DittoProfileSchema = z.object({
     .array(z.string())
     .describe("Top 5-10 topics the user engages with most"),
   preferred_sources: z
-    .record(z.number())
+    .record(z.string(), z.number())
     .describe("Source preference scores 0-1 based on click patterns"),
   communication_style: z.enum(["formal", "casual", "balanced"]),
   detail_level: z.enum(["brief", "moderate", "detailed"]),
