@@ -8,15 +8,15 @@ import {
 
 // Mock the Supabase admin client
 const mockSingle = vi.fn();
-const mockGte = vi.fn(() => ({ single: mockSingle }));
 const mockEq = vi.fn();
-const mockUpdate = vi.fn();
 const mockSelect = vi.fn();
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: () => ({
     from: mockFrom,
+    rpc: mockRpc,
   }),
 }));
 
@@ -90,61 +90,33 @@ describe("deductCredits", () => {
     vi.clearAllMocks();
   });
 
-  function setupDeduction(
-    readBalance: number,
-    updateError: unknown = null
-  ) {
-    // First call: from("organizations").select(...).eq(...).single()
-    // Second call: from("organizations").update(...).eq(...).gte(...)
-    let callCount = 0;
-    mockFrom.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        // Read path
-        return {
-          select: () => ({
-            eq: () => ({
-              single: () =>
-                Promise.resolve({
-                  data: { credit_balance: readBalance },
-                  error: null,
-                }),
-            }),
-          }),
-        };
-      }
-      // Update path
-      return {
-        update: () => ({
-          eq: () => ({
-            gte: () => Promise.resolve({ error: updateError }),
-          }),
-        }),
-      };
-    });
-  }
-
-  it("reduces balance by correct amount and returns new balance", async () => {
-    setupDeduction(100);
+  it("reduces balance via RPC and returns new balance", async () => {
+    mockRpc.mockResolvedValue({ data: 90, error: null });
     const result = await deductCredits("org-1", 10, "chat");
     expect(result).toBe(90);
+    expect(mockRpc).toHaveBeenCalledWith("deduct_credits", { p_org_id: "org-1", p_amount: 10 });
   });
 
   it("handles fractional credit amounts", async () => {
-    setupDeduction(10);
+    mockRpc.mockResolvedValue({ data: 7.5, error: null });
     const result = await deductCredits("org-1", 2.5, "sync:github");
     expect(result).toBe(7.5);
   });
 
-  it("throws InsufficientCreditsError when balance < amount", async () => {
-    setupDeduction(3);
-    await expect(deductCredits("org-1", 10, "chat")).rejects.toThrow(
-      InsufficientCreditsError
-    );
+  it("throws InsufficientCreditsError when RPC fails", async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: "Insufficient credits" } });
+    // Mock the fallback balance lookup
+    mockFrom.mockReturnValue({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { credit_balance: 3 }, error: null }) }) }),
+    });
+    await expect(deductCredits("org-1", 10, "chat")).rejects.toThrow(InsufficientCreditsError);
   });
 
   it("throws InsufficientCreditsError with correct balance and required", async () => {
-    setupDeduction(2);
+    mockRpc.mockResolvedValue({ data: null, error: { message: "Insufficient credits" } });
+    mockFrom.mockReturnValue({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { credit_balance: 2 }, error: null }) }) }),
+    });
     try {
       await deductCredits("org-1", 5, "chat");
       expect.fail("should have thrown");
@@ -157,27 +129,10 @@ describe("deductCredits", () => {
   });
 
   it("throws when org not found", async () => {
-    mockFrom.mockImplementation(() => ({
-      select: () => ({
-        eq: () => ({
-          single: () =>
-            Promise.resolve({
-              data: null,
-              error: { message: "not found" },
-            }),
-        }),
-      }),
-    }));
-
-    await expect(deductCredits("org-missing", 1, "chat")).rejects.toThrow(
-      InsufficientCreditsError
-    );
-  });
-
-  it("throws when update fails (concurrent deduction)", async () => {
-    setupDeduction(10, { message: "update failed" });
-    await expect(deductCredits("org-1", 5, "chat")).rejects.toThrow(
-      InsufficientCreditsError
-    );
+    mockRpc.mockResolvedValue({ data: null, error: { message: "Organization not found" } });
+    mockFrom.mockReturnValue({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+    });
+    await expect(deductCredits("org-missing", 1, "chat")).rejects.toThrow(InsufficientCreditsError);
   });
 });

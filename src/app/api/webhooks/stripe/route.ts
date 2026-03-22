@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         const credits = parseInt(session.metadata?.credits ?? "0", 10);
         if (orgId && credits > 0) {
           await supabase.rpc("add_credits", {
-            p_user_id: orgId,
+            p_org_id: orgId,
             p_amount: credits,
           });
 

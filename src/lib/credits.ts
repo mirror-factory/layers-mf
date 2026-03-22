@@ -110,40 +110,27 @@ export async function checkCredits(
 export async function deductCredits(
   orgId: string,
   amount: number,
-  operation: string
+  _operation: string
 ): Promise<number> {
   const adminDb = createAdminClient();
 
-  // Atomic deduction: only succeeds if balance >= amount
-  // We use rpc to run raw SQL since Supabase JS client doesn't support
-  // UPDATE ... SET balance = balance - X WHERE balance >= X natively.
-  // Instead, we read-then-update with a check.
-  const { data: org, error: readError } = await adminDb
-    .from("organizations")
-    .select("credit_balance")
-    .eq("id", orgId)
-    .single();
+  // Atomic deduction via RPC — the function checks balance >= amount
+  // and returns the new balance in a single UPDATE statement.
+  const { data: newBalance, error } = await adminDb.rpc("deduct_credits", {
+    p_org_id: orgId,
+    p_amount: amount,
+  });
 
-  if (readError || !org) {
-    throw new InsufficientCreditsError(0, amount);
-  }
+  if (error) {
+    // RPC raises exception if insufficient credits or org not found
+    // Fetch current balance for the error message
+    const { data: org } = await adminDb
+      .from("organizations")
+      .select("credit_balance")
+      .eq("id", orgId)
+      .single();
 
-  const currentBalance = org.credit_balance ?? 0;
-  if (currentBalance < amount) {
-    throw new InsufficientCreditsError(currentBalance, amount);
-  }
-
-  const newBalance = currentBalance - amount;
-
-  const { error: updateError } = await adminDb
-    .from("organizations")
-    .update({ credit_balance: newBalance })
-    .eq("id", orgId)
-    // Optimistic concurrency: ensure balance hasn't changed since we read it
-    .gte("credit_balance", amount);
-
-  if (updateError) {
-    throw new InsufficientCreditsError(currentBalance, amount);
+    throw new InsufficientCreditsError(org?.credit_balance ?? 0, amount);
   }
 
   return newBalance;

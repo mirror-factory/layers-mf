@@ -77,7 +77,7 @@ describe("POST /api/webhooks/stripe", () => {
     const res = await POST(makeReq("{}", "sig_valid"));
     expect(res.status).toBe(200);
     expect(mockRpc).toHaveBeenCalledWith("add_credits", {
-      p_user_id: "org1",
+      p_org_id: "org1",
       p_amount: 100,
     });
   });

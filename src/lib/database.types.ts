@@ -1346,6 +1346,14 @@ export type Database = {
         Args: { accepting_user_id: string; invitation_id: string }
         Returns: undefined
       }
+      add_credits: {
+        Args: { p_amount: number; p_org_id: string }
+        Returns: number
+      }
+      deduct_credits: {
+        Args: { p_amount: number; p_org_id: string }
+        Returns: number
+      }
       get_action_items: {
         Args: {
           p_limit?: number
