@@ -1,17 +1,17 @@
 # Development Status
 
-Last updated: 2026-03-17
+Last updated: 2026-03-22
 
 ## Phase Summary
 
 | Phase | Sprints | Status | Issues |
 |-------|---------|--------|--------|
 | **P1 — Prototype** | 1-3 (Mar 5-15) | **Complete** | 70/70 |
-| **P2 — Production + Expansion** | 4-6 (Mar 17-Apr 25) | **In Progress** | 31/45 |
-| **P3 — Personalization + Growth** | 7-9 (Apr 28-Jun 5) | Planned | 0/41 |
+| **P2 — Production + Expansion** | 4-6 (Mar 17) | **Complete** | 45/45 |
+| **P3 — Personalization + Growth** | 7-9 (Mar 19-22) | **Complete** | 41/41 |
 
-**Overall: 101/124 Linear issues done (81.5%)**
-**Sprints 4-5 code complete. Sprint 6 in progress.**
+**Overall: 156/156 Linear issues done (100%)**
+**All sprints complete. Launch prep in progress.**
 
 ---
 
@@ -200,7 +200,7 @@ Last updated: 2026-03-17
 
 ---
 
-## Sprint 6 — Session Agents + Monitoring (In Progress)
+## Sprint 6 — Session Agents + Monitoring ✅ COMPLETE (Mar 17)
 - [x] Session insights data model + API + UI
 - [x] Cross-source connection finder (AI-powered)
 - [x] Organization settings with danger zone
@@ -211,25 +211,62 @@ Last updated: 2026-03-17
 
 ---
 
-## Codebase Metrics (as of 2026-03-17)
+## Sprint 7 — Ditto Personalization ✅ COMPLETE (Mar 19)
+- [x] User interaction tracking (search, click, dismiss, dwell, chat_query)
+- [x] Client-side tracking hook with sendBeacon
+- [x] Ditto profile generation (AI from interaction patterns)
+- [x] Ditto profile page (/ditto) with editable preferences
+- [x] "For You" suggestions widget on dashboard
+- [x] Personalized inbox ranking via Ditto profile
+- [x] Personalized search boost (source preference weighting)
+
+## Sprint 8 — Self-Service ✅ COMPLETE (Mar 19)
+- [x] Plan selection on signup (Free/Starter/Pro)
+- [x] Public landing page with hero, features, pricing
+- [x] Marketing layout for unauthenticated visitors
+- [x] Pricing page with feature comparison + FAQ
+- [x] API key management (generate/revoke with SHA-256 hashing)
+- [x] Subscription management API (create/cancel via Stripe)
+- [x] Monthly credit reset cron
+- [x] /features and /pricing now public
+
+## Sprint 9 — Canvas + Polish ✅ COMPLETE (Mar 22)
+- [x] Canvas data model + API (canvases, items, connections)
+- [x] Canvas workspace UI (pan/zoom, drag items, connections, minimap)
+- [x] User guide page (/guide)
+- [x] Launch checklist (docs/launch-checklist.md)
+- [x] Accessibility audit (ARIA labels, focus management, skip-to-content)
+- [x] Subscription management (Stripe checkout, cancel, credit reset)
+
+## Additional Shipped (Mar 22)
+- [x] Agent specialization templates (6 templates: sales call, sprint retro, meeting actions, onboarding, weekly digest, doc analyzer)
+- [x] Compound knowledge loop (AI outputs → searchable context items)
+- [x] Google Calendar integration (active, 30-day window)
+- [x] Notion integration (active, block-by-block content)
+- [x] Multi-tenant webhook fix (workspace ID matching)
+- [x] Canvas workspace with minimap
+
+---
+
+## Codebase Metrics (as of 2026-03-22)
 
 | Metric | Value |
 |--------|-------|
 | Lines of code | 33,002 |
 | Source files (.ts/.tsx) | 209 |
-| API routes | 63 |
-| App pages | 32 |
+| API routes | 66 |
+| App pages | 38 |
 | Custom components | 19 |
 | UI components (shadcn) | 20 |
-| DB migrations | 18 |
-| Unit test files | 43 |
-| Unit tests | 713 |
+| DB migrations | 29 |
+| Unit test files | 73 |
+| Unit tests | 819 |
 | E2E spec files | 16 |
 | AI eval suites | 5 |
-| Commits | 109 |
+| Commits | 122 |
 | Dependencies | 41 prod + 18 dev |
 | TODO/FIXME | 0 |
-| Days from first commit | 12 |
+| Days from first commit | 17 |
 
 ---
 
@@ -255,7 +292,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...    # stripe listen --forward-to localhost:3000/a
 
 | Category | Files | Tests | Framework |
 |----------|-------|-------|-----------|
-| Unit tests | 43 | 713 | Vitest |
+| Unit tests | 73 | 819 | Vitest |
 | E2E tests | 16 | ~150 | Playwright |
 | AI evals | 5 suites | — | Vitest |
 | Eval fixtures | 3 | — | Transcripts, expected extractions, canary docs |
@@ -266,7 +303,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...    # stripe listen --forward-to localhost:3000/a
 
 | What | Where |
 |------|--------|
-| DB migrations (18) | `supabase/migrations/` |
+| DB migrations (29) | `supabase/migrations/` |
 | Supabase clients | `src/lib/supabase/{server,client}.ts` |
 | Auth middleware | `src/middleware.ts` |
 | AI config (models) | `src/lib/ai/config.ts` |

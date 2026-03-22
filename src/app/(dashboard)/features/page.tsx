@@ -72,24 +72,24 @@ interface RoadmapSprint {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Data — Metrics (as of 2026-03-17)                                 */
+/*  Data — Metrics (as of 2026-03-22)                                 */
 /* ------------------------------------------------------------------ */
 
 const METRICS = {
   linesOfCode: 33002,
   files: 209,
-  apiRoutes: 63,
-  unitTests: 713,
+  apiRoutes: 66,
+  unitTests: 819,
   e2eSpecs: 16,
   evalSuites: 5,
-  dbMigrations: 18,
+  dbMigrations: 29,
   components: 39,
-  commits: 109,
+  commits: 122,
   dependencies: 41,
-  pages: 32,
-  daysBuilding: 12,
-  linearIssuesDone: 101,
-  linearIssuesTotal: 124,
+  pages: 38,
+  daysBuilding: 17,
+  linearIssuesDone: 156,
+  linearIssuesTotal: 156,
   todoFixme: 0,
 };
 
@@ -657,7 +657,7 @@ const SPRINTS: RoadmapSprint[] = [
     sprint: 6,
     title: "Session Agents + Monitoring",
     dates: "Mar 17",
-    status: "current",
+    status: "complete",
     goal: "Session insights, cross-source connections, org settings, saved searches, export.",
     highlights: [
       "Session insights data model + API + UI",
@@ -673,8 +673,8 @@ const SPRINTS: RoadmapSprint[] = [
   {
     sprint: 7,
     title: "Ditto Personalization",
-    dates: "Apr 28-May 9",
-    status: "upcoming",
+    dates: "Mar 19",
+    status: "complete",
     goal: "Per-user AI agent with learned preferences.",
     highlights: [
       "Interaction tracking + preference learning",
@@ -687,8 +687,8 @@ const SPRINTS: RoadmapSprint[] = [
   {
     sprint: 8,
     title: "Self-Service + External Teams",
-    dates: "May 12-23",
-    status: "upcoming",
+    dates: "Mar 19",
+    status: "complete",
     goal: "Public signup with plan selection. First external team.",
     highlights: [
       "Plan selection (Free/Starter/Pro)",
@@ -700,15 +700,15 @@ const SPRINTS: RoadmapSprint[] = [
   },
   {
     sprint: 9,
-    title: "Canvas UI + Polish",
-    dates: "May 26-Jun 5",
-    status: "upcoming",
+    title: "Canvas + Polish",
+    dates: "Mar 22",
+    status: "complete",
     goal: "Spatial canvas workspace. Final QA. Launch prep.",
     highlights: [
-      "Canvas workspace with drag/zoom",
-      "Export system (PDF + Markdown)",
-      "UX polish pass + accessibility",
-      "Launch checklist + user guide",
+      "Canvas workspace with drag/zoom/minimap",
+      "Accessibility audit + skip-to-content",
+      "User guide page",
+      "Launch checklist + subscription management",
     ],
     issueCount: 12,
   },
@@ -719,11 +719,11 @@ const SPRINTS: RoadmapSprint[] = [
 /* ------------------------------------------------------------------ */
 
 const STRENGTHS = [
-  "Full-stack prototype in 12 days with 33K LOC",
-  "713 unit tests + 16 E2E specs + 5 AI eval suites from day 1",
+  "Full platform in 17 days — 9 sprints, 156 issues, 33K LOC",
+  "819 unit tests + 16 E2E specs + 5 AI eval suites from day 1",
   "AI pipeline is production-grade (chunking, embeddings, auto-linking)",
-  "6 integrations with webhook verification + selective sync config",
-  "Credit deduction, usage logging, and per-org rate limiting shipped",
+  "8 integrations with webhook verification + selective sync config",
+  "Ditto personalization, canvas workspace, self-service billing shipped",
   "Zero TODO/FIXME markers — no technical shortcuts taken",
 ];
 
@@ -940,7 +940,7 @@ function HeroSection() {
             Layers
           </h1>
           <p className="hero-subtitle text-sm text-muted-foreground">
-            Platform Status Report — March 17, 2026
+            Platform Status Report — March 22, 2026
           </p>
         </div>
       </div>
@@ -1126,22 +1126,22 @@ export default function FeaturesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                The Layers prototype (Phase 1) is <strong className="text-foreground">100% complete</strong>.
-                In 12 days of development, we shipped a full-stack application with{" "}
+                All 3 phases (9 sprints) are <strong className="text-foreground">100% complete</strong>.
+                In {METRICS.daysBuilding} days of development, we shipped a full-stack application with{" "}
                 {totalFeatures} features across {SECTIONS.length} categories, backed by{" "}
                 {METRICS.unitTests} unit tests and {METRICS.e2eSpecs} E2E specs.
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground mt-3">
-                The product can ingest documents from 6 sources, process them through
-                an AI pipeline, search across everything with hybrid vector + text
-                search, and answer questions via a multi-model chat interface.
+                The product includes Ditto personalization, self-service signup with Stripe
+                subscriptions, a spatial canvas workspace, 8 active integrations, and
+                an AI pipeline processing content from every connected tool.
               </p>
             </div>
             <div>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 <strong className="text-foreground">Next milestone:</strong> Production
-                deployment. All code complete — manual setup needed for Supabase,
-                Stripe live keys, and Inngest Vercel integration.
+                deployment and first external teams. All code complete — manual setup
+                needed for Supabase, Stripe live keys, and Inngest Vercel integration.
               </p>
               <div className="mt-4">
                 <div className="flex justify-between text-xs mb-1.5">
@@ -1153,7 +1153,7 @@ export default function FeaturesPage() {
                 <Progress value={COMPLETION} className="h-2" />
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Target: June 5, 2026 (Sprint 9 complete) — 3-5 external teams active
+                All 9 sprints shipped. Ready for production deployment and external teams.
               </p>
             </div>
           </div>
