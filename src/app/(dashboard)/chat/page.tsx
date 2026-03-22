@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
 import { Plus, MessageSquare, Trash2, Loader2, X, Menu } from "lucide-react";
@@ -14,6 +15,8 @@ interface Conversation {
 }
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
+  const templateParam = searchParams.get("template");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,7 +155,7 @@ export default function ChatPage() {
         </div>
         <div className="flex-1 overflow-hidden">
           {activeId ? (
-            <ChatInterface key={activeId} conversationId={activeId} />
+            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="h-10 w-10 mb-3 opacity-30" />

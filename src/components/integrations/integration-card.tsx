@@ -13,6 +13,7 @@ import {
   BarChart3,
   Mic,
   Settings,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -95,6 +96,12 @@ const PROVIDER_META: Record<
     description: "Meeting transcripts and notes",
     icon: Mic,
     color: "text-amber-600 dark:text-amber-400",
+  },
+  "layers-ai": {
+    label: "Layers AI",
+    description: "AI-generated insights and analyses",
+    icon: Brain,
+    color: "text-primary",
   },
 };
 

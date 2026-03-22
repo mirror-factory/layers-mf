@@ -150,14 +150,50 @@ async function handleMessageCreate(msg: DiscordMessageData): Promise<void> {
 
   const supabase = createAdminClient();
 
-  // Find active Discord integration (single-tenant assumption, like Linear webhook)
-  const { data: integration } = await supabase
-    .from("integrations")
-    .select("org_id, nango_connection_id, sync_config")
-    .eq("provider", "discord")
-    .eq("status", "active")
-    .limit(1)
-    .single();
+  // Multi-tenant: match by guild_id stored in sync_config.provider_workspace_id
+  const guildId = msg.guild_id;
+  let integration: { org_id: string; nango_connection_id: string; sync_config: unknown } | null = null;
+
+  if (guildId) {
+    const { data } = await supabase
+      .from("integrations")
+      .select("org_id, nango_connection_id, sync_config")
+      .eq("provider", "discord")
+      .eq("status", "active")
+      .eq("sync_config->>provider_workspace_id", guildId)
+      .maybeSingle();
+    integration = data;
+
+    // Fallback for older integrations without sync_config
+    if (!integration) {
+      const { data: fallback } = await supabase
+        .from("integrations")
+        .select("org_id, nango_connection_id, sync_config")
+        .eq("provider", "discord")
+        .eq("status", "active")
+        .is("sync_config", null)
+        .limit(1)
+        .maybeSingle();
+      if (fallback) {
+        await supabase
+          .from("integrations")
+          .update({ sync_config: { provider_workspace_id: guildId } })
+          .eq("org_id", fallback.org_id)
+          .eq("provider", "discord");
+        integration = fallback;
+      }
+    }
+  } else {
+    // No guild_id (DM context) — fall back to single match
+    const { data } = await supabase
+      .from("integrations")
+      .select("org_id, nango_connection_id, sync_config")
+      .eq("provider", "discord")
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+    integration = data;
+  }
 
   if (!integration) {
     console.warn("[webhook:discord] No active Discord integration found");
@@ -248,13 +284,48 @@ async function handleMessageCreate(msg: DiscordMessageData): Promise<void> {
 async function handleThreadCreate(thread: DiscordThreadData): Promise<void> {
   const supabase = createAdminClient();
 
-  const { data: integration } = await supabase
-    .from("integrations")
-    .select("org_id, nango_connection_id")
-    .eq("provider", "discord")
-    .eq("status", "active")
-    .limit(1)
-    .single();
+  // Multi-tenant: match by guild_id stored in sync_config.provider_workspace_id
+  const guildId = thread.guild_id;
+  let integration: { org_id: string; nango_connection_id: string } | null = null;
+
+  if (guildId) {
+    const { data } = await supabase
+      .from("integrations")
+      .select("org_id, nango_connection_id")
+      .eq("provider", "discord")
+      .eq("status", "active")
+      .eq("sync_config->>provider_workspace_id", guildId)
+      .maybeSingle();
+    integration = data;
+
+    if (!integration) {
+      const { data: fallback } = await supabase
+        .from("integrations")
+        .select("org_id, nango_connection_id")
+        .eq("provider", "discord")
+        .eq("status", "active")
+        .is("sync_config", null)
+        .limit(1)
+        .maybeSingle();
+      if (fallback) {
+        await supabase
+          .from("integrations")
+          .update({ sync_config: { provider_workspace_id: guildId } })
+          .eq("org_id", fallback.org_id)
+          .eq("provider", "discord");
+        integration = fallback;
+      }
+    }
+  } else {
+    const { data } = await supabase
+      .from("integrations")
+      .select("org_id, nango_connection_id")
+      .eq("provider", "discord")
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+    integration = data;
+  }
 
   if (!integration) {
     console.warn("[webhook:discord] No active Discord integration found");

@@ -25,6 +25,7 @@ import {
   Download,
   Trash2,
   Search,
+  Brain,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const SOURCE_META: Record<string, { label: string; icon: React.ElementType; colo
   granola:        { label: "Granola",      icon: Mic,       color: "text-orange-500" },
   linear:         { label: "Linear",       icon: GitBranch, color: "text-indigo-500" },
   upload:         { label: "Uploads",      icon: Upload,    color: "text-green-600" },
+  "layers-ai":    { label: "Layers AI",   icon: Brain,     color: "text-primary" },
 };
 
 const CONTENT_TYPE_ICON: Record<string, React.ElementType> = {

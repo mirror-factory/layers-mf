@@ -253,6 +253,26 @@ export async function POST(request: NextRequest) {
           .then();
       }
 
+      // Compound loop: store substantial AI responses as searchable context items
+      if (assistantText.length > 200) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        void (adminDb as any)
+          .from("context_items")
+          .insert({
+            org_id: orgId,
+            source_type: "layers-ai",
+            source_id: `chat-${conversationId}-${Date.now()}`,
+            title: `AI Analysis: ${query.slice(0, 80)}`,
+            raw_content: `Question: ${query}\n\nAnswer: ${assistantText}`,
+            content_type: "document",
+            status: "ready",
+            ingested_at: new Date().toISOString(),
+            processed_at: new Date().toISOString(),
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+
       // Auto-title: set conversation title after first assistant response
       if (conversationId && lastUserText) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

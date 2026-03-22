@@ -287,6 +287,23 @@ Return matches only for sessions where this content would be useful. If none mat
         if (insightRows.length > 0) {
           await (supabase as any).from("session_insights").insert(insightRows);
         }
+
+        // Compound loop: store cross-source insights as searchable context items
+        const insightSummary = connections
+          .map((c) => `${c.type}: ${c.description}`)
+          .join("\n");
+
+        await supabase.from("context_items").insert({
+          org_id: orgId,
+          source_type: "layers-ai",
+          source_id: `insight-${contextItemId}-${Date.now()}`,
+          title: `Cross-Source Insight: ${connections[0].description.slice(0, 80)}`,
+          raw_content: insightSummary,
+          content_type: "document",
+          status: "ready",
+          ingested_at: new Date().toISOString(),
+          processed_at: new Date().toISOString(),
+        });
       });
     }
 

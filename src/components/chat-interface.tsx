@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User,
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
-  LayoutGrid, ThumbsUp, ThumbsDown,
+  LayoutGrid, ThumbsUp, ThumbsDown, X,
 } from "lucide-react";
+import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/agents/templates";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -272,14 +273,18 @@ function MessageFeedback({
 
 interface ChatInterfaceProps {
   conversationId?: string | null;
+  initialTemplateId?: string | null;
 }
 
-export function ChatInterface({ conversationId }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfaceProps) {
   const [model, setModel] = useState<string>("anthropic/claude-haiku-4-5-20251001");
   const [input, setInput] = useState("");
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
+    initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
+  );
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -451,6 +456,55 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
 
         <div className="border-t p-3 sm:p-4">
+          {/* Agent template pills */}
+          <div className="flex flex-wrap items-center gap-1.5 max-w-3xl mx-auto mb-2">
+            <button
+              onClick={() => setActiveTemplate(null)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                !activeTemplate
+                  ? "bg-primary text-primary-foreground"
+                  : "border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              General
+            </button>
+            {AGENT_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTemplate(activeTemplate?.id === t.id ? null : t)}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  activeTemplate?.id === t.id
+                    ? "bg-primary text-primary-foreground"
+                    : "border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Suggested queries for active template */}
+          {activeTemplate && (
+            <div className="flex flex-wrap items-center gap-1.5 max-w-3xl mx-auto mb-2">
+              <span className="text-[10px] text-muted-foreground mr-1">Try:</span>
+              {activeTemplate.suggestedQueries.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => {
+                    setInput("");
+                    sendMessage({ text: q });
+                    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+                  }}
+                  className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
               <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">

@@ -90,22 +90,44 @@ async function processWebhookEvent(event: LinearWebhookEvent): Promise<void> {
     return;
   }
 
-  // Look up the integration by provider + sync_metadata containing the Linear org ID
-  // Fall back to finding any active Linear integration (single-tenant assumption)
+  // Look up the integration by matching the Linear organization ID stored in sync_config.
+  // This supports multi-tenant: multiple orgs can connect to different Linear workspaces.
   const { data: integration } = await supabase
     .from("integrations")
     .select("org_id, nango_connection_id")
     .eq("provider", "linear")
     .eq("status", "active")
-    .limit(1)
-    .single();
+    .eq("sync_config->>provider_workspace_id", orgLinearId)
+    .maybeSingle();
 
-  if (!integration) {
-    console.warn("[webhook:linear] No active Linear integration found");
+  // Fallback: if no match by workspace ID (e.g. older integrations without sync_config),
+  // try to find any active Linear integration and backfill the workspace ID.
+  const resolvedIntegration = integration ?? await (async () => {
+    const { data: fallback } = await supabase
+      .from("integrations")
+      .select("org_id, nango_connection_id")
+      .eq("provider", "linear")
+      .eq("status", "active")
+      .is("sync_config", null)
+      .limit(1)
+      .maybeSingle();
+    if (fallback) {
+      // Backfill the provider_workspace_id for future lookups
+      await supabase
+        .from("integrations")
+        .update({ sync_config: { provider_workspace_id: orgLinearId } })
+        .eq("org_id", fallback.org_id)
+        .eq("provider", "linear");
+    }
+    return fallback;
+  })();
+
+  if (!resolvedIntegration) {
+    console.warn(`[webhook:linear] No active Linear integration found for workspace ${orgLinearId}`);
     return;
   }
 
-  const orgId = integration.org_id;
+  const orgId = resolvedIntegration.org_id;
 
   switch (event.type) {
     case "Issue":

@@ -46,6 +46,25 @@ export async function GET(request: NextRequest) {
 
       const html = renderDigestHTML(data);
 
+      // Compound loop: store digest as a searchable context item
+      if (data.items.length > 0) {
+        const digestContent = data.items
+          .map((i) => `[${i.priority}] ${i.title}: ${i.type}`)
+          .join("\n");
+
+        await supabase.from("context_items").insert({
+          org_id: org_id,
+          source_type: "layers-ai",
+          source_id: `digest-${user_id}-${new Date().toISOString().split("T")[0]}`,
+          title: `Daily Digest — ${data.date}`,
+          raw_content: digestContent,
+          content_type: "document",
+          status: "ready",
+          ingested_at: new Date().toISOString(),
+          processed_at: new Date().toISOString(),
+        });
+      }
+
       // TODO: Send email via Resend when configured
       // For now, collect digests for the response
       digests.push({ userId: user_id, html });
