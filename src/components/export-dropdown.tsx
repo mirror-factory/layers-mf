@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileText, FileJson } from "lucide-react";
+import { Download, FileText, FileJson, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { exportItemsAsPdf } from "@/components/export-pdf-button";
 
 type ExportPayload = {
   format: "markdown" | "json";
@@ -60,9 +61,34 @@ export function ExportDropdown({
 }) {
   const [exporting, setExporting] = useState(false);
 
-  async function handleExport(format: "markdown" | "json") {
+  async function handleExport(format: "markdown" | "json" | "pdf") {
     setExporting(true);
     try {
+      if (format === "pdf") {
+        // For PDF, fetch the data as JSON and open the print-friendly view
+        const payload: ExportPayload = { format: "json" };
+        if (itemIds && itemIds.length > 0) payload.items = itemIds;
+        else if (sessionId) payload.sessionId = sessionId;
+        else if (query) payload.query = query;
+        else {
+          toast.error("Nothing to export");
+          return;
+        }
+
+        const res = await fetch("/api/context/export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error("Export failed");
+
+        const json = await res.json();
+        exportItemsAsPdf(json.items ?? [], json.title);
+        toast.success("PDF preview opened — use Save as PDF in the print dialog");
+        return;
+      }
+
       const payload: ExportPayload = { format };
       if (itemIds && itemIds.length > 0) payload.items = itemIds;
       else if (sessionId) payload.sessionId = sessionId;
@@ -102,6 +128,10 @@ export function ExportDropdown({
         <DropdownMenuItem onClick={() => handleExport("json")}>
           <FileJson className="h-3.5 w-3.5 mr-2" />
           Export as JSON
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExport("pdf")}>
+          <Printer className="h-3.5 w-3.5 mr-2" />
+          Export as PDF
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

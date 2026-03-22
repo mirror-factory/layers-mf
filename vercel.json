@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/credit-reset",
       "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/drive-watch-renewal",
+      "schedule": "0 */20 * * *"
     }
   ],
   "functions": {
@@ -36,6 +40,9 @@
       "maxDuration": 300
     },
     "src/app/api/cron/credit-reset/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/drive-watch-renewal/route.ts": {
       "maxDuration": 300
     }
   },
