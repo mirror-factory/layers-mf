@@ -82,7 +82,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save item" }, { status: 500 });
   }
 
-  // 3. Emit Inngest event for durable processing pipeline
+  // 3. Process: Inngest for production, inline for demo mode
+  const demoMode = process.env.DEMO_MODE === "true";
+
+  if (demoMode) {
+    // Demo mode: process inline (extract + embed) instead of Inngest
+    try {
+      const { extractStructured } = await import("@/lib/ai/extract");
+      const { generateEmbedding } = await import("@/lib/ai/embed");
+
+      const [extraction, embedding] = await Promise.all([
+        extractStructured(parsed.text, file.name),
+        generateEmbedding(parsed.text),
+      ]);
+
+      await supabase
+        .from("context_items")
+        .update({
+          title: extraction.title,
+          description_short: extraction.description_short,
+          description_long: extraction.description_long,
+          entities: extraction.entities as unknown as Record<string, unknown>,
+          embedding: embedding as unknown as string,
+          status: "ready",
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+
+      return NextResponse.json({ id: item.id, status: "ready" });
+    } catch (err) {
+      console.error("Demo mode processing failed:", err);
+      await supabase
+        .from("context_items")
+        .update({ status: "error" })
+        .eq("id", item.id);
+      return NextResponse.json(
+        { id: item.id, status: "error", error: "Processing failed" },
+        { status: 207 }
+      );
+    }
+  }
+
+  // Production: emit Inngest event for durable processing pipeline
   await inngest.send({
     name: "context/item.created",
     data: { contextItemId: item.id, orgId: member.org_id },
