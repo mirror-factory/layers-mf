@@ -73,17 +73,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Credit check — block if insufficient
-  const creditCheck = await checkCredits(member.org_id, CREDIT_COSTS.chat);
-  if (!creditCheck.sufficient) {
-    return new Response(
-      JSON.stringify({
-        error: "Insufficient credits",
-        balance: creditCheck.balance,
-        required: CREDIT_COSTS.chat,
-      }),
-      { status: 402, headers: { "Content-Type": "application/json" } }
-    );
+  // Credit check — bypass in demo mode, block if insufficient
+  const demoMode = process.env.DEMO_MODE === "true";
+  if (!demoMode) {
+    const creditCheck = await checkCredits(member.org_id, CREDIT_COSTS.chat);
+    if (!creditCheck.sufficient) {
+      return new Response(
+        JSON.stringify({
+          error: "Insufficient credits",
+          balance: creditCheck.balance,
+          required: CREDIT_COSTS.chat,
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
+    }
   }
 
   let body: Record<string, unknown>;
@@ -227,10 +230,12 @@ export async function POST(request: NextRequest) {
       }
     },
     onFinish: () => {
-      // Deduct credits on successful completion
-      void deductCredits(orgId, CREDIT_COSTS.chat, "chat").catch((err) => {
-        console.error("[chat] credit deduction failed:", err);
-      });
+      // Deduct credits on successful completion (skip in demo mode)
+      if (!demoMode) {
+        void deductCredits(orgId, CREDIT_COSTS.chat, "chat").catch((err) => {
+          console.error("[chat] credit deduction failed:", err);
+        });
+      }
 
       // Log usage for billing/analytics
       logUsage({

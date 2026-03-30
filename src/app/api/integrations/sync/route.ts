@@ -1027,7 +1027,10 @@ export async function POST(request: NextRequest) {
         // Credit check: each AI-processed item costs extraction (2) + embedding (0.5) = 2.5 credits
         const creditCostPerItem = CREDIT_COSTS.extraction + CREDIT_COSTS.embedding;
         const totalCreditCost = total * creditCostPerItem;
-        const creditCheck = await checkCredits(orgId, creditCostPerItem);
+        const demoMode = process.env.DEMO_MODE === "true";
+        const creditCheck = demoMode
+          ? { sufficient: true, balance: 999999 }
+          : await checkCredits(orgId, creditCostPerItem);
         let creditsRemaining = creditCheck.balance;
 
         if (!creditCheck.sufficient) {

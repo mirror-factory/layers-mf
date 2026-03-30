@@ -51,17 +51,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Credit check
-  const creditCheck = await checkCredits(member.org_id, CREDIT_COSTS.chat);
-  if (!creditCheck.sufficient) {
-    return new Response(
-      JSON.stringify({
-        error: "Insufficient credits",
-        balance: creditCheck.balance,
-        required: CREDIT_COSTS.chat,
-      }),
-      { status: 402, headers: { "Content-Type": "application/json" } },
-    );
+  // Credit check — bypass in demo mode
+  const demoMode = process.env.DEMO_MODE === "true";
+  if (!demoMode) {
+    const creditCheck = await checkCredits(member.org_id, CREDIT_COSTS.chat);
+    if (!creditCheck.sufficient) {
+      return new Response(
+        JSON.stringify({
+          error: "Insufficient credits",
+          balance: creditCheck.balance,
+          required: CREDIT_COSTS.chat,
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   let body: Record<string, unknown>;
