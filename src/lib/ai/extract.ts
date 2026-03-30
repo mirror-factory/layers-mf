@@ -13,6 +13,10 @@ const ExtractionSchema = z.object({
     action_items: z.array(z.string()).describe("Action items or tasks mentioned"),
     decisions: z.array(z.string()).describe("Decisions made"),
   }),
+  emotional_signals: z.array(z.string()).describe('Emotional tone or sentiment signals detected (e.g., "frustration with timeline", "excitement about launch", "concern about budget")'),
+  tacit_observations: z.array(z.string()).describe('Implicit insights not explicitly stated but inferred from context (e.g., "team may be understaffed based on repeated deadline misses", "client relationship appears strained")'),
+  confidence_score: z.number().min(0).max(1).describe('Confidence in the extraction quality, 0.0 to 1.0. Lower for short/ambiguous content, higher for clear structured documents'),
+  source_quote: z.string().optional().describe('The single most important verbatim quote from the document that captures its essence'),
 });
 
 export type Extraction = z.infer<typeof ExtractionSchema>;
@@ -34,7 +38,13 @@ Filename: ${filename}
 Document content:
 ${truncated}
 
-Extract the title, summaries, and entities from this document. Be specific and factual.`,
+Extract the title, summaries, and entities from this document. Be specific and factual.
+
+Also extract:
+- Emotional signals: tone, sentiment, feelings expressed or implied
+- Tacit observations: implicit insights not explicitly stated but inferable from patterns
+- Confidence score: 0.0-1.0 based on content clarity and extraction certainty
+- Source quote: the single most important verbatim quote that captures the document's essence`,
   });
 
   if (opts?.orgId) {

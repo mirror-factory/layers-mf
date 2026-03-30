@@ -248,6 +248,45 @@ Last updated: 2026-03-22
 
 ---
 
+## Granger Sprint Progress (Started 2026-03-30)
+
+Full spec: `docs/GRANGER-SPEC.md`
+
+### Sprint 1: Foundation — **COMPLETE**
+- [x] 9-model matrix (3 providers × 3 tiers), TASK_MODELS, per-partner gateway stub
+- [x] Priority document system (5 docs + loader + wired into chat routes)
+- [x] Database migrations (priority_documents, credentials, approval_queue, partner_settings + column additions)
+- [x] Direct API clients: Granola (grn_ keys) + Linear (@linear/sdk)
+- [x] Approval system (propose_action tool + queue API + UI + /approvals page)
+
+### Sprint 2: APIs + Conversation Loop — **COMPLETE**
+- [x] Direct API clients: Discord (REST v10), Notion (@notionhq/client), Gmail + Drive (googleapis OAuth)
+- [x] Google OAuth callback route with shared token storage
+- [x] Conversation history compaction (Haiku-based, incremental, fire-and-forget)
+- [x] 13 agent tools total (6 read + 4 write + 3 existing)
+- [x] Test mock fixes for createGateway, priority-docs, compact
+
+### Sprint 3: Discord Bot + Proactive Intelligence — **COMPLETE**
+- [x] Discord HTTP interactions endpoint (Ed25519 verification, deferred responses)
+- [x] Slash commands: /ask, /status, /tasks, /digest
+- [x] Command registration script + API endpoint
+- [x] Morning digest cron (7 AM weekdays, personalized per partner, #granger-digest)
+- [x] Overdue detection + alerts cron (every 2h, #granger-alerts)
+- [x] Granola polling cron (every 15min, auto-ingest transcripts)
+- [x] Discord approval reactions (✅/❌) + DM conversations
+- [x] Discord user → Supabase user mapping via partner_settings
+
+### Sprint 4: Polish + Extraction Pipeline — IN PROGRESS
+- [ ] Expand extraction schema (emotional_signals, tacit_observations, confidence_score)
+- [ ] Nightly synthesis cron (2 AM, Opus 4.6, capped at $0.50/run)
+- [ ] Pre-meeting prep via Google Calendar
+- [ ] Pattern detection (topics in 3+ meetings without resolution)
+- [ ] Remove Nango code + @nangohq dependencies
+- [ ] Deploy to production Vercel + Supabase
+- [ ] Onboard Kyle and Bobby
+
+---
+
 ## Codebase Metrics (as of 2026-03-22)
 
 | Metric | Value |
