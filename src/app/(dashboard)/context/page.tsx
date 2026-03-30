@@ -15,14 +15,20 @@ export default async function ContextPage(props: {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: member } = await supabase
+  if (!user) return null;
+
+  // Use service client to bypass RLS for server-side data loading
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const adminDb = createAdminClient();
+
+  const { data: member } = await adminDb
     .from("org_members")
     .select("org_id")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .single();
 
   const { data: items } = member
-    ? await supabase
+    ? await adminDb
         .from("context_items")
         .select("id, title, description_short, source_type, content_type, status, ingested_at, user_tags")
         .eq("org_id", member.org_id)
