@@ -128,9 +128,18 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
       if (action === "approve") {
         setStatus("approved");
         if (data.execution?.success) {
-          setResult(`Executed: ${JSON.stringify(data.execution.issue ?? data.execution.draft ?? data.execution, null, 2)}`);
+          const exec = data.execution;
+          if (exec.issue) {
+            setResult(`Created: ${exec.issue.identifier} — ${exec.issue.url}`);
+          } else if (exec.draft) {
+            setResult(`Draft saved: ${exec.draft.id}`);
+          } else {
+            setResult(`Executed: ${JSON.stringify(exec, null, 2)}`);
+          }
         } else if (data.execution?.error) {
           setResult(`Execution failed: ${data.execution.error}`);
+        } else if (data.execution?.reason) {
+          setResult(`Approved (not auto-executed: ${data.execution.reason})`);
         } else {
           setResult("Approved");
         }
@@ -175,7 +184,19 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
       )}
       {result && (
         <div className={cn("text-xs p-2 rounded", status === "approved" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-muted text-muted-foreground")}>
-          {result}
+          {result?.includes("https://") ? (
+            <>
+              {result.split(/(https:\/\/\S+)/g).map((part, i) =>
+                part.startsWith("https://") ? (
+                  <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline font-medium hover:opacity-80">
+                    {part}
+                  </a>
+                ) : (
+                  <span key={i}>{part}</span>
+                )
+              )}
+            </>
+          ) : result}
         </div>
       )}
     </div>
@@ -378,32 +399,69 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfaceProps) {
+  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => {
+    setInitialMessages(undefined);
+    setHistoryLoaded(false);
+
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversation_id", conversationId);
+    const url = `/api/chat/history${params.toString() ? `?${params}` : ""}`;
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((msgs: UIMessage[]) => {
+        setInitialMessages(msgs.length > 0 ? msgs : []);
+        setHistoryLoaded(true);
+      })
+      .catch(() => {
+        setInitialMessages([]);
+        setHistoryLoaded(true);
+      });
+  }, [conversationId]);
+
+  if (!historyLoaded) {
+    return (
+      <div className="flex h-full overflow-hidden flex-col md:flex-row">
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex-1 overflow-y-auto p-6">
+            <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
+              <p className="text-xs">Loading conversation...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ChatInterfaceInner
+      conversationId={conversationId}
+      initialTemplateId={initialTemplateId}
+      initialMessages={initialMessages}
+    />
+  );
+}
+
+interface ChatInterfaceInnerProps {
+  conversationId?: string | null;
+  initialTemplateId?: string | null;
+  initialMessages?: UIMessage[];
+}
+
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages }: ChatInterfaceInnerProps) {
   const [model, setModel] = useState<string>("anthropic/claude-sonnet-4.6");
   const [input, setInput] = useState("");
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
-  const [historyLoaded, setHistoryLoaded] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
 
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (conversationId) params.set("conversation_id", conversationId);
-    const url = `/api/chat/history${params.toString() ? `?${params}` : ""}`;
-    setInitialMessages(undefined);
-    setHistoryLoaded(false);
-    fetch(url)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((msgs: UIMessage[]) => {
-        if (msgs.length > 0) setInitialMessages(msgs);
-        setHistoryLoaded(true);
-      })
-      .catch(() => setHistoryLoaded(true));
-  }, [conversationId]);
-
   const { messages, sendMessage, status, error } = useChat({
-    messages: initialMessages,
+    messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: { model, conversationId },
@@ -494,14 +552,7 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {!historyLoaded && (
-            <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
-              <p className="text-xs">Loading conversation…</p>
-            </div>
-          )}
-
-          {historyLoaded && messages.length === 0 && (
+          {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Bot className="h-10 w-10 mb-3 opacity-30" />
               <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>

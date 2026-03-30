@@ -2,9 +2,8 @@ export const metadata = { title: "Context Library" };
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ContextUploader } from "@/components/context-uploader";
 import { ContextLibrary } from "@/components/context-library";
-import { FileText, Mic } from "lucide-react";
+import { Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function ContextPage(props: {
@@ -32,35 +31,23 @@ export default async function ContextPage(props: {
 
   return (
     <div className="flex flex-col p-4 sm:p-8 gap-4 sm:gap-6 min-h-screen">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 data-testid="context-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Context Library</h1>
           <p className="text-muted-foreground text-sm">
             All documents, transcripts, and files available to your agents.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/context/upload-meeting">
-              <Mic className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">Upload Meeting</span>
-              <span className="sm:hidden">Meeting</span>
-            </Link>
-          </Button>
-          <ContextUploader />
-        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/context/upload-meeting">
+            <Mic className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Upload Meeting</span>
+            <span className="sm:hidden">Meeting</span>
+          </Link>
+        </Button>
       </div>
 
-      {!items || items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
-          <FileText className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm">No context items yet. Upload your first document above.</p>
-        </div>
-      ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ height: "calc(100vh - 240px)" }}>
-          <ContextLibrary items={items} initialSearch={initialSearch} />
-        </div>
-      )}
+      <ContextLibrary items={items ?? []} initialSearch={initialSearch} />
     </div>
   );
 }

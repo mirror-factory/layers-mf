@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Save the new user message (last in array)
+  // Extract last user text for auto-titling and analytics
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
   const lastUserText = lastUserMsg
     ? ((lastUserMsg.parts as { type: string; text?: string }[]) ?? [])
@@ -232,21 +232,6 @@ export async function POST(request: NextRequest) {
         .map((p) => p.text ?? "")
         .join(" ")
     : "";
-  if (lastUserMsg) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    void (adminDb as any)
-      .from("chat_messages")
-      .insert({
-        org_id: orgId,
-        user_id: userId,
-        session_id: null,
-        conversation_id: conversationId,
-        role: "user",
-        content: (lastUserMsg.parts ?? []) as unknown as Json,
-        model: null,
-      })
-      .then();
-  }
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
@@ -309,23 +294,6 @@ export async function POST(request: NextRequest) {
           error: null,
         });
 
-      // Save the assistant response
-      if (assistantText) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        void (adminDb as any)
-          .from("chat_messages")
-          .insert({
-            org_id: orgId,
-            user_id: userId,
-            session_id: null,
-            conversation_id: conversationId,
-            role: "assistant",
-            content: [{ type: "text", text: assistantText }],
-            model: modelId,
-          })
-          .then();
-      }
-
       // Compound loop: store substantial AI responses as searchable context items
       if (assistantText.length > 200) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -365,6 +333,38 @@ export async function POST(request: NextRequest) {
   const response = await createAgentUIStreamResponse({
     agent,
     uiMessages,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    originalMessages: uiMessages as any,
+    onFinish: async ({ messages: finalMessages }) => {
+      // Persist the full conversation as UIMessage[] (complete with tool parts)
+      // Delete existing messages for this conversation and re-save all
+      if (conversationId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (adminDb as any)
+          .from("chat_messages")
+          .delete()
+          .eq("conversation_id", conversationId)
+          .eq("org_id", orgId);
+
+        const rows = finalMessages.map((msg: UIMessage) => ({
+          org_id: orgId,
+          user_id: userId,
+          session_id: null,
+          conversation_id: conversationId,
+          role: msg.role,
+          content: (msg.parts ?? []) as unknown as Json,
+          model: msg.role === "assistant" ? modelId : null,
+        }));
+
+        if (rows.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          void (adminDb as any)
+            .from("chat_messages")
+            .insert(rows)
+            .then();
+        }
+      }
+    },
   });
 
   // Attach rate limit headers to the streaming response

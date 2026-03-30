@@ -11,21 +11,26 @@ import {
   Upload,
   Hash,
   LayoutGrid,
+  List,
   CheckCircle,
   Clock,
   AlertCircle,
   Loader,
+  Loader2,
   FileSpreadsheet,
   FileVideo,
   MessageSquare,
   GitBranch,
   Mic,
+  Mail,
   Filter,
   X,
-  Download,
   Trash2,
   Search,
   Brain,
+  FolderOpen,
+  Plus,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +53,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SavedSearches } from "@/components/saved-searches";
 import { ExportDropdown } from "@/components/export-dropdown";
 import { trackInteraction } from "@/lib/tracking";
@@ -68,16 +79,18 @@ interface Props {
   initialSearch?: string;
 }
 
-const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
-  gdrive:         { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
-  github:         { label: "GitHub",       icon: Github,    color: "text-slate-600" },
-  "github-app":   { label: "GitHub",       icon: Github,    color: "text-slate-600" },
-  slack:          { label: "Slack",        icon: Hash,      color: "text-purple-500" },
-  granola:        { label: "Granola",      icon: Mic,       color: "text-orange-500" },
-  linear:         { label: "Linear",       icon: GitBranch, color: "text-indigo-500" },
-  upload:         { label: "Uploads",      icon: Upload,    color: "text-green-600" },
-  "layers-ai":    { label: "Layers AI",   icon: Brain,     color: "text-primary" },
+const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+  "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500",    bg: "bg-blue-500/10" },
+  gdrive:         { label: "Google Drive", icon: HardDrive, color: "text-blue-500",    bg: "bg-blue-500/10" },
+  github:         { label: "GitHub",       icon: Github,    color: "text-slate-600",   bg: "bg-slate-500/10" },
+  "github-app":   { label: "GitHub",       icon: Github,    color: "text-slate-600",   bg: "bg-slate-500/10" },
+  slack:          { label: "Slack",        icon: Hash,      color: "text-purple-500",  bg: "bg-purple-500/10" },
+  granola:        { label: "Granola",      icon: Mic,       color: "text-orange-500",  bg: "bg-orange-500/10" },
+  gmail:          { label: "Gmail",        icon: Mail,      color: "text-red-500",     bg: "bg-red-500/10" },
+  linear:         { label: "Linear",       icon: GitBranch, color: "text-indigo-500",  bg: "bg-indigo-500/10" },
+  notion:         { label: "Notion",       icon: FileText,  color: "text-slate-700",   bg: "bg-slate-500/10" },
+  upload:         { label: "Uploads",      icon: Upload,    color: "text-green-600",   bg: "bg-green-500/10" },
+  "layers-ai":    { label: "Layers AI",    icon: Brain,     color: "text-primary",     bg: "bg-primary/10" },
 };
 
 const CONTENT_TYPE_ICON: Record<string, React.ElementType> = {
@@ -90,15 +103,18 @@ const CONTENT_TYPE_ICON: Record<string, React.ElementType> = {
 };
 
 const STATUS_CONFIG = {
-  ready:      { icon: CheckCircle, className: "text-green-600" },
-  processing: { icon: Loader,      className: "text-blue-500 animate-spin" },
-  pending:    { icon: Clock,       className: "text-muted-foreground" },
-  error:      { icon: AlertCircle, className: "text-destructive" },
+  ready:      { label: "Ready",      icon: CheckCircle, className: "text-green-600",  badgeCls: "bg-green-500/10 text-green-700 border-green-200" },
+  processing: { label: "Processing", icon: Loader,      className: "text-blue-500 animate-spin", badgeCls: "bg-blue-500/10 text-blue-700 border-blue-200" },
+  pending:    { label: "Pending",    icon: Clock,       className: "text-muted-foreground", badgeCls: "bg-muted text-muted-foreground border-muted" },
+  error:      { label: "Error",      icon: AlertCircle, className: "text-destructive", badgeCls: "bg-red-500/10 text-red-700 border-red-200" },
 } as const;
 
 type SortOption = "newest" | "oldest" | "title-az";
+type ViewMode = "grid" | "list";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 24;
+
+const ACCEPTED = ".pdf,.docx,.txt,.md";
 
 function normalizeSource(source: string) {
   if (source === "gdrive") return "google-drive";
@@ -106,39 +122,410 @@ function normalizeSource(source: string) {
   return source;
 }
 
-export function ContextLibrary({ items, initialSearch = "" }: Props) {
-  if (items.length === 0) {
-    return (
-      <div data-testid="context-empty-state" className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
-        <FileText className="h-12 w-12 mb-4 opacity-30" />
-        <p className="text-sm font-medium text-foreground">No documents yet</p>
-        <p className="text-xs mt-1 max-w-xs text-center">
-          Connect an integration or upload files to start building your knowledge base.
+function relativeDate(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffSecs < 60) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/* ---------- Inline Drop Zone ---------- */
+function InlineDropZone() {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  async function uploadFile(file: File) {
+    setUploading(true);
+    setMessage(null);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/api/ingest/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok && res.status !== 207) {
+        setMessage({ text: data.error ?? "Upload failed", ok: false });
+      } else if (data.status === "error") {
+        setMessage({ text: "File saved but processing failed. Will retry.", ok: false });
+      } else {
+        setMessage({ text: `"${file.name}" uploaded successfully.`, ok: true });
+        router.refresh();
+      }
+    } catch {
+      setMessage({ text: "Network error. Please try again.", ok: false });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    uploadFile(files[0]);
+  }
+
+  return (
+    <div
+      data-testid="upload-dropzone"
+      className={cn(
+        "relative flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-all cursor-pointer group",
+        dragging
+          ? "border-primary bg-primary/5 scale-[1.01]"
+          : "border-muted-foreground/20 hover:border-muted-foreground/40 hover:bg-accent/30",
+        uploading && "pointer-events-none opacity-60",
+      )}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+      onClick={() => inputRef.current?.click()}
+    >
+      <div className={cn(
+        "flex items-center justify-center h-10 w-10 rounded-lg shrink-0 transition-colors",
+        dragging ? "bg-primary/10" : "bg-muted",
+      )}>
+        {uploading
+          ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          : <ArrowUpFromLine className={cn("h-5 w-5 transition-colors", dragging ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">
+          {uploading ? "Processing..." : "Drop files here or click to upload"}
         </p>
-        <div className="flex gap-2 mt-4">
-          <Button asChild size="sm">
-            <Link href="/integrations">Connect integration</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/context?upload=true">
-              <Upload className="h-4 w-4 mr-1" />
-              Upload files
-            </Link>
-          </Button>
+        <p className="text-xs text-muted-foreground">
+          PDF, DOCX, TXT, or Markdown &mdash; max 10 MB
+        </p>
+      </div>
+      {message && (
+        <p className={cn("text-xs shrink-0", message.ok ? "text-green-600" : "text-destructive")}>
+          {message.text}
+        </p>
+      )}
+      <input
+        ref={inputRef}
+        data-testid="upload-file-input"
+        type="file"
+        accept={ACCEPTED}
+        className="hidden"
+        onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+/* ---------- Source Filter Pills ---------- */
+function SourcePills({
+  sources,
+  groups,
+  totalCount,
+  selected,
+  onSelect,
+}: {
+  sources: string[];
+  groups: Record<string, ContextItem[]>;
+  totalCount: number;
+  selected: string;
+  onSelect: (s: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none" data-testid="source-pills">
+      <button
+        data-testid="source-filter-all"
+        onClick={() => onSelect("all")}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+          selected === "all"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        <LayoutGrid className="h-3.5 w-3.5" />
+        All
+        <span className="opacity-70">{totalCount}</span>
+      </button>
+      {sources.map((key) => {
+        const meta = SOURCE_META[key] ?? { label: key, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
+        const Icon = meta.icon;
+        const count = groups[key]?.length ?? 0;
+        return (
+          <button
+            key={key}
+            data-testid={`source-filter-${key}`}
+            onClick={() => onSelect(key)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+              selected === key
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <Icon className={cn("h-3.5 w-3.5", selected === key ? "" : meta.color)} />
+            {meta.label}
+            <span className="opacity-70">{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- Grid Card ---------- */
+function ContextGridCard({ item, isChecked, onToggle }: { item: ContextItem; isChecked: boolean; onToggle: () => void }) {
+  const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
+  const SourceIcon = sourceMeta.icon;
+  const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
+  const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
+  const StatusIcon = status.icon;
+
+  return (
+    <div
+      data-testid={`context-item-${item.id}`}
+      className={cn(
+        "group relative rounded-lg border bg-card transition-all hover:shadow-md hover:border-foreground/15",
+        isChecked && "ring-2 ring-primary border-primary/30",
+      )}
+    >
+      {/* Checkbox overlay */}
+      <div className={cn(
+        "absolute top-2.5 left-2.5 z-10 transition-opacity",
+        isChecked ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+      )}>
+        <Checkbox
+          data-testid={`context-item-checkbox-${item.id}`}
+          checked={isChecked}
+          onCheckedChange={onToggle}
+          aria-label={`Select ${item.title}`}
+        />
+      </div>
+
+      <Link
+        href={`/context/${item.id}`}
+        className="flex flex-col h-full p-4"
+        onClick={() => {
+          trackInteraction({
+            type: "click",
+            resourceType: "context_item",
+            resourceId: item.id,
+            sourceType: item.source_type,
+            contentType: item.content_type,
+            metadata: { fromPage: "/context" },
+          });
+        }}
+      >
+        {/* Icon + source badge header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className={cn("flex items-center justify-center h-10 w-10 rounded-lg", sourceMeta.bg)}>
+            <SourceIcon className={cn("h-5 w-5", sourceMeta.color)} />
+          </div>
+          <Badge variant="outline" className={cn("text-[10px] font-medium border", status.badgeCls)}>
+            <StatusIcon className={cn("h-3 w-3 mr-1", status.className)} />
+            {status.label}
+          </Badge>
         </div>
+
+        {/* Title */}
+        <h3 className="text-sm font-medium leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors">
+          {item.title}
+        </h3>
+
+        {/* Description */}
+        {item.description_short && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+            {item.description_short}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="mt-auto flex items-center justify-between pt-2 border-t border-dashed">
+          <div className="flex items-center gap-1.5">
+            <ContentIcon className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground capitalize">
+              {item.content_type.replace(/_/g, " ")}
+            </span>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {relativeDate(item.ingested_at)}
+          </span>
+        </div>
+
+        {/* Tags */}
+        {item.user_tags && item.user_tags.length > 0 && (
+          <div className="flex items-center gap-1 mt-2 flex-wrap">
+            {item.user_tags.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+                {tag}
+              </Badge>
+            ))}
+            {item.user_tags.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{item.user_tags.length - 3}</span>
+            )}
+          </div>
+        )}
+      </Link>
+    </div>
+  );
+}
+
+/* ---------- List Row ---------- */
+function ContextListRow({ item, isChecked, onToggle }: { item: ContextItem; isChecked: boolean; onToggle: () => void }) {
+  const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
+  const SourceIcon = sourceMeta.icon;
+  const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
+  const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
+  const StatusIcon = status.icon;
+
+  return (
+    <div
+      role="listitem"
+      data-testid={`context-item-${item.id}`}
+      className={cn(
+        "group flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-accent/30 transition-colors",
+        isChecked && "bg-primary/5",
+      )}
+    >
+      <Checkbox
+        data-testid={`context-item-checkbox-${item.id}`}
+        checked={isChecked}
+        onCheckedChange={onToggle}
+        className="shrink-0"
+        aria-label={`Select ${item.title}`}
+      />
+      <Link
+        href={`/context/${item.id}`}
+        className="flex items-center gap-3 flex-1 min-w-0"
+        onClick={() => {
+          trackInteraction({
+            type: "click",
+            resourceType: "context_item",
+            resourceId: item.id,
+            sourceType: item.source_type,
+            contentType: item.content_type,
+            metadata: { fromPage: "/context" },
+          });
+        }}
+      >
+        {/* Source icon */}
+        <div className={cn("flex items-center justify-center h-8 w-8 rounded-md shrink-0", sourceMeta.bg)}>
+          <SourceIcon className={cn("h-4 w-4", sourceMeta.color)} />
+        </div>
+
+        {/* Title + description */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.title}</p>
+          {item.description_short && (
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              {item.description_short}
+            </p>
+          )}
+        </div>
+
+        {/* Content type */}
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <ContentIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground capitalize whitespace-nowrap">
+            {item.content_type.replace(/_/g, " ")}
+          </span>
+        </div>
+
+        {/* Status badge */}
+        <Badge variant="outline" className={cn("hidden sm:inline-flex text-[10px] font-medium border shrink-0", status.badgeCls)}>
+          <StatusIcon className={cn("h-3 w-3 mr-1", status.className)} />
+          {status.label}
+        </Badge>
+
+        {/* Date */}
+        <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+          {relativeDate(item.ingested_at)}
+        </span>
+
+        {/* Mobile status indicator */}
+        <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 sm:hidden", status.className)} />
+      </Link>
+    </div>
+  );
+}
+
+/* ---------- Empty State ---------- */
+function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  if (hasFilters) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <Search className="h-12 w-12 mb-4 opacity-20" />
+        <p className="text-sm font-medium text-foreground">No matching items</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          Try adjusting your filters or search query.
+        </p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={onClear}>
+          Clear all filters
+        </Button>
       </div>
     );
   }
 
+  return (
+    <div data-testid="context-empty-state" className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+      <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-5">
+        <FolderOpen className="h-8 w-8 opacity-40" />
+      </div>
+      <p className="text-base font-semibold text-foreground mb-1">Your context library is empty</p>
+      <p className="text-sm max-w-md text-center mb-6">
+        Add documents, meeting transcripts, and other context so your AI agents can reference them during sessions.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg w-full">
+        <Link
+          href="/integrations"
+          className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 hover:bg-accent/50 hover:border-foreground/15 transition-all text-center"
+        >
+          <Plus className="h-5 w-5 text-muted-foreground" />
+          <span className="text-xs font-medium">Connect integration</span>
+          <span className="text-[11px] text-muted-foreground">Linear, Drive, Gmail, Slack</span>
+        </Link>
+        <Link
+          href="/context/upload-meeting"
+          className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 hover:bg-accent/50 hover:border-foreground/15 transition-all text-center"
+        >
+          <Mic className="h-5 w-5 text-muted-foreground" />
+          <span className="text-xs font-medium">Upload meeting</span>
+          <span className="text-[11px] text-muted-foreground">Audio or transcript files</span>
+        </Link>
+        <Link
+          href="/context?upload=true"
+          className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 hover:bg-accent/50 hover:border-foreground/15 transition-all text-center"
+        >
+          <Upload className="h-5 w-5 text-muted-foreground" />
+          <span className="text-xs font-medium">Upload files</span>
+          <span className="text-[11px] text-muted-foreground">PDF, DOCX, TXT, Markdown</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ========== Main Component ========== */
+export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<string>("all");
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("newest");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [sourceOpen, setSourceOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Debounced search tracking
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,7 +565,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
 
   const sources = Object.keys(groups).sort();
 
-  // Filter → search → sort → paginate
+  // Filter -> search -> sort -> paginate
   const processed = useMemo(() => {
     let result = selected === "all" ? items : (groups[selected] ?? []);
 
@@ -216,20 +603,19 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const visible = processed.slice(0, visibleCount);
   const hasMore = visibleCount < processed.length;
 
-  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest" || searchQuery.trim() !== "";
+  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest" || searchQuery.trim() !== "" || selected !== "all";
 
   function clearFilters() {
     setContentTypeFilter("all");
     setSort("newest");
     setSearchQuery("");
+    setSelected("all");
     setVisibleCount(PAGE_SIZE);
   }
 
-  // Reset pagination when filters change
   function handleSourceChange(source: string) {
     setSelected(source);
     setVisibleCount(PAGE_SIZE);
-    setSourceOpen(false);
   }
 
   const toggleItem = useCallback((id: string) => {
@@ -278,362 +664,318 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const allVisibleChecked = visible.length > 0 && visible.every((i) => checkedIds.has(i.id));
   const someChecked = checkedIds.size > 0;
 
+  // Empty library state
+  if (items.length === 0) {
+    return <EmptyState hasFilters={false} onClear={clearFilters} />;
+  }
+
   return (
-    <div data-testid="context-library" className="flex h-full min-h-0 gap-0 overflow-hidden flex-col md:flex-row">
-      {/* Left: source folders */}
-      <aside
-        data-testid="context-source-sidebar"
-        className={cn(
-          "shrink-0 border-r bg-card flex flex-col",
-          "md:w-52 md:flex",
-          sourceOpen ? "flex" : "hidden md:flex"
-        )}
-      >
-        <div className="p-3 border-b">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
-        </div>
-        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          <button
-            data-testid="source-filter-all"
-            onClick={() => handleSourceChange("all")}
-            aria-label="Show all items"
-            aria-pressed={selected === "all"}
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
-              selected === "all"
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+    <div data-testid="context-library" className="flex flex-col h-full min-h-0">
+      {/* Drop zone */}
+      <div className="px-1 pb-4">
+        <InlineDropZone />
+      </div>
+
+      {/* Source filter pills */}
+      <div className="px-1 pb-3">
+        <SourcePills
+          sources={sources}
+          groups={groups}
+          totalCount={items.length}
+          selected={selected}
+          onSelect={handleSourceChange}
+        />
+      </div>
+
+      {/* Toolbar: search, filters, view toggle */}
+      <div className="flex flex-col gap-2 px-1 pb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              data-testid="context-search-input"
+              type="text"
+              aria-label="Search context library"
+              placeholder="Search documents..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(PAGE_SIZE); }}
+              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-8 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
             )}
-          >
-            <LayoutGrid className="h-4 w-4 shrink-0" />
-            <span className="flex-1 text-left">All Items</span>
-            <span className="text-xs opacity-60">{items.length}</span>
-          </button>
-
-          {sources.map((key) => {
-            const meta = SOURCE_META[key] ?? { label: key, icon: FileText, color: "text-muted-foreground" };
-            const Icon = meta.icon;
-            const count = groups[key].length;
-            return (
-              <button
-                key={key}
-                data-testid={`source-filter-${key}`}
-                onClick={() => handleSourceChange(key)}
-                aria-label={`Filter by ${meta.label}`}
-                aria-pressed={selected === key}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
-                  selected === key
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className={cn("h-4 w-4 shrink-0", meta.color)} />
-                <span className="flex-1 text-left">{meta.label}</span>
-                <span className="text-xs opacity-60">{count}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Right: item list */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background">
-        {/* Header */}
-        <div className="flex flex-col gap-2 px-4 sm:px-5 py-3 border-b bg-card">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSourceOpen(!sourceOpen)}
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
-                aria-label="Toggle sources"
-              >
-                <Filter className="h-4 w-4" />
-              </button>
-              <Checkbox
-                data-testid="context-select-all"
-                checked={allVisibleChecked}
-                onCheckedChange={toggleAll}
-                aria-label="Select all"
-              />
-              <p className="text-sm font-medium">
-                {selected === "all"
-                  ? "All Items"
-                  : (SOURCE_META[selected]?.label ?? selected)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span data-testid="context-item-count" className="text-xs text-muted-foreground">
-                {processed.length} item{processed.length !== 1 ? "s" : ""}
-              </span>
-              <ExportDropdown
-                itemIds={checkedIds.size > 0 ? [...checkedIds] : undefined}
-                query={checkedIds.size === 0 && searchQuery.trim() ? searchQuery.trim() : undefined}
-              />
-            </div>
           </div>
 
-          {/* Saved searches */}
-          <SavedSearches
-            currentQuery={searchQuery}
-            currentFilters={contentTypeFilter !== "all" ? { content_type: contentTypeFilter } : {}}
-            onApply={(query, filters) => {
-              setSearchQuery(query);
-              if (filters.content_type) {
-                setContentTypeFilter(filters.content_type);
-              }
-              if (filters.source_type) {
-                const normalized = filters.source_type === "gdrive" ? "google-drive" : filters.source_type === "github-app" ? "github" : filters.source_type;
-                setSelected(normalized);
-              }
-              setVisibleCount(PAGE_SIZE);
-            }}
-          />
+          {/* Content type filter */}
+          <Select
+            value={contentTypeFilter}
+            onValueChange={(v) => { setContentTypeFilter(v); setVisibleCount(PAGE_SIZE); }}
+          >
+            <SelectTrigger data-testid="content-type-filter" className="h-8 w-[140px] text-xs" aria-label="Filter by content type">
+              <SelectValue placeholder="Content type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {contentTypes.map((ct) => (
+                <SelectItem key={ct} value={ct}>
+                  {ct.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Filter bar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                data-testid="context-search-input"
-                type="text"
-                aria-label="Search context library"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(PAGE_SIZE); }}
-                className="h-8 w-[180px] rounded-md border border-input bg-background pl-8 pr-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-              />
-              {searchQuery && (
+          {/* Sort */}
+          <Select
+            value={sort}
+            onValueChange={(v) => { setSort(v as SortOption); setVisibleCount(PAGE_SIZE); }}
+          >
+            <SelectTrigger data-testid="sort-filter" className="h-8 w-[120px] text-xs" aria-label="Sort order">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="title-az">Title A-Z</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* View toggle */}
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center rounded-md border">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    data-testid="view-grid"
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "inline-flex items-center justify-center h-8 w-8 rounded-l-md transition-colors",
+                      viewMode === "grid"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    )}
+                    aria-label="Grid view"
+                    aria-pressed={viewMode === "grid"}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Grid view</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    data-testid="view-list"
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "inline-flex items-center justify-center h-8 w-8 rounded-r-md transition-colors",
+                      viewMode === "list"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    )}
+                    aria-label="List view"
+                    aria-pressed={viewMode === "list"}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>List view</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+
+          {/* Item count + actions */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span data-testid="context-item-count" className="text-xs text-muted-foreground whitespace-nowrap">
+              {processed.length} item{processed.length !== 1 ? "s" : ""}
+            </span>
+            <ExportDropdown
+              itemIds={checkedIds.size > 0 ? [...checkedIds] : undefined}
+              query={checkedIds.size === 0 && searchQuery.trim() ? searchQuery.trim() : undefined}
+            />
+          </div>
+        </div>
+
+        {/* Saved searches */}
+        <SavedSearches
+          currentQuery={searchQuery}
+          currentFilters={contentTypeFilter !== "all" ? { content_type: contentTypeFilter } : {}}
+          onApply={(query, filters) => {
+            setSearchQuery(query);
+            if (filters.content_type) setContentTypeFilter(filters.content_type);
+            if (filters.source_type) {
+              const normalized = filters.source_type === "gdrive" ? "google-drive" : filters.source_type === "github-app" ? "github" : filters.source_type;
+              setSelected(normalized);
+            }
+            setVisibleCount(PAGE_SIZE);
+          }}
+        />
+
+        {/* Active filter pills */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {selected !== "all" && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Source: {SOURCE_META[selected]?.label ?? selected}
                 <button
-                  onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
+                  onClick={() => { setSelected("all"); setVisibleCount(PAGE_SIZE); }}
+                  className="ml-0.5 hover:text-foreground"
+                  aria-label="Remove source filter"
                 >
                   <X className="h-3 w-3" />
                 </button>
-              )}
-            </div>
-            <Select
-              value={contentTypeFilter}
-              onValueChange={(v) => { setContentTypeFilter(v); setVisibleCount(PAGE_SIZE); }}
-            >
-              <SelectTrigger data-testid="content-type-filter" className="h-8 w-[150px] text-xs" aria-label="Filter by content type">
-                <SelectValue placeholder="Content type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {contentTypes.map((ct) => (
-                  <SelectItem key={ct} value={ct}>
-                    {ct.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={sort}
-              onValueChange={(v) => { setSort(v as SortOption); setVisibleCount(PAGE_SIZE); }}
-            >
-              <SelectTrigger data-testid="sort-filter" className="h-8 w-[130px] text-xs" aria-label="Sort order">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="title-az">Title A–Z</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Clear filters
-              </button>
+              </Badge>
             )}
-          </div>
-
-          {/* Active filter pills */}
-          {hasActiveFilters && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {searchQuery.trim() && (
-                <Badge variant="secondary" className="gap-1 text-xs font-normal">
-                  Search: {searchQuery}
-                  <button
-                    onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
-                    className="ml-0.5 hover:text-foreground"
-                    aria-label="Remove search filter"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              {contentTypeFilter !== "all" && (
-                <Badge variant="secondary" className="gap-1 text-xs font-normal">
-                  {contentTypeFilter.replace(/_/g, " ")}
-                  <button
-                    onClick={() => { setContentTypeFilter("all"); setVisibleCount(PAGE_SIZE); }}
-                    className="ml-0.5 hover:text-foreground"
-                    aria-label="Remove content type filter"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              {sort !== "newest" && (
-                <Badge variant="secondary" className="gap-1 text-xs font-normal">
-                  {sort === "oldest" ? "Oldest first" : "Title A–Z"}
-                  <button
-                    onClick={() => { setSort("newest"); setVisibleCount(PAGE_SIZE); }}
-                    className="ml-0.5 hover:text-foreground"
-                    aria-label="Remove sort"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto">
-          {visible.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-              <Search className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm font-medium text-foreground">No matching items</p>
-              <p className="text-xs mt-1">Try adjusting your filters or search query.</p>
-              {hasActiveFilters && (
+            {searchQuery.trim() && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                Search: {searchQuery}
                 <button
-                  onClick={clearFilters}
-                  className="mt-3 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+                  onClick={() => { setSearchQuery(""); setVisibleCount(PAGE_SIZE); }}
+                  className="ml-0.5 hover:text-foreground"
+                  aria-label="Remove search filter"
                 >
-                  Clear all filters
+                  <X className="h-3 w-3" />
                 </button>
-              )}
-            </div>
-          ) : (
-            <div data-testid="context-items-list" className="divide-y" role="list">
-              {visible.map((item) => {
-                const status = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
-                const StatusIcon = status.icon;
-                const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
-                const isChecked = checkedIds.has(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    role="listitem"
-                    data-testid={`context-item-${item.id}`}
-                    className={cn(
-                      "flex items-start gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-accent/30 transition-colors",
-                      isChecked && "bg-primary/5",
-                    )}
-                  >
-                    <Checkbox
-                      data-testid={`context-item-checkbox-${item.id}`}
-                      checked={isChecked}
-                      onCheckedChange={() => toggleItem(item.id)}
-                      className="mt-0.5 shrink-0"
-                      aria-label={`Select ${item.title}`}
-                    />
-                    <Link
-                      href={`/context/${item.id}`}
-                      className="flex items-start gap-3 flex-1 min-w-0"
-                      onClick={() => {
-                        trackInteraction({
-                          type: "click",
-                          resourceType: "context_item",
-                          resourceId: item.id,
-                          sourceType: item.source_type,
-                          contentType: item.content_type,
-                          metadata: { fromPage: "/context" },
-                        });
-                      }}
-                    >
-                      <ContentIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate hover:underline">{item.title}</p>
-                        {item.description_short && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                            {item.description_short}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <p className="text-xs text-muted-foreground">
-                            {item.content_type.replace(/_/g, " ")} · {new Date(item.ingested_at).toLocaleDateString()}
-                          </p>
-                          {item.user_tags && item.user_tags.length > 0 && item.user_tags.map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-1", status.className)} />
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Load More */}
-          {hasMore && (
-            <div className="flex justify-center py-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              >
-                Load more ({processed.length - visibleCount} remaining)
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Floating action bar */}
-        {someChecked && (
-          <div data-testid="bulk-action-bar" className="sticky bottom-0 border-t bg-card px-3 sm:px-5 py-2.5 flex items-center justify-between">
-            <span data-testid="bulk-selection-count" className="text-sm text-muted-foreground">
-              {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <ExportDropdown itemIds={[...checkedIds]} label="Export selected" />
-              <Button
-                data-testid="bulk-cancel-button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setCheckedIds(new Set())}
-              >
-                Cancel
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button data-testid="bulk-delete-button" variant="destructive" size="sm" disabled={deleting}>
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. The selected context items will be permanently removed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBulkDelete} disabled={deleting}>
-                      {deleting ? "Deleting..." : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+              </Badge>
+            )}
+            {contentTypeFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                {contentTypeFilter.replace(/_/g, " ")}
+                <button
+                  onClick={() => { setContentTypeFilter("all"); setVisibleCount(PAGE_SIZE); }}
+                  className="ml-0.5 hover:text-foreground"
+                  aria-label="Remove content type filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {sort !== "newest" && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                {sort === "oldest" ? "Oldest first" : "Title A-Z"}
+                <button
+                  onClick={() => { setSort("newest"); setVisibleCount(PAGE_SIZE); }}
+                  className="ml-0.5 hover:text-foreground"
+                  aria-label="Remove sort"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <button
+              onClick={clearFilters}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
+            >
+              Clear all
+            </button>
           </div>
         )}
       </div>
+
+      {/* Select all bar */}
+      {visible.length > 0 && (
+        <div className="flex items-center gap-2 px-1 pb-2">
+          <Checkbox
+            data-testid="context-select-all"
+            checked={allVisibleChecked}
+            onCheckedChange={toggleAll}
+            aria-label="Select all"
+          />
+          <span className="text-xs text-muted-foreground">
+            {allVisibleChecked ? "Deselect all" : "Select all"}
+          </span>
+        </div>
+      )}
+
+      {/* Items */}
+      <div className="flex-1 overflow-y-auto px-1">
+        {visible.length === 0 ? (
+          <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+        ) : viewMode === "grid" ? (
+          <div data-testid="context-items-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {visible.map((item) => (
+              <ContextGridCard
+                key={item.id}
+                item={item}
+                isChecked={checkedIds.has(item.id)}
+                onToggle={() => toggleItem(item.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div data-testid="context-items-list" className="rounded-lg border overflow-hidden" role="list">
+            {visible.map((item) => (
+              <ContextListRow
+                key={item.id}
+                item={item}
+                isChecked={checkedIds.has(item.id)}
+                onToggle={() => toggleItem(item.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Load More */}
+        {hasMore && (
+          <div className="flex justify-center py-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            >
+              Load more ({processed.length - visibleCount} remaining)
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Floating action bar */}
+      {someChecked && (
+        <div data-testid="bulk-action-bar" className="sticky bottom-0 border-t bg-card px-4 py-2.5 flex items-center justify-between rounded-b-lg">
+          <span data-testid="bulk-selection-count" className="text-sm text-muted-foreground">
+            {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <ExportDropdown itemIds={[...checkedIds]} label="Export selected" />
+            <Button
+              data-testid="bulk-cancel-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCheckedIds(new Set())}
+            >
+              Cancel
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button data-testid="bulk-delete-button" variant="destructive" size="sm" disabled={deleting}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The selected context items will be permanently removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkDelete} disabled={deleting}>
+                    {deleting ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
