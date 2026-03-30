@@ -276,14 +276,28 @@ Full spec: `docs/GRANGER-SPEC.md`
 - [x] Discord approval reactions (✅/❌) + DM conversations
 - [x] Discord user → Supabase user mapping via partner_settings
 
-### Sprint 4: Polish + Extraction Pipeline — IN PROGRESS
-- [ ] Expand extraction schema (emotional_signals, tacit_observations, confidence_score)
-- [ ] Nightly synthesis cron (2 AM, Opus 4.6, capped at $0.50/run)
-- [ ] Pre-meeting prep via Google Calendar
-- [ ] Pattern detection (topics in 3+ meetings without resolution)
-- [ ] Remove Nango code + @nangohq dependencies
+### Sprint 4: Polish + Extraction Pipeline — **COMPLETE**
+- [x] Expand extraction schema (emotional_signals, tacit_observations, confidence_score, source_quote)
+- [x] Nightly synthesis cron (2 AM, Opus 4.6, 4K token cap, compound knowledge loop)
+- [x] Pattern detection (topics in 3+ items without resolution, unresolved-first sorting)
+- [x] Partner settings page (/settings/api-keys) — Discord ID, Gateway key, API keys, Google OAuth
+- [x] Settings API routes (partner + credentials)
+- [x] Nango removal checklist documented (docs/plans/nango-removal-checklist.md)
+- [ ] Pre-meeting prep via Google Calendar (deferred to post-launch)
+- [ ] Remove Nango code + @nangohq dependencies (follow checklist)
 - [ ] Deploy to production Vercel + Supabase
 - [ ] Onboard Kyle and Bobby
+
+### Post-Sprint: Production Deployment Checklist
+- [ ] Set env vars: DISCORD_BOT_TOKEN, DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID, DISCORD_GUILD_ID
+- [ ] Set env vars: DISCORD_DIGEST_CHANNEL_ID, DISCORD_ALERTS_CHANNEL_ID
+- [ ] Set env vars: GRANOLA_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+- [ ] Register Discord commands: `tsx scripts/register-discord-commands.ts`
+- [ ] Set Discord interactions URL in Developer Portal
+- [ ] Create #granger-digest and #granger-alerts Discord channels
+- [ ] Each partner: link Discord ID + add API keys at /settings/api-keys
+- [ ] Run `pnpm db:reset` on production Supabase to apply new migrations
+- [ ] Verify crons firing in Vercel dashboard
 
 ---
 
