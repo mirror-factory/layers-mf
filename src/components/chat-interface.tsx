@@ -106,42 +106,133 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+function InlineApproval({ approvalId, reasoning, actionType, targetService, conflictReason }: {
+  approvalId: string;
+  reasoning?: string;
+  actionType?: string;
+  targetService?: string;
+  conflictReason?: string;
+}) {
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "executing">("pending");
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleAction = useCallback(async (action: "approve" | "reject") => {
+    setStatus(action === "approve" ? "executing" : "rejected");
+    try {
+      const res = await fetch(`/api/approval/${approvalId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (action === "approve") {
+        setStatus("approved");
+        if (data.execution?.success) {
+          setResult(`Executed: ${JSON.stringify(data.execution.issue ?? data.execution.draft ?? data.execution, null, 2)}`);
+        } else if (data.execution?.error) {
+          setResult(`Execution failed: ${data.execution.error}`);
+        } else {
+          setResult("Approved");
+        }
+      } else {
+        setResult("Rejected");
+      }
+    } catch {
+      setResult("Error processing action");
+      setStatus("pending");
+    }
+  }, [approvalId]);
+
+  return (
+    <div className="rounded-lg border bg-card p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+          Approval Required
+        </span>
+        {actionType && <span className="text-xs text-muted-foreground">{actionType}</span>}
+        {targetService && <span className="text-xs text-muted-foreground">→ {targetService}</span>}
+      </div>
+      {reasoning && <p className="text-sm text-foreground">{reasoning}</p>}
+      {conflictReason && (
+        <div className="text-xs px-2 py-1 rounded bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300">
+          Priority doc conflict: {conflictReason}
+        </div>
+      )}
+      {status === "pending" && (
+        <div className="flex gap-2 pt-1">
+          <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction("approve")}>
+            Approve & Execute
+          </Button>
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleAction("reject")}>
+            Reject
+          </Button>
+        </div>
+      )}
+      {status === "executing" && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Executing...
+        </div>
+      )}
+      {result && (
+        <div className={cn("text-xs p-2 rounded", status === "approved" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-muted text-muted-foreground")}>
+          {result}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ToolCallCard({ part }: { part: ToolPart }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
 
+  // Check if this is an approval proposal
+  const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
+  const approvalOutput = isApproval ? output as Record<string, unknown> : null;
+
   return (
-    <Tool defaultOpen={isDone}>
-      {isDynamic ? (
-        <ToolHeader
-          type="dynamic-tool"
-          state={part.state}
-          toolName={"toolName" in part ? (part.toolName as string) : ""}
-        />
-      ) : (
-        <ToolHeader
-          type={part.type as `tool-${string}`}
-          state={part.state}
-        />
-      )}
-      <ToolContent>
-        {"input" in part && <ToolInput input={part.input} />}
-        {isDone && (
-          <ToolOutput
-            output={
-              output !== undefined ? (
-                <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                  {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
-                </pre>
-              ) : null
-            }
-            errorText={errorText}
+    <>
+      <Tool defaultOpen={isDone}>
+        {isDynamic ? (
+          <ToolHeader
+            type="dynamic-tool"
+            state={part.state}
+            toolName={"toolName" in part ? (part.toolName as string) : ""}
+          />
+        ) : (
+          <ToolHeader
+            type={part.type as `tool-${string}`}
+            state={part.state}
           />
         )}
-      </ToolContent>
-    </Tool>
+        <ToolContent>
+          {"input" in part && <ToolInput input={part.input} />}
+          {isDone && !isApproval && (
+            <ToolOutput
+              output={
+                output !== undefined ? (
+                  <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                    {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
+                  </pre>
+                ) : null
+              }
+              errorText={errorText}
+            />
+          )}
+        </ToolContent>
+      </Tool>
+      {isApproval && approvalOutput && (
+        <InlineApproval
+          approvalId={approvalOutput.approval_id as string}
+          reasoning={approvalOutput.message as string | undefined}
+          actionType={"input" in part ? (part.input as Record<string, unknown>)?.action_type as string : undefined}
+          targetService={"input" in part ? (part.input as Record<string, unknown>)?.target_service as string : undefined}
+          conflictReason={approvalOutput.conflict as string | undefined}
+        />
+      )}
+    </>
   );
 }
 
