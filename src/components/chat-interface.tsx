@@ -335,31 +335,33 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
     alert("Debug JSON copied to clipboard!");
   }, [messages, conversationId, model, status]);
 
-  // Slash command mappings — expand to explicit tool instructions
+  // Slash command mappings — expand to explicit tool instructions for the AI
   const SLASH_COMMANDS: Record<string, (args: string) => string> = {
-    "/linear": (args) => args ? `Use list_linear_issues to find issues matching: ${args}` : "Use list_linear_issues to show my current issues",
-    "/tasks": (args) => args ? `Use list_linear_issues to find: ${args}` : "Use list_linear_issues to show my in-progress tasks",
-    "/gmail": (args) => args ? `Use search_gmail with query: ${args}` : "Use search_gmail to show my recent emails (newer_than:3d)",
-    "/email": (args) => args ? `Use search_gmail with query: ${args}` : "Use search_gmail to show my recent emails",
-    "/notion": (args) => args ? `Use search_notion to find: ${args}` : "Use search_notion to list my pages",
-    "/granola": (args) => args ? `Use query_granola to find meetings about: ${args}` : "Use query_granola to show recent meetings",
-    "/drive": (args) => args ? `Use list_drive_files to search for: ${args}` : "Use list_drive_files to show my recent files",
-    "/approve": () => "Show me all pending items in the approval queue",
-    "/status": () => "Give me a status update: pending approvals, overdue tasks, recent context items",
-    "/help": () => "List all available slash commands and what they do",
+    "/linear": (args) => args ? `Use the ask_linear_agent tool to find issues matching: ${args}` : "Use the ask_linear_agent tool to show all my current issues",
+    "/tasks": (args) => args ? `Use the ask_linear_agent tool to find: ${args}` : "Use the ask_linear_agent tool to show my in-progress tasks",
+    "/gmail": (args) => args ? `Use the ask_gmail_agent tool to search emails: ${args}` : "Use the ask_gmail_agent tool to show my recent emails from the last 3 days",
+    "/email": (args) => args ? `Use the ask_gmail_agent tool to search: ${args}` : "Use the ask_gmail_agent tool to show my recent emails",
+    "/notion": (args) => args ? `Use the ask_notion_agent tool to find: ${args}` : "Use the ask_notion_agent tool to list my pages",
+    "/granola": (args) => args ? `Use the ask_granola_agent tool to find meetings about: ${args}` : "Use the ask_granola_agent tool to show recent meetings",
+    "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
+    "/approve": () => "Show me all pending items in the approval queue using search_context",
+    "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status",
   };
 
   function handleSend() {
     let text = input.trim();
     if (!text || isLoading) return;
 
-    // Parse slash commands
+    // Parse slash commands — transform /command into AI-directed prompts
     const slashMatch = text.match(/^(\/\w+)\s*(.*)?$/);
     if (slashMatch) {
       const [, cmd, args] = slashMatch;
       const handler = SLASH_COMMANDS[cmd.toLowerCase()];
       if (handler) {
-        text = handler(args?.trim() ?? "");
+        const expanded = handler(args?.trim() ?? "");
+        console.log(`[Granger] Slash command ${cmd} → "${expanded}"`);
+        text = expanded;
       }
     }
 
