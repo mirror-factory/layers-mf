@@ -1,48 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyDiscordRequest } from '@/lib/discord/verify';
-import {
-  InteractionType,
-  InteractionResponseType,
-  type DiscordInteraction,
-} from '@/lib/discord/types';
-import { handleSlashCommand } from '@/lib/discord/commands';
+import { after } from 'next/server';
+import { getBot } from '@/lib/discord/bot';
 
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
-  const rawBody = await request.text();
-  const signature = request.headers.get('x-signature-ed25519') ?? '';
-  const timestamp = request.headers.get('x-signature-timestamp') ?? '';
+/**
+ * POST /api/discord/interactions
+ *
+ * Discord Interactions endpoint — receives slash commands, button clicks,
+ * and PING verification challenges.
+ *
+ * Delegates entirely to the Chat SDK's Discord adapter, which handles:
+ * - Ed25519 signature verification
+ * - PING/PONG responses
+ * - Slash command routing (via chat.onSlashCommand handlers in bot.ts)
+ * - Button/component interaction routing
+ */
+export async function POST(request: Request) {
+  const bot = getBot();
+  return bot.webhooks.discord(request, {
+    waitUntil: (p) => after(() => p),
+  });
+}
 
-  // Discord requires Ed25519 signature verification on all interactions
-  if (!(await verifyDiscordRequest(rawBody, signature, timestamp))) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-  }
-
-  const interaction: DiscordInteraction = JSON.parse(rawBody);
-
-  // Handle PING — Discord sends this to verify the endpoint URL
-  if (interaction.type === InteractionType.PING) {
-    return NextResponse.json({ type: InteractionResponseType.PONG });
-  }
-
-  // Handle slash commands (/ask, /status, /tasks, /digest)
-  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-    const applicationId = process.env.DISCORD_APPLICATION_ID!;
-
-    // Discord requires a response within 3 seconds, so defer immediately
-    // then process the command in the background via fire-and-forget
-    handleSlashCommand(interaction, applicationId).catch((err) => {
-      console.error('[discord] command handler error:', err);
-    });
-
-    return NextResponse.json({
-      type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-    });
-  }
-
-  return NextResponse.json(
-    { error: 'Unknown interaction type' },
-    { status: 400 }
-  );
+/**
+ * GET /api/discord/interactions
+ *
+ * Health check endpoint — useful for monitoring and uptime checks.
+ */
+export async function GET() {
+  return Response.json({
+    status: 'ok',
+    service: 'discord-interactions',
+    timestamp: new Date().toISOString(),
+  });
 }

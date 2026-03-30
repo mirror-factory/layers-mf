@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
+import { TestingChecklist } from "@/components/testing-checklist";
 
 // Pages within the dashboard route group that should be publicly accessible
 const PUBLIC_DASHBOARD_PATHS = ["/features"];
@@ -66,6 +67,7 @@ export default async function DashboardLayout({
       </main>
       <CommandPalette />
       <KeyboardShortcuts />
+      <TestingChecklist />
     </div>
   );
 }

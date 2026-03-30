@@ -11,6 +11,7 @@ export const embeddingModel = gateway.textEmbeddingModel("openai/text-embedding-
 
 // Task-to-model mapping (see GRANGER-SPEC.md §7)
 export const TASK_MODELS = {
+  chat: "anthropic/claude-sonnet-4-6-20250514",
   extraction: "anthropic/claude-sonnet-4-6-20250514",
   classification: "anthropic/claude-haiku-4-5-20251001",
   digest: "anthropic/claude-sonnet-4-6-20250514",
