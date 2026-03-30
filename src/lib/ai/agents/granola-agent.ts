@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
 import { gateway, TASK_MODELS } from "@/lib/ai/config";
@@ -81,7 +81,7 @@ export async function runGranolaAgent(
     system: GRANOLA_SYSTEM,
     prompt: query,
     tools,
-    maxSteps: 4,
+    stopWhen: stepCountIs(4),
   });
   return {
     text,

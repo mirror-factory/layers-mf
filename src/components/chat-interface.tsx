@@ -8,6 +8,11 @@ import {
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown, X,
 } from "lucide-react";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/agents/templates";
 import { Button } from "@/components/ui/button";
 import {
@@ -445,7 +450,7 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
             const isStreaming = isLastAssistant && isLoading;
 
             return (
-              <div key={m.id} data-testid={m.role === "user" ? "user-message" : "assistant-message"} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+              <div key={m.id} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 <div
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
@@ -455,30 +460,25 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
                   {m.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                 </div>
 
-                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                <Message from={m.role} className="min-w-0 flex-1">
                   {/* Tool call cards */}
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <div key={i} data-testid="tool-call">
-                          <ToolCallCard part={part} />
-                        </div>
+                        <ToolCallCard key={i} part={part} />
                       ))}
                     </div>
                   )}
 
                   {/* Text response */}
                   {text && (
-                    <div
-                      className={cn(
-                        "rounded-xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                        m.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
+                    <MessageContent>
+                      {m.role === "user" ? (
+                        text
+                      ) : (
+                        <MessageResponse>{text}</MessageResponse>
                       )}
-                    >
-                      {text}
-                    </div>
+                    </MessageContent>
                   )}
 
                   {/* Source citations */}
@@ -493,7 +493,7 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
                       conversationId={conversationId}
                     />
                   )}
-                </div>
+                </Message>
               </div>
             );
           })}
