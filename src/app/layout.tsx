@@ -8,24 +8,24 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "Layers — AI Context Platform",
-    template: "%s | Layers",
+    default: "Granger — Your AI Chief of Staff",
+    template: "%s | Granger",
   },
   description:
-    "The operating system for AI-native teams. Connect every tool into a single context layer with intelligent agents.",
+    "Your AI Chief of Staff. Connect every tool into a single context layer with intelligent agents.",
   keywords: [
     "AI",
+    "chief of staff",
     "context",
     "knowledge management",
     "team collaboration",
-    "RAG",
   ],
   authors: [{ name: "Mirror Factory" }],
   openGraph: {
-    title: "Layers — AI Context Platform",
+    title: "Granger — Your AI Chief of Staff",
     description:
-      "Connect every tool into a single context layer with intelligent agents.",
-    siteName: "Layers",
+      "Your AI Chief of Staff. Connect every tool into a single context layer with intelligent agents.",
+    siteName: "Granger",
     type: "website",
   },
   robots: {

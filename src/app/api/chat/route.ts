@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { createTools } from "@/lib/ai/tools";
+import { createTools, type ToolClients } from "@/lib/ai/tools";
+import { GranolaClient, LinearApiClient, NotionClient, GmailClient, DriveClient } from "@/lib/api";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
@@ -153,6 +154,35 @@ export async function POST(request: NextRequest) {
       });
   }
 
+  // Load credentials for this user (personal) and org (shared)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: creds } = await (supabase as any)
+    .from("credentials")
+    .select("provider, token_encrypted")
+    .or(`user_id.eq.${userId},user_id.is.null`)
+    .eq("org_id", orgId);
+
+  const clients: ToolClients = {};
+  for (const cred of creds ?? []) {
+    switch (cred.provider) {
+      case "granola":
+        clients.granola = new GranolaClient(cred.token_encrypted);
+        break;
+      case "linear":
+        clients.linear = new LinearApiClient(cred.token_encrypted);
+        break;
+      case "notion":
+        clients.notion = new NotionClient(cred.token_encrypted);
+        break;
+      case "gmail":
+        clients.gmail = new GmailClient(cred.token_encrypted);
+        break;
+      case "drive":
+        clients.drive = new DriveClient(cred.token_encrypted);
+        break;
+    }
+  }
+
   // Save the new user message (last in array)
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
   const lastUserText = lastUserMsg
@@ -180,7 +210,7 @@ export async function POST(request: NextRequest) {
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
-    tools: createTools(supabase, orgId),
+    tools: createTools(supabase, orgId, clients),
     stopWhen: stepCountIs(6),
     onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;

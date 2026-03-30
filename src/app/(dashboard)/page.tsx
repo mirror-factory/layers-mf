@@ -1,4 +1,4 @@
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "Home" };
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -14,6 +14,9 @@ import {
   Hash,
   GitBranch,
   Mic,
+  MessageSquare,
+  CheckCircle,
+  Inbox,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DittoSuggestions } from "@/components/ditto-suggestions";
@@ -46,7 +49,7 @@ export default async function HomePage() {
   const orgId = member.org_id;
 
   // Fetch stats and recent items in parallel
-  const [contextResult, contextCount, sessionsResult, sessionsCount, integrationsResult] =
+  const [contextResult, contextCount, sessionsResult, sessionsCount, integrationsResult, approvalsCount, inboxCount] =
     await Promise.all([
       supabase
         .from("context_items")
@@ -73,12 +76,24 @@ export default async function HomePage() {
         .select("source_type")
         .eq("org_id", orgId)
         .not("source_type", "eq", "upload"),
+      supabase
+        .from("approvals")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("status", "pending"),
+      supabase
+        .from("inbox_items")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("is_read", false),
     ]);
 
   const recentItems = contextResult.data ?? [];
   const recentSessions = sessionsResult.data ?? [];
   const totalDocs = contextCount.count ?? 0;
   const totalSessions = sessionsCount.count ?? 0;
+  const pendingApprovals = approvalsCount.count ?? 0;
+  const unreadInbox = inboxCount.count ?? 0;
 
   // Count unique integration source types
   const integrationTypes = new Set(
@@ -91,29 +106,74 @@ export default async function HomePage() {
     user.email?.split("@")[0] ??
     "there";
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <div className="flex flex-col p-4 sm:p-8 gap-6">
-      {/* Welcome */}
+      {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-semibold">Welcome back, {displayName}</h1>
+        <h1 className="text-2xl font-semibold">{greeting}, {displayName}</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Here&apos;s what&apos;s happening in your knowledge base.
+          Granger — Your AI Chief of Staff
         </p>
       </div>
 
+      {/* Quick actions */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Link
+          href="/chat"
+          className="flex items-center gap-3 rounded-lg border bg-card p-4 hover:border-primary/30 transition-colors"
+        >
+          <div className="rounded-md bg-primary/10 p-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium">Chat with Granger</span>
+        </Link>
+        <Link
+          href="/approvals"
+          className="flex items-center gap-3 rounded-lg border bg-card p-4 hover:border-primary/30 transition-colors"
+        >
+          <div className="rounded-md bg-primary/10 p-2">
+            <CheckCircle className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium">View Approvals</span>
+          {pendingApprovals > 0 && (
+            <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
+              {pendingApprovals}
+            </span>
+          )}
+        </Link>
+        <Link
+          href="/context/upload-meeting"
+          className="flex items-center gap-3 rounded-lg border bg-card p-4 hover:border-primary/30 transition-colors"
+        >
+          <div className="rounded-md bg-primary/10 p-2">
+            <Upload className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium">Upload Document</span>
+        </Link>
+      </div>
+
       {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <StatCard
-          title="Documents"
+          title="Pending Approvals"
+          value={pendingApprovals}
+          icon={CheckCircle}
+          href="/approvals"
+        />
+        <StatCard
+          title="Unread Inbox"
+          value={unreadInbox}
+          icon={Inbox}
+          href="/inbox"
+        />
+        <StatCard
+          title="Context Items"
           value={totalDocs}
           icon={FileText}
           href="/context"
-        />
-        <StatCard
-          title="Sessions"
-          value={totalSessions}
-          icon={FolderKanban}
-          href="/sessions"
         />
         <StatCard
           title="Integrations"

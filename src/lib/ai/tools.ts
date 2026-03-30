@@ -2,9 +2,22 @@ import { tool } from "ai";
 import { z } from "zod";
 import { searchContext, searchContextChunks } from "@/lib/db/search";
 import { SupabaseClient } from "@supabase/supabase-js";
+import type { GranolaClient } from "@/lib/api";
+import type { LinearApiClient } from "@/lib/api";
+import type { NotionClient } from "@/lib/api";
+import type { GmailClient } from "@/lib/api";
+import type { DriveClient } from "@/lib/api";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = SupabaseClient<any>;
+
+export interface ToolClients {
+  granola?: GranolaClient;
+  linear?: LinearApiClient;
+  notion?: NotionClient;
+  gmail?: GmailClient;
+  drive?: DriveClient;
+}
 
 const searchContextSchema = z.object({
   query: z.string().describe("The search query"),
@@ -22,7 +35,7 @@ const getDocumentSchema = z.object({
   id: z.string().describe("The document ID from search_context results"),
 });
 
-export function createTools(supabase: AnySupabase, orgId: string) {
+export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients) {
   return {
     search_context: tool({
       description:

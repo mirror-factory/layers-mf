@@ -351,12 +351,12 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <Bot className="h-10 w-10 mb-3 opacity-30" />
               <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
-              <p className="text-xs mt-1">Layers searches your documents, meetings, and notes to answer.</p>
+              <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
               <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
                 {[
                   "Summarize last week\u2019s meetings",
                   "What decisions were made about the roadmap?",
-                  "Find documents about onboarding",
+                  "What are our Q2 priorities?",
                 ].map((prompt) => (
                   <button
                     key={prompt}
