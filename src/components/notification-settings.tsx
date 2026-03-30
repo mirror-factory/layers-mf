@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
@@ -126,6 +126,48 @@ export function NotificationSettings() {
           {error}
         </div>
       )}
+
+      <Card className="p-4 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <Monitor className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div>
+              <Label className="text-sm font-medium">
+                Desktop Notifications
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Get browser push notifications when scheduled tasks complete,
+                approvals arrive, or new inbox items appear.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (!('Notification' in window)) return;
+              if (Notification.permission === 'granted') {
+                new Notification('Granger: Notifications enabled', {
+                  body: 'You will receive desktop alerts for important events.',
+                  icon: '/icon.png',
+                });
+              } else if (Notification.permission !== 'denied') {
+                const result = await Notification.requestPermission();
+                if (result === 'granted') {
+                  new Notification('Granger: Notifications enabled', {
+                    body: 'You will receive desktop alerts for important events.',
+                    icon: '/icon.png',
+                  });
+                }
+              }
+            }}
+          >
+            {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+              ? 'Enabled'
+              : 'Enable'}
+          </Button>
+        </div>
+      </Card>
 
       <Card className="p-4 space-y-5">
         <div className="flex items-center justify-between">

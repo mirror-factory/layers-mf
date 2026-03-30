@@ -1,0 +1,110 @@
+'use client';
+
+import { useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
+import { requestNotificationPermission, grangerNotify } from '@/lib/notifications';
+
+interface ScheduleEvent {
+  id: string;
+  name: string;
+  status: string;
+  last_run_at: string | null;
+}
+
+interface ApprovalEvent {
+  id: string;
+  action_type: string;
+  reasoning: string;
+}
+
+interface InboxEvent {
+  id: string;
+  title: string;
+}
+
+export function NotificationProvider() {
+  const permissionGranted = useRef(false);
+  const seenIdsRef = useRef(new Set<string>());
+
+  // Request permission on mount
+  useEffect(() => {
+    requestNotificationPermission().then(granted => {
+      permissionGranted.current = granted;
+    });
+  }, []);
+
+  const notify = useCallback((title: string, body: string, tag: string, url: string) => {
+    // Deduplicate within session
+    if (seenIdsRef.current.has(tag)) return;
+    seenIdsRef.current.add(tag);
+
+    // Desktop notification (if permitted)
+    if (permissionGranted.current) {
+      grangerNotify(title, { body, tag, url });
+    }
+
+    // In-app toast as fallback (always shown)
+    toast(title, {
+      description: body,
+      action: {
+        label: 'View',
+        onClick: () => window.open(url, '_self'),
+      },
+    });
+  }, []);
+
+  // Poll for completed schedule runs every 30 seconds
+  const checkForUpdates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications/poll');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // Check for newly completed schedule runs
+      for (const event of (data.events ?? []) as ScheduleEvent[]) {
+        notify(
+          event.name,
+          `Scheduled task completed: ${event.name}`,
+          `schedule-${event.id}`,
+          '/schedules',
+        );
+      }
+
+      // Check for new approval requests
+      for (const approval of (data.approvals ?? []) as ApprovalEvent[]) {
+        notify(
+          'Approval Required',
+          approval.reasoning,
+          `approval-${approval.id}`,
+          '/approvals',
+        );
+      }
+
+      // Check for new inbox items
+      for (const inbox of (data.inbox ?? []) as InboxEvent[]) {
+        notify(
+          'New Inbox Item',
+          inbox.title,
+          `inbox-${inbox.id}`,
+          '/inbox',
+        );
+      }
+    } catch {
+      // Silently fail - notifications are non-critical
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    // Initial check after a short delay to let the app settle
+    const timeout = setTimeout(checkForUpdates, 3000);
+
+    // Poll every 30 seconds
+    const interval = setInterval(checkForUpdates, 30_000);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [checkForUpdates]);
+
+  return null; // This component renders nothing - it's just a side effect
+}
