@@ -29,13 +29,18 @@ import {
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
 
 const MODELS = [
-  { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku" },
-  { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet" },
-  { id: "anthropic/claude-opus-4.6", label: "Claude Opus" },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o mini" },
-  { id: "openai/gpt-4o", label: "GPT-4o" },
-  { id: "google/gemini-flash", label: "Gemini Flash" },
-  { id: "google/gemini-pro", label: "Gemini Pro" },
+  // Flagship
+  { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", tier: "flagship" },
+  { id: "openai/gpt-5.4", label: "GPT-5.4", tier: "flagship" },
+  { id: "google/gemini-3-pro", label: "Gemini 3 Pro", tier: "flagship" },
+  // Balanced
+  { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "balanced" },
+  { id: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini", tier: "balanced" },
+  { id: "google/gemini-3-flash", label: "Gemini 3 Flash", tier: "balanced" },
+  // Fast
+  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", tier: "fast" },
+  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "fast" },
+  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite", tier: "fast" },
 ] as const;
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
@@ -277,7 +282,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfaceProps) {
-  const [model, setModel] = useState<string>("anthropic/claude-haiku-4-5-20251001");
+  const [model, setModel] = useState<string>("anthropic/claude-sonnet-4.6");
   const [input, setInput] = useState("");
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
   const [historyLoaded, setHistoryLoaded] = useState(false);

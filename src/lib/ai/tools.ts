@@ -234,6 +234,142 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Sub-agent delegating tools ===
+    ask_linear_agent: tool({
+      description:
+        "Delegate to the Linear specialist agent for any task/issue management questions. Use this for ALL Linear-related requests instead of calling Linear tools directly.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("The full user request about Linear/tasks/issues"),
+      }),
+      execute: async ({ query }) => {
+        if (!clients?.linear)
+          return {
+            error:
+              "Linear not configured. Add your API key in Settings → API Keys.",
+          };
+        const { runLinearAgent } = await import(
+          "@/lib/ai/agents/linear-agent"
+        );
+        const result = await runLinearAgent(
+          query,
+          clients.linear,
+          orgId,
+          supabase,
+        );
+        return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
+    ask_gmail_agent: tool({
+      description:
+        "Delegate to the Gmail specialist agent for email-related requests.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("The full user request about emails"),
+      }),
+      execute: async ({ query }) => {
+        if (!clients?.gmail)
+          return {
+            error:
+              "Gmail not configured. Connect Google account in Settings → API Keys.",
+          };
+        const { runGmailAgent } = await import(
+          "@/lib/ai/agents/gmail-agent"
+        );
+        const result = await runGmailAgent(
+          query,
+          clients.gmail,
+          orgId,
+          supabase,
+        );
+        return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
+    ask_notion_agent: tool({
+      description:
+        "Delegate to the Notion specialist agent for page/database queries.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("The full user request about Notion pages/databases"),
+      }),
+      execute: async ({ query }) => {
+        if (!clients?.notion)
+          return {
+            error:
+              "Notion not configured. Add your integration token in Settings → API Keys.",
+          };
+        const { runNotionAgent } = await import(
+          "@/lib/ai/agents/notion-agent"
+        );
+        const result = await runNotionAgent(
+          query,
+          clients.notion,
+          orgId,
+          supabase,
+        );
+        return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
+    ask_granola_agent: tool({
+      description:
+        "Delegate to the Granola specialist agent for meeting transcript queries.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("The full user request about meetings/transcripts"),
+      }),
+      execute: async ({ query }) => {
+        if (!clients?.granola)
+          return {
+            error:
+              "Granola not configured. Add your API key in Settings → API Keys.",
+          };
+        const { runGranolaAgent } = await import(
+          "@/lib/ai/agents/granola-agent"
+        );
+        const result = await runGranolaAgent(
+          query,
+          clients.granola,
+          orgId,
+          supabase,
+        );
+        return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
+    ask_drive_agent: tool({
+      description:
+        "Delegate to the Drive specialist agent for file search and reading.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("The full user request about Drive files"),
+      }),
+      execute: async ({ query }) => {
+        if (!clients?.drive)
+          return {
+            error:
+              "Drive not configured. Connect Google account in Settings → API Keys.",
+          };
+        const { runDriveAgent } = await import(
+          "@/lib/ai/agents/drive-agent"
+        );
+        const result = await runDriveAgent(
+          query,
+          clients.drive,
+          orgId,
+          supabase,
+        );
+        return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
     // === Approval tool ===
     propose_action: tool({
       description: "Propose a write action for partner approval before executing. Use for ALL write operations.",
