@@ -330,9 +330,34 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
     alert("Debug JSON copied to clipboard!");
   }, [messages, conversationId, model, status]);
 
+  // Slash command mappings — expand to explicit tool instructions
+  const SLASH_COMMANDS: Record<string, (args: string) => string> = {
+    "/linear": (args) => args ? `Use list_linear_issues to find issues matching: ${args}` : "Use list_linear_issues to show my current issues",
+    "/tasks": (args) => args ? `Use list_linear_issues to find: ${args}` : "Use list_linear_issues to show my in-progress tasks",
+    "/gmail": (args) => args ? `Use search_gmail with query: ${args}` : "Use search_gmail to show my recent emails (newer_than:3d)",
+    "/email": (args) => args ? `Use search_gmail with query: ${args}` : "Use search_gmail to show my recent emails",
+    "/notion": (args) => args ? `Use search_notion to find: ${args}` : "Use search_notion to list my pages",
+    "/granola": (args) => args ? `Use query_granola to find meetings about: ${args}` : "Use query_granola to show recent meetings",
+    "/drive": (args) => args ? `Use list_drive_files to search for: ${args}` : "Use list_drive_files to show my recent files",
+    "/approve": () => "Show me all pending items in the approval queue",
+    "/status": () => "Give me a status update: pending approvals, overdue tasks, recent context items",
+    "/help": () => "List all available slash commands and what they do",
+  };
+
   function handleSend() {
-    const text = input.trim();
+    let text = input.trim();
     if (!text || isLoading) return;
+
+    // Parse slash commands
+    const slashMatch = text.match(/^(\/\w+)\s*(.*)?$/);
+    if (slashMatch) {
+      const [, cmd, args] = slashMatch;
+      const handler = SLASH_COMMANDS[cmd.toLowerCase()];
+      if (handler) {
+        text = handler(args?.trim() ?? "");
+      }
+    }
+
     setInput("");
     sendMessage({ text });
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
