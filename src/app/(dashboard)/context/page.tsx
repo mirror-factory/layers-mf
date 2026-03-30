@@ -21,20 +21,24 @@ export default async function ContextPage(props: {
   const { createAdminClient } = await import("@/lib/supabase/server");
   const adminDb = createAdminClient();
 
-  const { data: member } = await adminDb
+  const { data: member, error: memberError } = await adminDb
     .from("org_members")
     .select("org_id")
     .eq("user_id", user.id)
     .single();
 
-  const { data: items } = member
+  // Debug removed — was: console.log("[context] user/member/error")
+
+  const { data: items, error: itemsError } = member
     ? await adminDb
         .from("context_items")
-        .select("id, title, description_short, source_type, content_type, status, ingested_at, user_tags")
+        .select("id, title, description_short, source_type, content_type, status, ingested_at")
         .eq("org_id", member.org_id)
         .order("ingested_at", { ascending: false })
         .limit(200)
-    : { data: [] };
+    : { data: [], error: null };
+
+  // Debug removed
 
   return (
     <div className="flex flex-col p-4 sm:p-8 gap-4 sm:gap-6 min-h-screen">
