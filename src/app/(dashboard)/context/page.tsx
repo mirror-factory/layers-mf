@@ -1,4 +1,5 @@
 export const metadata = { title: "Context Library" };
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";

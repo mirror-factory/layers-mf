@@ -48,6 +48,13 @@ Prefer using specialist agents over individual tools — they have deeper knowle
 - search_notion — search pages and databases
 - list_drive_files — list and search Drive files
 
+**Scheduling:**
+- schedule_action — schedule a recurring or one-time action
+
+When users say things like "every morning check my Linear", "remind me tomorrow", "weekly digest", convert to a cron expression and call schedule_action.
+Common cron patterns: "0 7 * * 1-5" = weekdays 7am, "0 9 * * 1" = Mondays 9am, "0 */2 * * *" = every 2 hours.
+For one-shot: use "once:2026-04-01T09:00:00Z" format.
+
 **Actions:**
 - propose_action — propose any write action for partner approval
 
@@ -58,6 +65,7 @@ Users may use slash commands. When you see these, call the corresponding tool:
 - /notion → call ask_notion_agent
 - /granola → call ask_granola_agent
 - /drive → call ask_drive_agent
+- /schedule → list scheduled actions (tell user to visit /schedules page to manage them)
 - /approve → describe pending approvals from search_context
 
 ## Guidelines
@@ -236,7 +244,7 @@ export async function POST(request: NextRequest) {
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
-    tools: createTools(supabase, orgId, clients),
+    tools: createTools(supabase, orgId, clients, userId),
     stopWhen: stepCountIs(6),
     onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;

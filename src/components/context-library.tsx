@@ -31,6 +31,8 @@ import {
   FolderOpen,
   Plus,
   ArrowUpFromLine,
+  Download,
+  MoreVertical,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -283,8 +285,106 @@ function SourcePills({
   );
 }
 
+/* ---------- Item Actions ---------- */
+function ItemActions({
+  item,
+  onDelete,
+  deleting,
+  className,
+}: {
+  item: ContextItem;
+  onDelete: (id: string) => void;
+  deleting: boolean;
+  className?: string;
+}) {
+  function handleDownload(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Fetch the full item content, then download as file
+    fetch(`/api/context/${item.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const content = data.raw_content ?? data.description_long ?? data.description_short ?? "";
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const safeName = (item.title || "document").replace(/[^a-zA-Z0-9_\- ]/g, "").trim();
+        a.download = `${safeName}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => {
+        // Silently fail — could add toast in future
+      });
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  return (
+    <div className={cn("flex items-center gap-0.5", className)}>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleDownload}
+              className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              aria-label={`Download ${item.title}`}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Download</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <AlertDialog>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertDialogTrigger asChild>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                  aria-label={`Delete ${item.title}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </AlertDialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Delete</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{item.title}&rdquo; will be permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(item.id)}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 /* ---------- Grid Card ---------- */
-function ContextGridCard({ item, isChecked, onToggle }: { item: ContextItem; isChecked: boolean; onToggle: () => void }) {
+function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -331,10 +431,18 @@ function ContextGridCard({ item, isChecked, onToggle }: { item: ContextItem; isC
           <div className={cn("flex items-center justify-center h-10 w-10 rounded-lg", sourceMeta.bg)}>
             <SourceIcon className={cn("h-5 w-5", sourceMeta.color)} />
           </div>
-          <Badge variant="outline" className={cn("text-[10px] font-medium border", status.badgeCls)}>
-            <StatusIcon className={cn("h-3 w-3 mr-1", status.className)} />
-            {status.label}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <ItemActions
+              item={item}
+              onDelete={onDelete}
+              deleting={deletingId === item.id}
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+            <Badge variant="outline" className={cn("text-[10px] font-medium border", status.badgeCls)}>
+              <StatusIcon className={cn("h-3 w-3 mr-1", status.className)} />
+              {status.label}
+            </Badge>
+          </div>
         </div>
 
         {/* Title */}
@@ -381,7 +489,7 @@ function ContextGridCard({ item, isChecked, onToggle }: { item: ContextItem; isC
 }
 
 /* ---------- List Row ---------- */
-function ContextListRow({ item, isChecked, onToggle }: { item: ContextItem; isChecked: boolean; onToggle: () => void }) {
+function ContextListRow({ item, isChecked, onToggle, onDelete, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -455,6 +563,14 @@ function ContextListRow({ item, isChecked, onToggle }: { item: ContextItem; isCh
         {/* Mobile status indicator */}
         <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 sm:hidden", status.className)} />
       </Link>
+
+      {/* Actions */}
+      <ItemActions
+        item={item}
+        onDelete={onDelete}
+        deleting={deletingId === item.id}
+        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+      />
     </div>
   );
 }
@@ -525,6 +641,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Debounced search tracking
@@ -660,6 +777,18 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
       setDeleting(false);
     }
   }
+
+  const handleDeleteItem = useCallback(async (id: string) => {
+    setDeletingItemId(id);
+    try {
+      const res = await fetch(`/api/context/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.refresh();
+      }
+    } finally {
+      setDeletingItemId(null);
+    }
+  }, [router]);
 
   const allVisibleChecked = visible.length > 0 && visible.every((i) => checkedIds.has(i.id));
   const someChecked = checkedIds.size > 0;
@@ -905,6 +1034,8 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 item={item}
                 isChecked={checkedIds.has(item.id)}
                 onToggle={() => toggleItem(item.id)}
+                onDelete={handleDeleteItem}
+                deletingId={deletingItemId}
               />
             ))}
           </div>
@@ -916,6 +1047,8 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 item={item}
                 isChecked={checkedIds.has(item.id)}
                 onToggle={() => toggleItem(item.id)}
+                onDelete={handleDeleteItem}
+                deletingId={deletingItemId}
               />
             ))}
           </div>

@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { searchContext, searchContextChunks } from "@/lib/db/search";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { calculateNextCron } from "@/lib/cron";
 import type { GranolaClient } from "@/lib/api";
 import type { LinearApiClient } from "@/lib/api";
 import type { NotionClient } from "@/lib/api";
@@ -35,7 +36,7 @@ const getDocumentSchema = z.object({
   id: z.string().describe("The document ID from search_context results"),
 });
 
-export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients) {
+export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients, userId?: string) {
   return {
     search_context: tool({
       description:
@@ -367,6 +368,65 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           supabase,
         );
         return { response: result.text, toolCalls: result.toolCalls.length };
+      },
+    }),
+
+    // === Scheduling tool ===
+    schedule_action: tool({
+      description:
+        'Schedule a recurring or one-time action. Use when the user says "every morning", "weekly", "tomorrow at 9am", "remind me", "check every hour", etc.',
+      inputSchema: z.object({
+        name: z.string().describe("Short name for the schedule"),
+        description: z.string().optional().describe("What this schedule does"),
+        action_type: z
+          .enum(["query", "sync", "digest", "custom"])
+          .describe("Type of action"),
+        target_service: z
+          .string()
+          .optional()
+          .describe("Target service: linear, gmail, granola, slack, notion"),
+        payload: z
+          .record(z.string(), z.unknown())
+          .describe("Action details — query text, filters, etc."),
+        schedule: z
+          .string()
+          .describe(
+            'Cron expression like "0 7 * * 1-5" for weekday 7am, or "once:ISO_DATE" for one-shot'
+          ),
+        max_runs: z
+          .number()
+          .optional()
+          .describe("Max executions. 1 for one-shot, omit for unlimited"),
+      }),
+      execute: async (input) => {
+        const nextRun = input.schedule.startsWith("once:")
+          ? input.schedule.replace("once:", "")
+          : calculateNextCron(input.schedule);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase as any)
+          .from("scheduled_actions")
+          .insert({
+            org_id: orgId,
+            created_by: userId ?? orgId, // fallback to orgId if userId not passed
+            name: input.name,
+            description: input.description ?? null,
+            action_type: input.action_type,
+            target_service: input.target_service ?? null,
+            payload: input.payload,
+            schedule: input.schedule,
+            next_run_at: nextRun,
+            max_runs: input.max_runs ?? null,
+            status: "active",
+          })
+          .select("id")
+          .single();
+
+        if (error) return { error: error.message };
+        return {
+          message: `Scheduled "${input.name}" — ${input.schedule.startsWith("once:") ? "one-time" : "recurring"}`,
+          id: data.id,
+        };
       },
     }),
 

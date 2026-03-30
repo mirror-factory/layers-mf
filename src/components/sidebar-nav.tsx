@@ -25,6 +25,7 @@ import {
   CheckSquare,
   ChevronDown,
   Zap,
+  Clock,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -36,6 +37,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/approvals", label: "Approvals", icon: CheckSquare },
   { href: "/context", label: "Context Library", icon: Library },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/schedules", label: "Schedules", icon: Clock },
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
