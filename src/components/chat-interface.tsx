@@ -380,9 +380,12 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
               <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
               <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
                 {[
-                  "Summarize last week\u2019s meetings",
-                  "What decisions were made about the roadmap?",
+                  "Show my in-progress Linear issues",
                   "What are our Q2 priorities?",
+                  "What decisions were made about the roadmap?",
+                  "Summarize last week\u2019s meetings",
+                  "Search my recent emails",
+                  "What Notion pages do we have?",
                 ].map((prompt) => (
                   <button
                     key={prompt}
