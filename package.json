@@ -25,6 +25,7 @@
     "@ai-sdk/react": "^3.0.118",
     "@chat-adapter/discord": "^4.23.0",
     "@chat-adapter/state-pg": "^4.23.0",
+    "@linear/sdk": "^80.0.0",
     "@nangohq/frontend": "^0.69.40",
     "@nangohq/node": "^0.69.40",
     "@radix-ui/react-accordion": "^1.2.12",
