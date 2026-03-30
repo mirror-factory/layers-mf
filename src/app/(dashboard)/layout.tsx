@@ -57,9 +57,6 @@ export default async function DashboardLayout({
       <OnboardingRedirect />
       <SidebarNav email={user!.email ?? ""} orgName={orgName} />
       <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-background focus:text-foreground focus:border">
-          Skip to main content
-        </a>
         <div className="border-b bg-card px-4 py-2 sm:px-6">
           <Breadcrumbs />
         </div>

@@ -13,54 +13,73 @@ import {
   Plug,
   BarChart3,
   LogOut,
-  Layers,
-  FolderKanban,
   Users,
   UserCog,
   Shield,
   Bell,
   CreditCard,
   Key,
-  SlidersHorizontal,
-  FileCode2,
-  CheckSquare,
-  ListChecks,
   Menu,
   X,
   Coins,
-  Building,
-  Bot,
-  BookOpen,
-  Sparkles,
-  PanelTop,
+  CheckSquare,
+  ChevronDown,
+  Zap,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const NAV_ITEMS = [
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+
+const MAIN_ITEMS: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/ditto", label: "Ditto", icon: Bot },
-  { href: "/context", label: "Context Library", icon: Library },
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/sessions", label: "Sessions", icon: FolderKanban },
-  { href: "/agents", label: "Agents", icon: Sparkles },
-  { href: "/canvas", label: "Canvas", icon: PanelTop },
+  { href: "/approvals", label: "Approvals", icon: CheckSquare },
+  { href: "/context", label: "Context Library", icon: Library },
   { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/actions", label: "Actions", icon: CheckSquare },
-  { href: "/issues", label: "Issues", icon: ListChecks },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/integrations", label: "Integrations", icon: Plug },
-  { href: "/settings/team", label: "Team", icon: Users },
-  { href: "/settings/org", label: "Organization", icon: Building },
-  { href: "/settings/profile", label: "Profile", icon: UserCog },
-  { href: "/settings/billing", label: "Billing", icon: CreditCard },
-  { href: "/settings/source-trust", label: "Source Trust", icon: SlidersHorizontal },
-  { href: "/settings/notifications", label: "Notifications", icon: Bell },
-  { href: "/settings/api-keys", label: "API Keys", icon: Key },
-  { href: "/settings/audit", label: "Audit Log", icon: Shield },
-  { href: "/features", label: "Features", icon: Layers },
-  { href: "/guide", label: "Guide", icon: BookOpen },
-  { href: "/api-docs", label: "API Docs", icon: FileCode2 },
 ];
+
+const CONNECT_ITEMS: NavItem[] = [
+  { href: "/integrations", label: "Integrations", icon: Plug },
+];
+
+const SETTINGS_ITEMS: NavItem[] = [
+  { href: "/settings/api-keys", label: "API Keys", icon: Key },
+  { href: "/settings/profile", label: "Profile", icon: UserCog },
+  { href: "/settings/team", label: "Team", icon: Users },
+  { href: "/settings/notifications", label: "Notifications", icon: Bell },
+];
+
+const MORE_ITEMS: NavItem[] = [
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/settings/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings/audit", label: "Audit Log", icon: Shield },
+];
+
+function NavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: string }) {
+  return (
+    <Link
+      href={href}
+      aria-current={pathname === href ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        pathname === href
+          ? "bg-primary/10 text-primary font-medium"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {label}
+    </Link>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+      {children}
+    </p>
+  );
+}
 
 export function SidebarNav({
   email,
@@ -73,11 +92,19 @@ export function SidebarNav({
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setOpen(false);
+  }, [pathname]);
+
+  // Auto-expand "More" section when a route within it is active
+  useEffect(() => {
+    if (MORE_ITEMS.some((item) => pathname === item.href)) {
+      setMoreOpen(true);
+    }
   }, [pathname]);
 
   // Fetch credit balance
@@ -96,6 +123,9 @@ export function SidebarNav({
     router.refresh();
   }
 
+  const renderItems = (items: NavItem[]) =>
+    items.map((item) => <NavLink key={item.href} {...item} pathname={pathname} />);
+
   return (
     <>
       {/* Mobile header bar */}
@@ -107,8 +137,8 @@ export function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Layers className="h-5 w-5 text-primary" />
-        <span className="font-semibold text-sm">Layers</span>
+        <Zap className="h-5 w-5 text-primary" />
+        <span className="font-semibold text-sm">Granger</span>
       </div>
 
       {/* Backdrop (mobile only) */}
@@ -129,8 +159,8 @@ export function SidebarNav({
         {/* Logo */}
         <div className="flex items-center justify-between px-4 py-5 border-b">
           <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-sm">Layers</span>
+            <Zap className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-sm">Granger</span>
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -148,23 +178,35 @@ export function SidebarNav({
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1 p-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={pathname === href ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                pathname === href
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
+        <nav className="flex-1 space-y-0.5 p-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
+          {/* Main */}
+          <SectionLabel>Main</SectionLabel>
+          {renderItems(MAIN_ITEMS)}
+
+          {/* Connect */}
+          <SectionLabel>Connect</SectionLabel>
+          {renderItems(CONNECT_ITEMS)}
+
+          {/* Settings */}
+          <SectionLabel>Settings</SectionLabel>
+          {renderItems(SETTINGS_ITEMS)}
+
+          {/* More (collapsible) */}
+          <SectionLabel>
+            <button
+              onClick={() => setMoreOpen((prev) => !prev)}
+              className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </Link>
-          ))}
+              More
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 transition-transform duration-200",
+                  moreOpen && "rotate-180"
+                )}
+              />
+            </button>
+          </SectionLabel>
+          {moreOpen && renderItems(MORE_ITEMS)}
         </nav>
 
         {/* User */}
