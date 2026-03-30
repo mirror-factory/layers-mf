@@ -19,11 +19,13 @@ export async function GET() {
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
   // Run all queries in parallel
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [eventsResult, approvalsResult, inboxResult] = await Promise.all([
-    // Recent schedule completions
-    adminDb
+    // Recent schedule completions (scheduled_actions not in DB types yet)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (adminDb as any)
       .from('scheduled_actions')
-      .select('id, name, status, last_run_at')
+      .select('id, name, status, description, target_service, last_run_at')
       .eq('org_id', member.org_id)
       .gte('last_run_at', fiveMinutesAgo)
       .limit(5),

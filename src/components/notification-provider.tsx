@@ -8,6 +8,8 @@ interface ScheduleEvent {
   id: string;
   name: string;
   status: string;
+  description: string | null;
+  target_service: string | null;
   last_run_at: string | null;
 }
 
@@ -62,11 +64,15 @@ export function NotificationProvider() {
 
       // Check for newly completed schedule runs
       for (const event of (data.events ?? []) as ScheduleEvent[]) {
+        const isLinear = event.target_service === 'linear' || event.name.toLowerCase().includes('linear');
+        const body = event.description ?? `Scheduled task completed: ${event.name}`;
+        const url = isLinear ? '/context?q=Linear+Status' : '/schedules';
+
         notify(
-          event.name,
-          `Scheduled task completed: ${event.name}`,
-          `schedule-${event.id}`,
-          '/schedules',
+          `Granger: ${event.name}`,
+          body,
+          `schedule-${event.id}-${event.last_run_at ?? event.id}`,
+          url,
         );
       }
 

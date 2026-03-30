@@ -109,6 +109,50 @@ export function ScheduleList({
     }
   };
 
+  const runNow = async (schedule: ScheduledAction) => {
+    setLoadingId(schedule.id);
+    try {
+      // Map known target services to their cron endpoints
+      const endpointMap: Record<string, string> = {
+        linear: "/api/cron/linear-check",
+        digest: "/api/cron/digest",
+        discord: "/api/cron/discord-alerts",
+        ingest: "/api/cron/ingest",
+      };
+
+      const endpoint =
+        endpointMap[schedule.target_service ?? ""] ??
+        endpointMap[schedule.action_type] ??
+        null;
+
+      if (!endpoint) {
+        alert(`No endpoint mapped for service: ${schedule.target_service ?? schedule.action_type}`);
+        return;
+      }
+
+      const res = await fetch(endpoint, { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok) {
+        // Update last_run_at locally
+        setSchedules((prev) =>
+          prev.map((s) =>
+            s.id === schedule.id
+              ? { ...s, last_run_at: new Date().toISOString(), run_count: s.run_count + 1 }
+              : s
+          )
+        );
+        alert(`Completed: ${JSON.stringify(data.summary ?? data, null, 2)}`);
+      } else {
+        alert(`Error: ${data.error ?? "Unknown error"}`);
+      }
+    } catch (err) {
+      alert(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   return (
     <div>
       {/* Tabs */}
@@ -208,6 +252,16 @@ export function ScheduleList({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {schedule.status === "active" && (
+                    <button
+                      onClick={() => runNow(schedule)}
+                      disabled={loadingId === schedule.id}
+                      className="p-1.5 rounded-md text-muted-foreground hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                      title="Run Now"
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
+                  )}
                   {(schedule.status === "active" || schedule.status === "paused") && (
                     <button
                       onClick={() => toggleStatus(schedule.id, schedule.status)}
