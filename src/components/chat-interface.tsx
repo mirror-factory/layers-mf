@@ -314,6 +314,22 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
 
   const isLoading = status === "streaming" || status === "submitted";
 
+  const copyDebugJSON = useCallback(() => {
+    const debug = {
+      conversationId,
+      model,
+      status,
+      messageCount: messages.length,
+      messages: messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        parts: m.parts,
+      })),
+    };
+    navigator.clipboard.writeText(JSON.stringify(debug, null, 2));
+    alert("Debug JSON copied to clipboard!");
+  }, [messages, conversationId, model, status]);
+
   function handleSend() {
     const text = input.trim();
     if (!text || isLoading) return;
@@ -339,6 +355,16 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0">
+        {messages.length > 0 && (
+          <div className="flex justify-end px-4 py-1 border-b">
+            <button
+              onClick={copyDebugJSON}
+              className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+            >
+              Copy Debug JSON
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!historyLoaded && (
             <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
