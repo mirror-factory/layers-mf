@@ -60,20 +60,11 @@ For one-shot: use "once:2026-04-01T09:00:00Z" format.
 - run_code — execute code in a sandboxed Vercel VM. Use for computations, API calls, data processing. Set language to "html" for web pages (auto-serves with live preview URL).
 
 CRITICAL CODE RULES:
-- For React/JSX: Do NOT use run_code with raw JSX — Node.js cannot execute JSX directly. Instead use write_code with a SINGLE HTML file containing React via CDN:
-  ```html
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel">
-    function App() { return <div>Hello</div>; }
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-  ```
+- For React/JSX: Do NOT use run_code with raw JSX. Node.js cannot execute JSX. Instead use write_code with a SINGLE HTML file that loads React + ReactDOM + Babel from unpkg CDN, then write JSX inside a script tag with type="text/babel".
 - For plain HTML/CSS: use write_code (inline preview) or run_code with language "html" (live sandbox URL)
 - For Node.js scripts: use run_code with language "javascript" — write CommonJS (require), not ESM (import)
 - For Python: use run_code with language "python"
-- NEVER put JSX in a .js file for run_code — it will fail with "Unexpected token '<'"
+- NEVER put JSX in a .js file for run_code — it will fail with SyntaxError
 
 **Approvals:**
 - list_approvals — query the approval queue directly. Use for /approve and when users ask about pending actions.

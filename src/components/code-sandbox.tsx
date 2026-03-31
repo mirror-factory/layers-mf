@@ -79,6 +79,8 @@ interface CodeSandboxProps {
   className?: string;
 }
 
+type ViewMode = "code" | "preview" | "split";
+
 export function CodeSandbox({
   filename,
   language,
@@ -87,12 +89,14 @@ export function CodeSandbox({
   contextId,
   className,
 }: CodeSandboxProps) {
-  const [showPreview, setShowPreview] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const shikiLanguage = SHIKI_LANGUAGE_MAP[language] ?? "text";
   const languageLabel = LANGUAGE_LABELS[language] ?? language;
   const canPreview = PREVIEWABLE_LANGUAGES.has(language);
+
+  // Auto-show preview for HTML, default to code for other languages
+  const [viewMode, setViewMode] = useState<ViewMode>(canPreview ? "split" : "code");
 
   const previewContent = useMemo(() => {
     if (!canPreview) return "";
@@ -118,67 +122,80 @@ export function CodeSandbox({
     URL.revokeObjectURL(url);
   }, [code, filename]);
 
+  const showCode = viewMode === "code" || viewMode === "split";
+  const showPreview = (viewMode === "preview" || viewMode === "split") && canPreview;
+
   return (
     <div className={cn("rounded-lg border bg-card overflow-hidden", className)}>
-      {/* Description bar */}
+      {/* Header bar with filename + view toggles */}
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <FileCode2 className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium">{filename}</span>
+          <span className="text-[10px] text-muted-foreground">{languageLabel}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* View mode toggles */}
+          {canPreview && (
+            <div className="flex rounded-md border bg-background overflow-hidden mr-2">
+              <button
+                onClick={() => setViewMode("code")}
+                className={cn("px-2 py-1 text-[10px]", viewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+              >
+                Code
+              </button>
+              <button
+                onClick={() => setViewMode("split")}
+                className={cn("px-2 py-1 text-[10px] border-x", viewMode === "split" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+              >
+                Split
+              </button>
+              <button
+                onClick={() => setViewMode("preview")}
+                className={cn("px-2 py-1 text-[10px]", viewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+              >
+                Preview
+              </button>
+            </div>
+          )}
+          <CodeBlockCopyButton />
+          <Button size="icon" variant="ghost" className="shrink-0 h-7 w-7" onClick={handleDownload} aria-label="Download">
+            <Download size={14} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Description */}
       {description && (
-        <div className="px-3 py-2 border-b bg-muted/30">
+        <div className="px-3 py-1.5 border-b bg-muted/10">
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       )}
 
-      {/* Code block with header */}
-      <CodeBlock code={code} language={shikiLanguage as BundledLanguage} showLineNumbers>
-        <CodeBlockHeader>
-          <CodeBlockTitle>
-            <FileCode2 className="h-3.5 w-3.5" />
-            <CodeBlockFilename>{filename}</CodeBlockFilename>
-            <span className="text-[10px] text-muted-foreground/70">{languageLabel}</span>
-          </CodeBlockTitle>
-          <CodeBlockActions>
-            {canPreview && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => setShowPreview((p) => !p)}
-                aria-label={showPreview ? "Hide preview" : "Show preview"}
-              >
-                {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
-              </Button>
-            )}
-            <CodeBlockCopyButton />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shrink-0"
-              onClick={handleDownload}
-              aria-label="Download file"
-            >
-              <Download size={14} />
-            </Button>
-          </CodeBlockActions>
-        </CodeBlockHeader>
-      </CodeBlock>
-
-      {/* Preview iframe */}
-      {showPreview && canPreview && (
-        <div className="border-t">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b">
-            <Eye className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              Preview
-            </span>
+      {/* Content area — side by side in split mode */}
+      <div className={cn("flex", viewMode === "split" ? "flex-row" : "flex-col")}>
+        {/* Code panel */}
+        {showCode && (
+          <div className={cn("overflow-auto", viewMode === "split" ? "w-1/2 border-r" : "w-full", "max-h-[400px]")}>
+            <CodeBlock code={code} language={shikiLanguage as BundledLanguage} showLineNumbers>
+              <div /> {/* Empty header since we have our own */}
+            </CodeBlock>
           </div>
-          <iframe
-            ref={iframeRef}
-            srcDoc={previewContent}
-            className="w-full min-h-[200px] bg-white"
-            sandbox="allow-scripts"
-            title={`Preview of ${filename}`}
-          />
-        </div>
-      )}
+        )}
+
+        {/* Preview panel */}
+        {showPreview && (
+          <div className={cn(viewMode === "split" ? "w-1/2" : "w-full")}>
+            <iframe
+              ref={iframeRef}
+              srcDoc={previewContent}
+              className="w-full min-h-[300px] bg-white"
+              sandbox="allow-scripts"
+              title={`Preview of ${filename}`}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Context library reference */}
       {contextId && (
