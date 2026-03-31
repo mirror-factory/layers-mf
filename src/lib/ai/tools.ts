@@ -93,8 +93,9 @@ function getTemplateFiles(template: string): { path: string; content: string }[]
         browserslist: { production: [">0.2%", "not dead"], development: ["last 1 chrome version"] },
       }, null, 2) },
       { path: "public/index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>App</title></head><body><noscript>Enable JavaScript</noscript><div id="root"></div></body></html>' },
-      { path: "src/index.js", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<React.StrictMode><App /></React.StrictMode>);" },
+      { path: "src/index.js", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport './index.css';\nimport App from './App';\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<React.StrictMode><App /></React.StrictMode>);" },
       { path: "src/index.css", content: "* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: -apple-system, system-ui, sans-serif; }" },
+      { path: "src/App.js", content: "import React from 'react';\n\nexport default function App() {\n  return <div style={{padding: '2rem', textAlign: 'center'}}>\n    <h1>App is running</h1>\n    <p>Edit src/App.js to get started</p>\n  </div>;\n}" },
     ];
   }
   if (template === "vite") {
@@ -603,10 +604,22 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
           // Template scaffolding — generate boilerplate files so the model only sends custom code
           let allFiles = [...input.files];
-          if (input.template && input.template !== "none") {
-            const templateFiles = getTemplateFiles(input.template);
-            // Template files go first, then user files overwrite any with same path
-            const userPaths = new Set(input.files.map(f => f.path));
+          const userPaths = new Set(input.files.map(f => f.path));
+
+          // Auto-detect template if not specified
+          let template = input.template ?? "none";
+          if (template === "none") {
+            const hasReactFiles = input.files.some(f =>
+              f.path.match(/App\.(jsx?|tsx?)$/) || f.content.includes("from 'react'") || f.content.includes('from "react"')
+            );
+            const hasPackageJson = userPaths.has("package.json");
+            if (hasReactFiles && !hasPackageJson) {
+              template = "react";
+            }
+          }
+
+          if (template !== "none") {
+            const templateFiles = getTemplateFiles(template);
             const scaffoldFiles = templateFiles.filter(f => !userPaths.has(f.path));
             allFiles = [...scaffoldFiles, ...input.files];
           }
