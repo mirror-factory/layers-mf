@@ -116,12 +116,13 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function InlineApproval({ approvalId, reasoning, actionType, targetService, conflictReason }: {
+function InlineApproval({ approvalId, reasoning, actionType, targetService, conflictReason, onExecuted }: {
   approvalId: string;
   reasoning?: string;
   actionType?: string;
   targetService?: string;
   conflictReason?: string;
+  onExecuted?: (result: string) => void;
 }) {
   const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "executing">("pending");
   const [result, setResult] = useState<string | null>(null);
@@ -137,22 +138,24 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
       const data = await res.json();
       if (action === "approve") {
         setStatus("approved");
+        let resultMsg = "Approved";
         if (data.execution?.success) {
           const exec = data.execution;
           if (exec.issue) {
-            setResult(`✓ Created ${exec.issue.identifier}: "${exec.issue.title ?? ""}" — ${exec.issue.url}`);
+            resultMsg = `Approved and executed: Created Linear issue ${exec.issue.identifier} — ${exec.issue.url}`;
           } else if (exec.draft) {
-            setResult(`✓ Draft saved — open_gmail`);
+            resultMsg = `Approved and executed: Email draft saved to Gmail`;
           } else {
-            setResult(`✓ Executed successfully: ${JSON.stringify(exec, null, 2)}`);
+            resultMsg = `Approved and executed successfully`;
           }
         } else if (data.execution?.error) {
-          setResult(`✗ Execution failed: ${data.execution.error}`);
+          resultMsg = `Approved but execution failed: ${data.execution.error}`;
         } else if (data.execution?.reason) {
-          setResult(`Approved (not auto-executed: ${data.execution.reason})`);
-        } else {
-          setResult("Approved");
+          resultMsg = `Approved (not auto-executed: ${data.execution.reason})`;
         }
+        setResult(resultMsg);
+        // Notify the conversation so Granger knows what happened
+        onExecuted?.(resultMsg);
       } else {
         setResult("Rejected");
       }
@@ -220,7 +223,7 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
   );
 }
 
-function ToolCallCard({ part }: { part: ToolPart }) {
+function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApprovalExecuted?: (result: string) => void }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
@@ -348,6 +351,7 @@ function ToolCallCard({ part }: { part: ToolPart }) {
           actionType={"input" in part ? (part.input as Record<string, unknown>)?.action_type as string : undefined}
           targetService={"input" in part ? (part.input as Record<string, unknown>)?.target_service as string : undefined}
           conflictReason={approvalOutput.conflict as string | undefined}
+          onExecuted={onApprovalExecuted}
         />
       )}
     </>
@@ -740,7 +744,7 @@ interface ChatInterfaceInnerProps {
 }
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages }: ChatInterfaceInnerProps) {
-  const [model, setModel] = useState<string>("anthropic/claude-sonnet-4.6");
+  const [model, setModel] = useState<string>("google/gemini-2.5-flash-lite");
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
@@ -1002,7 +1006,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} />
+                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} />
                       ))}
                     </div>
                   )}
