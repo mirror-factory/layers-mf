@@ -532,7 +532,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Multi-file project tool ===
     run_project: tool({
-      description: "Create and run a multi-file project in a sandboxed VM. Use for: full apps with multiple files, npm projects, React apps, APIs with routes, data pipelines with input/output files. More powerful than run_code — supports multiple files, package installation, and reading output files.",
+      description: "Create and run a multi-file project in a sandboxed VM. Use for: full apps with multiple files, npm projects, React apps, APIs with routes, data pipelines. IMPORTANT: Keep projects small (max 5-6 files, each under 200 lines). For React apps, use a single App.js with inline styles instead of separate CSS files. Prefer simplicity over completeness.",
       inputSchema: z.object({
         files: z.array(z.object({
           path: z.string().describe("File path, e.g. 'src/index.js', 'package.json', 'public/index.html'"),
