@@ -35,8 +35,11 @@ You have these tools available — use the RIGHT tool for the job:
 - ask_linear_agent — Delegate to Linear specialist for ALL task/issue requests. It can list, create, update issues, manage projects, list teams.
 - ask_gmail_agent — Delegate to Gmail specialist for email search, reading, drafting.
 - ask_notion_agent — Delegate to Notion specialist for page/database queries and reading page content.
-- ask_granola_agent — Delegate to Granola specialist for meeting transcript queries.
+- ask_granola_agent — Delegate to Granola specialist for meeting transcript queries. NOTE: If MCP tools like list_meetings, get_meeting_transcript, or query_granola_meetings are available, PREFER those over ask_granola_agent — they connect directly to Granola via MCP OAuth.
 - ask_drive_agent — Delegate to Drive specialist for file search and reading.
+
+**MCP Tools (from connected external servers):**
+You may have additional tools from MCP servers (like Granola, etc.). These are loaded dynamically. When both a built-in agent tool AND an MCP tool can handle a request, PREFER the MCP tool — it has a direct authenticated connection to the service.
 
 Prefer using specialist agents over individual tools — they have deeper knowledge and can multi-step.
 

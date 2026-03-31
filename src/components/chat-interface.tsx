@@ -1256,7 +1256,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     "/gmail": (args) => args ? `Use the ask_gmail_agent tool to search emails: ${args}` : "Use the ask_gmail_agent tool to show my recent emails from the last 3 days",
     "/email": (args) => args ? `Use the ask_gmail_agent tool to search: ${args}` : "Use the ask_gmail_agent tool to show my recent emails",
     "/notion": (args) => args ? `Use the ask_notion_agent tool to find: ${args}` : "Use the ask_notion_agent tool to list my pages",
-    "/granola": (args) => args ? `Use the ask_granola_agent tool to find meetings about: ${args}` : "Use the ask_granola_agent tool to show recent meetings",
+    "/granola": (args) => args
+      ? `Search my Granola meetings about: ${args}. Prefer MCP tools (query_granola_meetings, list_meetings, get_meeting_transcript) if available, otherwise fall back to ask_granola_agent.`
+      : "Show my recent Granola meetings. Prefer MCP tools (list_meetings, get_meetings) if available, otherwise fall back to ask_granola_agent.",
     "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
     "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
