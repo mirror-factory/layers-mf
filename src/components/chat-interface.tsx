@@ -9,7 +9,7 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType,
+  Paperclip, Image as ImageIcon, FileType, Zap,
 } from "lucide-react";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
@@ -259,6 +259,12 @@ interface ActiveArtifact {
   files?: { path: string; content: string }[];
   /** "document" artifacts render in TipTap editor instead of code viewer */
   type?: "code" | "document";
+  /** Sandbox snapshot ID for restart capability */
+  snapshotId?: string;
+  /** Run command used to start the sandbox */
+  runCommand?: string;
+  /** Port that was exposed for preview */
+  exposePort?: number;
 }
 
 /** Extract URLs from text (markdown links, bare URLs, and footnote references) */
@@ -385,6 +391,10 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
       : undefined;
     const sFileCount = typeof sbox.fileCount === "number" ? sbox.fileCount : undefined;
 
+    const sSnapshotId = typeof sbox.snapshotId === "string" ? sbox.snapshotId : undefined;
+    const sRunCommand = typeof sbox.runCommand === "string" ? sbox.runCommand : undefined;
+    const sExposePort = typeof sbox.exposePort === "number" ? sbox.exposePort : undefined;
+
     // If we have a previewUrl AND code AND it succeeded, show artifact card
     if (sPreviewUrl && sCode && sExitCode === 0) {
       return (
@@ -396,6 +406,9 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             previewUrl: sPreviewUrl,
             description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}`,
             files: sFiles,
+            snapshotId: sSnapshotId,
+            runCommand: sRunCommand,
+            exposePort: sExposePort,
           })}
           className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
         >
@@ -407,7 +420,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             <p className="text-xs text-muted-foreground">
               {sFileCount && sFileCount > 1 ? `${sFileCount} files` : sLanguage} — Click to open
             </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Preview URL is temporary — it expires after ~2 minutes</p>
+            {sSnapshotId && <p className="text-[10px] text-green-600 mt-0.5">Snapshot saved — can restart anytime</p>}
           </div>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
         </button>
@@ -1875,6 +1888,36 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         >
                           Open in new tab <ExternalLink className="h-2.5 w-2.5" />
                         </a>
+                      )}
+                      {activeArtifact.snapshotId && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("/api/sandbox/restart", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  snapshotId: activeArtifact.snapshotId,
+                                  runCommand: activeArtifact.runCommand ?? "npm start",
+                                  exposePort: activeArtifact.exposePort ?? 3000,
+                                  files: activeArtifact.files,
+                                }),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data.previewUrl) {
+                                  setActiveArtifact((prev) => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                  setArtifactViewMode("preview");
+                                }
+                              }
+                            } catch {
+                              // silent
+                            }
+                          }}
+                          className="text-[10px] text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 mr-1"
+                        >
+                          <Zap className="h-2.5 w-2.5" /> Restart sandbox
+                        </button>
                       )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
                         <X className="h-4 w-4" />

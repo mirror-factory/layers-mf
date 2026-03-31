@@ -655,6 +655,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             outputFiles: result.outputFiles,
             fileCount: input.files.length,
             files: input.files,
+            runCommand: input.run_command,
+            exposePort: input.expose_port,
             success: result.exitCode === 0,
           };
         } catch (err) {
