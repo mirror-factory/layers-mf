@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.snapshotId) {
-    return NextResponse.json({ error: "snapshotId is required" }, { status: 400 });
+  if (!body.snapshotId && (!body.files || body.files.length === 0)) {
+    return NextResponse.json({ error: "Either snapshotId or files are required" }, { status: 400 });
   }
 
   try {

@@ -1889,15 +1889,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           Open in new tab <ExternalLink className="h-2.5 w-2.5" />
                         </a>
                       )}
-                      {activeArtifact.snapshotId && (
+                      {activeArtifact.previewUrl && (
                         <button
                           onClick={async () => {
+                            const btn = document.activeElement as HTMLButtonElement;
+                            if (btn) btn.textContent = "Restarting...";
                             try {
                               const res = await fetch("/api/sandbox/restart", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                  snapshotId: activeArtifact.snapshotId,
+                                  snapshotId: activeArtifact.snapshotId ?? undefined,
                                   runCommand: activeArtifact.runCommand ?? "npm start",
                                   exposePort: activeArtifact.exposePort ?? 3000,
                                   files: activeArtifact.files,
@@ -1914,9 +1916,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                               // silent
                             }
                           }}
-                          className="text-[10px] text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 mr-1"
+                          className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 px-2 py-0.5 text-[10px] text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 transition-colors mr-1"
                         >
-                          <Zap className="h-2.5 w-2.5" /> Restart sandbox
+                          <Zap className="h-2.5 w-2.5" /> Restart
                         </button>
                       )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
