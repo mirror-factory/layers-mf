@@ -32,6 +32,7 @@ import {
   Terminal,
   FileText,
   Share2,
+  BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -49,6 +50,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/priority", label: "Priority & Rules", icon: FileText },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
   { href: "/analytics/costs", label: "AI Costs", icon: Coins },
+  { href: "/how-it-works", label: "How It Works", icon: BookOpen },
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
