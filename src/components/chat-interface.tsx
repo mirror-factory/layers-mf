@@ -722,6 +722,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     downloadFile(json, filename, "application/json");
   }, [getDebugJSON, conversationId]);
 
+  // Slash command definitions with metadata for the autocomplete menu
+  const SLASH_MENU_ITEMS = [
+    { cmd: "/linear", label: "Linear", description: "Query issues, create tasks", icon: "⚡" },
+    { cmd: "/tasks", label: "Tasks", description: "Show in-progress tasks", icon: "📋" },
+    { cmd: "/gmail", label: "Gmail", description: "Search and draft emails", icon: "✉️" },
+    { cmd: "/notion", label: "Notion", description: "Search pages and databases", icon: "📝" },
+    { cmd: "/granola", label: "Granola", description: "Meeting transcripts", icon: "🎙️" },
+    { cmd: "/drive", label: "Drive", description: "Search Google Drive files", icon: "📁" },
+    { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "⏰" },
+    { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "✅" },
+    { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
+    { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
+  ];
+
   // Slash command mappings — expand to explicit tool instructions for the AI
   const SLASH_COMMANDS: Record<string, (args: string) => string> = {
     "/linear": (args) => args ? `Use the ask_linear_agent tool to find issues matching: ${args}` : "Use the ask_linear_agent tool to show all my current issues",
@@ -733,8 +747,23 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
     "/approve": () => "Show me all pending items in the approval queue using search_context",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
-    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status",
+    "/schedule": () => "Show me all scheduled actions and their status",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule",
   };
+
+  // Filter menu items based on what the user has typed
+  const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
+  const slashMenuFiltered = slashMenuVisible
+    ? SLASH_MENU_ITEMS.filter(item => item.cmd.startsWith(input.toLowerCase()))
+    : [];
+  const [slashMenuIndex, setSlashMenuIndex] = useState(0);
+
+  // Reset menu index when filter changes
+  useEffect(() => { setSlashMenuIndex(0); }, [input]);
+
+  const selectSlashCommand = useCallback((cmd: string) => {
+    setInput(cmd + " ");
+  }, []);
 
   function handleSend() {
     let text = input.trim();
@@ -989,16 +1018,62 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
                 ))}
               </SelectContent>
             </Select>
+            {/* Slash command autocomplete menu */}
+            {slashMenuFiltered.length > 0 && (
+              <div className="max-w-3xl mx-auto mb-1">
+                <div className="border rounded-lg bg-background shadow-lg overflow-hidden">
+                  {slashMenuFiltered.map((item, i) => (
+                    <button
+                      key={item.cmd}
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors",
+                        i === slashMenuIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                      )}
+                      onMouseEnter={() => setSlashMenuIndex(i)}
+                      onClick={() => selectSlashCommand(item.cmd)}
+                    >
+                      <span className="text-base w-6 text-center">{item.icon}</span>
+                      <span className="font-mono text-xs font-medium text-primary">{item.cmd}</span>
+                      <span className="text-xs text-muted-foreground">{item.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2 sm:gap-3 flex-1">
               <textarea
                 data-testid="chat-input"
                 aria-label="Chat message input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your documents, meetings, or team…"
+                placeholder="Ask about your documents, meetings, or team… (type / for commands)"
                 rows={1}
                 className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
                 onKeyDown={(e) => {
+                  // Slash menu navigation
+                  if (slashMenuFiltered.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setSlashMenuIndex(i => (i + 1) % slashMenuFiltered.length);
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setSlashMenuIndex(i => (i - 1 + slashMenuFiltered.length) % slashMenuFiltered.length);
+                      return;
+                    }
+                    if (e.key === "Tab" || (e.key === "Enter" && !input.includes(" "))) {
+                      e.preventDefault();
+                      selectSlashCommand(slashMenuFiltered[slashMenuIndex].cmd);
+                      return;
+                    }
+                    if (e.key === "Escape") {
+                      setInput("");
+                      return;
+                    }
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend();
