@@ -33,6 +33,7 @@ export async function PATCH(
   if (typeof body.icon === "string") updates.icon = body.icon;
   if (typeof body.category === "string") updates.category = body.category;
   if (Array.isArray(body.tools)) updates.tools = body.tools;
+  if (Array.isArray(body.referenceFiles)) updates.reference_files = body.referenceFiles;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)

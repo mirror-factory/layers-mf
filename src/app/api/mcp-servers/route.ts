@@ -32,7 +32,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (adminGet as any)
     .from("mcp_servers")
-    .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, last_connected_at, error_message, created_at")
+    .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, last_connected_at, error_message, created_at, oauth_authorize_url, oauth_token_url, oauth_client_id, oauth_client_secret")
     .eq("org_id", member.org_id)
     .order("created_at", { ascending: false });
 
@@ -68,14 +68,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization found" }, { status: 400 });
   }
 
-  let body: { name?: string; url?: string; apiKey?: string; authType?: string; transportType?: "http" | "sse" };
+  let body: {
+    name?: string;
+    url?: string;
+    apiKey?: string;
+    authType?: string;
+    transportType?: "http" | "sse";
+    oauthAuthorizeUrl?: string;
+    oauthTokenUrl?: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { name, url, apiKey, authType, transportType } = body;
+  const { name, url, apiKey, authType, transportType, oauthAuthorizeUrl, oauthTokenUrl, oauthClientId, oauthClientSecret } = body;
 
   if (!name || !url) {
     return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
@@ -91,6 +101,7 @@ export async function POST(request: NextRequest) {
   // For OAuth servers, skip testing — save first, auth later
   const isOAuth = authType === "oauth";
   let discoveredTools: string[] = [];
+  let toolCount = 0;
 
   if (!isOAuth) {
     const testResult = await testMCPConnection(url, apiKey, transportType);
@@ -101,6 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
     discoveredTools = testResult.toolNames;
+    toolCount = testResult.toolCount;
   }
 
   // Insert server record (use admin to bypass RLS)
@@ -120,6 +132,12 @@ export async function POST(request: NextRequest) {
       discovered_tools: discoveredTools.map((t) => ({ name: t })),
       last_connected_at: isOAuth ? null : new Date().toISOString(),
       error_message: isOAuth ? "OAuth authentication required" : null,
+      ...(isOAuth ? {
+        oauth_authorize_url: oauthAuthorizeUrl || null,
+        oauth_token_url: oauthTokenUrl || null,
+        oauth_client_id: oauthClientId || null,
+        oauth_client_secret: oauthClientSecret || null,
+      } : {}),
     })
     .select()
     .single();
@@ -131,5 +149,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ server: data, toolCount: testResult.toolCount }, { status: 201 });
+  return NextResponse.json({ server: data, toolCount }, { status: 201 });
 }

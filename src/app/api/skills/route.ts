@@ -13,6 +13,7 @@ function toSnakeCase(skill: Record<string, unknown>) {
     system_prompt: skill.systemPrompt ?? null,
     tools: skill.tools ?? [],
     config: skill.config ?? {},
+    reference_files: skill.referenceFiles ?? [],
     slash_command: skill.slashCommand ?? null,
     is_active: skill.isActive ?? true,
     is_builtin: false,

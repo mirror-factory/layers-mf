@@ -13,6 +13,10 @@ interface MCPServer {
   discovered_tools: { name: string }[];
   last_connected_at: string | null;
   error_message: string | null;
+  oauth_authorize_url?: string | null;
+  oauth_token_url?: string | null;
+  oauth_client_id?: string | null;
+  oauth_client_secret?: string | null;
 }
 
 export function MCPServerCard({
@@ -122,31 +126,39 @@ export function MCPServerCard({
       {/* OAuth connect button for OAuth servers without tokens */}
       {server.auth_type === "oauth" && !server.last_connected_at && (
         <div className="px-4 pb-3">
-          <button
-            onClick={() => {
-              // Build OAuth authorization URL
-              // The MCP server's auth endpoint is derived from the server URL
-              const serverOrigin = new URL(server.url).origin;
-              const authUrl = `${serverOrigin}/authorize`;
-              const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
-              const state = btoa(JSON.stringify({
-                serverId: server.id,
-                tokenUrl: `${serverOrigin}/token`,
-                clientId: "granger",
-              }));
-              const params = new URLSearchParams({
-                response_type: "code",
-                client_id: "granger",
-                redirect_uri: callbackUrl,
-                state,
-              });
-              window.location.href = `${authUrl}?${params}`;
-            }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            <KeyRound className="h-3 w-3" />
-            Connect with OAuth
-          </button>
+          {server.oauth_authorize_url && server.oauth_client_id ? (
+            <button
+              onClick={() => {
+                const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+                const stateObj = {
+                  serverId: server.id,
+                  tokenUrl: server.oauth_token_url,
+                  clientId: server.oauth_client_id,
+                  clientSecret: server.oauth_client_secret || undefined,
+                };
+                // Use base64url encoding to match the callback decoder
+                const state = btoa(JSON.stringify(stateObj))
+                  .replace(/\+/g, "-")
+                  .replace(/\//g, "_")
+                  .replace(/=+$/, "");
+                const params = new URLSearchParams({
+                  response_type: "code",
+                  client_id: server.oauth_client_id!,
+                  redirect_uri: callbackUrl,
+                  state,
+                });
+                window.location.href = `${server.oauth_authorize_url}?${params}`;
+              }}
+              className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <KeyRound className="h-3 w-3" />
+              Connect with OAuth
+            </button>
+          ) : (
+            <p className="text-xs text-destructive">
+              Missing OAuth configuration — edit this server to add authorize URL and client ID.
+            </p>
+          )}
         </div>
       )}
 

@@ -1,3 +1,5 @@
+import type { ReferenceFile } from "./types";
+
 export interface MarketplaceSkill {
   slug: string;
   name: string;
@@ -75,4 +77,63 @@ export function searchSkills(query: string, category: SkillCategory = 'all'): Ma
     s.category.includes(q) ||
     s.author.toLowerCase().includes(q)
   );
+}
+
+/** Live search the skills.sh marketplace API. Returns real results with install counts. */
+export async function searchSkillsMarketplace(
+  query: string,
+  limit = 20,
+): Promise<{ name: string; source: string; installs: number; id: string; installCommand: string; url: string }[]> {
+  try {
+    const res = await fetch(
+      `https://skills.sh/api/search?q=${encodeURIComponent(query)}`,
+      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.skills ?? [])
+      .slice(0, limit)
+      .map((s: { name: string; source: string; installs: number; id: string }) => ({
+        name: s.name,
+        source: s.source,
+        installs: s.installs,
+        id: s.id,
+        installCommand: `npx skills add ${s.source}`,
+        url: `https://skills.sh/s/${s.id}`,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Format reference files as a context block for inclusion in system prompts. */
+export function formatReferenceFilesContext(files: ReferenceFile[]): string {
+  if (!files || files.length === 0) return "";
+
+  const sections = files.map((file) => {
+    const fence = file.type === "code" ? "```" : file.type === "markdown" ? "```markdown" : "```";
+    return `<reference-file name="${file.name}" type="${file.type}">\n${fence}\n${file.content}\n${fence}\n</reference-file>`;
+  });
+
+  return `\n\n<reference-files>\n${sections.join("\n\n")}\n</reference-files>`;
+}
+
+/** Load reference files for a skill from the database. */
+export async function getSkillReferenceFiles(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  skillId: string,
+): Promise<ReferenceFile[]> {
+  const { data, error } = await supabase
+    .from("skills")
+    .select("reference_files")
+    .eq("id", skillId)
+    .single();
+
+  if (error || !data) return [];
+
+  const files = data.reference_files;
+  if (!Array.isArray(files)) return [];
+
+  return files as ReferenceFile[];
 }

@@ -38,6 +38,13 @@ export default function MCPSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
+  // OAuth config
+  const [oauthAuthorizeUrl, setOauthAuthorizeUrl] = useState("");
+  const [oauthTokenUrl, setOauthTokenUrl] = useState("");
+  const [oauthClientId, setOauthClientId] = useState("");
+  const [oauthClientSecret, setOauthClientSecret] = useState("");
+  const [discovering, setDiscovering] = useState(false);
+
   // Show success/error from OAuth redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -69,6 +76,32 @@ export default function MCPSettingsPage() {
   useEffect(() => {
     fetchServers();
   }, [fetchServers]);
+
+  const handleDiscoverOAuth = async () => {
+    if (!url.trim()) {
+      setFormError("URL is required to discover OAuth endpoints");
+      return;
+    }
+    setDiscovering(true);
+    setFormError("");
+    try {
+      const serverOrigin = new URL(url.trim()).origin;
+      const res = await fetch(`${serverOrigin}/.well-known/oauth-authorization-server`, {
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const meta = await res.json();
+        if (meta.authorization_endpoint) setOauthAuthorizeUrl(meta.authorization_endpoint);
+        if (meta.token_endpoint) setOauthTokenUrl(meta.token_endpoint);
+      } else {
+        setFormError("OAuth discovery not available — enter endpoints manually");
+      }
+    } catch {
+      setFormError("OAuth discovery failed — enter endpoints manually");
+    } finally {
+      setDiscovering(false);
+    }
+  };
 
   const handleTest = async () => {
     if (!url.trim()) {
@@ -116,6 +149,12 @@ export default function MCPSettingsPage() {
           apiKey: apiKey || undefined,
           authType,
           transportType,
+          ...(authType === "oauth" ? {
+            oauthAuthorizeUrl: oauthAuthorizeUrl || undefined,
+            oauthTokenUrl: oauthTokenUrl || undefined,
+            oauthClientId: oauthClientId || undefined,
+            oauthClientSecret: oauthClientSecret || undefined,
+          } : {}),
         }),
       });
       const data = await res.json();
@@ -125,6 +164,10 @@ export default function MCPSettingsPage() {
         setApiKey("");
         setAuthType("bearer");
         setTransportType("http");
+        setOauthAuthorizeUrl("");
+        setOauthTokenUrl("");
+        setOauthClientId("");
+        setOauthClientSecret("");
         setTestState({ status: "idle" });
         fetchServers();
       } else {
@@ -271,14 +314,75 @@ export default function MCPSettingsPage() {
           )}
 
           {authType === "oauth" && (
-            <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 mb-1">
-                <KeyRound className="h-4 w-4" />
-                <span className="font-medium text-foreground text-xs">OAuth Authentication</span>
+            <div className="space-y-3 rounded-md border border-dashed p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground text-xs">OAuth Configuration</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDiscoverOAuth}
+                  disabled={discovering || !url.trim()}
+                  className="text-xs text-primary hover:underline disabled:opacity-50"
+                >
+                  {discovering ? "Discovering..." : "Auto-discover"}
+                </button>
               </div>
-              <p className="text-xs">
-                Save the server first, then use the &quot;Connect with OAuth&quot; button
-                on the server card to authorize access.
+              <div>
+                <label htmlFor="oauth-authorize-url" className="text-xs font-medium text-muted-foreground block mb-1">
+                  Authorize URL
+                </label>
+                <input
+                  id="oauth-authorize-url"
+                  type="url"
+                  placeholder="https://provider.com/oauth/authorize"
+                  value={oauthAuthorizeUrl}
+                  onChange={(e) => setOauthAuthorizeUrl(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label htmlFor="oauth-token-url" className="text-xs font-medium text-muted-foreground block mb-1">
+                  Token URL
+                </label>
+                <input
+                  id="oauth-token-url"
+                  type="url"
+                  placeholder="https://provider.com/oauth/token"
+                  value={oauthTokenUrl}
+                  onChange={(e) => setOauthTokenUrl(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label htmlFor="oauth-client-id" className="text-xs font-medium text-muted-foreground block mb-1">
+                  Client ID
+                </label>
+                <input
+                  id="oauth-client-id"
+                  type="text"
+                  placeholder="your-client-id"
+                  value={oauthClientId}
+                  onChange={(e) => setOauthClientId(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label htmlFor="oauth-client-secret" className="text-xs font-medium text-muted-foreground block mb-1">
+                  Client Secret <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <input
+                  id="oauth-client-secret"
+                  type="password"
+                  placeholder="your-client-secret"
+                  value={oauthClientSecret}
+                  onChange={(e) => setOauthClientSecret(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Save the server, then click &quot;Connect with OAuth&quot; on the card to authorize.
               </p>
             </div>
           )}
@@ -363,9 +467,9 @@ export default function MCPSettingsPage() {
           </button>
         </div>
 
-        {authType === "oauth" && (
+        {authType === "oauth" && !oauthAuthorizeUrl && !oauthClientId && (
           <p className="text-xs text-muted-foreground">
-            Save the server first, then use the &quot;Connect with OAuth&quot; button on the server card to complete authentication.
+            Fill in the OAuth configuration above, or click &quot;Auto-discover&quot; to detect endpoints from the server.
           </p>
         )}
       </div>

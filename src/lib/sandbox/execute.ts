@@ -1,4 +1,5 @@
 import { Sandbox } from "@vercel/sandbox";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export interface SandboxResult {
   stdout: string;
@@ -13,8 +14,85 @@ export interface SandboxResult {
 const activeSandboxes = new Map<string, { sandbox: Sandbox; lastUsed: number }>();
 
 /**
+ * Get the latest snapshot for an org from supabase.
+ * Returns the Vercel snapshot ID if one exists, null otherwise.
+ */
+export async function getLatestSnapshot(orgId: string): Promise<{
+  snapshotId: string;
+  name: string;
+  metadata: Record<string, unknown>;
+} | null> {
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("sandbox_snapshots")
+    .select("snapshot_id, name, metadata")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    snapshotId: data.snapshot_id,
+    name: data.name,
+    metadata: data.metadata ?? {},
+  };
+}
+
+/**
+ * Save a sandbox snapshot to the database after execution.
+ */
+async function saveSnapshot(
+  orgId: string,
+  snapshotId: string,
+  name: string,
+  metadata: Record<string, unknown>,
+  cpuUsageMs: number,
+  networkIngressBytes: number,
+  networkEgressBytes: number,
+): Promise<void> {
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("sandbox_snapshots")
+    .insert({
+      org_id: orgId,
+      snapshot_id: snapshotId,
+      name,
+      metadata,
+      cpu_usage_ms: cpuUsageMs,
+      network_ingress_bytes: networkIngressBytes,
+      network_egress_bytes: networkEgressBytes,
+    });
+}
+
+/** Helper to build Sandbox.create params, restoring from snapshot when available. */
+function createParams(options: {
+  runtime?: string;
+  ports?: number[];
+  timeout?: number;
+  snapshotId?: string;
+}) {
+  if (options.snapshotId) {
+    return {
+      source: { type: "snapshot" as const, snapshotId: options.snapshotId },
+      ports: options.ports ?? [],
+      timeout: options.timeout ?? 600_000,
+    };
+  }
+  return {
+    runtime: options.runtime ?? "node24",
+    ports: options.ports ?? [],
+    timeout: options.timeout ?? 600_000,
+  };
+}
+
+/**
  * Get or create a persistent sandbox for an org.
  * Reuses existing sandbox if still alive, creates new one otherwise.
+ * Restores from snapshot when available for instant start.
  */
 async function getOrCreateSandbox(options: {
   orgId?: string;
@@ -32,16 +110,46 @@ async function getOrCreateSandbox(options: {
     return cached.sandbox;
   }
 
-  // Create new sandbox (from snapshot if available)
-  const sandbox = await Sandbox.create({
-    runtime: options.runtime ?? "node24",
-    ports: options.ports ?? [],
-    timeout: options.timeout ?? 600_000,
-    // ...(options.snapshotId ? { snapshot: options.snapshotId } : {}),
-  });
+  const sandbox = await Sandbox.create(createParams(options));
 
   activeSandboxes.set(key, { sandbox, lastUsed: Date.now() });
   return sandbox;
+}
+
+/**
+ * Take a snapshot of a sandbox, log usage metrics, and persist to DB.
+ * Note: sandbox.snapshot() stops the sandbox as part of the process.
+ * Returns the snapshot ID if successful.
+ */
+async function snapshotAndPersist(
+  sandbox: Sandbox,
+  orgId: string,
+  name: string,
+  metadata: Record<string, unknown>,
+): Promise<string | undefined> {
+  try {
+    // snapshot() stops the sandbox and returns a Snapshot object
+    const snapshot = await sandbox.snapshot();
+    const sid = snapshot.snapshotId;
+
+    // After snapshot (which stops the VM), usage metrics become available
+    const cpuUsageMs = sandbox.activeCpuUsageMs ?? 0;
+    const networkIngress = sandbox.networkTransfer?.ingress ?? 0;
+    const networkEgress = sandbox.networkTransfer?.egress ?? 0;
+
+    console.log(
+      `[sandbox] org=${orgId} cpu=${cpuUsageMs}ms ingress=${networkIngress}B egress=${networkEgress}B snapshot=${sid}`,
+    );
+
+    await saveSnapshot(orgId, sid, name, metadata, cpuUsageMs, networkIngress, networkEgress);
+
+    return sid;
+  } catch (err) {
+    console.error("[sandbox] snapshot failed:", err instanceof Error ? err.message : err);
+    // Best-effort stop if snapshot itself failed
+    try { await sandbox.stop(); } catch { /* best effort */ }
+    return undefined;
+  }
 }
 
 /**
@@ -183,7 +291,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       ? sandbox.domain(options.exposePort)
       : undefined;
 
-    return { stdout, stderr, exitCode, previewUrl, sandboxId: sandbox.id };
+    return { stdout, stderr, exitCode, previewUrl, sandboxId: sandbox.sandboxId };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { stdout: "", stderr: msg, exitCode: 1 };
@@ -197,7 +305,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
 /**
  * Execute a multi-file project in a Vercel Sandbox.
  * Supports: writing multiple files, installing packages, running commands,
- * exposing ports for live preview, and reading output files.
+ * exposing ports for live preview, reading output files, and snapshot persistence.
  */
 export async function executeProject(options: {
   files: { path: string; content: string }[];
@@ -207,12 +315,15 @@ export async function executeProject(options: {
   exposePort?: number;
   runtime?: "node24" | "python3.13";
   timeout?: number;
+  orgId?: string;
+  snapshotId?: string;
 }): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
-  const sandbox = await Sandbox.create({
+  const sandbox = await Sandbox.create(createParams({
     runtime: options.runtime ?? "node24",
     ports: options.exposePort ? [options.exposePort] : [],
     timeout: options.timeout ?? 600_000,
-  });
+    snapshotId: options.snapshotId,
+  }));
 
   try {
     // Write all project files
@@ -220,7 +331,7 @@ export async function executeProject(options: {
       options.files.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
     );
 
-    // Install dependencies if specified
+    // Install dependencies if specified (skip if restored from snapshot with same packages)
     if (options.installCommand) {
       const parts = options.installCommand.split(" ");
       const installResult = await sandbox.runCommand(parts[0], parts.slice(1));
@@ -230,7 +341,7 @@ export async function executeProject(options: {
           stdout: "",
           stderr: `Install failed: ${installStderr}`,
           exitCode: installResult.exitCode,
-          sandboxId: sandbox.id,
+          sandboxId: sandbox.sandboxId,
         };
       }
     }
@@ -257,7 +368,7 @@ export async function executeProject(options: {
         stderr: "",
         exitCode: 0,
         previewUrl,
-        sandboxId: sandbox.id,
+        sandboxId: sandbox.sandboxId,
       };
     }
 
@@ -266,32 +377,51 @@ export async function executeProject(options: {
     const stdout = await result.stdout();
     const stderr = await result.stderr();
 
-    // Read output files if requested
+    // Read output files if requested (one at a time — readFile is singular)
     let outputFiles: { path: string; content: string }[] | undefined;
     if (options.readOutputFiles?.length) {
-      try {
-        const files = await sandbox.readFiles(options.readOutputFiles);
-        outputFiles = options.readOutputFiles.map((path, i) => ({
-          path,
-          content: files[i]?.toString() ?? "",
-        }));
-      } catch {
-        // Some files may not exist — skip
+      outputFiles = [];
+      for (const filePath of options.readOutputFiles) {
+        try {
+          const stream = await sandbox.readFile({ path: filePath });
+          if (stream) {
+            const chunks: Buffer[] = [];
+            for await (const chunk of stream) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            outputFiles.push({ path: filePath, content: Buffer.concat(chunks).toString() });
+          }
+        } catch {
+          // File may not exist — skip
+        }
       }
+    }
+
+    // Snapshot and persist if we have an orgId (also stops the sandbox)
+    let snapshotId: string | undefined;
+    if (options.orgId) {
+      snapshotId = await snapshotAndPersist(sandbox, options.orgId, `project-${Date.now()}`, {
+        files: options.files.map(f => f.path),
+        installCommand: options.installCommand,
+        runCommand: options.runCommand,
+        runtime: options.runtime ?? "node24",
+      });
     }
 
     return {
       stdout,
       stderr,
       exitCode: result.exitCode,
-      sandboxId: sandbox.id,
+      sandboxId: sandbox.sandboxId,
+      snapshotId,
       outputFiles,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { stdout: "", stderr: msg, exitCode: 1 };
   } finally {
-    if (!options.exposePort) {
+    // If we didn't snapshot (no orgId) and not exposing a port, stop the sandbox
+    if (!options.exposePort && !options.orgId) {
       await sandbox.stop();
     }
   }

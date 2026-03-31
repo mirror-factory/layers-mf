@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { testMCPConnection } from "@/lib/mcp/connect";
 
 /**
  * GET /api/mcp/oauth/callback
@@ -26,9 +27,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Parse state — contains serverId and the MCP server's token endpoint
+  // Accept both standard base64 and base64url encoding
   let stateData: { serverId: string; tokenUrl: string; clientId: string; clientSecret?: string };
   try {
-    stateData = JSON.parse(Buffer.from(state, "base64url").toString("utf-8"));
+    // Normalize base64url to standard base64 before decoding
+    const normalized = state.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    stateData = JSON.parse(Buffer.from(padded, "base64").toString("utf-8"));
   } catch {
     return NextResponse.redirect(
       new URL("/mcp?error=Invalid+OAuth+state", request.url)
@@ -77,7 +82,28 @@ export async function GET(request: NextRequest) {
       ? new Date(Date.now() + expiresIn * 1000).toISOString()
       : null;
 
-    // Update the MCP server record with OAuth tokens
+    // Discover tools now that we have a valid token
+    // First fetch the server URL from DB
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: serverRow } = await (supabase as any)
+      .from("mcp_servers")
+      .select("url, transport_type")
+      .eq("id", stateData.serverId)
+      .single();
+
+    let discoveredTools: { name: string }[] = [];
+    if (serverRow?.url) {
+      try {
+        const testResult = await testMCPConnection(serverRow.url, accessToken, serverRow.transport_type);
+        if (testResult.success) {
+          discoveredTools = testResult.toolNames.map((n: string) => ({ name: n }));
+        }
+      } catch {
+        // Tool discovery is best-effort — OAuth still succeeds
+      }
+    }
+
+    // Update the MCP server record with OAuth tokens + discovered tools
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("mcp_servers")
@@ -86,8 +112,10 @@ export async function GET(request: NextRequest) {
         oauth_refresh_token: refreshToken,
         oauth_expires_at: expiresAt,
         auth_type: "oauth",
+        is_active: true,
         last_connected_at: new Date().toISOString(),
         error_message: null,
+        ...(discoveredTools.length > 0 ? { discovered_tools: discoveredTools } : {}),
       })
       .eq("id", stateData.serverId);
 

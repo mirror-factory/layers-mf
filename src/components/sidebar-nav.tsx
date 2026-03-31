@@ -30,6 +30,7 @@ import {
   Clock,
   Puzzle,
   Terminal,
+  FileText,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -43,6 +44,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/schedules", label: "Schedules", icon: Clock },
   { href: "/skills", label: "Skills", icon: Puzzle },
+  { href: "/priority", label: "Priority & Rules", icon: FileText },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
 ];
 
@@ -53,6 +55,7 @@ const CONNECT_ITEMS: NavItem[] = [
 
 const SETTINGS_ITEMS: NavItem[] = [
   { href: "/settings/api-keys", label: "API Keys", icon: Key },
+  { href: "/settings/integrations", label: "Chat SDK", icon: Zap },
   { href: "/settings/permissions", label: "Permissions", icon: Shield },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
   { href: "/settings/team", label: "Team", icon: Users },
@@ -61,6 +64,7 @@ const SETTINGS_ITEMS: NavItem[] = [
 
 const MORE_ITEMS: NavItem[] = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
 ];

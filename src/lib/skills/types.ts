@@ -1,3 +1,9 @@
+export interface ReferenceFile {
+  name: string;
+  content: string;
+  type: "text" | "markdown" | "code";
+}
+
 export interface Skill {
   id: string;
   slug: string;
@@ -10,6 +16,7 @@ export interface Skill {
   systemPrompt?: string;
   tools?: SkillToolDef[];
   config?: Record<string, unknown>;
+  referenceFiles?: ReferenceFile[];
   slashCommand?: string;
   isActive: boolean;
   isBuiltin: boolean;

@@ -7,6 +7,7 @@ import { GranolaClient, LinearApiClient, NotionClient, GmailClient, DriveClient 
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
+import { loadRules, formatRulesForPrompt } from "@/lib/ai/priority-docs";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -308,6 +309,10 @@ export async function POST(request: NextRequest) {
   const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
   const allTools = { ...baseTools, ...mcpTools };
 
+  // Load org-level rules for system prompt injection
+  const orgRules = await loadRules(supabase, orgId);
+  const rulesSection = formatRulesForPrompt(orgRules);
+
   // Inject real-time date/time into instructions
   const now = new Date();
   const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
@@ -318,7 +323,7 @@ export async function POST(request: NextRequest) {
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
-    instructions: AGENT_INSTRUCTIONS + dateTimeContext,
+    instructions: AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
     tools: allTools,
     stopWhen: stepCountIs(20),
     providerOptions: {

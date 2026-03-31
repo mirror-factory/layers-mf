@@ -1,9 +1,17 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, FileText, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SkillReferenceFiles } from "./skill-reference-files";
+
+type ReferenceFile = {
+  name: string;
+  content: string;
+  type: "text" | "markdown" | "code";
+};
 
 type SkillRow = {
   id: string;
@@ -17,6 +25,7 @@ type SkillRow = {
   slash_command: string | null;
   is_active: boolean;
   is_builtin: boolean;
+  reference_files?: ReferenceFile[];
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -37,6 +46,9 @@ export function SkillCard({
   onToggle: (id: string, active: boolean) => void;
   onDelete?: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const refFiles = skill.reference_files ?? [];
+
   return (
     <div
       className={cn(
@@ -78,10 +90,39 @@ export function SkillCard({
             {skill.slash_command}
           </code>
         )}
+        {refFiles.length > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            <FileText className="h-2.5 w-2.5" />
+            {refFiles.length}
+          </span>
+        )}
         <span className="text-[10px] text-muted-foreground ml-auto">
           v{skill.version}
         </span>
       </div>
+
+      {/* Reference files expand toggle */}
+      <button
+        onClick={() => setExpanded((prev) => !prev)}
+        className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 transition-transform duration-200",
+            expanded && "rotate-180"
+          )}
+        />
+        Reference Files
+      </button>
+
+      {expanded && (
+        <div className="mt-2 pt-2 border-t">
+          <SkillReferenceFiles
+            skillId={skill.id}
+            initialFiles={refFiles}
+          />
+        </div>
+      )}
 
       {!skill.is_builtin && onDelete && (
         <div className="flex justify-end mt-2 pt-2 border-t">
