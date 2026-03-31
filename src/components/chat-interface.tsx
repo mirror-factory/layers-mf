@@ -8,9 +8,10 @@ import {
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
 } from "lucide-react";
 import { CodeSandbox } from "@/components/code-sandbox";
+import { CodeBlock } from "@/components/ai-elements/code-block";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -223,7 +224,49 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
   );
 }
 
-function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApprovalExecuted?: (result: string) => void }) {
+interface ActiveArtifact {
+  filename: string;
+  language: string;
+  code: string;
+  description?: string;
+  contextId?: string;
+  previewUrl?: string;
+}
+
+/** Extract URLs from text (markdown links and bare URLs) */
+function extractUrls(text: string): { url: string; title?: string }[] {
+  const seen = new Set<string>();
+  const results: { url: string; title?: string }[] = [];
+  // Match markdown links: [title](url)
+  const mdLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let match;
+  while ((match = mdLinkRegex.exec(text)) !== null) {
+    if (!seen.has(match[2])) {
+      seen.add(match[2]);
+      results.push({ url: match[2], title: match[1] });
+    }
+  }
+  // Match bare URLs not already captured
+  const bareUrlRegex = /(?<!\]\()https?:\/\/[^\s)\]]+/g;
+  while ((match = bareUrlRegex.exec(text)) !== null) {
+    if (!seen.has(match[0])) {
+      seen.add(match[0]);
+      results.push({ url: match[0] });
+    }
+  }
+  return results;
+}
+
+/** Get a display hostname from a URL */
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
@@ -249,16 +292,22 @@ function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApproval
     const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
     const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
 
-    // If we have a previewUrl AND code, render the CodeSandbox split view only
-    // (it already shows code + preview side-by-side — no need for duplicate terminal/iframe)
+    // If we have a previewUrl AND code, show a compact artifact card that opens the side panel
     if (sPreviewUrl && sCode) {
       return (
-        <CodeSandbox
-          filename={sFilename}
-          language={sLanguage}
-          code={sCode}
-          description={sExitCode === 0 ? undefined : `Exit code: ${sExitCode}`}
-        />
+        <button
+          onClick={() => onOpenArtifact?.({ filename: sFilename, language: sLanguage, code: sCode, previewUrl: sPreviewUrl, description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}` })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <FileCode2 className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{sFilename}</p>
+            <p className="text-xs text-muted-foreground">{sLanguage} — Click to open</p>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
       );
     }
 
@@ -305,20 +354,43 @@ function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApproval
   if (isWebSearch) {
     const ws = output as Record<string, unknown>;
     const wsError = typeof ws.error === "string" ? ws.error : null;
+    const wsResult = String(ws.result ?? "");
+    const citations = extractUrls(wsResult);
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
-          <span className="text-sm">🔍</span>
+          <Globe className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs font-medium truncate">Search: {String(ws.query)}</span>
+          <span className="ml-auto text-[10px] text-muted-foreground">{String(ws.source)}</span>
         </div>
         {wsError ? (
           <div className="p-3 text-sm text-red-600">{wsError}</div>
         ) : (
-          <div className="p-3 text-sm whitespace-pre-wrap">{String(ws.result)}</div>
+          <div className="p-3 text-sm prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+            <MessageResponse>{wsResult}</MessageResponse>
+          </div>
         )}
-        <div className="px-3 py-1.5 bg-muted/30 border-t text-[10px] text-muted-foreground">
-          Source: {String(ws.source)}
-        </div>
+        {citations.length > 0 && (
+          <div className="px-3 py-2 bg-muted/30 border-t space-y-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
+            <div className="flex flex-wrap gap-1.5">
+              {citations.map((c, i) => (
+                <a
+                  key={i}
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title={c.url}
+                >
+                  <span className="text-[10px] font-medium text-primary">[{i + 1}]</span>
+                  <span className="truncate max-w-[140px]">{c.title ?? getHostname(c.url)}</span>
+                  <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -327,16 +399,29 @@ function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApproval
   const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>);
   const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
 
-  // Render code artifact as CodeSandbox instead of raw JSON
+  // Render code artifact as a compact card that opens the artifact panel
   if (codeOutput) {
+    const artFilename = codeOutput.filename as string;
+    const artLanguage = codeOutput.language as string;
+    const artCode = codeOutput.code as string;
+    const artDescription = codeOutput.message as string | undefined;
+    const artContextId = codeOutput.context_id as string | undefined;
     return (
-      <CodeSandbox
-        filename={codeOutput.filename as string}
-        language={codeOutput.language as string}
-        code={codeOutput.code as string}
-        description={codeOutput.message as string | undefined}
-        contextId={codeOutput.context_id as string | undefined}
-      />
+      <button
+        onClick={() => onOpenArtifact?.({ filename: artFilename, language: artLanguage, code: artCode, description: artDescription, contextId: artContextId })}
+        className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+          <FileCode2 className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{artFilename}</p>
+          <p className="text-xs text-muted-foreground">
+            {artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
+          </p>
+        </div>
+        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+      </button>
     );
   }
 
@@ -793,6 +878,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
   const [shareOpen, setShareOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevSourceCountRef = useRef(0);
+  const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
+  const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -1073,7 +1160,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} />
+                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); }} />
                       ))}
                     </div>
                   )}
@@ -1209,81 +1296,135 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
         </div>
       </div>
 
-      {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
-      {!contextPanelOpen && (
-        <button
-          onClick={toggleContextPanel}
-          className="hidden lg:flex items-center justify-center w-8 shrink-0 border-l bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          aria-label="Show context panel"
-          title="Show context panel"
-        >
-          <PanelRightOpen className="h-4 w-4" />
-        </button>
-      )}
-
-      {/* Right: context panel (hidden by default, opens on search results) */}
-      {contextPanelOpen && (
-        <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
-          <div className="px-4 py-3 border-b flex items-center gap-2">
-            <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
-            {latestSources.length > 0 && (
-              <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
-            )}
-            <button
-              onClick={toggleContextPanel}
-              className="ml-auto inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="Hide context panel"
-              title="Hide context panel"
-            >
-              <PanelRightClose className="h-3.5 w-3.5" />
-            </button>
+      {/* Right panel — Artifact viewer (takes priority over context panel) */}
+      {activeArtifact ? (
+        <aside className="hidden md:flex w-[50%] min-w-[400px] shrink-0 border-l flex-col bg-card">
+          <div className="flex items-center justify-between px-4 py-2 border-b">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium truncate">{activeArtifact.filename}</span>
+              <span className="text-[10px] text-muted-foreground shrink-0">{activeArtifact.language}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <div className="flex rounded-md border bg-background overflow-hidden mr-1">
+                <button
+                  onClick={() => setArtifactViewMode("code")}
+                  className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                >
+                  Code
+                </button>
+                <button
+                  onClick={() => setArtifactViewMode("preview")}
+                  className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                >
+                  Preview
+                </button>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {latestSources.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
-                <FileText className="h-6 w-6 mb-2 opacity-30" />
-                <p className="text-xs">Send a message to see which documents were retrieved.</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {latestSources.map((s, i) => {
-                  const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
-                  const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
-                  return (
-                    <div key={s.id} className="px-4 py-3 space-y-1.5">
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
-                          {s.description_short && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                              {s.description_short}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <SrcIcon className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground">
-                          {SOURCE_LABEL[s.source_type] ?? s.source_type}
-                        </span>
-                        <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
-                        <span className="text-[10px] text-muted-foreground">
-                          {s.content_type.replace(/_/g, " ")}
-                        </span>
-                      </div>
-                      <ScoreBar score={s.rrf_score} />
-                    </div>
-                  );
-                })}
-              </div>
+          {activeArtifact.description && (
+            <div className="px-4 py-1.5 border-b bg-muted/10">
+              <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
+            </div>
+          )}
+          <div className="flex-1 overflow-auto">
+            {artifactViewMode === "code" && (
+              <CodeBlock code={activeArtifact.code} language={activeArtifact.language as import("shiki").BundledLanguage} showLineNumbers>
+                <div />
+              </CodeBlock>
+            )}
+            {artifactViewMode === "preview" && (
+              <iframe
+                srcDoc={activeArtifact.language === "html" ? activeArtifact.code : `<!DOCTYPE html><html><head><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><pre>${activeArtifact.code.replace(/</g, "&lt;")}</pre></body></html>`}
+                className="w-full h-full bg-white"
+                sandbox="allow-scripts"
+                title={`Preview of ${activeArtifact.filename}`}
+              />
             )}
           </div>
         </aside>
+      ) : (
+        <>
+          {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
+          {!contextPanelOpen && (
+            <button
+              onClick={toggleContextPanel}
+              className="hidden lg:flex items-center justify-center w-8 shrink-0 border-l bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label="Show context panel"
+              title="Show context panel"
+            >
+              <PanelRightOpen className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Right: context panel (hidden by default, opens on search results) */}
+          {contextPanelOpen && (
+            <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
+              <div className="px-4 py-3 border-b flex items-center gap-2">
+                <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
+                {latestSources.length > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
+                )}
+                <button
+                  onClick={toggleContextPanel}
+                  className="ml-auto inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  aria-label="Hide context panel"
+                  title="Hide context panel"
+                >
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {latestSources.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
+                    <FileText className="h-6 w-6 mb-2 opacity-30" />
+                    <p className="text-xs">Send a message to see which documents were retrieved.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {latestSources.map((s, i) => {
+                      const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
+                      const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
+                      return (
+                        <div key={s.id} className="px-4 py-3 space-y-1.5">
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
+                              {s.description_short && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                  {s.description_short}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <SrcIcon className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">
+                              {SOURCE_LABEL[s.source_type] ?? s.source_type}
+                            </span>
+                            <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
+                            <span className="text-[10px] text-muted-foreground">
+                              {s.content_type.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <ScoreBar score={s.rrf_score} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </aside>
+          )}
+        </>
       )}
     </div>
   );
