@@ -1,8 +1,76 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink, KeyRound } from "lucide-react";
+import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink, KeyRound, ChevronDown } from "lucide-react";
 import { MCPServerCard } from "@/components/mcp-server-card";
+import { cn } from "@/lib/utils";
+
+/* ─── Recommended MCP Servers ─── */
+
+interface RecommendedServer {
+  name: string;
+  url: string;
+  icon: string;
+  description: string;
+  toolCount: number;
+  auth: "oauth" | "bearer" | "none";
+  comingSoon?: boolean;
+}
+
+const RECOMMENDED_SERVERS: RecommendedServer[] = [
+  {
+    name: "GitHub",
+    url: "https://api.githubcopilot.com/mcp/",
+    icon: "\uD83D\uDC19",
+    description: "Repos, PRs, issues, commits, Actions, releases",
+    toolCount: 15,
+    auth: "oauth",
+  },
+  {
+    name: "Granola",
+    url: "https://mcp.granola.ai/mcp",
+    icon: "\uD83C\uDF99\uFE0F",
+    description: "Meeting transcripts, notes, and recordings",
+    toolCount: 5,
+    auth: "oauth",
+  },
+  {
+    name: "Slack",
+    url: "https://mcp.slack.com/mcp",
+    icon: "\uD83D\uDCAC",
+    description: "Channels, messages, threads, search",
+    toolCount: 10,
+    auth: "oauth",
+    comingSoon: true,
+  },
+  {
+    name: "Google Drive",
+    url: "https://mcp.googleapis.com/drive/mcp",
+    icon: "\uD83D\uDCC1",
+    description: "Files, docs, sheets, presentations",
+    toolCount: 8,
+    auth: "oauth",
+    comingSoon: true,
+  },
+  {
+    name: "Notion",
+    url: "https://mcp.notion.so/mcp",
+    icon: "\uD83D\uDCDD",
+    description: "Pages, databases, blocks, search",
+    toolCount: 10,
+    auth: "oauth",
+    comingSoon: true,
+  },
+  {
+    name: "Linear",
+    url: "https://mcp.linear.app/mcp",
+    icon: "\u26A1",
+    description: "Issues, projects, cycles, teams",
+    toolCount: 12,
+    auth: "oauth",
+    comingSoon: true,
+  },
+];
 
 type AuthType = "none" | "bearer" | "oauth";
 
@@ -44,6 +112,10 @@ export default function MCPSettingsPage() {
   const [oauthClientId, setOauthClientId] = useState("");
   const [oauthClientSecret, setOauthClientSecret] = useState("");
   const [discovering, setDiscovering] = useState(false);
+
+  // Marketplace state
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [connectingServer, setConnectingServer] = useState<string | null>(null);
 
   // Show success/error from OAuth redirect
   useEffect(() => {
@@ -294,8 +366,101 @@ export default function MCPSettingsPage() {
     }
   };
 
+  const isServerConnected = (serverUrl: string) =>
+    servers.some((s) => s.url === serverUrl);
+
+  const handleConnectRecommended = async (server: RecommendedServer) => {
+    if (server.comingSoon || isServerConnected(server.url)) return;
+    setConnectingServer(server.url);
+    setFormError("");
+
+    try {
+      // Step 1: Discover OAuth endpoints
+      let authorizeUrl = "";
+      let tokenUrl = "";
+      let clientId = "";
+
+      const discoverRes = await fetch("/api/mcp/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverUrl: server.url,
+          appName: server.name,
+          callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+        }),
+      });
+      if (discoverRes.ok) {
+        const discovered = await discoverRes.json();
+        authorizeUrl = discovered.authorizeUrl ?? "";
+        tokenUrl = discovered.tokenUrl ?? "";
+        clientId = discovered.clientId ?? "";
+      }
+
+      if (!authorizeUrl || !clientId) {
+        setFormError(`Could not auto-discover OAuth for ${server.name}. Try adding it manually below.`);
+        setConnectingServer(null);
+        return;
+      }
+
+      // Step 2: Save server
+      const res = await fetch("/api/mcp-servers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: server.name,
+          url: server.url,
+          authType: "oauth",
+          transportType: "http",
+          oauthAuthorizeUrl: authorizeUrl,
+          oauthTokenUrl: tokenUrl,
+          oauthClientId: clientId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || `Failed to save ${server.name}`);
+        setConnectingServer(null);
+        return;
+      }
+
+      // Step 3: PKCE + redirect
+      const codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      const codeChallenge = btoa(
+        String.fromCharCode(...new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))
+        ))
+      ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+      const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+      const stateObj = {
+        serverId: data.server.id,
+        tokenUrl,
+        clientId,
+        codeVerifier,
+      };
+      const state = btoa(JSON.stringify(stateObj))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+        scope: "openid profile email offline_access",
+      });
+
+      window.location.href = `${authorizeUrl}?${params}`;
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Network error");
+      setConnectingServer(null);
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-2xl">
+    <div className="p-4 sm:p-8 max-w-3xl">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 mb-1">
@@ -307,31 +472,103 @@ export default function MCPSettingsPage() {
         </p>
       </div>
 
-      {/* Guide */}
-      <div className="rounded-lg border bg-muted/30 p-4 mb-6 text-sm space-y-3">
-        <p className="font-medium">Connect External Tools via MCP</p>
-        <p className="text-muted-foreground">
-          MCP (Model Context Protocol) lets you connect Granger to any compatible service.
-          Just provide a URL and optional API key — Granger automatically discovers all available tools.
-        </p>
-        <div className="text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground text-xs uppercase tracking-wide">How it works</p>
-          <ol className="list-decimal list-inside space-y-0.5 text-xs">
-            <li>Add a server URL (e.g., https://weather-mcp.io/mcp)</li>
-            <li>Click &quot;Test Connection&quot; to discover tools</li>
-            <li>Save the server — tools are immediately available to Granger</li>
-            <li>Use the tools naturally in chat</li>
-          </ol>
-        </div>
-        <a
-          href="https://smithery.ai"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      {/* How MCP Works — collapsible */}
+      <div className="mb-6 rounded-lg border bg-card">
+        <button
+          onClick={() => setGuideOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent/50 transition-colors rounded-lg"
         >
-          Browse 2000+ MCP servers on Smithery
-          <ExternalLink className="h-3 w-3" />
-        </a>
+          <span>How MCP Works</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              guideOpen && "rotate-180"
+            )}
+          />
+        </button>
+        {guideOpen && (
+          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-2 border-t pt-3">
+            <ul className="space-y-1.5 text-xs">
+              <li><strong className="text-foreground">Free &amp; open protocol</strong> — MCP is an open standard with no licensing costs.</li>
+              <li><strong className="text-foreground">One-click OAuth</strong> — connect with a single click, no API keys needed.</li>
+              <li><strong className="text-foreground">Tools on demand</strong> — each server gives Granger new tools (listed on the card). Tools are called on-demand, not loaded into memory.</li>
+              <li><strong className="text-foreground">Lightweight</strong> — only tool definitions (~50-150 tokens each) are sent per message.</li>
+              <li><strong className="text-foreground">Flexible</strong> — connect or disconnect servers anytime via the toggle.</li>
+            </ul>
+            <a
+              href="https://smithery.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+            >
+              Browse 2000+ MCP servers on Smithery
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Recommended MCP Servers — Marketplace */}
+      <div className="mb-6">
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold">Recommended MCP Servers</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect to popular services with one click — completely free
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {RECOMMENDED_SERVERS.map((server) => {
+            const connected = isServerConnected(server.url);
+            const connecting = connectingServer === server.url;
+            return (
+              <div
+                key={server.url}
+                className="rounded-lg border bg-card p-4 flex items-start gap-3"
+              >
+                <span className="text-2xl shrink-0 mt-0.5">{server.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-sm">{server.name}</h3>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                      {server.toolCount} tools
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-700 dark:text-green-400 font-medium">
+                      Free
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                    {server.description}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  {connected ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-500/10 px-2.5 py-1.5 rounded-md">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Connected
+                    </span>
+                  ) : server.comingSoon ? (
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md">
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleConnectRecommended(server)}
+                      disabled={connecting}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {connecting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Plug className="h-3 w-3" />
+                      )}
+                      {connecting ? "Connecting..." : "Connect"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Add Server Form */}
