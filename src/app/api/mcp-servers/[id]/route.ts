@@ -20,7 +20,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { is_active?: boolean; name?: string };
+  let body: {
+    is_active?: boolean;
+    name?: string;
+    oauth_authorize_url?: string;
+    oauth_token_url?: string;
+    oauth_client_id?: string;
+    oauth_client_secret?: string | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -30,6 +37,10 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
   if (typeof body.name === "string" && body.name.trim()) updates.name = body.name.trim();
+  if (typeof body.oauth_authorize_url === "string") updates.oauth_authorize_url = body.oauth_authorize_url;
+  if (typeof body.oauth_token_url === "string") updates.oauth_token_url = body.oauth_token_url;
+  if (typeof body.oauth_client_id === "string") updates.oauth_client_id = body.oauth_client_id;
+  if (body.oauth_client_secret !== undefined) updates.oauth_client_secret = body.oauth_client_secret;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

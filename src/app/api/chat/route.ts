@@ -337,30 +337,21 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
 
-  // Derive model tier for tagging (e.g. "haiku" from "anthropic/claude-haiku-4-5-20251001")
+  // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
-  const toolNames = Object.keys(allTools);
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
     tools: allTools,
     stopWhen: stepCountIs(20),
-    providerOptions: {
-      gateway: {
-        user: userId,
-        tags: [
-          `model:${modelTier}`,
-          `org:${orgId}`,
-          ...toolNames.slice(0, 10).map((t) => `tool:${t}`),
-        ],
-      },
-    },
+    // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
+    // TODO: pass via callOptions when ToolLoopAgent supports it.
     onStepFinish: ({ usage, toolCalls, text, providerMetadata }) => {
       // Capture gateway generation ID for observability
       const generationId = providerMetadata?.gateway?.generationId as string | undefined;
       if (generationId) {
-        console.log(`[chat] gateway generationId=${generationId}`);
+        console.log(`[chat] gateway generationId=${generationId} user=${userId} model=${modelTier} org=${orgId}`);
       }
       runStepCount++;
       if (text) assistantText += text;

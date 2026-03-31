@@ -499,6 +499,7 @@ export default function MCPSettingsPage() {
               server={server}
               onToggle={handleToggle}
               onDelete={handleDelete}
+              onUpdate={fetchServers}
             />
           ))
         )}

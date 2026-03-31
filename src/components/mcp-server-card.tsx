@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap, KeyRound } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap, KeyRound, Search, Loader2 } from "lucide-react";
 
 interface MCPServer {
   id: string;
@@ -23,13 +23,69 @@ export function MCPServerCard({
   server,
   onToggle,
   onDelete,
+  onUpdate,
 }: {
   server: MCPServer;
   onToggle: (id: string, active: boolean) => void;
   onDelete: (id: string) => void;
+  onUpdate?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showOAuthConfig, setShowOAuthConfig] = useState(false);
+  const [oauthForm, setOauthForm] = useState({
+    authorizeUrl: server.oauth_authorize_url ?? "",
+    tokenUrl: server.oauth_token_url ?? "",
+    clientId: server.oauth_client_id ?? "",
+    clientSecret: server.oauth_client_secret ?? "",
+  });
+  const [discovering, setDiscovering] = useState(false);
+  const [savingOAuth, setSavingOAuth] = useState(false);
+
+  const handleAutoDiscover = useCallback(async () => {
+    setDiscovering(true);
+    try {
+      const origin = new URL(server.url).origin;
+      const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const meta = await res.json();
+        setOauthForm((prev) => ({
+          ...prev,
+          authorizeUrl: meta.authorization_endpoint ?? prev.authorizeUrl,
+          tokenUrl: meta.token_endpoint ?? prev.tokenUrl,
+        }));
+      }
+    } catch {
+      // Discovery not available
+    } finally {
+      setDiscovering(false);
+    }
+  }, [server.url]);
+
+  const handleSaveOAuth = useCallback(async () => {
+    if (!oauthForm.authorizeUrl || !oauthForm.clientId) return;
+    setSavingOAuth(true);
+    try {
+      await fetch(`/api/mcp-servers/${server.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oauth_authorize_url: oauthForm.authorizeUrl,
+          oauth_token_url: oauthForm.tokenUrl,
+          oauth_client_id: oauthForm.clientId,
+          oauth_client_secret: oauthForm.clientSecret || null,
+        }),
+      });
+      onUpdate?.();
+    } catch {
+      // silent
+    } finally {
+      setSavingOAuth(false);
+      setShowOAuthConfig(false);
+    }
+  }, [server.id, oauthForm, onUpdate]);
 
   const toolCount = server.discovered_tools?.length ?? 0;
 
@@ -155,9 +211,75 @@ export function MCPServerCard({
               Connect with OAuth
             </button>
           ) : (
-            <p className="text-xs text-destructive">
-              Missing OAuth configuration — edit this server to add authorize URL and client ID.
-            </p>
+            <div className="space-y-2">
+              {!showOAuthConfig ? (
+                <button
+                  onClick={() => setShowOAuthConfig(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-primary text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/10 transition-colors"
+                >
+                  <KeyRound className="h-3 w-3" />
+                  Configure OAuth to Connect
+                </button>
+              ) : (
+                <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">OAuth Configuration</span>
+                    <button
+                      onClick={handleAutoDiscover}
+                      disabled={discovering}
+                      className="text-[11px] text-primary hover:underline disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {discovering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                      Auto-discover
+                    </button>
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="Authorize URL"
+                    value={oauthForm.authorizeUrl}
+                    onChange={(e) => setOauthForm((f) => ({ ...f, authorizeUrl: e.target.value }))}
+                    className="w-full rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <input
+                    type="url"
+                    placeholder="Token URL"
+                    value={oauthForm.tokenUrl}
+                    onChange={(e) => setOauthForm((f) => ({ ...f, tokenUrl: e.target.value }))}
+                    className="w-full rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Client ID"
+                    value={oauthForm.clientId}
+                    onChange={(e) => setOauthForm((f) => ({ ...f, clientId: e.target.value }))}
+                    className="w-full rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Client Secret (optional)"
+                    value={oauthForm.clientSecret}
+                    onChange={(e) => setOauthForm((f) => ({ ...f, clientSecret: e.target.value }))}
+                    className="w-full rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveOAuth}
+                      disabled={!oauthForm.authorizeUrl || !oauthForm.clientId || savingOAuth}
+                      className="inline-flex items-center gap-1.5 rounded bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {savingOAuth ? <Loader2 className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />}
+                      Save & Connect
+                    </button>
+                    <button
+                      onClick={() => setShowOAuthConfig(false)}
+                      className="text-xs text-muted-foreground hover:text-foreground px-2 py-1.5"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
