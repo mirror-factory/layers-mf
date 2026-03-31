@@ -1,6 +1,7 @@
 import { after } from 'next/server';
 import { getBot } from '@/lib/discord/bot';
 
+export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 /**
