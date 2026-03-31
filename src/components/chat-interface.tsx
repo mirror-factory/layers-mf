@@ -1183,6 +1183,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
+  const [sandboxRestarting, setSandboxRestarting] = useState(false);
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -1891,9 +1892,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       )}
                       {activeArtifact.previewUrl && (
                         <button
+                          disabled={sandboxRestarting}
                           onClick={async () => {
-                            const btn = document.activeElement as HTMLButtonElement;
-                            if (btn) btn.textContent = "Restarting...";
+                            setSandboxRestarting(true);
+                            setArtifactViewMode("preview");
                             try {
                               const res = await fetch("/api/sandbox/restart", {
                                 method: "POST",
@@ -1909,16 +1911,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                 const data = await res.json();
                                 if (data.previewUrl) {
                                   setActiveArtifact((prev) => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
-                                  setArtifactViewMode("preview");
                                 }
                               }
                             } catch {
                               // silent
+                            } finally {
+                              setSandboxRestarting(false);
                             }
                           }}
-                          className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 px-2 py-0.5 text-[10px] text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 transition-colors mr-1"
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors mr-1",
+                            sandboxRestarting
+                              ? "border-primary bg-primary/10 text-primary animate-pulse"
+                              : "border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900"
+                          )}
                         >
-                          <Zap className="h-2.5 w-2.5" /> Restart
+                          {sandboxRestarting ? (
+                            <><Loader2 className="h-2.5 w-2.5 animate-spin" /> Restarting...</>
+                          ) : (
+                            <><Zap className="h-2.5 w-2.5" /> Restart</>
+                          )}
                         </button>
                       )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
@@ -1947,11 +1959,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         {artifactViewMode === "preview" && (
                           activeArtifact.previewUrl ? (
                             <div className="relative w-full h-full">
-                              {/* Loading overlay — hides when iframe loads */}
+                              {/* Loading overlay — shows during restart or initial load */}
+                              {sandboxRestarting && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-20">
+                                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                                  <p className="text-base font-semibold text-foreground">Restarting sandbox...</p>
+                                  <p className="text-sm text-muted-foreground mt-1">Installing packages and building your app</p>
+                                  <p className="text-xs text-muted-foreground mt-3">This may take 15-30 seconds</p>
+                                </div>
+                              )}
                               <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-                                <p className="text-sm font-medium text-foreground">Starting sandbox...</p>
-                                <p className="text-xs text-muted-foreground mt-1">Installing packages and building your app</p>
+                                <p className="text-sm font-medium text-foreground">Loading preview...</p>
+                                <p className="text-xs text-muted-foreground mt-1">Waiting for sandbox to respond</p>
                               </div>
                               <iframe
                                 src={activeArtifact.previewUrl}
