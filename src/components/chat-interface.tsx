@@ -333,7 +333,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
       );
     }
 
-    // Multi-file project without preview → show as artifact card so user can browse all files
+    // Multi-file project → show as artifact card so user can browse all files
     if (sFiles && sFiles.length > 1) {
       return (
         <button
@@ -343,6 +343,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             code: sCode,
             description: sExitCode === 0 ? `${sFiles.length} files` : `Exit code: ${sExitCode}`,
             files: sFiles,
+            previewUrl: sPreviewUrl ?? undefined,
           })}
           className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
         >
