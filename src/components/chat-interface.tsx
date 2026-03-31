@@ -1406,7 +1406,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
             )}
             {artifactViewMode === "preview" && (
               <iframe
-                srcDoc={activeArtifact.language === "html" ? activeArtifact.code : `<!DOCTYPE html><html><head><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><pre>${activeArtifact.code.replace(/</g, "&lt;")}</pre></body></html>`}
+                srcDoc={(() => {
+                  const code = activeArtifact.code;
+                  const lang = activeArtifact.language;
+                  // HTML → render directly
+                  if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
+                  // JSX/TSX/React → wrap in HTML with CDN React + Babel
+                  if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
+                    if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
+                      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
+                    }
+                    // Plain JS → run in script tag
+                    return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
+                  }
+                  // CSS → wrap in styled HTML
+                  if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
+                  // SVG → wrap
+                  if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
+                  // Fallback → show as code
+                  return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
+                })()}
                 className="w-full h-full bg-white"
                 sandbox="allow-scripts"
                 title={`Preview of ${activeArtifact.filename}`}
