@@ -295,8 +295,8 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
     const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
 
-    // If we have a previewUrl AND code, show a compact artifact card that opens the side panel
-    if (sPreviewUrl && sCode) {
+    // If we have a previewUrl AND code AND it succeeded, show artifact card
+    if (sPreviewUrl && sCode && sExitCode === 0) {
       return (
         <button
           onClick={() => onOpenArtifact?.({ filename: sFilename, language: sLanguage, code: sCode, previewUrl: sPreviewUrl, description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}` })}
@@ -404,7 +404,8 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   }
 
   // Check if this is a code artifact from write_code
-  const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>);
+  // Code artifact = has code + language but NOT exitCode (sandbox results have exitCode)
+  const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>) && !("exitCode" in (output as Record<string, unknown>));
   const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
 
   // Render code artifact as a compact card that opens the artifact panel
