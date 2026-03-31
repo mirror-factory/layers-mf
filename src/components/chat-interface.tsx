@@ -1139,7 +1139,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
             </div>
           )}
 
-          {messages.map((m) => {
+          {messages.map((m, idx) => {
             const parts = m.parts as { type: string; text?: string }[];
             const text = getTextContent(parts);
             const toolParts = m.role === "assistant" ? getToolParts(parts) : [];
@@ -1187,6 +1187,60 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
                   {/* Source citations */}
                   {sources.length > 0 && (
                     <SourceCitation sources={sources} />
+                  )}
+
+                  {/* Copy + Branch actions — visible on hover */}
+                  {text && !isStreaming && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                      <button
+                        onClick={() => navigator.clipboard.writeText(text)}
+                        className="p-1 rounded hover:bg-muted"
+                        aria-label="Copy message"
+                        title="Copy message"
+                      >
+                        <Copy className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                      {m.role === "assistant" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1 rounded hover:bg-muted" aria-label="Copy options" title="Copy options">
+                              <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}>
+                              <Copy className="h-3 w-3 mr-2" /> Copy as text
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}>
+                              <FileText className="h-3 w-3 mr-2" /> Copy as Markdown
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {conversationId && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("/api/chat/branch", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ conversationId, messageIndex: idx }),
+                              });
+                              if (!res.ok) return;
+                              const { conversationId: newId } = await res.json();
+                              window.location.href = `/chat?id=${newId}`;
+                            } catch {
+                              // silently fail
+                            }
+                          }}
+                          className="p-1 rounded hover:bg-muted"
+                          aria-label="Branch from here"
+                          title="Branch from here"
+                        >
+                          <GitBranch className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Feedback buttons — assistant messages only, not while streaming */}
