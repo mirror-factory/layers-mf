@@ -5,7 +5,7 @@ import { SkillCard } from "@/components/skill-card";
 import { SkillCreator } from "@/components/skill-creator";
 import { BUILTIN_SKILLS } from "@/lib/skills/types";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Loader2, Puzzle } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2, Puzzle } from "lucide-react";
 
 type SkillRow = {
   id: string;
@@ -20,6 +20,96 @@ type SkillRow = {
   is_active: boolean;
   is_builtin: boolean;
 };
+
+type MarketplaceSkill = {
+  slug: string;
+  name: string;
+  description: string;
+  author: string;
+  category: string;
+  icon: string;
+  source: string;
+};
+
+const MARKETPLACE_SKILLS: MarketplaceSkill[] = [
+  {
+    slug: "nextjs",
+    name: "Next.js Expert",
+    description:
+      "Build and debug Next.js applications with App Router best practices",
+    author: "vercel",
+    category: "development",
+    icon: "▲",
+    source: "vercel-labs/agent-skills@nextjs",
+  },
+  {
+    slug: "react-best-practices",
+    name: "React Best Practices",
+    description:
+      "Write performant React components following Vercel engineering patterns",
+    author: "vercel",
+    category: "development",
+    icon: "⚛️",
+    source: "vercel-labs/agent-skills@react-best-practices",
+  },
+  {
+    slug: "supabase",
+    name: "Supabase Expert",
+    description:
+      "Database design, RLS policies, and Supabase best practices",
+    author: "community",
+    category: "development",
+    icon: "⚡",
+    source: "community/supabase-skill",
+  },
+  {
+    slug: "seo-optimizer",
+    name: "SEO Optimizer",
+    description: "Analyze and optimize content for search engine ranking",
+    author: "community",
+    category: "analysis",
+    icon: "📈",
+    source: "community/seo-skill",
+  },
+  {
+    slug: "api-designer",
+    name: "API Designer",
+    description: "Design RESTful and GraphQL APIs with best practices",
+    author: "community",
+    category: "development",
+    icon: "🔌",
+    source: "community/api-designer",
+  },
+  {
+    slug: "data-analyzer",
+    name: "Data Analyzer",
+    description: "Analyze data sets, generate charts, and find insights",
+    author: "community",
+    category: "analysis",
+    icon: "📊",
+    source: "community/data-analyzer",
+  },
+  {
+    slug: "ux-reviewer",
+    name: "UX Reviewer",
+    description:
+      "Review interfaces for usability, accessibility, and design quality",
+    author: "community",
+    category: "creative",
+    icon: "🎯",
+    source: "community/ux-reviewer",
+  },
+  {
+    slug: "security-auditor",
+    name: "Security Auditor",
+    description:
+      "Audit code and infrastructure for security vulnerabilities",
+    author: "community",
+    category: "development",
+    icon: "🔒",
+    source: "community/security-auditor",
+  },
+];
 
 type Tab = "installed" | "browse" | "create";
 
@@ -88,9 +178,43 @@ export default function SkillsPage() {
     fetchSkills();
   };
 
+  const [installingMarketplace, setInstallingMarketplace] = useState<
+    string | null
+  >(null);
+
+  const handleInstallMarketplace = async (skill: MarketplaceSkill) => {
+    setInstallingMarketplace(skill.slug);
+    try {
+      const res = await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: skill.name,
+          slug: skill.slug,
+          description: skill.description,
+          icon: skill.icon,
+          category: skill.category,
+          systemPrompt: `You are a ${skill.name} specialist. ${skill.description}. Use your expertise to help the user with tasks related to this domain. Source: ${skill.source}`,
+          slashCommand: `/${skill.slug}`,
+          tools: [],
+        }),
+      });
+      if (res.ok) {
+        fetchSkills();
+      }
+    } catch {
+      // silent
+    } finally {
+      setInstallingMarketplace(null);
+    }
+  };
+
   const installedSlugs = new Set(skills.map((s) => s.slug));
   const availableBuiltins = BUILTIN_SKILLS.filter(
     (b) => !installedSlugs.has(b.slug)
+  );
+  const availableMarketplace = MARKETPLACE_SKILLS.filter(
+    (m) => !installedSlugs.has(m.slug)
   );
 
   return (
@@ -286,24 +410,90 @@ export default function SkillsPage() {
                 </div>
               )}
 
-              {availableBuiltins.length === 0 && (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground">
-                    All built-in skills are installed.
-                  </p>
+              {/* Community / Marketplace skills */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">
+                    Community Skills
+                  </h3>
+                  <a
+                    href="https://github.com/vercel-labs/skills"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    skills.sh registry
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
-              )}
-
-              {/* Marketplace teaser */}
-              <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
-                <Puzzle className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                <h3 className="text-sm font-medium mb-1">
-                  Skill Marketplace
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Community and third-party skills coming soon.
-                </p>
+                {availableMarketplace.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {availableMarketplace.map((skill) => (
+                      <div
+                        key={skill.slug}
+                        className="rounded-lg border bg-card p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl shrink-0">
+                            {skill.icon}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium text-sm">
+                              {skill.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {skill.description}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span
+                                className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                  skill.author === "vercel"
+                                    ? "bg-foreground text-background"
+                                    : "bg-muted text-muted-foreground"
+                                )}
+                              >
+                                {skill.author === "vercel"
+                                  ? "Vercel"
+                                  : "Community"}
+                              </span>
+                              <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground">
+                                /{skill.slug}
+                              </code>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleInstallMarketplace(skill)}
+                            disabled={installingMarketplace === skill.slug}
+                            className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            {installingMarketplace === skill.slug ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              "Install"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground">
+                      All community skills are installed.
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {availableBuiltins.length === 0 &&
+                availableMarketplace.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground">
+                      All available skills are installed.
+                    </p>
+                  </div>
+                )}
             </div>
           )}
 

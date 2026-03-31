@@ -36,8 +36,12 @@ export async function GET() {
   if (!member)
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
+  // Use admin client to bypass RLS
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const adminDb = createAdminClient();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (adminDb as any)
     .from("skills")
     .select("*")
     .eq("org_id", member.org_id)
@@ -46,6 +50,38 @@ export async function GET() {
 
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-seed builtins if none exist
+  if (!data || data.length === 0) {
+    const { BUILTIN_SKILLS } = await import("@/lib/skills/types");
+    const rows = BUILTIN_SKILLS.map(s => ({
+      org_id: member.org_id,
+      slug: s.slug,
+      name: s.name,
+      description: s.description,
+      version: s.version,
+      author: s.author,
+      category: s.category,
+      icon: s.icon,
+      system_prompt: s.systemPrompt,
+      tools: s.tools,
+      slash_command: s.slashCommand,
+      is_active: true,
+      is_builtin: true,
+    }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminDb as any).from("skills").upsert(rows, { onConflict: "org_id,slug" });
+    // Re-fetch
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: seeded } = await (adminDb as any)
+      .from("skills")
+      .select("*")
+      .eq("org_id", member.org_id)
+      .order("is_builtin", { ascending: false })
+      .order("name", { ascending: true });
+    return NextResponse.json({ skills: seeded ?? [] });
+  }
+
   return NextResponse.json({ skills: data ?? [] });
 }
 
@@ -82,8 +118,11 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
+  const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
+  const adminPost = createAdmin();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (adminPost as any)
     .from("skills")
     .insert({
       org_id: member.org_id,

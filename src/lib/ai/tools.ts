@@ -646,6 +646,37 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Web search tool ===
+    web_search: tool({
+      description:
+        "Search the web for current information. Use when the user asks about recent events, needs facts you dont know, wants to look something up, or needs real-time data. Returns results with citations.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query"),
+      }),
+      execute: async ({ query }) => {
+        try {
+          const { generateText } = await import("ai");
+          const { gateway } = await import("@/lib/ai/config");
+
+          const { text } = await generateText({
+            model: gateway("perplexity/sonar"),
+            prompt: query,
+          });
+
+          return {
+            query,
+            result: text,
+            source: "perplexity/sonar",
+          };
+        } catch (err) {
+          return {
+            error: err instanceof Error ? err.message : "Search failed",
+            query,
+          };
+        }
+      },
+    }),
+
     // === Skill activation tool ===
     activate_skill: tool({
       description:

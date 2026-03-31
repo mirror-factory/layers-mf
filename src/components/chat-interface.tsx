@@ -296,6 +296,33 @@ function ToolCallCard({ part, onApprovalExecuted }: { part: ToolPart; onApproval
     );
   }
 
+  // Check if this is a web search result from web_search
+  const isWebSearch = isDone && output && typeof output === "object"
+    && "result" in (output as Record<string, unknown>)
+    && "source" in (output as Record<string, unknown>)
+    && "query" in (output as Record<string, unknown>);
+
+  if (isWebSearch) {
+    const ws = output as Record<string, unknown>;
+    const wsError = typeof ws.error === "string" ? ws.error : null;
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+          <span className="text-sm">🔍</span>
+          <span className="text-xs font-medium truncate">Search: {String(ws.query)}</span>
+        </div>
+        {wsError ? (
+          <div className="p-3 text-sm text-red-600">{wsError}</div>
+        ) : (
+          <div className="p-3 text-sm whitespace-pre-wrap">{String(ws.result)}</div>
+        )}
+        <div className="px-3 py-1.5 bg-muted/30 border-t text-[10px] text-muted-foreground">
+          Source: {String(ws.source)}
+        </div>
+      </div>
+    );
+  }
+
   // Check if this is a code artifact from write_code
   const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>);
   const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
@@ -838,9 +865,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
+    { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
     // Dynamic skill commands appended from API
-    ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/skills", "/help", "/email" ].includes(si.cmd)),
+    ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/search", "/skills", "/help", "/email" ].includes(si.cmd)),
   ];
 
   // Slash command mappings — expand to explicit tool instructions for the AI
@@ -857,7 +885,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/schedule": () => "Show me all scheduled actions and their status",
     "/run": (args) => args ? `Use run_code to execute: ${args}` : "Use run_code to execute code in a sandbox. Ask me what to run.",
     "/skills": () => "Show me available skills. List all installed skills with their slash commands and descriptions.",
-    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /skills, /pm, /email, /meeting, /code, /weekly, /brand",
+    "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /pm, /email, /meeting, /code, /weekly, /brand",
     // Dynamic skill slash commands → activate_skill tool
     ...Object.fromEntries(
       skillMenuItems.map((si) => [

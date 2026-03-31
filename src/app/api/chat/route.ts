@@ -66,6 +66,9 @@ CRITICAL CODE RULES:
 - For Python: use run_code with language "python"
 - NEVER put JSX in a .js file for run_code — it will fail with SyntaxError
 
+**Web Search:**
+- web_search — search the web for current information via Perplexity. Use for recent events, facts, real-time data. Returns results with citations.
+
 **Approvals:**
 - list_approvals — query the approval queue directly. Use for /approve and when users ask about pending actions.
 - propose_action — propose any write action for partner approval
@@ -79,6 +82,7 @@ Users may use slash commands. When you see these, call the corresponding tool:
 - /drive → call ask_drive_agent
 - /schedule → list scheduled actions (tell user to visit /schedules page to manage them)
 - /approve → call list_approvals (NOT search_context)
+- /search [query] → call web_search
 
 ## Guidelines
 - Use specialist agents (ask_linear_agent, ask_gmail_agent, etc.) for service-specific requests — they can multi-step and have deeper domain knowledge
@@ -262,10 +266,44 @@ export async function POST(request: NextRequest) {
         .join(" ")
     : "";
 
+  // Load active MCP servers for this org and merge their tools
+  let mcpTools: Record<string, unknown> = {};
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: mcpServers } = await (adminDb as any)
+      .from("mcp_servers")
+      .select("url, api_key_encrypted, transport_type")
+      .eq("org_id", orgId)
+      .eq("is_active", true);
+
+    if (mcpServers?.length) {
+      const { connectMCPServer } = await import("@/lib/mcp/connect");
+      const results = await Promise.allSettled(
+        mcpServers.map((server: { url: string; api_key_encrypted: string | null; transport_type: "http" | "sse" }) =>
+          connectMCPServer({
+            url: server.url,
+            apiKey: server.api_key_encrypted ?? undefined,
+            transportType: server.transport_type,
+          })
+        )
+      );
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          Object.assign(mcpTools, result.value.tools);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[chat] MCP server loading failed:", err);
+  }
+
+  const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
+  const allTools = { ...baseTools, ...mcpTools };
+
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
-    tools: createTools(supabase, orgId, clients, userId, toolPermissions),
+    tools: allTools,
     stopWhen: stepCountIs(6),
     onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;
