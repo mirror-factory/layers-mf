@@ -140,6 +140,111 @@ export default function MCPSettingsPage() {
     setSaving(true);
 
     try {
+      // For OAuth: discover, register, save, and redirect — all in one click
+      if (authType === "oauth") {
+        let authorizeUrl = oauthAuthorizeUrl;
+        let tokenUrl = oauthTokenUrl;
+        let clientId = oauthClientId;
+
+        // Step 1: Auto-discover OAuth endpoints
+        if (!authorizeUrl) {
+          try {
+            const origin = new URL(url.trim()).origin;
+            const discoverRes = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
+              headers: { Accept: "application/json" },
+            });
+            if (discoverRes.ok) {
+              const meta = await discoverRes.json();
+              authorizeUrl = meta.authorization_endpoint ?? "";
+              tokenUrl = meta.token_endpoint ?? "";
+
+              // Step 2: Dynamic client registration if available
+              if (meta.registration_endpoint && !clientId) {
+                const regRes = await fetch(meta.registration_endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    client_name: name.trim() || "Granger",
+                    redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
+                    grant_types: ["authorization_code", "refresh_token"],
+                    response_types: ["code"],
+                    token_endpoint_auth_method: "none",
+                  }),
+                });
+                if (regRes.ok) {
+                  const regData = await regRes.json();
+                  clientId = regData.client_id ?? "";
+                }
+              }
+            }
+          } catch {
+            // Discovery failed — check if user provided manual config
+          }
+        }
+
+        if (!authorizeUrl || !clientId) {
+          setFormError("Could not auto-discover OAuth endpoints. Please enter them manually in the OAuth Configuration section above.");
+          setSaving(false);
+          return;
+        }
+
+        // Step 3: Save server with discovered config
+        const res = await fetch("/api/mcp-servers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            url: url.trim(),
+            authType: "oauth",
+            transportType,
+            oauthAuthorizeUrl: authorizeUrl,
+            oauthTokenUrl: tokenUrl,
+            oauthClientId: clientId,
+            oauthClientSecret: oauthClientSecret || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setFormError(data.error || "Failed to add server");
+          setSaving(false);
+          return;
+        }
+
+        // Step 4: Generate PKCE and redirect to OAuth provider
+        const codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, "0")).join("");
+        const codeChallenge = btoa(
+          String.fromCharCode(...new Uint8Array(
+            await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))
+          ))
+        ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+        const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+        const stateObj = {
+          serverId: data.server.id,
+          tokenUrl,
+          clientId,
+          codeVerifier,
+        };
+        const state = btoa(JSON.stringify(stateObj))
+          .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+        const params = new URLSearchParams({
+          response_type: "code",
+          client_id: clientId,
+          redirect_uri: callbackUrl,
+          state,
+          code_challenge: codeChallenge,
+          code_challenge_method: "S256",
+          scope: "openid profile email offline_access",
+        });
+
+        // Redirect to OAuth provider — user logs in there
+        window.location.href = `${authorizeUrl}?${params}`;
+        return;
+      }
+
+      // Non-OAuth: original flow
       const res = await fetch("/api/mcp-servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,12 +254,6 @@ export default function MCPSettingsPage() {
           apiKey: apiKey || undefined,
           authType,
           transportType,
-          ...(authType === "oauth" ? {
-            oauthAuthorizeUrl: oauthAuthorizeUrl || undefined,
-            oauthTokenUrl: oauthTokenUrl || undefined,
-            oauthClientId: oauthClientId || undefined,
-            oauthClientSecret: oauthClientSecret || undefined,
-          } : {}),
         }),
       });
       const data = await res.json();
@@ -315,20 +414,21 @@ export default function MCPSettingsPage() {
 
           {authType === "oauth" && (
             <div className="space-y-3 rounded-md border border-dashed p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-foreground text-xs">OAuth Configuration</span>
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <div>
+                  <span className="font-medium text-foreground text-xs">OAuth — Auto-configured</span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Just enter the name and URL above, then click &quot;Save & Connect with OAuth&quot;.
+                    Granger will auto-discover the OAuth server, register, and redirect you to log in.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleDiscoverOAuth}
-                  disabled={discovering || !url.trim()}
-                  className="text-xs text-primary hover:underline disabled:opacity-50"
-                >
-                  {discovering ? "Discovering..." : "Auto-discover"}
-                </button>
               </div>
+              <details className="text-xs">
+                <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+                  Advanced: manual OAuth configuration
+                </summary>
+                <div className="mt-2 space-y-2">
               <div>
                 <label htmlFor="oauth-authorize-url" className="text-xs font-medium text-muted-foreground block mb-1">
                   Authorize URL
@@ -381,9 +481,8 @@ export default function MCPSettingsPage() {
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Save the server, then click &quot;Connect with OAuth&quot; on the card to authorize.
-              </p>
+              </div>
+              </details>
             </div>
           )}
 
@@ -467,9 +566,9 @@ export default function MCPSettingsPage() {
           </button>
         </div>
 
-        {authType === "oauth" && !oauthAuthorizeUrl && !oauthClientId && (
+        {authType === "oauth" && (
           <p className="text-xs text-muted-foreground">
-            Fill in the OAuth configuration above, or click &quot;Auto-discover&quot; to detect endpoints from the server.
+            Click &quot;Save &amp; Connect with OAuth&quot; — Granger will auto-discover the OAuth server and redirect you to log in.
           </p>
         )}
       </div>
