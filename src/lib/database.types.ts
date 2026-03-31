@@ -509,6 +509,47 @@ export type Database = {
           },
         ]
       }
+      document_versions: {
+        Row: {
+          id: string
+          context_item_id: string
+          version_number: number
+          title: string
+          content: string
+          edited_by: string
+          change_summary: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          context_item_id: string
+          version_number: number
+          title: string
+          content: string
+          edited_by: string
+          change_summary?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          context_item_id?: string
+          version_number?: number
+          title?: string
+          content?: string
+          edited_by?: string
+          change_summary?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_context_item_id_fkey"
+            columns: ["context_item_id"]
+            isOneToOne: false
+            referencedRelation: "context_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_items: {
         Row: {
           content_hash: string | null

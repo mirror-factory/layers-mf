@@ -28,6 +28,8 @@ import {
   Undo,
   Redo,
   Minus,
+  SendHorizontal,
+  ToggleRight,
 } from "lucide-react";
 import {
   Tooltip,
@@ -91,6 +93,7 @@ export function DocumentEditor({ content, itemId, onSaved }: DocumentEditorProps
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [proposeMode, setProposeMode] = useState(true);
 
   const editor = useEditor({
     extensions: [
@@ -134,22 +137,49 @@ export function DocumentEditor({ content, itemId, onSaved }: DocumentEditorProps
     const text = editor.getText();
 
     try {
-      const res = await fetch(`/api/context/${itemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw_content: text }),
-      });
+      if (proposeMode) {
+        // Propose edit for team approval
+        const res = await fetch(`/api/context/${itemId}/propose-edit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: text }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to save" }));
-        throw new Error(data.error ?? "Failed to save");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Failed to propose edit" }));
+          throw new Error(data.error ?? "Failed to propose edit");
+        }
+
+        const data = await res.json();
+        const required = data.required_approvals ?? 2;
+        setSaveMessage({
+          text: `Edit proposed. Waiting for team approval (${required} required).`,
+          ok: true,
+        });
+        setIsEditing(false);
+        editor.setEditable(false);
+        // Reset editor to original content since edit is pending
+        editor.commands.setContent(contentToHtml(content));
+        setTimeout(() => setSaveMessage(null), 5000);
+      } else {
+        // Direct save
+        const res = await fetch(`/api/context/${itemId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ raw_content: text }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Failed to save" }));
+          throw new Error(data.error ?? "Failed to save");
+        }
+
+        setSaveMessage({ text: "Saved", ok: true });
+        setIsEditing(false);
+        editor.setEditable(false);
+        onSaved?.();
+        setTimeout(() => setSaveMessage(null), 2000);
       }
-
-      setSaveMessage({ text: "Saved", ok: true });
-      setIsEditing(false);
-      editor.setEditable(false);
-      onSaved?.();
-      setTimeout(() => setSaveMessage(null), 2000);
     } catch (err) {
       setSaveMessage({
         text: err instanceof Error ? err.message : "Failed to save",
@@ -158,7 +188,7 @@ export function DocumentEditor({ content, itemId, onSaved }: DocumentEditorProps
     } finally {
       setSaving(false);
     }
-  }, [editor, itemId, onSaved]);
+  }, [editor, itemId, onSaved, proposeMode, content]);
 
   if (!editor) return null;
 
@@ -303,18 +333,44 @@ export function DocumentEditor({ content, itemId, onSaved }: DocumentEditorProps
               <Minus className="h-4 w-4" />
             </ToolbarButton>
 
-            {/* Save */}
+            {/* Save mode toggle + button */}
             <div className="ml-auto flex items-center gap-2">
               {saveMessage && (
                 <span
                   className={cn(
-                    "text-xs font-medium",
+                    "text-xs font-medium max-w-[260px] truncate",
                     saveMessage.ok ? "text-green-600" : "text-destructive",
                   )}
+                  title={saveMessage.text}
                 >
                   {saveMessage.text}
                 </span>
               )}
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setProposeMode((p) => !p)}
+                      className={cn(
+                        "inline-flex items-center gap-1 h-8 px-2 rounded-md text-xs transition-colors",
+                        proposeMode
+                          ? "text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                      )}
+                      aria-label={proposeMode ? "Propose mode (click for direct save)" : "Direct save mode (click for propose)"}
+                    >
+                      <ToggleRight className="h-3.5 w-3.5" />
+                      {proposeMode ? "Propose" : "Direct"}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                    {proposeMode
+                      ? "Edits require team approval before saving"
+                      : "Edits save directly without approval"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 size="sm"
                 className="h-8 gap-1.5 text-xs"
@@ -323,10 +379,12 @@ export function DocumentEditor({ content, itemId, onSaved }: DocumentEditorProps
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : proposeMode ? (
+                  <SendHorizontal className="h-3.5 w-3.5" />
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
-                Save
+                {proposeMode ? "Propose Edit" : "Save"}
               </Button>
             </div>
           </>

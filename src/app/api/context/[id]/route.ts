@@ -116,6 +116,37 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  // --- Document versioning: snapshot current state before updating ---
+  if (updates.raw_content !== undefined || updates.title !== undefined) {
+    const { data: current } = await supabase
+      .from("context_items")
+      .select("title, raw_content")
+      .eq("id", id)
+      .eq("org_id", member.org_id)
+      .single();
+
+    if (current) {
+      const { data: latestVersion } = await supabase
+        .from("document_versions")
+        .select("version_number")
+        .eq("context_item_id", id)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .single();
+
+      const nextVersion = (latestVersion?.version_number ?? 0) + 1;
+
+      await supabase.from("document_versions").insert({
+        context_item_id: id,
+        version_number: nextVersion,
+        title: current.title,
+        content: current.raw_content ?? "",
+        edited_by: user.id,
+        change_summary: body.change_summary ?? `Version ${nextVersion} before edit`,
+      });
+    }
+  }
+
   const { data, error } = await supabase
     .from("context_items")
     .update(updates)

@@ -75,13 +75,13 @@ export default function ConnectToolsPage() {
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => router.push("/onboarding/first-session")}
+            onClick={() => router.push("/onboarding/choose-template")}
           >
             Skip for now
           </Button>
           <Button
             className="flex-1"
-            onClick={() => router.push("/onboarding/first-session")}
+            onClick={() => router.push("/onboarding/choose-template")}
           >
             Continue{selected.size > 0 && ` (${selected.size})`}
           </Button>

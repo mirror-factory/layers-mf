@@ -58,7 +58,7 @@ export default async function ContextDetailPage({
 
   if (!member) notFound();
 
-  const [{ data: item }, { count: versionCount }] = await Promise.all([
+  const [{ data: item }, { count: versionCount }, { count: docVersionCount }] = await Promise.all([
     supabase
       .from("context_items")
       .select(
@@ -72,6 +72,10 @@ export default async function ContextDetailPage({
       .select("id", { count: "exact", head: true })
       .eq("context_item_id", id)
       .eq("org_id", member.org_id),
+    supabase
+      .from("document_versions")
+      .select("id", { count: "exact", head: true })
+      .eq("context_item_id", id),
   ]);
 
   if (!item) notFound();
@@ -130,9 +134,9 @@ export default async function ContextDetailPage({
           <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
             {item.user_title ?? item.title}
           </h1>
-          {(versionCount ?? 0) > 0 && (
+          {((versionCount ?? 0) + (docVersionCount ?? 0)) > 0 && (
             <Badge variant="outline" className="text-xs">
-              {versionCount} {versionCount === 1 ? "version" : "versions"}
+              {(versionCount ?? 0) + (docVersionCount ?? 0)} {((versionCount ?? 0) + (docVersionCount ?? 0)) === 1 ? "version" : "versions"}
             </Badge>
           )}
           <ExportDropdown itemIds={[item.id]} />
