@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Clock,
   Pause,
@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Calendar,
   Zap,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cronToHuman } from "@/lib/cron";
@@ -64,6 +65,35 @@ const SERVICE_COLORS: Record<string, string> = {
   notion: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400",
 };
 
+/** Format a UTC date string into the user's local timezone */
+function formatLocalDate(dateStr: string | null, timezone: string): string {
+  if (!dateStr) return "—";
+  try {
+    return new Date(dateStr).toLocaleString(undefined, {
+      timeZone: timezone,
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return new Date(dateStr).toLocaleString();
+  }
+}
+
+/** Get short timezone label like "ET", "PT" */
+function getTimezoneAbbr(timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    }).formatToParts(new Date());
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? timezone;
+  } catch {
+    return timezone;
+  }
+}
+
 export function ScheduleList({
   initialSchedules,
 }: {
@@ -72,6 +102,13 @@ export function ScheduleList({
   const [schedules, setSchedules] = useState(initialSchedules);
   const [tab, setTab] = useState<Tab>("active");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [timezone, setTimezone] = useState("America/New_York");
+
+  // Detect user timezone on mount
+  useEffect(() => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) setTimezone(tz);
+  }, []);
 
   const filtered = schedules.filter((s) => {
     if (tab === "completed") return s.status === "completed" || s.status === "failed";
@@ -130,7 +167,12 @@ export function ScheduleList({
         return;
       }
 
-      const res = await fetch(endpoint, { method: "POST" });
+      // Execute via schedule-executor API which creates a chat conversation
+      const res = await fetch("/api/schedules/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduleId: schedule.id, endpoint }),
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -142,7 +184,16 @@ export function ScheduleList({
               : s
           )
         );
-        alert(`Completed: ${JSON.stringify(data.summary ?? data, null, 2)}`);
+
+        if (data.conversationId) {
+          // Link to the created conversation
+          const goToChat = confirm(
+            "Task completed. A chat conversation was created with the results. Open it now?"
+          );
+          if (goToChat) {
+            window.location.href = `/chat/${data.conversationId}`;
+          }
+        }
       } else {
         alert(`Error: ${data.error ?? "Unknown error"}`);
       }
@@ -233,12 +284,12 @@ export function ScheduleList({
                       <RefreshCw className="h-3 w-3" />
                       {cronToHuman(schedule.schedule)}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" title={schedule.next_run_at ? formatLocalDate(schedule.next_run_at, timezone) : undefined}>
                       <Calendar className="h-3 w-3" />
                       Next: {formatRelativeDate(schedule.next_run_at)}
                     </span>
                     {schedule.last_run_at && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1" title={formatLocalDate(schedule.last_run_at, timezone)}>
                         <Zap className="h-3 w-3" />
                         Last: {formatRelativeDate(schedule.last_run_at)}
                       </span>
@@ -246,6 +297,10 @@ export function ScheduleList({
                     <span>
                       Runs: {schedule.run_count}
                       {schedule.max_runs != null && `/${schedule.max_runs}`}
+                    </span>
+                    <span className="flex items-center gap-1" title={timezone}>
+                      <Globe className="h-3 w-3" />
+                      {getTimezoneAbbr(timezone)}
                     </span>
                   </div>
                 </div>

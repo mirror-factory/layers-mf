@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap, KeyRound } from "lucide-react";
 
 interface MCPServer {
   id: string;
   name: string;
   url: string;
   transport_type: "http" | "sse";
+  auth_type?: "bearer" | "oauth" | "none";
   is_active: boolean;
   discovered_tools: { name: string }[];
   last_connected_at: string | null;
@@ -58,6 +59,11 @@ export function MCPServerCard({
             <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
               {server.transport_type}
             </span>
+            {server.auth_type && server.auth_type !== "bearer" && (
+              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
+                {server.auth_type}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground truncate mt-0.5">{server.url}</p>
         </div>
@@ -110,6 +116,37 @@ export function MCPServerCard({
       {server.error_message && (
         <div className="px-4 pb-2">
           <p className="text-[11px] text-destructive">{server.error_message}</p>
+        </div>
+      )}
+
+      {/* OAuth connect button for OAuth servers without tokens */}
+      {server.auth_type === "oauth" && !server.last_connected_at && (
+        <div className="px-4 pb-3">
+          <button
+            onClick={() => {
+              // Build OAuth authorization URL
+              // The MCP server's auth endpoint is derived from the server URL
+              const serverOrigin = new URL(server.url).origin;
+              const authUrl = `${serverOrigin}/authorize`;
+              const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+              const state = btoa(JSON.stringify({
+                serverId: server.id,
+                tokenUrl: `${serverOrigin}/token`,
+                clientId: "granger",
+              }));
+              const params = new URLSearchParams({
+                response_type: "code",
+                client_id: "granger",
+                redirect_uri: callbackUrl,
+                state,
+              });
+              window.location.href = `${authUrl}?${params}`;
+            }}
+            className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 transition-colors"
+          >
+            <KeyRound className="h-3 w-3" />
+            Connect with OAuth
+          </button>
         </div>
       )}
 

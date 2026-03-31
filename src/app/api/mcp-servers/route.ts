@@ -30,7 +30,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("mcp_servers")
-    .select("id, name, url, transport_type, is_active, discovered_tools, last_connected_at, error_message, created_at")
+    .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, last_connected_at, error_message, created_at")
     .eq("org_id", member.org_id)
     .order("created_at", { ascending: false });
 
@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
       name,
       url,
       api_key_encrypted: apiKey || null,
+      auth_type: authType ?? (apiKey ? "bearer" : "none"),
       transport_type: transportType ?? "http",
       is_active: true,
       discovered_tools: testResult.toolNames.map((t) => ({ name: t })),

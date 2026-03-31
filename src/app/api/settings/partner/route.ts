@@ -47,6 +47,20 @@ export async function POST(request: NextRequest) {
     updates.default_model = body.default_model || null;
   }
 
+  if (body.timezone !== undefined) {
+    const tz = String(body.timezone).trim();
+    // Validate timezone by attempting to use it with Intl
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tz });
+      updates.timezone = tz;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid timezone" },
+        { status: 400 },
+      );
+    }
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }

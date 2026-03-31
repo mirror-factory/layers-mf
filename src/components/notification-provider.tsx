@@ -40,6 +40,20 @@ export function NotificationProvider() {
     });
   }, []);
 
+  // Auto-detect and save timezone on mount
+  useEffect(() => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) {
+      fetch('/api/settings/partner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timezone: tz }),
+      }).catch(() => {
+        // Timezone sync is non-critical
+      });
+    }
+  }, []);
+
   const notify = useCallback((title: string, body: string, tag: string, url: string) => {
     // Deduplicate within session
     if (seenIdsRef.current.has(tag)) return;
