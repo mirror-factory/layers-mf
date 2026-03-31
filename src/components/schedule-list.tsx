@@ -146,59 +146,43 @@ export function ScheduleList({
     }
   };
 
+  const fetchSchedules = async () => {
+    try {
+      const res = await fetch("/api/schedules");
+      if (res.ok) {
+        const data: ScheduledAction[] = await res.json();
+        setSchedules(data);
+      }
+    } catch {
+      // silently fail — list stays as-is
+    }
+  };
+
   const runNow = async (schedule: ScheduledAction) => {
     setLoadingId(schedule.id);
     try {
-      // Map known target services to their cron endpoints
-      const endpointMap: Record<string, string> = {
-        linear: "/api/cron/linear-check",
-        digest: "/api/cron/digest",
-        discord: "/api/cron/discord-alerts",
-        ingest: "/api/cron/ingest",
-      };
-
-      const endpoint =
-        endpointMap[schedule.target_service ?? ""] ??
-        endpointMap[schedule.action_type] ??
-        null;
-
-      if (!endpoint) {
-        alert(`No endpoint mapped for service: ${schedule.target_service ?? schedule.action_type}`);
-        return;
-      }
-
-      // Execute via schedule-executor API which creates a chat conversation
+      // Use the schedule executor which creates a conversation
       const res = await fetch("/api/schedules/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scheduleId: schedule.id, endpoint }),
+        body: JSON.stringify({ scheduleId: schedule.id }),
       });
       const data = await res.json();
 
-      if (res.ok) {
-        // Update last_run_at locally
-        setSchedules((prev) =>
-          prev.map((s) =>
-            s.id === schedule.id
-              ? { ...s, last_run_at: new Date().toISOString(), run_count: s.run_count + 1 }
-              : s
-          )
-        );
-
-        if (data.conversationId) {
-          // Link to the created conversation
-          const goToChat = confirm(
-            "Task completed. A chat conversation was created with the results. Open it now?"
-          );
-          if (goToChat) {
-            window.location.href = `/chat/${data.conversationId}`;
-          }
+      if (data.conversationId) {
+        // Offer to open the conversation
+        if (confirm("Schedule executed. Open the results conversation?")) {
+          window.location.href = `/chat?id=${data.conversationId}`;
         }
+      } else if (data.error) {
+        alert(data.error);
       } else {
-        alert(`Error: ${data.error ?? "Unknown error"}`);
+        alert("Executed successfully");
       }
-    } catch (err) {
-      alert(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+
+      fetchSchedules(); // refresh list
+    } catch {
+      alert("Failed to execute");
     } finally {
       setLoadingId(null);
     }

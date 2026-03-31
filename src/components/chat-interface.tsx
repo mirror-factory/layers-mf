@@ -807,9 +807,10 @@ function SharePanel({
 interface ChatInterfaceProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
+  initialPrompt?: string | null;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -852,6 +853,7 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
     <ChatInterfaceInner
       conversationId={conversationId}
       initialTemplateId={initialTemplateId}
+      initialPrompt={initialPrompt}
       initialMessages={initialMessages}
     />
   );
@@ -860,10 +862,11 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
 interface ChatInterfaceInnerProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
+  initialPrompt?: string | null;
   initialMessages?: UIMessage[];
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
   const [model, setModel] = useState<string>("google/gemini-2.5-flash-lite");
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -883,6 +886,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
   });
 
   const isLoading = status === "streaming" || status === "submitted";
+  const promptSentRef = useRef(false);
+
+  // Auto-send initial prompt from URL (e.g., sandbox "Try It" buttons)
+  useEffect(() => {
+    if (initialPrompt && !promptSentRef.current && messages.length === 0) {
+      promptSentRef.current = true;
+      sendMessage({ text: initialPrompt });
+    }
+  }, [initialPrompt, messages.length, sendMessage]);
+
   const [shareOpen, setShareOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevSourceCountRef = useRef(0);

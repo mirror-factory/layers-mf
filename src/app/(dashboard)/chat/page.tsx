@@ -17,9 +17,11 @@ interface Conversation {
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const templateParam = searchParams.get("template");
+  const promptParam = searchParams.get("prompt");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialPrompt, setInitialPrompt] = useState<string | null>(promptParam);
 
   const fetchConversations = useCallback(async () => {
     const res = await fetch("/api/conversations");
@@ -33,6 +35,28 @@ export default function ChatPage() {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  // Auto-create a conversation and set the initial prompt when ?prompt= is present
+  useEffect(() => {
+    if (!initialPrompt || loading) return;
+
+    async function autoCreateAndSend() {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const conv: Conversation = await res.json();
+        setConversations((prev) => [conv, ...prev]);
+        setActiveId(conv.id);
+      }
+      // Clear the URL param so it doesn't re-trigger
+      window.history.replaceState({}, "", "/chat");
+    }
+
+    autoCreateAndSend();
+  }, [initialPrompt, loading]);
 
   async function createConversation() {
     const res = await fetch("/api/conversations", {
@@ -180,7 +204,7 @@ export default function ChatPage() {
         </div>
         <div className="flex-1 overflow-hidden">
           {activeId ? (
-            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} />
+            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="h-10 w-10 mb-3 opacity-30" />
