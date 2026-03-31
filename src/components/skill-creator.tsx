@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 const AVAILABLE_TOOLS = [
   { name: "search_context", label: "Search Context" },
   { name: "get_document", label: "Get Document" },
+  { name: "create_document", label: "Create Document" },
+  { name: "edit_document", label: "Edit Document" },
   { name: "ask_linear_agent", label: "Linear Agent" },
   { name: "ask_gmail_agent", label: "Gmail Agent" },
   { name: "ask_granola_agent", label: "Granola Agent" },

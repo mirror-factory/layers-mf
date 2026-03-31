@@ -58,6 +58,10 @@ When users say "every morning check my Linear", convert to cron and call schedul
 When they say "pause that schedule", "change it to hourly", "delete the digest" → use edit_schedule or delete_schedule.
 Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_DATE" = one-shot.
 
+**Documents:**
+- create_document — create a rich-text document artifact (memos, specs, reports, briefs). Opens in TipTap editor panel.
+- edit_document — edit a specific section of an existing document by ID. Use for targeted edits without rewriting the whole thing.
+
 **Code:**
 - write_code — create a code artifact with inline preview. Best for static HTML/CSS/JS.
 - run_code — execute a SINGLE file in a sandboxed VM. Use for quick scripts, computations, API calls.
@@ -308,12 +312,31 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
 
+  // Derive model tier for tagging (e.g. "haiku" from "anthropic/claude-haiku-4-5-20251001")
+  const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
+  const toolNames = Object.keys(allTools);
+
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS + dateTimeContext,
     tools: allTools,
     stopWhen: stepCountIs(20),
-    onStepFinish: ({ usage, toolCalls, text }) => {
+    providerOptions: {
+      gateway: {
+        user: userId,
+        tags: [
+          `model:${modelTier}`,
+          `org:${orgId}`,
+          ...toolNames.slice(0, 10).map((t) => `tool:${t}`),
+        ],
+      },
+    },
+    onStepFinish: ({ usage, toolCalls, text, providerMetadata }) => {
+      // Capture gateway generation ID for observability
+      const generationId = providerMetadata?.gateway?.generationId as string | undefined;
+      if (generationId) {
+        console.log(`[chat] gateway generationId=${generationId}`);
+      }
       runStepCount++;
       if (text) assistantText += text;
       if (usage) {

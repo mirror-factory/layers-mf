@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { SkillCard } from "@/components/skill-card";
 import { SkillCreator } from "@/components/skill-creator";
 import { BUILTIN_SKILLS } from "@/lib/skills/types";
-import { SKILLS_REGISTRY, SKILL_CATEGORIES, searchSkills, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
+import { SKILLS_REGISTRY, SKILL_CATEGORIES, searchSkills, searchSkillsMarketplace, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ExternalLink, Loader2, Puzzle, Search } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2, Puzzle, Search, Code2 } from "lucide-react";
+import { SkillsEditor } from "@/components/skills-editor";
 
 type SkillRow = {
   id: string;
@@ -20,15 +21,17 @@ type SkillRow = {
   slash_command: string | null;
   is_active: boolean;
   is_builtin: boolean;
+  reference_files?: { name: string; content: string; type: "text" | "markdown" | "code" }[];
 };
 
 
-type Tab = "installed" | "browse" | "create";
+type Tab = "installed" | "browse" | "create" | "editor";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "installed", label: "Installed" },
   { value: "browse", label: "Browse" },
   { value: "create", label: "Create" },
+  { value: "editor", label: "Editor" },
 ];
 
 export default function SkillsPage() {
@@ -38,6 +41,8 @@ export default function SkillsPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseCategory, setBrowseCategory] = useState<SkillCategory>("all");
+  const [liveResults, setLiveResults] = useState<{ name: string; source: string; installs: number; id: string; installCommand: string; url: string }[]>([]);
+  const [liveSearching, setLiveSearching] = useState(false);
 
   const fetchSkills = useCallback(async () => {
     try {
@@ -56,6 +61,21 @@ export default function SkillsPage() {
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
+
+  // Debounced live search against skills.sh API
+  useEffect(() => {
+    if (!browseSearch.trim() || browseSearch.length < 2) {
+      setLiveResults([]);
+      return;
+    }
+    setLiveSearching(true);
+    const timeout = setTimeout(async () => {
+      const results = await searchSkillsMarketplace(browseSearch, 20);
+      setLiveResults(results);
+      setLiveSearching(false);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [browseSearch]);
 
   const handleToggle = async (id: string, active: boolean) => {
     // Optimistic update
@@ -133,7 +153,7 @@ export default function SkillsPage() {
   );
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl">
+    <div className={cn("p-4 sm:p-8", tab === "editor" ? "max-w-full" : "max-w-4xl")}>
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 mb-1">
@@ -439,6 +459,58 @@ export default function SkillsPage() {
                 )}
               </div>
 
+              {/* Live skills.sh API results */}
+              {browseSearch.length >= 2 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      Live from skills.sh
+                      {liveSearching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                    </h3>
+                    <span className="text-xs text-muted-foreground">
+                      {liveResults.length} result{liveResults.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  {liveResults.length > 0 ? (
+                    <div className="grid gap-2">
+                      {liveResults.map((skill) => (
+                        <div
+                          key={skill.id}
+                          className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-sm font-mono">{skill.name}</h4>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                {skill.installs.toLocaleString()} installs
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{skill.source}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <code className="text-[10px] px-2 py-1 rounded bg-muted font-mono text-muted-foreground hidden sm:block">
+                              {skill.installCommand}
+                            </code>
+                            <a
+                              href={skill.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              View <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !liveSearching ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      No results from skills.sh for &quot;{browseSearch}&quot;
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
               {/* Footer link */}
               <div className="text-center pt-2 pb-4 border-t">
                 <a
@@ -463,6 +535,9 @@ export default function SkillsPage() {
               }}
             />
           )}
+
+          {/* Editor tab */}
+          {tab === "editor" && <SkillsEditor />}
         </>
       )}
     </div>

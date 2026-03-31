@@ -546,13 +546,20 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       }),
       execute: async (input) => {
         try {
-          const { executeProject } = await import("@/lib/sandbox/execute");
+          const { executeProject, getLatestSnapshot } = await import("@/lib/sandbox/execute");
+
+          // Check for existing snapshot to restore from (skips fresh npm install)
+          const existingSnapshot = await getLatestSnapshot(orgId);
+          const snapshotId = existingSnapshot?.snapshotId;
+
           const result = await executeProject({
             files: input.files,
             installCommand: input.install_command,
             runCommand: input.run_command,
             readOutputFiles: input.read_output_files,
             exposePort: input.expose_port,
+            orgId,
+            snapshotId,
           });
 
           // Save the main file to context library
@@ -577,6 +584,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             exitCode: result.exitCode,
             previewUrl: result.previewUrl ?? null,
             sandboxId: result.sandboxId,
+            snapshotId: result.snapshotId ?? null,
+            restoredFromSnapshot: !!snapshotId,
             outputFiles: result.outputFiles,
             fileCount: input.files.length,
             files: input.files,
@@ -816,13 +825,219 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           return { error: `Skill "${skill_slug}" not found or inactive` };
         }
 
+        // Append reference files to system prompt context
+        const { formatReferenceFilesContext } = await import("@/lib/skills/registry");
+        const referenceFiles = Array.isArray(skill.reference_files) ? skill.reference_files : [];
+        const refContext = formatReferenceFilesContext(referenceFiles);
+        const fullSystemPrompt = skill.system_prompt
+          ? `${skill.system_prompt}${refContext}`
+          : refContext || undefined;
+
         return {
           activated: true,
           name: skill.name,
-          systemPrompt: skill.system_prompt,
+          systemPrompt: fullSystemPrompt,
           tools: skill.tools,
-          message: `Skill "${skill.name}" activated. ${skill.description}`,
+          referenceFiles: referenceFiles.length > 0
+            ? referenceFiles.map((f: { name: string; type: string }) => ({ name: f.name, type: f.type }))
+            : undefined,
+          message: `Skill "${skill.name}" activated. ${skill.description}${referenceFiles.length > 0 ? ` (${referenceFiles.length} reference file${referenceFiles.length > 1 ? "s" : ""} loaded)` : ""}`,
         };
+      },
+    }),
+
+    // === Document tools ===
+    create_document: tool({
+      description:
+        "Create a new rich-text document artifact. Use when the user asks to write a document, memo, spec, brief, report, or any structured text content. The document will appear in the TipTap editor artifact panel.",
+      inputSchema: z.object({
+        title: z.string().describe("Document title"),
+        content: z
+          .string()
+          .describe(
+            "The full document content in HTML format (use <h1>, <h2>, <p>, <ul>, <li>, <blockquote>, <code> tags)",
+          ),
+        description: z
+          .string()
+          .optional()
+          .describe("Brief description of the document"),
+      }),
+      execute: async (input) => {
+        // Save to context_items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from("context_items")
+          .insert({
+            org_id: orgId,
+            source_type: "document",
+            source_id: `doc-${Date.now()}`,
+            content_type: "document",
+            title: input.title,
+            raw_content: input.content,
+            description_short:
+              input.description ?? `Document: ${input.title}`,
+            status: "ready",
+          })
+          .select("id")
+          .single();
+
+        return {
+          documentId: data?.id,
+          title: input.title,
+          content: input.content,
+          description: input.description,
+          type: "document" as const,
+          message: `Created document "${input.title}". It is now in your Context Library.`,
+        };
+      },
+    }),
+
+    edit_document: tool({
+      description:
+        "Edit a specific section of an existing document. Finds the section matching the target text and replaces it. Use when the user asks to modify, update, or rewrite part of a document.",
+      inputSchema: z.object({
+        documentId: z.string().describe("The document ID to edit"),
+        targetText: z
+          .string()
+          .describe(
+            "The existing text to find and replace (does not need to be exact, closest match will be used)",
+          ),
+        replacement: z.string().describe("The new text to replace it with"),
+        editDescription: z
+          .string()
+          .optional()
+          .describe("Brief description of the edit"),
+      }),
+      execute: async (input) => {
+        // Fetch the document
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: doc, error: fetchErr } = await (supabase as any)
+          .from("context_items")
+          .select("id, title, raw_content")
+          .eq("id", input.documentId)
+          .eq("org_id", orgId)
+          .single();
+
+        if (fetchErr || !doc) {
+          return { error: "Document not found" };
+        }
+
+        const currentContent = (doc.raw_content as string) ?? "";
+
+        // Try exact match first, then fuzzy
+        let newContent: string;
+        if (currentContent.includes(input.targetText)) {
+          newContent = currentContent.replace(
+            input.targetText,
+            input.replacement,
+          );
+        } else {
+          // Fuzzy: find the closest substring match
+          const targetLower = input.targetText.toLowerCase();
+          const contentLower = currentContent.toLowerCase();
+          const idx = contentLower.indexOf(
+            targetLower.slice(0, Math.min(50, targetLower.length)),
+          );
+          if (idx >= 0) {
+            // Find the end of the closest matching region
+            const endIdx = idx + input.targetText.length;
+            newContent =
+              currentContent.slice(0, idx) +
+              input.replacement +
+              currentContent.slice(Math.min(endIdx, currentContent.length));
+          } else {
+            // Append as a fallback
+            newContent = currentContent + "\n\n" + input.replacement;
+          }
+        }
+
+        // Update the document
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("context_items")
+          .update({
+            raw_content: newContent,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", input.documentId)
+          .eq("org_id", orgId);
+
+        return {
+          documentId: input.documentId,
+          title: doc.title,
+          content: newContent,
+          type: "document" as const,
+          editDescription: input.editDescription,
+          message: `Updated document "${doc.title}".${input.editDescription ? ` Change: ${input.editDescription}` : ""}`,
+        };
+      },
+    }),
+
+    // === System-wide interview tool (CLIENT-SIDE — no execute) ===
+    // This tool has NO execute function, which makes it a client-side tool.
+    // The AI calls it, the client renders an interactive UI, and the user's
+    // response is sent back via addToolOutput().
+    ask_user: tool({
+      description:
+        "Ask the user one or more structured questions to gather input, preferences, or feedback. " +
+        "Use this whenever you need user input before proceeding — e.g. when creating a skill, " +
+        "building something new, choosing between options, or gathering requirements. " +
+        "The user sees an interactive form above the chat input with buttons for choices " +
+        "and text fields for free-form answers. You can ask multiple questions at once.",
+      inputSchema: z.object({
+        title: z.string().describe("A short heading for the question panel (e.g. 'Skill Configuration', 'Build Options')"),
+        description: z.string().optional().describe("Optional context text shown below the title"),
+        questions: z.array(
+          z.object({
+            id: z.string().describe("Unique ID for this question (e.g. 'name', 'framework', 'description')"),
+            label: z.string().describe("The question text shown to the user"),
+            type: z.enum(["choice", "text", "multiselect"]).describe(
+              "choice = single-select buttons, text = free-form input, multiselect = multiple choice checkboxes"
+            ),
+            options: z.array(z.string()).optional().describe("Options for choice/multiselect types"),
+            placeholder: z.string().optional().describe("Placeholder text for text inputs"),
+            required: z.boolean().optional().describe("Whether this question must be answered (default true)"),
+          })
+        ).min(1).describe("The questions to ask — at least one required"),
+      }),
+      // NO execute function → client-side tool
+    }),
+
+    // === Real skills.sh marketplace search ===
+    search_skills_marketplace: tool({
+      description:
+        "Search the skills.sh marketplace for agent skills. Returns real results with install counts and sources. " +
+        "Use when the user asks to find, browse, or search for skills to install.",
+      inputSchema: z.object({
+        query: z.string().describe("Search query (e.g. 'react', 'testing', 'nextjs', 'security')"),
+        limit: z.number().min(1).max(20).optional().describe("Max results to return (default 10)"),
+      }),
+      execute: async ({ query, limit: maxResults }: { query: string; limit?: number }) => {
+        try {
+          const res = await fetch(
+            `https://skills.sh/api/search?q=${encodeURIComponent(query)}`,
+            { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) }
+          );
+          if (!res.ok) {
+            return { error: `skills.sh search failed: ${res.status}`, query };
+          }
+          const data = await res.json();
+          const skills = (data.skills ?? []).slice(0, maxResults ?? 10);
+          return {
+            query,
+            count: skills.length,
+            totalAvailable: data.count ?? skills.length,
+            skills: skills.map((s: { name: string; source: string; installs: number; id: string }) => ({
+              name: s.name,
+              source: s.source,
+              installs: s.installs,
+              installCommand: `npx skills add ${s.source}`,
+              url: `https://skills.sh/s/${s.id}`,
+            })),
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Search failed", query };
+        }
       },
     }),
   };

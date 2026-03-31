@@ -5,13 +5,16 @@ import { DefaultChatTransport, UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User, Square,
-  FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
+  FileText, Mic, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
+  Paperclip, Image as ImageIcon, FileType,
 } from "lucide-react";
+import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
+import { TiptapEditor } from "@/components/tiptap-editor";
 import { FileTree, buildFileTree, findFileNode } from "@/components/file-tree";
 import {
   DropdownMenu,
@@ -86,6 +89,26 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
   slack: Hash,
   upload: Upload,
 };
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_FILE_TYPES = [
+  "image/jpeg", "image/png", "image/gif", "image/webp",
+  "application/pdf",
+  "text/plain", "text/markdown", "text/csv",
+];
+const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.csv";
+
+interface PendingFile {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+}
+
+function getFileIcon(type: string) {
+  if (type.startsWith("image/")) return ImageIcon;
+  if (type === "application/pdf") return FileType;
+  return FileText;
+}
 
 function getTextContent(parts: { type: string; text?: string }[]): string {
   return parts
@@ -234,6 +257,8 @@ interface ActiveArtifact {
   previewUrl?: string;
   /** Multi-file support for run_project results */
   files?: { path: string; content: string }[];
+  /** "document" artifacts render in TipTap editor instead of code viewer */
+  type?: "code" | "document";
 }
 
 /** Extract URLs from text (markdown links, bare URLs, and footnote references) */
@@ -272,11 +297,67 @@ function getHostname(url: string): string {
   }
 }
 
+/** Inline TipTap editor for document artifacts in the artifact panel */
+function DocumentArtifactEditor({ content, documentId }: { content: string; documentId?: string }) {
+  const [editorContent, setEditorContent] = useState(content);
+
+  // Sync when content changes externally (e.g. new artifact selected)
+  useEffect(() => {
+    setEditorContent(content);
+  }, [content]);
+
+  return (
+    <TiptapEditor
+      content={editorContent}
+      onChange={setEditorContent}
+      editable={true}
+      documentId={documentId}
+      placeholder="Document content..."
+      className="min-h-full"
+    />
+  );
+}
+
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
+
+  // ask_user tool: show compact summary once answered, hide while pending (InterviewUI handles it)
+  if (part.type === "tool-ask_user") {
+    if (part.state === "input-available") return null; // InterviewUI renders above prompt
+    if (part.state === "output-available" && "output" in part) {
+      try {
+        const answers = typeof part.output === "string" ? JSON.parse(part.output) : part.output;
+        if (answers?._skipped) {
+          return (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+              <MessageSquareText className="h-3.5 w-3.5" />
+              <span>Question skipped</span>
+            </div>
+          );
+        }
+        const input = "input" in part ? (part.input as { title?: string }) : {};
+        return (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs space-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <MessageSquareText className="h-3.5 w-3.5" />
+              <span className="font-medium">{input?.title ?? "User Response"}</span>
+            </div>
+            {Object.entries(answers as Record<string, unknown>).map(([key, val]) => (
+              <div key={key} className="flex gap-2">
+                <span className="text-muted-foreground">{key}:</span>
+                <span className="font-medium">{Array.isArray(val) ? val.join(", ") : String(val)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      } catch {
+        // Fall through to default rendering
+      }
+    }
+  }
 
   // Check if this is an approval proposal
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
@@ -448,6 +529,41 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
           </div>
         )}
       </div>
+    );
+  }
+
+  // Check if this is a document artifact from create_document or edit_document
+  const isDocArtifact = isDone && output && typeof output === "object" && "type" in (output as Record<string, unknown>) && (output as Record<string, unknown>).type === "document";
+  const docOutput = isDocArtifact ? output as Record<string, unknown> : null;
+
+  if (docOutput) {
+    const docTitle = (docOutput.title as string) ?? "Document";
+    const docContent = (docOutput.content as string) ?? "";
+    const docDescription = docOutput.description as string | undefined;
+    const docId = docOutput.documentId as string | undefined;
+    return (
+      <button
+        onClick={() => onOpenArtifact?.({
+          filename: `${docTitle}.html`,
+          language: "html",
+          code: docContent,
+          description: docDescription ?? (docOutput.editDescription as string | undefined) ?? docOutput.message as string | undefined,
+          contextId: docId,
+          type: "document",
+        })}
+        className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/10 text-blue-500 shrink-0">
+          <FileText className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{docTitle}</p>
+          <p className="text-xs text-muted-foreground">
+            Document — Click to open editor
+          </p>
+        </div>
+        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+      </button>
     );
   }
 
@@ -919,11 +1035,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [model, setModel] = useState<string>("google/gemini-2.5-flash-lite");
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
 
-  const { messages, sendMessage, status, error, stop } = useChat({
+  const { messages, sendMessage, addToolOutput, status, error, stop } = useChat({
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -937,6 +1057,43 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const isLoading = status === "streaming" || status === "submitted";
   const promptSentRef = useRef(false);
 
+  // Detect pending ask_user tool calls that need user interaction
+  const pendingInterview = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== "assistant") continue;
+      const parts = m.parts as { type: string; state?: string; toolCallId?: string; input?: Record<string, unknown> }[];
+      for (const part of parts) {
+        if (part.type === "tool-ask_user" && part.state === "input-available" && part.input) {
+          return {
+            toolCallId: part.toolCallId!,
+            title: (part.input.title as string) ?? "Question",
+            description: part.input.description as string | undefined,
+            questions: (part.input.questions as { id: string; label: string; type: "choice" | "text" | "multiselect"; options?: string[]; placeholder?: string; required?: boolean }[]) ?? [],
+          };
+        }
+      }
+    }
+    return null;
+  })();
+
+  const handleInterviewSubmit = useCallback((toolCallId: string, answers: Record<string, string | string[]>) => {
+    // Don't await — avoid deadlocks
+    addToolOutput({
+      tool: "ask_user",
+      toolCallId,
+      output: JSON.stringify(answers),
+    });
+  }, [addToolOutput]);
+
+  const handleInterviewDismiss = useCallback((toolCallId: string) => {
+    addToolOutput({
+      tool: "ask_user",
+      toolCallId,
+      output: JSON.stringify({ _skipped: true }),
+    });
+  }, [addToolOutput]);
+
   // Auto-send initial prompt from URL (e.g., sandbox "Try It" buttons)
   useEffect(() => {
     if (initialPrompt && !promptSentRef.current && messages.length === 0) {
@@ -944,6 +1101,67 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       sendMessage({ text: initialPrompt });
     }
   }, [initialPrompt, messages.length, sendMessage]);
+
+  const addFiles = useCallback((fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    const valid: PendingFile[] = [];
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+      if (!ACCEPTED_FILE_TYPES.includes(file.type) && !file.name.match(/\.(md|txt|csv)$/i)) {
+        alert(`${file.name}: unsupported file type`);
+        continue;
+      }
+      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+      valid.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, file, previewUrl });
+    }
+    setPendingFiles(prev => [...prev, ...valid]);
+  }, []);
+
+  const removeFile = useCallback((id: string) => {
+    setPendingFiles(prev => {
+      const removed = prev.find(f => f.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  }, [addFiles]);
+
+  // Convert pending files to a DataTransfer-backed FileList for sendMessage
+  const buildFileList = useCallback((): FileList | undefined => {
+    if (pendingFiles.length === 0) return undefined;
+    const dt = new DataTransfer();
+    for (const pf of pendingFiles) dt.items.add(pf.file);
+    return dt.files;
+  }, [pendingFiles]);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
@@ -1077,7 +1295,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
   function handleSend() {
     let text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && pendingFiles.length === 0) || isLoading) return;
+
+    // Default text when sending files without a message
+    if (!text && pendingFiles.length > 0) {
+      text = "Please analyze the attached file(s).";
+    }
 
     // Parse slash commands — transform /command into AI-directed prompts
     const slashMatch = text.match(/^(\/\w+)\s*(.*)?$/);
@@ -1091,8 +1314,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       }
     }
 
+    const files = buildFileList();
     setInput("");
-    sendMessage({ text });
+    // Clean up object URLs before clearing
+    for (const pf of pendingFiles) {
+      if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl);
+    }
+    setPendingFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    sendMessage({ text, files });
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -1208,7 +1439,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             const toolParts = m.role === "assistant" ? getToolParts(parts) : [];
             const sources = getSearchSources(toolParts);
 
-            if (!text && toolParts.length === 0 && m.role !== "user") return null;
+            const fileParts = (parts as { type: string }[]).filter(p => p.type === "file");
+            if (!text && toolParts.length === 0 && fileParts.length === 0 && m.role !== "user") return null;
 
             const isLastAssistant =
               m.role === "assistant" &&
@@ -1235,6 +1467,32 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       ))}
                     </div>
                   )}
+
+                  {/* File attachments in messages */}
+                  {(() => {
+                    const fileParts = (parts as { type: string; mediaType?: string; url?: string; filename?: string }[])
+                      .filter(p => p.type === "file");
+                    if (fileParts.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-2 mb-1">
+                        {fileParts.map((fp, fi) => (
+                          fp.mediaType?.startsWith("image/") ? (
+                            <img
+                              key={fi}
+                              src={fp.url}
+                              alt={fp.filename ?? "attachment"}
+                              className="max-h-40 rounded-lg border object-cover"
+                            />
+                          ) : (
+                            <div key={fi} className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
+                              <FileType className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate max-w-[120px]">{fp.filename ?? "file"}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Text response */}
                   {text && (
@@ -1336,7 +1594,24 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div ref={bottomRef} />
         </div>
 
-        <div className="border-t p-3 sm:p-4">
+        <div
+          className="border-t p-3 sm:p-4 relative"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag-drop overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg m-1">
+              <div className="flex flex-col items-center gap-2 text-primary">
+                <Upload className="h-8 w-8" />
+                <span className="text-sm font-medium">Drop files here</span>
+                <span className="text-xs text-muted-foreground">Images, PDFs, text files (max 10MB)</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
               <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">
@@ -1350,6 +1625,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 ))}
               </SelectContent>
             </Select>
+            {/* Interview UI — renders above prompt when ask_user tool is pending */}
+            {pendingInterview && (
+              <div className="mb-2 px-2">
+                <InterviewUI
+                  interview={pendingInterview}
+                  onSubmit={handleInterviewSubmit}
+                  onDismiss={handleInterviewDismiss}
+                />
+              </div>
+            )}
+
             {/* Slash command autocomplete menu */}
             {slashMenuFiltered.length > 0 && (
               <div className="max-w-3xl mx-auto mb-1">
@@ -1374,56 +1660,110 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             )}
 
-            <div className="flex gap-2 sm:gap-3 flex-1">
-              <textarea
-                data-testid="chat-input"
-                aria-label="Chat message input"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your documents, meetings, or team… (type / for commands)"
-                rows={1}
-                className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
-                onKeyDown={(e) => {
-                  // Slash menu navigation
-                  if (slashMenuFiltered.length > 0) {
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setSlashMenuIndex(i => (i + 1) % slashMenuFiltered.length);
-                      return;
-                    }
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setSlashMenuIndex(i => (i - 1 + slashMenuFiltered.length) % slashMenuFiltered.length);
-                      return;
-                    }
-                    if (e.key === "Tab" || (e.key === "Enter" && !input.includes(" "))) {
-                      e.preventDefault();
-                      selectSlashCommand(slashMenuFiltered[slashMenuIndex].cmd);
-                      return;
-                    }
-                    if (e.key === "Escape") {
-                      setInput("");
-                      return;
-                    }
-                  }
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              {isLoading ? (
-                <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop">
-                  <Square className="h-3 w-3" />
-                </Button>
-              ) : (
-                <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim()} data-testid="chat-submit" aria-label="Send message">
-                  <Send className="h-4 w-4" />
-                </Button>
+            <div className="flex flex-col flex-1 gap-1.5">
+              {/* Pending file previews */}
+              {pendingFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {pendingFiles.map(pf => {
+                    const Icon = getFileIcon(pf.file.type);
+                    return (
+                      <div key={pf.id} className="group/file relative flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs">
+                        {pf.previewUrl ? (
+                          <img src={pf.previewUrl} alt={pf.file.name} className="h-6 w-6 rounded object-cover" />
+                        ) : (
+                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="truncate max-w-[100px] text-muted-foreground">{pf.file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(pf.id)}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label={`Remove ${pf.file.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
+
+              <div className="flex gap-2 sm:gap-3">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_EXTENSIONS}
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) addFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                {/* Paperclip attach button */}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach files"
+                  title="Attach files (images, PDFs, text)"
+                  className="shrink-0"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+
+                <textarea
+                  data-testid="chat-input"
+                  aria-label="Chat message input"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask about your documents, meetings, or team… (type / for commands)"
+                  rows={1}
+                  className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                  onKeyDown={(e) => {
+                    // Slash menu navigation
+                    if (slashMenuFiltered.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setSlashMenuIndex(i => (i + 1) % slashMenuFiltered.length);
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setSlashMenuIndex(i => (i - 1 + slashMenuFiltered.length) % slashMenuFiltered.length);
+                        return;
+                      }
+                      if (e.key === "Tab" || (e.key === "Enter" && !input.includes(" "))) {
+                        e.preventDefault();
+                        selectSlashCommand(slashMenuFiltered[slashMenuIndex].cmd);
+                        return;
+                      }
+                      if (e.key === "Escape") {
+                        setInput("");
+                        return;
+                      }
+                    }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                {isLoading ? (
+                  <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop">
+                    <Square className="h-3 w-3" />
+                  </Button>
+                ) : (
+                  <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} data-testid="chat-submit" aria-label="Send message">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line</p>
+          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line · Drop files to attach</p>
         </div>
       </div>
 
@@ -1458,30 +1798,38 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </div>
 
-                {/* Code/Preview area */}
+                {/* Code/Preview area — or TipTap editor for documents */}
                 <div className="flex-1 flex flex-col min-w-0">
                   {/* Header bar */}
                   <div className="flex items-center justify-between px-4 py-2 border-b">
                     <div className="flex items-center gap-2 min-w-0">
-                      <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {activeArtifact.type === "document" ? (
+                        <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                      ) : (
+                        <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
                       <span className="text-sm font-medium truncate">{displayName}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{displayLang}</span>
+                      {activeArtifact.type !== "document" && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">{displayLang}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <div className="flex rounded-md border bg-background overflow-hidden mr-1">
-                        <button
-                          onClick={() => setArtifactViewMode("code")}
-                          className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
-                        >
-                          Code
-                        </button>
-                        <button
-                          onClick={() => setArtifactViewMode("preview")}
-                          className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
-                        >
-                          {activeArtifact.previewUrl ? "▶ Live" : "Preview"}
-                        </button>
-                      </div>
+                      {activeArtifact.type !== "document" && (
+                        <div className="flex rounded-md border bg-background overflow-hidden mr-1">
+                          <button
+                            onClick={() => setArtifactViewMode("code")}
+                            className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                          >
+                            Code
+                          </button>
+                          <button
+                            onClick={() => setArtifactViewMode("preview")}
+                            className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                          >
+                            {activeArtifact.previewUrl ? "▶ Live" : "Preview"}
+                          </button>
+                        </div>
+                      )}
                       {activeArtifact.previewUrl && (
                         <a
                           href={activeArtifact.previewUrl}
@@ -1503,40 +1851,49 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </div>
                   )}
                   <div className="flex-1 overflow-auto">
-                    {artifactViewMode === "code" && (
-                      <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
-                        <div />
-                      </CodeBlock>
-                    )}
-                    {artifactViewMode === "preview" && (
-                      activeArtifact.previewUrl ? (
-                        <iframe
-                          src={activeArtifact.previewUrl}
-                          className="w-full h-full bg-white"
-                          sandbox="allow-scripts allow-same-origin"
-                          title={`Preview of ${activeArtifact.filename}`}
-                        />
-                      ) : (
-                        <iframe
-                          srcDoc={(() => {
-                            const code = displayCode;
-                            const lang = displayLang;
-                            if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
-                            if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
-                              if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
-                                return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
-                              }
-                              return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
-                            }
-                            if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
-                            if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
-                            return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
-                          })()}
-                          className="w-full h-full bg-white"
-                          sandbox="allow-scripts"
-                          title={`Preview of ${activeArtifact.filename}`}
-                        />
-                      )
+                    {activeArtifact.type === "document" ? (
+                      <DocumentArtifactEditor
+                        content={displayCode}
+                        documentId={activeArtifact.contextId}
+                      />
+                    ) : (
+                      <>
+                        {artifactViewMode === "code" && (
+                          <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
+                            <div />
+                          </CodeBlock>
+                        )}
+                        {artifactViewMode === "preview" && (
+                          activeArtifact.previewUrl ? (
+                            <iframe
+                              src={activeArtifact.previewUrl}
+                              className="w-full h-full bg-white"
+                              sandbox="allow-scripts allow-same-origin"
+                              title={`Preview of ${activeArtifact.filename}`}
+                            />
+                          ) : (
+                            <iframe
+                              srcDoc={(() => {
+                                const code = displayCode;
+                                const lang = displayLang;
+                                if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
+                                if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
+                                  if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
+                                    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
+                                  }
+                                  return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
+                                }
+                                if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
+                                if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
+                                return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
+                              })()}
+                              className="w-full h-full bg-white"
+                              sandbox="allow-scripts"
+                              title={`Preview of ${activeArtifact.filename}`}
+                            />
+                          )
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
