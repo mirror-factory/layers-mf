@@ -43,7 +43,7 @@ export async function executeInSandbox(options: {
     const sandbox = await Sandbox.create({
       runtime: "node24",
       ports: [port],
-      timeout: options.timeout ?? 120_000, // 2 min so preview stays alive longer
+      timeout: options.timeout ?? 600_000, // 10 min — sandbox supports up to 45 min on Hobby
     });
 
     try {
@@ -121,7 +121,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
   const sandbox = await Sandbox.create({
     runtime,
     ports: options.exposePort ? [options.exposePort] : [],
-    timeout: options.timeout ?? 30_000,
+    timeout: options.timeout ?? 300_000, // 5 min for code execution
   });
 
   try {
