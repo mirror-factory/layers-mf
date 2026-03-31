@@ -530,6 +530,63 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Multi-file project tool ===
+    run_project: tool({
+      description: "Create and run a multi-file project in a sandboxed VM. Use for: full apps with multiple files, npm projects, React apps, APIs with routes, data pipelines with input/output files. More powerful than run_code — supports multiple files, package installation, and reading output files.",
+      inputSchema: z.object({
+        files: z.array(z.object({
+          path: z.string().describe("File path, e.g. 'src/index.js', 'package.json', 'public/index.html'"),
+          content: z.string().describe("File content"),
+        })).describe("All project files to write"),
+        install_command: z.string().optional().describe("Install command, e.g. 'npm install' or 'pip install -r requirements.txt'"),
+        run_command: z.string().describe("Command to run, e.g. 'node src/index.js' or 'python main.py'"),
+        read_output_files: z.array(z.string()).optional().describe("Paths of output files to read back after execution"),
+        expose_port: z.number().optional().describe("Port to expose for live preview"),
+        description: z.string().optional(),
+      }),
+      execute: async (input) => {
+        try {
+          const { executeProject } = await import("@/lib/sandbox/execute");
+          const result = await executeProject({
+            files: input.files,
+            installCommand: input.install_command,
+            runCommand: input.run_command,
+            readOutputFiles: input.read_output_files,
+            exposePort: input.expose_port,
+          });
+
+          // Save the main file to context library
+          const mainFile = input.files[0];
+          if (mainFile) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any).from("context_items").insert({
+              org_id: orgId,
+              source_type: "code",
+              source_id: `project-${Date.now()}`,
+              content_type: "file",
+              title: input.description ?? `Project: ${input.files.length} files`,
+              raw_content: input.files.map(f => `// === ${f.path} ===\n${f.content}`).join("\n\n"),
+              description_short: `${input.files.length} files: ${input.files.map(f => f.path).join(", ")}`,
+              status: "ready",
+            });
+          }
+
+          return {
+            stdout: result.stdout.slice(0, 4000),
+            stderr: result.stderr.slice(0, 1000),
+            exitCode: result.exitCode,
+            previewUrl: result.previewUrl ?? null,
+            sandboxId: result.sandboxId,
+            outputFiles: result.outputFiles,
+            fileCount: input.files.length,
+            success: result.exitCode === 0,
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Project execution failed", exitCode: 1, success: false };
+        }
+      },
+    }),
+
     // === Code execution tool ===
     run_code: tool({
       description:

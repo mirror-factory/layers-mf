@@ -60,7 +60,8 @@ Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_D
 
 **Code:**
 - write_code — create a code artifact with inline preview. Best for static HTML/CSS/JS.
-- run_code — execute code in a sandboxed Vercel VM. Use for computations, API calls, data processing. Set language to "html" for web pages (auto-serves with live preview URL).
+- run_code — execute a SINGLE file in a sandboxed VM. Use for quick scripts, computations, API calls.
+- run_project — execute a MULTI-FILE project in sandbox. Use for full apps, npm projects, React apps, APIs with multiple routes, data pipelines. Supports: multiple files, npm/pip install, port exposure for live preview, reading output files back. More powerful than run_code.
 
 CRITICAL CODE RULES:
 - For React/JSX: Do NOT use run_code with raw JSX. Node.js cannot execute JSX. Instead use write_code with a SINGLE HTML file that loads React + ReactDOM + Babel from unpkg CDN, then write JSX inside a script tag with type="text/babel".

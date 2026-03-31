@@ -193,3 +193,106 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
     }
   }
 }
+
+/**
+ * Execute a multi-file project in a Vercel Sandbox.
+ * Supports: writing multiple files, installing packages, running commands,
+ * exposing ports for live preview, and reading output files.
+ */
+export async function executeProject(options: {
+  files: { path: string; content: string }[];
+  installCommand?: string;
+  runCommand: string;
+  readOutputFiles?: string[];
+  exposePort?: number;
+  runtime?: "node24" | "python3.13";
+  timeout?: number;
+}): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
+  const sandbox = await Sandbox.create({
+    runtime: options.runtime ?? "node24",
+    ports: options.exposePort ? [options.exposePort] : [],
+    timeout: options.timeout ?? 600_000,
+  });
+
+  try {
+    // Write all project files
+    await sandbox.writeFiles(
+      options.files.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
+    );
+
+    // Install dependencies if specified
+    if (options.installCommand) {
+      const parts = options.installCommand.split(" ");
+      const installResult = await sandbox.runCommand(parts[0], parts.slice(1));
+      const installStderr = await installResult.stderr();
+      if (installResult.exitCode !== 0) {
+        return {
+          stdout: "",
+          stderr: `Install failed: ${installStderr}`,
+          exitCode: installResult.exitCode,
+          sandboxId: sandbox.id,
+        };
+      }
+    }
+
+    // Run the main command
+    const parts = options.runCommand.split(" ");
+
+    // If exposing a port, run in background and return preview URL
+    if (options.exposePort) {
+      sandbox.runCommand(parts[0], parts.slice(1));
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const previewUrl = sandbox.domain(options.exposePort);
+
+      // Health check
+      try {
+        await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
+      } catch {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      return {
+        stdout: `Project running at ${previewUrl}`,
+        stderr: "",
+        exitCode: 0,
+        previewUrl,
+        sandboxId: sandbox.id,
+      };
+    }
+
+    // Otherwise run and capture output
+    const result = await sandbox.runCommand(parts[0], parts.slice(1));
+    const stdout = await result.stdout();
+    const stderr = await result.stderr();
+
+    // Read output files if requested
+    let outputFiles: { path: string; content: string }[] | undefined;
+    if (options.readOutputFiles?.length) {
+      try {
+        const files = await sandbox.readFiles(options.readOutputFiles);
+        outputFiles = options.readOutputFiles.map((path, i) => ({
+          path,
+          content: files[i]?.toString() ?? "",
+        }));
+      } catch {
+        // Some files may not exist — skip
+      }
+    }
+
+    return {
+      stdout,
+      stderr,
+      exitCode: result.exitCode,
+      sandboxId: sandbox.id,
+      outputFiles,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { stdout: "", stderr: msg, exitCode: 1 };
+  } finally {
+    if (!options.exposePort) {
+      await sandbox.stop();
+    }
+  }
+}
