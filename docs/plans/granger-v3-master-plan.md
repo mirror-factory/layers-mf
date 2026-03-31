@@ -253,34 +253,130 @@ Lightweight registries that help the LLM find things:
 
 ## Part 9: SDK Packaging & Licensing
 
-### 9.1 Research Areas
-- Vercel AI Gateway + AI SDK Observability (Feb/Mar 2026 article)
-- SDK licensing models: per-seat, per-org, usage-based, open-core
-- How to package: npm package, template repo, CLI scaffolding
-- What the SDK includes vs what stays proprietary
+### 9.1 The Vision
+Package Granger as an SDK that other teams/companies can use to build their own AI chief-of-staff / knowledge platform. They get the same chat, tools, MCP, sandbox, artifacts system — customized for their org.
 
-### 9.2 SDK Architecture
+### 9.2 Research Required
+
+**Vercel AI Gateway Observability Article (Feb/Mar 2026)**
+- Research the specific article about AI Gateway cost visibility
+- Understand: what observability does the gateway provide out of the box?
+- What can we build on top of it for our SDK users?
+- How does per-tenant cost tracking work when multiple SDK users share a gateway?
+
+**Business Model Options**
+| Model | How It Works | Revenue | Our Control |
+|-------|-------------|---------|-------------|
+| **SaaS (hosted)** | Users sign up on our platform, we host everything | Monthly subscription | Full — we manage infra |
+| **SDK + our Gateway** | Users self-host the app, but AI calls go through our AI Gateway | Usage-based (per token) | Medium — we see all AI usage |
+| **SDK + their Gateway** | Users self-host everything, bring their own AI Gateway key | License fee (per seat/org) | Low — we don't see usage |
+| **Open Core** | Core is open source, premium features are paid | License + support | Low — community forks |
+| **Managed SDK** | We give them a Next.js template, they deploy to their Vercel, but config calls our API | Hybrid (license + usage) | Medium |
+
+**Key Question**: If someone starts a new Next.js project with our SDK, what's the experience?
 ```
-@granger/core          — chat engine, tool system, agent loop
-@granger/ui            — React components (chat, artifacts, tools)
-@granger/sandbox       — sandbox execution, snapshots, templates
-@granger/mcp           — MCP connection, OAuth, marketplace
-@granger/gateway       — AI Gateway integration, cost tracking
+npx create-granger-app my-company
+  → Scaffolds Next.js + Supabase + AI Gateway
+  → Asks for: AI Gateway key, Supabase URL, org name
+  → Deploys to Vercel
+  → They get: chat, tools, MCP, sandbox, artifacts
+  → We get: usage tracking via gateway tags
 ```
 
-### 9.3 Licensing Questions
-- Does it go through our API/pipeline? (SaaS model)
-- Or self-hosted? (license key model)
-- Can users bring their own AI Gateway key?
-- How do we track usage for billing?
-- What's the free tier?
+### 9.3 SDK Package Architecture
+```
+@granger/core
+  ├── chat engine (ToolLoopAgent, streaming, pruneMessages)
+  ├── tool system (tool registry, built-in tools, MCP loader)
+  ├── context management (priority docs, rules, compaction)
+  ├── auth (Supabase integration, org/team/member)
+  └── types (shared TypeScript types)
 
-### 9.4 Documentation for SDK Users
-- Getting started guide
-- Component API reference
-- Tool creation guide
-- MCP integration guide
-- Deployment guide
+@granger/ui
+  ├── ChatInterface (full chat with slash commands, file upload)
+  ├── ArtifactPanel (code viewer, TipTap editor, sandbox preview)
+  ├── InterviewUI (ask_user tool rendering)
+  ├── MCPMarketplace (server discovery, OAuth connect)
+  ├── SkillsBrowser (skills.sh search, install)
+  └── CostsDashboard (AI costs, sandbox costs)
+
+@granger/sandbox
+  ├── executeInSandbox / executeProject
+  ├── snapshot management
+  ├── template system (react, vite, python)
+  ├── restart from snapshot
+  └── cost tracking
+
+@granger/mcp
+  ├── MCP connection (createMCPClient)
+  ├── OAuth discovery + PKCE
+  ├── Dynamic client registration
+  ├── Registry search API
+  └── Auto slash command generation
+
+@granger/gateway
+  ├── AI Gateway integration (@ai-sdk/gateway wrapper)
+  ├── Per-tenant cost tracking (user/org tags)
+  ├── Model routing (9-model matrix)
+  ├── Spend reports API
+  └── Credit system
+```
+
+### 9.4 What Goes Through Our Pipeline?
+Two options for SDK users:
+
+**Option A: They use our AI Gateway**
+- All AI calls routed through our Vercel AI Gateway
+- We track usage per tenant automatically
+- We bill based on token usage (markup on provider costs)
+- They don't need their own OpenAI/Anthropic/Google keys
+- We handle rate limiting, model routing, fallbacks
+- **Pro**: simple for them, predictable revenue for us
+- **Con**: they depend on our uptime, data goes through us
+
+**Option B: They bring their own keys**
+- They set up their own AI Gateway (or use providers directly)
+- They manage their own costs
+- We charge a flat license fee (per seat or per org)
+- They report usage back to us (or we trust them on honor system)
+- **Pro**: no data dependency, they control costs
+- **Con**: harder to monetize, no usage visibility
+
+**Recommended**: Option A as default, Option B as enterprise tier.
+
+### 9.5 How Do We Know They're Using It?
+- **Gateway approach**: every AI call has `x-granger-tenant-id` header → we see all usage
+- **License key approach**: SDK phones home on startup, reports active users monthly
+- **Telemetry approach**: anonymous usage stats (feature usage, not content) sent to our analytics
+- **Audit approach**: SDK checks license validity on each deploy (like Vercel's license check)
+
+### 9.6 What Needs To Be Built for SDK
+1. **Tenant isolation** — multi-tenant Supabase (RLS already does this via org_id)
+2. **Config system** — SDK users configure via `granger.config.ts` (models, tools, theme, etc.)
+3. **Theming** — CSS variables for branding (already using Tailwind + CSS vars)
+4. **Tool SDK** — clean API for creating custom tools (`granger.defineTool({...})`)
+5. **Plugin system** — extend with custom pages, components, integrations
+6. **CLI** — `npx create-granger-app`, `granger add tool`, `granger deploy`
+7. **Admin dashboard** — for us to see all tenants, usage, costs, health
+
+### 9.7 Documentation for SDK Users
+- Getting started guide (5 min to first chat)
+- Architecture overview (how the pieces connect)
+- Component API reference (auto-generated from TypeScript)
+- Tool creation guide (with examples)
+- MCP integration guide (connect external services)
+- Deployment guide (Vercel + Supabase + Gateway setup)
+- Customization guide (theming, branding, custom pages)
+- Cost management guide (model selection, token optimization)
+- Migration guide (from v2 to v3, breaking changes)
+
+### 9.8 Competitive Landscape Research
+- How does v0 package their components? (open source? SDK?)
+- How does Cursor monetize? (subscription + usage)
+- How does Vercel AI SDK itself license? (open source, gateway is paid)
+- How does Supabase license? (open core, hosted is paid)
+- What's the market for "AI workspace SDKs"?
+- Who would buy this? (agencies, startups, enterprises building internal tools)
 
 ---
 
