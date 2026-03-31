@@ -111,7 +111,27 @@ export function CodeSandbox({
   }, [code, language, canPreview]);
 
   const handleDownload = useCallback(() => {
-    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const mimeTypes: Record<string, string> = {
+      html: "text/html",
+      htm: "text/html",
+      css: "text/css",
+      js: "text/javascript",
+      mjs: "text/javascript",
+      ts: "text/typescript",
+      tsx: "text/typescript",
+      jsx: "text/javascript",
+      json: "application/json",
+      svg: "image/svg+xml",
+      xml: "application/xml",
+      md: "text/markdown",
+      yaml: "text/yaml",
+      yml: "text/yaml",
+      py: "text/x-python",
+      sh: "application/x-sh",
+    };
+    const mimeType = mimeTypes[ext] ?? "text/plain";
+    const blob = new Blob([code], { type: `${mimeType};charset=utf-8` });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -126,7 +146,7 @@ export function CodeSandbox({
   const showPreview = (viewMode === "preview" || viewMode === "split") && canPreview;
 
   return (
-    <div className={cn("rounded-lg border bg-card overflow-hidden", className)}>
+    <div className={cn("rounded-lg border bg-card overflow-hidden w-[calc(100%+4rem)] -ml-8 max-w-5xl", className)}>
       {/* Header bar with filename + view toggles */}
       <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
         <div className="flex items-center gap-2">

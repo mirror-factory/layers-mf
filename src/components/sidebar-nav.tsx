@@ -24,6 +24,8 @@ import {
   Coins,
   CheckSquare,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Zap,
   Clock,
 } from "lucide-react";
@@ -58,25 +60,29 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
 ];
 
-function NavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: string }) {
-  return (
+function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { pathname: string; collapsed?: boolean }) {
+  const link = (
     <Link
       href={href}
       aria-current={pathname === href ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "flex items-center rounded-md text-sm transition-colors",
+        collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2",
         pathname === href
           ? "bg-primary/10 text-primary font-medium"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
+      {...(collapsed ? { title: label } : {})}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {label}
+      {!collapsed && label}
     </Link>
   );
+  return link;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, collapsed }: { children: React.ReactNode; collapsed?: boolean }) {
+  if (collapsed) return null;
   return (
     <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
       {children}
@@ -97,6 +103,21 @@ export function SidebarNav({
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Load collapsed preference from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("sidebar-collapsed");
+    if (stored === "true") setCollapsed(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -127,7 +148,7 @@ export function SidebarNav({
   }
 
   const renderItems = (items: NavItem[]) =>
-    items.map((item) => <NavLink key={item.href} {...item} pathname={pathname} />);
+    items.map((item) => <NavLink key={item.href} {...item} pathname={pathname} collapsed={collapsed} />);
 
   return (
     <>
@@ -155,15 +176,16 @@ export function SidebarNav({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r bg-card transition-transform duration-200 md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 md:static md:translate-x-0",
+          collapsed ? "w-[48px]" : "w-56",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-5 border-b">
+        <div className={cn("flex items-center border-b", collapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-sm">Granger</span>
+            {!collapsed && <span className="font-semibold text-sm">Granger</span>}
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -175,53 +197,73 @@ export function SidebarNav({
         </div>
 
         {/* Org name */}
-        <div className="px-4 py-3 border-b">
-          <p className="text-xs text-muted-foreground">Organization</p>
-          <p className="text-sm font-medium truncate">{orgName}</p>
-        </div>
+        {!collapsed && (
+          <div className="px-4 py-3 border-b">
+            <p className="text-xs text-muted-foreground">Organization</p>
+            <p className="text-sm font-medium truncate">{orgName}</p>
+          </div>
+        )}
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 p-2 overflow-y-auto" role="navigation" aria-label="Main navigation">
+        <nav className={cn("flex-1 space-y-0.5 overflow-y-auto", collapsed ? "p-1" : "p-2")} role="navigation" aria-label="Main navigation">
           {/* Main */}
-          <SectionLabel>Main</SectionLabel>
+          <SectionLabel collapsed={collapsed}>Main</SectionLabel>
           {renderItems(MAIN_ITEMS)}
 
           {/* Connect */}
-          <SectionLabel>Connect</SectionLabel>
+          <SectionLabel collapsed={collapsed}>Connect</SectionLabel>
           {renderItems(CONNECT_ITEMS)}
 
           {/* Settings */}
-          <SectionLabel>Settings</SectionLabel>
+          <SectionLabel collapsed={collapsed}>Settings</SectionLabel>
           {renderItems(SETTINGS_ITEMS)}
 
           {/* More (collapsible) */}
-          <SectionLabel>
-            <button
-              onClick={() => setMoreOpen((prev) => !prev)}
-              className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
-            >
-              More
-              <ChevronDown
-                className={cn(
-                  "h-3 w-3 transition-transform duration-200",
-                  moreOpen && "rotate-180"
-                )}
-              />
-            </button>
-          </SectionLabel>
-          {moreOpen && renderItems(MORE_ITEMS)}
+          {!collapsed ? (
+            <SectionLabel collapsed={collapsed}>
+              <button
+                onClick={() => setMoreOpen((prev) => !prev)}
+                className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
+              >
+                More
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 transition-transform duration-200",
+                    moreOpen && "rotate-180"
+                  )}
+                />
+              </button>
+            </SectionLabel>
+          ) : (
+            <div className="my-2 border-t" />
+          )}
+          {(moreOpen || collapsed) && renderItems(MORE_ITEMS)}
         </nav>
 
+        {/* Collapse toggle (desktop only) */}
+        <div className="hidden md:flex justify-center border-t py-1">
+          <button
+            onClick={toggleCollapsed}
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+
         {/* User */}
-        <div className="border-t p-3 space-y-1">
-          <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>
+        <div className={cn("border-t space-y-1", collapsed ? "p-1" : "p-3")}>
+          {!collapsed && <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>}
 
           {/* Credit balance */}
           {credits !== null && (
             <Link
               href="/settings/billing"
+              title={collapsed ? `${credits.toLocaleString()} credits` : undefined}
               className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                "flex items-center rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
                 credits < 10
                   ? "text-red-500"
                   : credits < 50
@@ -230,9 +272,13 @@ export function SidebarNav({
               )}
             >
               <Coins className="h-4 w-4" />
-              <span>{credits.toLocaleString()} credits</span>
-              {credits < 10 && (
-                <span className="ml-auto text-xs font-medium">Upgrade</span>
+              {!collapsed && (
+                <>
+                  <span>{credits.toLocaleString()} credits</span>
+                  {credits < 10 && (
+                    <span className="ml-auto text-xs font-medium">Upgrade</span>
+                  )}
+                </>
               )}
             </Link>
           )}
@@ -241,24 +287,30 @@ export function SidebarNav({
           <Link
             href="/admin"
             aria-current={pathname === "/admin" ? "page" : undefined}
+            title={collapsed ? "Admin" : undefined}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center rounded-md text-sm transition-colors",
+              collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
               pathname === "/admin"
                 ? "bg-primary/10 text-primary font-medium"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Shield className="h-4 w-4" />
-            Admin
+            {!collapsed && "Admin"}
           </Link>
 
-          <ThemeToggle />
+          {!collapsed && <ThemeToggle />}
           <button
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            title={collapsed ? "Sign out" : undefined}
+            className={cn(
+              "flex w-full items-center rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
+              collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2"
+            )}
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {!collapsed && "Sign out"}
           </button>
         </div>
       </aside>

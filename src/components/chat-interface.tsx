@@ -245,6 +245,20 @@ function ToolCallCard({ part }: { part: ToolPart }) {
     const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
     const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
 
+    // If we have a previewUrl AND code, render the CodeSandbox split view only
+    // (it already shows code + preview side-by-side — no need for duplicate terminal/iframe)
+    if (sPreviewUrl && sCode) {
+      return (
+        <CodeSandbox
+          filename={sFilename}
+          language={sLanguage}
+          code={sCode}
+          description={sExitCode === 0 ? undefined : `Exit code: ${sExitCode}`}
+        />
+      );
+    }
+
+    // No previewUrl — show collapsible code + terminal output
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
         {/* Collapsible code — show filename header, expand to see code */}
@@ -273,28 +287,6 @@ function ToolCallCard({ part }: { part: ToolPart }) {
             <pre className="whitespace-pre-wrap text-red-400">{sStderr}</pre>
           )}
         </div>
-        )}
-        {/* Live preview iframe */}
-        {sPreviewUrl && (
-          <div className="border-t">
-            <div className="flex items-center justify-between px-3 py-1 bg-muted text-xs">
-              <span>Live Preview</span>
-              <a
-                href={sPreviewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Open
-              </a>
-            </div>
-            <iframe
-              src={sPreviewUrl}
-              className="w-full h-64 border-0"
-              sandbox="allow-scripts allow-same-origin"
-              title="Sandbox preview"
-            />
-          </div>
         )}
       </div>
     );
