@@ -341,9 +341,42 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       { path: filename, content: Buffer.from(options.code) },
     ]);
 
-    if (options.installPackages?.length) {
+    // Auto-detect Python imports and install missing packages
+    let packagesToInstall = options.installPackages ?? [];
+    if (options.language === "python" && packagesToInstall.length === 0) {
+      const importRegex = /^\s*(?:import|from)\s+(\w+)/gm;
+      const stdlibModules = new Set([
+        "os", "sys", "json", "re", "math", "datetime", "time", "random",
+        "collections", "itertools", "functools", "pathlib", "io", "csv",
+        "string", "typing", "abc", "copy", "hashlib", "base64", "urllib",
+        "http", "socket", "threading", "subprocess", "shutil", "glob",
+        "argparse", "logging", "unittest", "dataclasses", "enum", "decimal",
+        "fractions", "statistics", "secrets", "uuid", "pprint", "textwrap",
+        "struct", "array", "queue", "heapq", "bisect", "contextlib",
+      ]);
+      const detectedPackages = new Set<string>();
+      let match;
+      while ((match = importRegex.exec(options.code)) !== null) {
+        const pkg = match[1];
+        if (!stdlibModules.has(pkg)) {
+          // Map common import names to pip package names
+          const pipName = pkg === "cv2" ? "opencv-python"
+            : pkg === "sklearn" ? "scikit-learn"
+            : pkg === "PIL" ? "Pillow"
+            : pkg === "bs4" ? "beautifulsoup4"
+            : pkg === "yaml" ? "pyyaml"
+            : pkg;
+          detectedPackages.add(pipName);
+        }
+      }
+      if (detectedPackages.size > 0) {
+        packagesToInstall = [...detectedPackages];
+      }
+    }
+
+    if (packagesToInstall.length > 0) {
       const installCmd = options.language === "python" ? "pip" : "npm";
-      const installArgs = ["install", ...options.installPackages];
+      const installArgs = ["install", ...packagesToInstall];
       await sandbox.runCommand(installCmd, installArgs);
     }
 
