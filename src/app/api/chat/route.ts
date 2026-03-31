@@ -55,8 +55,9 @@ When users say things like "every morning check my Linear", "remind me tomorrow"
 Common cron patterns: "0 7 * * 1-5" = weekdays 7am, "0 9 * * 1" = Mondays 9am, "0 */2 * * *" = every 2 hours.
 For one-shot: use "once:2026-04-01T09:00:00Z" format.
 
-**Code:**
-- write_code — create code artifacts (scripts, configs, templates)
+**Code Execution:**
+- run_code — execute JavaScript/TypeScript/Python in a sandboxed VM. Use for calculations, data processing, API testing, generating reports, or creating quick tools on the fly. Can install npm/pip packages. Returns stdout + optional live preview URL.
+- write_code — create a code artifact (display only, no execution). Use when the user just wants to see code.
 
 **Approvals:**
 - list_approvals — query the approval queue directly. Use for /approve and when users ask about pending actions.

@@ -229,6 +229,70 @@ function ToolCallCard({ part }: { part: ToolPart }) {
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
   const approvalOutput = isApproval ? output as Record<string, unknown> : null;
 
+  // Check if this is a sandbox execution result (has exitCode + stdout)
+  const isSandboxResult = isDone && output && typeof output === "object"
+    && "exitCode" in (output as Record<string, unknown>)
+    && "stdout" in (output as Record<string, unknown>);
+
+  if (isSandboxResult) {
+    const sbox = output as Record<string, unknown>;
+    const sFilename = String(sbox.filename ?? "script");
+    const sLanguage = String(sbox.language ?? "javascript");
+    const sCode = typeof sbox.code === "string" ? sbox.code : "";
+    const sStdout = typeof sbox.stdout === "string" ? sbox.stdout : "";
+    const sStderr = typeof sbox.stderr === "string" ? sbox.stderr : "";
+    const sExitCode = typeof sbox.exitCode === "number" ? sbox.exitCode : 1;
+    const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
+
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Code that was executed */}
+        {sCode && (
+          <CodeSandbox
+            filename={sFilename}
+            language={sLanguage}
+            code={sCode}
+          />
+        )}
+        {/* Terminal output */}
+        <div className="border-t bg-zinc-950 text-green-400 p-3 font-mono text-xs max-h-48 overflow-y-auto">
+          <div className="flex items-center gap-2 text-zinc-500 mb-1">
+            <span>$</span>
+            <span>{sExitCode === 0 ? "Exit 0" : `Exit ${sExitCode}`}</span>
+          </div>
+          {sStdout && (
+            <pre className="whitespace-pre-wrap">{sStdout}</pre>
+          )}
+          {sStderr && (
+            <pre className="whitespace-pre-wrap text-red-400">{sStderr}</pre>
+          )}
+        </div>
+        {/* Live preview iframe */}
+        {sandboxOutput.previewUrl && (
+          <div className="border-t">
+            <div className="flex items-center justify-between px-3 py-1 bg-muted text-xs">
+              <span>Live Preview</span>
+              <a
+                href={sandboxOutput.previewUrl as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Open
+              </a>
+            </div>
+            <iframe
+              src={sandboxOutput.previewUrl as string}
+              className="w-full h-64 border-0"
+              sandbox="allow-scripts allow-same-origin"
+              title="Sandbox preview"
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Check if this is a code artifact from write_code
   const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>);
   const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
@@ -740,6 +804,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "⏰" },
     { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "✅" },
     { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
+    { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
   ];
 
@@ -755,7 +820,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",
-    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule",
+    "/run": (args) => args ? `Use run_code to execute: ${args}` : "Use run_code to execute code in a sandbox. Ask me what to run.",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run",
   };
 
   // Filter menu items based on what the user has typed

@@ -476,6 +476,83 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Code execution tool ===
+    run_code: tool({
+      description:
+        "Write and execute code in a sandboxed environment. Use for: running scripts, data processing, calculations, generating reports, testing APIs, creating quick tools. The code runs in an isolated Vercel Sandbox VM. Returns stdout, stderr, and optionally a live preview URL.",
+      inputSchema: z.object({
+        code: z.string().describe("The code to execute"),
+        language: z
+          .enum(["javascript", "typescript", "python"])
+          .describe("Programming language"),
+        filename: z
+          .string()
+          .optional()
+          .describe('Filename, e.g. "analyze.js" or "report.py"'),
+        packages: z
+          .array(z.string())
+          .optional()
+          .describe("npm/pip packages to install before running"),
+        description: z
+          .string()
+          .optional()
+          .describe("What this code does"),
+        expose_port: z
+          .number()
+          .optional()
+          .describe(
+            "Port to expose for live preview (e.g. 3000 for a web server)"
+          ),
+      }),
+      execute: async (input) => {
+        try {
+          const { executeInSandbox } = await import("@/lib/sandbox/execute");
+          const result = await executeInSandbox({
+            code: input.code,
+            language: input.language,
+            filename: input.filename,
+            installPackages: input.packages,
+            exposePort: input.expose_port,
+            timeout: 30_000,
+          });
+
+          // Save the code to context library
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from("context_items").insert({
+            org_id: orgId,
+            source_type: "code",
+            source_id: `sandbox-${Date.now()}`,
+            content_type: "file",
+            title: input.filename ?? `${input.language} script`,
+            raw_content: input.code,
+            description_short:
+              input.description ?? `Executed ${input.language} code`,
+            status: "ready",
+          });
+
+          return {
+            stdout: result.stdout.slice(0, 4000),
+            stderr: result.stderr.slice(0, 1000),
+            exitCode: result.exitCode,
+            previewUrl: result.previewUrl ?? null,
+            success: result.exitCode === 0,
+            language: input.language,
+            filename: input.filename ?? null,
+            code: input.code,
+          };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            error: msg,
+            stdout: "",
+            stderr: msg,
+            exitCode: 1,
+            success: false,
+          };
+        }
+      },
+    }),
+
     // === Code artifact tool ===
     write_code: tool({
       description: "Write a code artifact (script, config, template, snippet). Use when the user asks you to write code, create a script, generate a config file, or build a template.",
