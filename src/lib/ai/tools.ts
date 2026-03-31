@@ -559,6 +559,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             readOutputFiles: input.read_output_files,
             exposePort: input.expose_port,
             orgId,
+            userId,
             snapshotId,
           });
 
@@ -635,6 +636,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             installPackages: input.packages,
             exposePort: input.expose_port,
             timeout: 30_000,
+            orgId,
+            userId,
           });
 
           // Save the code to context library
@@ -1001,6 +1004,182 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         ).min(1).describe("The questions to ask — at least one required"),
       }),
       // NO execute function → client-side tool
+    }),
+
+    // === Skill creation tool ===
+    create_skill: tool({
+      description:
+        "Create a new custom skill for Granger. Use the ask_user tool first to gather requirements from the user (skill name, description, category, system prompt, tools), then call this tool to save the skill. The skill will be immediately available via its slash command.",
+      inputSchema: z.object({
+        name: z.string().describe("Human-readable skill name, e.g. 'Sales Coach'"),
+        slug: z.string().describe("URL-safe identifier, e.g. 'sales-coach'"),
+        description: z.string().describe("One-sentence description of what the skill does"),
+        category: z.enum(["productivity", "analysis", "creative", "development", "communication", "general"]).describe("Skill category"),
+        system_prompt: z.string().describe("The system prompt that defines this skill's behavior and personality"),
+        icon: z.string().optional().describe("Emoji icon for the skill, e.g. '🎯'"),
+        slash_command: z.string().optional().describe("Slash command to activate, e.g. '/sales'. Auto-generated from slug if omitted."),
+        tools: z.array(z.string()).optional().describe("Tool names this skill should have access to, e.g. ['search_context', 'ask_linear_agent']"),
+      }),
+      execute: async (input) => {
+        const slashCmd = input.slash_command
+          ? (input.slash_command.startsWith("/") ? input.slash_command : `/${input.slash_command}`)
+          : `/${input.slug}`;
+
+        const toolDefs = (input.tools ?? []).map((t) => ({
+          name: t,
+          description: t.replace(/_/g, " "),
+        }));
+
+        try {
+          // Use admin client to bypass RLS
+          const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
+          const adminDb = createAdmin();
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data, error } = await (adminDb as any)
+            .from("skills")
+            .insert({
+              org_id: orgId,
+              slug: input.slug,
+              name: input.name,
+              description: input.description,
+              version: "1.0.0",
+              author: null,
+              category: input.category,
+              icon: input.icon ?? "⚡",
+              system_prompt: input.system_prompt,
+              tools: toolDefs,
+              config: {},
+              reference_files: [],
+              slash_command: slashCmd,
+              is_active: true,
+              is_builtin: false,
+            })
+            .select("id, slug, name")
+            .single();
+
+          if (error) {
+            if (error.code === "23505") {
+              return { error: `A skill with slug "${input.slug}" already exists. Try a different name.` };
+            }
+            return { error: `Failed to create skill: ${error.message}` };
+          }
+
+          return {
+            success: true,
+            skill_id: data.id,
+            name: data.name,
+            slug: data.slug,
+            slash_command: slashCmd,
+            message: `Skill "${data.name}" created successfully! Activate it anytime with ${slashCmd}. You can manage it at /skills.`,
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Failed to create skill" };
+        }
+      },
+    }),
+
+    // === Tool creation via sandbox ===
+    create_tool_from_code: tool({
+      description:
+        "Create a custom tool by generating and testing code in a sandbox. " +
+        "Write the tool implementation code, test it with a sample input in the sandbox, " +
+        "and if the test passes, save it as a reusable skill. " +
+        "Use this after gathering requirements via ask_user.",
+      inputSchema: z.object({
+        name: z.string().describe("Tool name in snake_case (e.g. 'fetch_weather', 'parse_csv')"),
+        description: z.string().describe("What this tool does — shown to the AI when deciding whether to call it"),
+        code: z.string().describe("The tool implementation as a Node.js CommonJS module. Must export a function `run(input)` that returns a result object."),
+        test_input: z.string().describe("Sample input JSON string to test the tool with (passed to run())"),
+        language: z.enum(["javascript", "python"]).optional().describe("Language of the tool code, default javascript"),
+        packages: z.array(z.string()).optional().describe("npm/pip packages the tool needs"),
+      }),
+      execute: async (input) => {
+        try {
+          const { executeInSandbox } = await import("@/lib/sandbox/execute");
+
+          // Wrap the user's code in a test harness that calls run() with the test input
+          const lang = input.language ?? "javascript";
+          const testHarness = lang === "python"
+            ? `import json\n${input.code}\n\nresult = run(json.loads('''${input.test_input}'''))\nprint(json.dumps(result, default=str))`
+            : `${input.code}\n\nconst __input = JSON.parse(${JSON.stringify(input.test_input)});\nconst __result = run(__input);\nPromise.resolve(__result).then(r => console.log(JSON.stringify(r, null, 2))).catch(e => { console.error(e.message); process.exit(1); });`;
+
+          const result = await executeInSandbox({
+            code: testHarness,
+            language: lang === "python" ? "python" : "javascript",
+            filename: lang === "python" ? "tool_test.py" : "tool_test.js",
+            installPackages: input.packages,
+            timeout: 30_000,
+          });
+
+          // If test failed, return the error so the agent can iterate
+          if (result.exitCode !== 0) {
+            return {
+              success: false,
+              exitCode: result.exitCode,
+              stdout: result.stdout.slice(0, 2000),
+              stderr: result.stderr.slice(0, 2000),
+              message: `Tool test failed with exit code ${result.exitCode}. Fix the code and try again.`,
+            };
+          }
+
+          // Test passed — save as a skill with the code as a reference file
+          const slug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+          const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
+          const adminDb = createAdmin();
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: skill, error: skillErr } = await (adminDb as any)
+            .from("skills")
+            .insert({
+              org_id: orgId,
+              name: input.name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+              slug,
+              description: input.description,
+              icon: "🛠️",
+              category: "automation",
+              system_prompt: `You have access to the custom tool "${input.name}". ${input.description}. The tool code is attached as a reference file. To execute it, use run_code with the code from the reference file.`,
+              tools: [{ name: "run_code", description: "Execute the tool code" }],
+              reference_files: [{
+                name: `${input.name}.${lang === "python" ? "py" : "js"}`,
+                type: lang === "python" ? "text/x-python" : "application/javascript",
+                content: input.code,
+              }],
+              is_active: true,
+              is_builtin: false,
+              created_by: userId ?? null,
+            })
+            .select("id, slug, name")
+            .single();
+
+          if (skillErr) {
+            return {
+              success: false,
+              testPassed: true,
+              stdout: result.stdout.slice(0, 2000),
+              error: `Test passed but failed to save skill: ${skillErr.message}`,
+            };
+          }
+
+          return {
+            success: true,
+            testPassed: true,
+            stdout: result.stdout.slice(0, 2000),
+            skill: {
+              id: skill.id,
+              slug: skill.slug,
+              name: skill.name,
+            },
+            message: `Tool "${input.name}" tested successfully and saved as skill "${skill.name}" (/${slug}). Activate it with /activate ${slug}.`,
+          };
+        } catch (err) {
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : "Tool creation failed",
+          };
+        }
+      },
     }),
 
     // === Real skills.sh marketplace search ===

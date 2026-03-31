@@ -13,8 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SKILL_CATEGORIES, type SkillCategory } from "@/lib/skills/types";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Code2, Loader2, MessageSquare, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const AVAILABLE_TOOLS = [
   { name: "search_context", label: "Search Context" },
@@ -85,6 +86,8 @@ export function SkillCreator({
 }: {
   onCreated: () => void;
 }) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"choose" | "manual" | "ai">("choose");
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -186,6 +189,64 @@ export function SkillCreator({
   };
 
   const currentStep = STEPS[step];
+
+  const handleStartAICreation = useCallback(() => {
+    // Navigate to chat with the /skill create command pre-loaded
+    router.push("/chat?prompt=%2Fskill%20create");
+  }, [router]);
+
+  // Mode selection screen
+  if (mode === "choose") {
+    return (
+      <div className="max-w-lg">
+        <h3 className="text-sm font-medium mb-4">How would you like to create your skill?</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={handleStartAICreation}
+            className={cn(
+              "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/50",
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <span className="font-medium text-sm">AI Interview</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Granger asks you questions in chat and builds the skill for you. Best for most users.
+            </p>
+          </button>
+          <button
+            onClick={() => setMode("manual")}
+            className={cn(
+              "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/50",
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <PenLine className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium text-sm">Manual Form</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Step-by-step form to configure every detail yourself.
+            </p>
+          </button>
+          <button
+            onClick={() => router.push("/?prompt=" + encodeURIComponent("I want to create a custom tool from code. Help me build and test it in the sandbox."))}
+            className={cn(
+              "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/50 sm:col-span-2",
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Code2 className="h-5 w-5 text-orange-500" />
+              <span className="font-medium text-sm">Create from Code</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Describe what your tool should do, and Granger will write the code, test it in a sandbox, and save it as a skill. Best for automations and API integrations.
+            </p>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg">
@@ -418,8 +479,7 @@ export function SkillCreator({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={goBack}
-          disabled={step === 0}
+          onClick={step === 0 ? () => setMode("choose") : goBack}
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back

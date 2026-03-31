@@ -31,6 +31,7 @@ import {
   Puzzle,
   Terminal,
   FileText,
+  Share2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -44,6 +45,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/schedules", label: "Schedules", icon: Clock },
   { href: "/skills", label: "Skills", icon: Puzzle },
+  { href: "/sharing", label: "Sharing", icon: Share2 },
   { href: "/priority", label: "Priority & Rules", icon: FileText },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
 ];

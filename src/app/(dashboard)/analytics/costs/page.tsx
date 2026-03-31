@@ -1,6 +1,7 @@
 export const metadata = { title: "AI Costs" };
 
 import { CostsDashboard } from "./_components/costs-dashboard";
+import { SandboxCostsPanel } from "./_components/sandbox-costs-panel";
 
 export default function CostsPage() {
   return (
@@ -12,6 +13,17 @@ export default function CostsPage() {
         </p>
       </div>
       <CostsDashboard />
+
+      {/* Sandbox Compute Costs */}
+      <div className="pt-4 border-t">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold mb-1">Sandbox Compute</h2>
+          <p className="text-muted-foreground text-sm">
+            vCPU, memory, and network costs from code execution sandboxes.
+          </p>
+        </div>
+        <SandboxCostsPanel />
+      </div>
     </div>
   );
 }

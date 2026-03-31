@@ -1241,6 +1241,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
+    { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
     { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
     // Dynamic skill commands appended from API
@@ -1263,8 +1264,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     "/skills": (args) => args
       ? `Search for skills matching "${args}". Check the /skills page to browse and install skills from the skills.sh registry.`
       : "Show me available skills. I have 6 built-in skills and 24+ marketplace skills available at /skills.",
+    "/skill": (args) => {
+      if (args.toLowerCase().startsWith("create")) {
+        const extra = args.slice(6).trim();
+        return extra
+          ? `I want to create a new custom skill${extra ? `: ${extra}` : ""}. Use the ask_user tool to interview me about the skill details (name, description, category, what tools it needs, and a system prompt), then use create_skill to save it.`
+          : "I want to create a new custom skill. Use the ask_user tool to interview me about the skill details (name, description, category, what tools it needs, and a system prompt), then use create_skill to save it.";
+      }
+      return args
+        ? `Search for skills matching "${args}". Check the /skills page.`
+        : "Show me available skills at /skills.";
+    },
     "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
-    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /pm, /email, /meeting, /code, /weekly, /brand",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /skill create, /pm, /email, /meeting, /code, /weekly, /brand",
     // Dynamic skill slash commands → activate_skill tool
     ...Object.fromEntries(
       skillMenuItems.map((si) => [

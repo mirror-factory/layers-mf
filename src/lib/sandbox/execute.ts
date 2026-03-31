@@ -10,6 +10,59 @@ export interface SandboxResult {
   snapshotId?: string;
 }
 
+// ─── Cost constants ──────────────────────────────────────────────────
+// ~$0.13/vCPU-hour, ~$0.085/GB-hour memory, $0.09/GB egress, $0.60/M creates
+const COST_PER_CPU_MS = 0.13 / 3_600_000;
+const COST_PER_MB_SECOND = 0.085 / (1024 * 3600);
+const COST_PER_EGRESS_BYTE = 0.09 / (1024 * 1024 * 1024);
+const COST_PER_CREATE = 0.6 / 1_000_000;
+
+/** Compute USD cost from sandbox resource usage metrics. */
+function computeSandboxCost(cpuMs: number, memoryMbSec: number, egressBytes: number): number {
+  return (
+    cpuMs * COST_PER_CPU_MS +
+    memoryMbSec * COST_PER_MB_SECOND +
+    egressBytes * COST_PER_EGRESS_BYTE +
+    COST_PER_CREATE // one create per execution
+  );
+}
+
+/** Record a sandbox execution's usage and cost in the sandbox_usage table. */
+async function recordSandboxUsage(opts: {
+  orgId: string;
+  userId?: string;
+  sandboxId?: string;
+  cpuMs: number;
+  memoryMbSeconds: number;
+  networkIngressBytes: number;
+  networkEgressBytes: number;
+}): Promise<void> {
+  const costUsd = computeSandboxCost(
+    opts.cpuMs,
+    opts.memoryMbSeconds,
+    opts.networkEgressBytes,
+  );
+
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("sandbox_usage")
+    .insert({
+      org_id: opts.orgId,
+      user_id: opts.userId ?? null,
+      sandbox_id: opts.sandboxId ?? null,
+      cpu_ms: opts.cpuMs,
+      memory_mb_seconds: opts.memoryMbSeconds,
+      network_ingress_bytes: opts.networkIngressBytes,
+      network_egress_bytes: opts.networkEgressBytes,
+      cost_usd: costUsd,
+    });
+
+  console.log(
+    `[sandbox-usage] org=${opts.orgId} cost=$${costUsd.toFixed(6)} cpu=${opts.cpuMs}ms egress=${opts.networkEgressBytes}B`,
+  );
+}
+
 // Cache of active sandboxes per org for persistent sessions
 const activeSandboxes = new Map<string, { sandbox: Sandbox; lastUsed: number }>();
 
@@ -126,6 +179,7 @@ async function snapshotAndPersist(
   orgId: string,
   name: string,
   metadata: Record<string, unknown>,
+  userId?: string,
 ): Promise<string | undefined> {
   try {
     // snapshot() stops the sandbox and returns a Snapshot object
@@ -142,6 +196,17 @@ async function snapshotAndPersist(
     );
 
     await saveSnapshot(orgId, sid, name, metadata, cpuUsageMs, networkIngress, networkEgress);
+
+    // Record cost in sandbox_usage table
+    await recordSandboxUsage({
+      orgId,
+      userId,
+      sandboxId: sandbox.sandboxId,
+      cpuMs: cpuUsageMs,
+      memoryMbSeconds: 0, // memory not yet exposed by Vercel SDK
+      networkIngressBytes: networkIngress,
+      networkEgressBytes: networkEgress,
+    });
 
     return sid;
   } catch (err) {
@@ -174,6 +239,8 @@ export async function executeInSandbox(options: {
   installPackages?: string[];
   exposePort?: number;
   timeout?: number;
+  orgId?: string;
+  userId?: string;
 }): Promise<SandboxResult> {
   const filename =
     options.filename ??
@@ -297,7 +364,26 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
     return { stdout: "", stderr: msg, exitCode: 1 };
   } finally {
     if (!options.exposePort) {
+      // Record usage before stopping (metrics available after stop)
       await sandbox.stop();
+
+      if (options.orgId) {
+        const cpuMs = sandbox.activeCpuUsageMs ?? 0;
+        const ingress = sandbox.networkTransfer?.ingress ?? 0;
+        const egress = sandbox.networkTransfer?.egress ?? 0;
+
+        await recordSandboxUsage({
+          orgId: options.orgId,
+          userId: options.userId,
+          sandboxId: sandbox.sandboxId,
+          cpuMs,
+          memoryMbSeconds: 0,
+          networkIngressBytes: ingress,
+          networkEgressBytes: egress,
+        }).catch((err) => {
+          console.error("[sandbox-usage] record failed:", err instanceof Error ? err.message : err);
+        });
+      }
     }
   }
 }
@@ -316,6 +402,7 @@ export async function executeProject(options: {
   runtime?: "node24" | "python3.13";
   timeout?: number;
   orgId?: string;
+  userId?: string;
   snapshotId?: string;
 }): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
   const sandbox = await Sandbox.create(createParams({
@@ -405,7 +492,7 @@ export async function executeProject(options: {
         installCommand: options.installCommand,
         runCommand: options.runCommand,
         runtime: options.runtime ?? "node24",
-      });
+      }, options.userId);
     }
 
     return {
