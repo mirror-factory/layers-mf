@@ -127,18 +127,22 @@ function createParams(options: {
   ports?: number[];
   timeout?: number;
   snapshotId?: string;
+  env?: Record<string, string>;
 }) {
+  const env = { HOST: "0.0.0.0", ...options.env };
   if (options.snapshotId) {
     return {
       source: { type: "snapshot" as const, snapshotId: options.snapshotId },
       ports: options.ports ?? [],
       timeout: options.timeout ?? 600_000,
+      env,
     };
   }
   return {
     runtime: options.runtime ?? "node24",
     ports: options.ports ?? [],
     timeout: options.timeout ?? 600_000,
+    env,
   };
 }
 
@@ -443,6 +447,10 @@ export async function executeProject(options: {
     ports: options.exposePort ? [options.exposePort] : [],
     timeout: options.timeout ?? 600_000,
     snapshotId: options.snapshotId,
+    env: {
+      HOST: "0.0.0.0",
+      ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
+    },
   }));
 
   try {
@@ -471,17 +479,22 @@ export async function executeProject(options: {
 
     // If exposing a port, run in background and return preview URL
     if (options.exposePort) {
+      // Run dev server in background
       sandbox.runCommand(parts[0], parts.slice(1));
 
       const previewUrl = sandbox.domain(options.exposePort);
 
-      // Poll health check — wait up to 30s for the server to be ready
+      // Poll health check — wait up to 60s for the server to compile and start
       let ready = false;
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 20; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         try {
-          const res = await fetch(previewUrl, { signal: AbortSignal.timeout(3000) });
-          if (res.ok || res.status < 500) {
+          const res = await fetch(previewUrl, {
+            signal: AbortSignal.timeout(5000),
+            headers: { "User-Agent": "Granger-Health-Check" },
+          });
+          // Any response (even 404) means the server is listening
+          if (res.status !== 502) {
             ready = true;
             break;
           }
@@ -490,7 +503,7 @@ export async function executeProject(options: {
         }
       }
       if (!ready) {
-        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 30s — returning URL anyway`);
+        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 60s — returning URL anyway`);
       }
 
       return {
