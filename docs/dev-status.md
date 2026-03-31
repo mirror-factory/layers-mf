@@ -288,6 +288,24 @@ Full spec: `docs/GRANGER-SPEC.md`
 - [ ] Deploy to production Vercel + Supabase
 - [ ] Onboard Kyle and Bobby
 
+### Sprint 5: Notebook Features — **COMPLETE** (2026-03-30 evening)
+- [x] TipTap rich text editor for context library documents
+- [x] Document versioning (version history, restore previous versions)
+- [x] Majority-approval editing (edit proposals, 2/3 vote, auto-apply)
+- [x] Chat sharing (share conversations with team members)
+- [x] Chat export (Markdown + JSON download)
+- [x] Code sandbox tool (write_code + CodeSandbox component with syntax highlighting)
+- [x] Permission system (per-service read/write toggles at /settings/permissions)
+- [x] Scaffolding templates (3 org templates: Startup, Agency, Solo)
+- [x] Chat SDK Discord bot (replaces custom implementation)
+- [x] Desktop notifications (browser native + sonner toast fallback)
+- [x] Linear status check cron (every 3 min with Run Now button)
+- [x] Scheduled actions system (/schedules page, schedule via chat)
+- [x] Full "Layers" → "Granger" rebrand (20+ files)
+- [x] Dark mode fixes (inbox, approvals, suggestions)
+- [x] Context library fix (admin client, user_tags column removal)
+- [x] Demo mode (credit bypass, inline upload processing)
+
 ### Post-Sprint: Production Deployment Checklist
 - [ ] Set env vars: DISCORD_BOT_TOKEN, DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID, DISCORD_GUILD_ID
 - [ ] Set env vars: DISCORD_DIGEST_CHANNEL_ID, DISCORD_ALERTS_CHANNEL_ID

@@ -49,7 +49,7 @@
 - [ ] GitHub direct API client (replace Nango)
 - [ ] ClickUp API client
 - [ ] Google Calendar API client (pre-meeting prep)
-- [ ] Init of APIs with approval modes (from notebook)
+- [x] Init of APIs with approval modes (from notebook) — approval queue + inline approve/reject in chat
 
 ## 4. Discord Bot (DONE)
 
@@ -111,11 +111,11 @@
 - [x] Delete with confirmation dialog
 - [x] Demo mode inline processing (bypass Inngest)
 - [x] 126 items visible from production
-- [ ] File Preview / TipTap Editor (from notebook)
-- [ ] Edit shared company files with approval of majority (from notebook)
+- [x] File Preview / TipTap Editor (from notebook) — full toolbar, read/edit toggle, PATCH save
+- [x] Edit shared company files with approval of majority (from notebook) — edit_proposals table, 2/3 vote, auto-apply
+- [x] Versioning on docs (from notebook) — document_versions table, restore, version history panel
 - [ ] Folders / categories for organizing context
 - [ ] Bulk download / bulk delete
-- [ ] Versioning on docs (from notebook)
 - [ ] File type icons (PDF, DOCX, etc. vs generic)
 
 ## 9. Chat Interface (DONE)
@@ -129,9 +129,9 @@
 - [x] Source citation sidebar
 - [x] Feedback buttons (thumbs up/down)
 - [x] Test chat (from notebook)
-- [ ] Tag others to share chat (from notebook)
-- [ ] Sandbox to write code tool (from notebook)
-- [ ] Chat export (share conversation as link or PDF)
+- [x] Tag others to share chat (from notebook) — Share button in ⋯ menu, shared_conversations table
+- [x] Sandbox to write code tool (from notebook) — write_code tool + CodeSandbox component with syntax highlighting
+- [x] Chat export (Markdown + JSON) — Export buttons in ⋯ dropdown menu
 - [ ] Pin important messages
 - [ ] Chat search (search across all conversations)
 
@@ -141,9 +141,9 @@
 - [x] Simplified sidebar (MAIN/CONNECT/SETTINGS/MORE)
 - [x] Testing checklist modal (34 items, localStorage)
 - [x] Hydration error fix
-- [ ] Dark mode polish (some components may not style correctly)
+- [x] Dark mode polish — inbox badges, approval buttons, suggestion badges fixed
 - [ ] Mobile responsive improvements
-- [ ] Landing page update (still says "Layers" in places)
+- [x] Landing page update — "Layers" → "Granger" across 20+ files (landing, auth, onboarding, pricing, features, guide, integrations, email templates)
 - [ ] Custom Granger icon/logo
 
 ## 11. Documentation (DONE)
@@ -158,13 +158,13 @@
 - [ ] API reference doc (all endpoints)
 - [ ] User guide (for Kyle and Bobby)
 
-## 12. From Notebook — Not Yet Started
+## 12. From Notebook
 
-- [ ] **Permission system** — allow certain tools (edit in settings), initial set of circumstances & interview like Brand Studio
+- [x] **Permission system** — per-service read/write toggles at /settings/permissions, tool filtering in createTools
 - [ ] **Think GitHub — org & org setup** — alignment + invites (support multiple orgs)
 - [ ] **Have demos ready** — prepare demo scenarios for partners/investors
 - [ ] **Get together with Lauren/Alex** — schedule and prep
-- [ ] **Scaffolding with links & defaults** — pre-configured templates for new orgs
+- [x] **Scaffolding with links & defaults** — 3 org templates (Startup, Agency, Solo) with priority docs, schedules, permissions
 - [ ] **How does this scale?** — performance testing, multi-tenant load, cost projections
 
 ## 13. Production Deployment
@@ -196,13 +196,16 @@
 
 | Metric | Value |
 |--------|-------|
-| Commits | 24 |
-| Lines added | ~14,000+ |
-| Files created/modified | ~100 |
-| New tables | 2 (scheduled_actions, + 4 from Sprint 1) |
-| New API routes | 12+ |
-| New components | 8+ |
-| Sub-agents | 5 |
+| Commits | 27+ |
+| Lines added | ~18,000+ |
+| Files created/modified | ~140+ |
+| New DB tables | 7 (priority_documents, credentials, approval_queue, partner_settings, scheduled_actions, document_versions, edit_proposals, shared_conversations) |
+| New API routes | 18+ |
+| New components | 12+ (TipTap editor, CodeSandbox, permissions, schedule list, approval card, testing checklist, notification provider, template selector) |
+| Sub-agents | 5 (Linear, Gmail, Notion, Granola, Drive) |
 | Slash commands | 10 |
 | Cron jobs | 5 |
 | Default schedules | 5 |
+| Org templates | 3 (Startup, Agency, Solo) |
+| Dark mode fixes | 3 components |
+| Rebrand files | 20+ ("Layers" → "Granger") |
