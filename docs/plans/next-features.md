@@ -268,7 +268,69 @@ GET https://ai-gateway.vercel.sh/v1/credits
 
 ---
 
-### 9. Production Deployment Checklist
+### 9. TipTap Document Artifact with AI Editing
+
+**What**: Full document editor in the artifact panel with AI-powered inline editing — like Notion AI or Cursor's inline edits but inside Granger's artifact panel.
+
+**Architecture**:
+
+#### Document Tools (new agent)
+```
+create_document — create a new TipTap doc (title + content), save to context_items
+edit_document — edit specific sections of a doc without rewriting the whole thing
+lookup_document — search/retrieve docs by title or content
+delete_document — remove a document
+```
+
+#### Artifact Panel Enhancement
+- TipTap editor renders in the artifact panel (right side) instead of just code
+- Auto-save with debounce (save to context_items every 3s of inactivity)
+- Version history sidebar — click any version to restore
+- File tree shows documents alongside code files
+
+#### Bubble Menu with AI Prompt (the key feature)
+```
+User highlights text in TipTap editor
+  → Bubble menu appears with: Bold, Italic, + ✨ AI Edit button
+    → AI Edit opens a small prompt input above the selection
+      → User types: "make this more concise" or "rewrite as bullet points"
+        → Granger receives: { highlightedText, prompt, fullDocContext }
+          → Returns ONLY the replacement text (not the whole doc)
+            → TipTap replaces just the highlighted section
+```
+
+**TipTap Extensions Needed**:
+```bash
+pnpm add @tiptap/extension-bubble-menu @tiptap/extension-collaboration
+```
+
+**Implementation**:
+
+1. **Bubble Menu Component**: Extends TipTap's BubbleMenu with an "AI Edit" button
+2. **Inline Edit API**: `POST /api/documents/inline-edit` — receives `{ selectedText, prompt, documentId }`, returns `{ replacement }`
+3. **The AI call**: Uses a focused prompt:
+   ```
+   "The user selected this text: '{selectedText}'
+    Their instruction: '{prompt}'
+    Return ONLY the replacement text. Do not include anything else."
+   ```
+4. **Auto-save**: `useEffect` with debounce — PATCHes content to `/api/context/[id]` every 3s
+5. **Version history**: Each auto-save creates a version (existing versioning system handles this)
+
+**Document Agent** (sub-agent):
+```typescript
+const DOC_SYSTEM = `You are a document specialist. You can create, edit, search, and manage
+documents. For edits, make targeted changes without rewriting entire documents.
+When asked to edit a specific section, return ONLY the replacement text.`;
+```
+
+**Slash commands**: `/doc create`, `/doc edit`, `/doc search`
+
+**Estimated effort**: ~3 hours
+
+---
+
+### 10. Production Deployment Checklist
 
 - [ ] Deploy to Vercel (`vercel deploy --prod`)
 - [ ] Set all env vars in Vercel dashboard
