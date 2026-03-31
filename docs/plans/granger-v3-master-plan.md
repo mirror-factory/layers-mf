@@ -326,11 +326,100 @@ Lightweight registries that help the LLM find things:
 
 ## Things Not Yet Mentioned But Should Consider
 
-### Context Compaction Research
-- How Claude Code does it (message summarization)
-- How Vercel AI SDK's pruneMessages works (already using)
-- Token-based sliding window vs semantic compaction
-- Research: can we summarize old turns instead of dropping them?
+### Context Engineering (Critical — Alfonso's Priority)
+
+**This is foundational.** Every piece of the platform depends on context management being right.
+
+#### What We Have Now
+- `pruneMessages` from AI SDK v6: strips old tool calls after 2 turns, removes reasoning
+- Priority documents: 5-10 docs always in system prompt
+- Rules: hard constraints appended to system prompt
+- Tool definitions: ~50-150 tokens each, sent every request
+- Conversation history: persisted in DB, loaded on chat open
+
+#### What We Need
+
+**1. Full Context Window Visibility**
+- Show exact token breakdown per message: system prompt, priority docs, rules, tool definitions, history, user message
+- Show total context usage as a visual bar: [used / available]
+- Show cost-per-message based on current model's rates
+- Expandable debug panel in chat UI
+- Export context snapshot for debugging
+
+**2. Smart Compaction (Research Required)**
+- **Claude Code approach**: summarizes old turns into a compact paragraph, preserves key facts
+- **Sliding window**: drop oldest messages when approaching context limit
+- **Semantic compaction**: use a fast model (Haiku) to summarize old turns before dropping
+- **Hybrid**: keep last N turns verbatim, summarize everything before that
+- Research: what's the best approach for multi-tool agentic conversations?
+
+**3. Context Authoring System**
+- Priority documents are "authored context" — user-curated info the AI always knows
+- Rules are "authored constraints" — behavior guardrails
+- Need a clear authoring workflow: create, edit, preview, test
+- Preview: show how a priority doc changes the system prompt
+- Test: send a test message and see how the AI responds with vs without the doc
+
+**4. Context Quality Metrics**
+- Track: did the AI use the context? (did it reference priority docs in its response?)
+- Track: context utilization rate (how much of the context window is actually used?)
+- Track: compaction effectiveness (how many tokens saved, any quality loss?)
+- Surface in AI Costs dashboard
+
+**5. Tool Loading Strategy**
+- Currently: ALL tool definitions sent every request (~3K tokens for 25+ tools)
+- Research: two-pass routing (first call picks service, second call uses specific tools)
+- Research: dynamic tool loading based on conversation topic
+- Research: tool definition compression (shorter descriptions save tokens)
+
+#### Research Questions
+- How does Claude Code handle context compaction across 100+ turn conversations?
+- What does the Vercel AI SDK offer beyond pruneMessages?
+- Can we use embeddings to determine which priority docs are relevant to each message?
+- Is there a tiktoken equivalent for the gateway models to count tokens accurately?
+
+---
+
+### Embedding System & Benchmarking (Research Required)
+
+#### Current State
+- Using OpenAI embeddings via AI Gateway for vector search
+- `search_context_items` RPC does hybrid search (vector + BM25/RRF)
+
+#### What We Need
+
+**1. Gemini Embedding Comparison**
+- Test Google's `text-embedding-004` vs OpenAI's `text-embedding-3-small`
+- Compare: retrieval quality, latency, cost, dimension size
+- Run on our actual context_items data — real-world benchmark
+- Measure: precision@k, recall@k, MRR (Mean Reciprocal Rank)
+
+**2. Benchmarking Framework**
+- A reusable system for comparing any two approaches (models, embeddings, prompts)
+- Input: test dataset (queries + expected results)
+- Output: metrics dashboard with statistical significance
+- Can be used for: embedding quality, model quality, prompt effectiveness, tool accuracy
+
+**3. Benchmark Use Cases
+- Embedding quality: which provider retrieves the right documents?
+- Model quality: which model gives the best chat responses?
+- Prompt engineering: which system prompt formulation works best?
+- Tool accuracy: which tool gets called correctly most often?
+- Context compaction: does summarization lose important information?
+
+**4. Case Study Pipeline**
+- Run benchmarks → generate reports → publish as case studies
+- Automated: benchmark runs on schedule, tracks changes over time
+- Visual: charts showing improvement/regression
+- Shareable: can be published on the documentation site
+
+**5. Research Agent**
+- Dedicated agent/skill that can: design experiments, run benchmarks, analyze results
+- Uses sandbox to run comparison scripts
+- Outputs structured reports to Context Library
+- Can be triggered via `/benchmark` slash command
+
+---
 
 ### Multi-User Real-Time Chat
 - @mention team members in conversations
@@ -360,13 +449,32 @@ Lightweight registries that help the LLM find things:
 
 ## Priority Order for Next Session
 
-1. **Sandbox fixes** (Vite allowedHosts ✅, HOST=0.0.0.0 ✅, restart reliability)
-2. **UI Polish** — sidebar height, mobile, welcome dashboard
-3. **Unified Artifacts** — DB + versioning + artifact page
-4. **System Prompt Observability** — token counter, cost overlay
-5. **Repo Ingestion** — clone + run in sandbox
-6. **Sandbox AI Gateway** — inject key, build AI apps
-7. **Testing Setup** — Storybook, Playwright, registries
-8. **Documentation System** — doc site + auto-generated docs
-9. **SDK Packaging** — research + architecture
-10. **Production Deploy** — Vercel + auth + crons
+### Sprint 1: Foundation (Context + Observability)
+1. **Context Engineering** — token counter, context window visualization, compaction research
+2. **System Prompt Observability** — exact breakdown of what's being sent and what it costs
+3. **Embedding Benchmarks** — Gemini vs OpenAI, build reusable benchmarking framework
+4. **Component & API Registries** — lightweight registries in CLAUDE.md for LLM lookups
+
+### Sprint 2: Polish & Architecture
+5. **UI Polish** — sidebar height, mobile, welcome dashboard, settings reorganization
+6. **Unified Artifacts** — DB + versioning + artifact page
+7. **Sandbox Reliability** — restart fixes, Vite template refinement, snapshot persistence
+8. **Explainer Panels** — every page gets one with examples
+
+### Sprint 3: Capabilities
+9. **Repo Ingestion** — clone + run in sandbox with env var interview
+10. **Sandbox AI Gateway** — inject key for AI app development
+11. **Auto Slash Commands** — MCP + skills auto-register commands
+12. **Artifact Cost Tracking** — per-artifact lifetime costs
+
+### Sprint 4: Infrastructure
+13. **Testing Setup** — Storybook, Playwright, component stories, API tests
+14. **Documentation System** — doc site (Fumadocs/Nextra), auto-generated API + component docs
+15. **Production Deploy** — Vercel + Google Auth + Supabase + custom domain
+16. **SDK Packaging Research** — licensing models, package architecture, business model
+
+### Sprint 5: Growth
+17. **Video Demo Feedback System** — GitHub push → Linear task → partner feedback
+18. **Benchmarking Case Studies** — publish results as marketing content
+19. **Multi-User Chat** — @mentions, presence, real-time collaboration
+20. **Mobile/Desktop Apps** — PWA or native for push notifications + offline
