@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { SkillCard } from "@/components/skill-card";
 import { SkillCreator } from "@/components/skill-creator";
 import { BUILTIN_SKILLS } from "@/lib/skills/types";
+import { SKILLS_REGISTRY, SKILL_CATEGORIES, searchSkills, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ExternalLink, Loader2, Puzzle } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2, Puzzle, Search } from "lucide-react";
 
 type SkillRow = {
   id: string;
@@ -21,95 +22,6 @@ type SkillRow = {
   is_builtin: boolean;
 };
 
-type MarketplaceSkill = {
-  slug: string;
-  name: string;
-  description: string;
-  author: string;
-  category: string;
-  icon: string;
-  source: string;
-};
-
-const MARKETPLACE_SKILLS: MarketplaceSkill[] = [
-  {
-    slug: "nextjs",
-    name: "Next.js Expert",
-    description:
-      "Build and debug Next.js applications with App Router best practices",
-    author: "vercel",
-    category: "development",
-    icon: "▲",
-    source: "vercel-labs/agent-skills@nextjs",
-  },
-  {
-    slug: "react-best-practices",
-    name: "React Best Practices",
-    description:
-      "Write performant React components following Vercel engineering patterns",
-    author: "vercel",
-    category: "development",
-    icon: "⚛️",
-    source: "vercel-labs/agent-skills@react-best-practices",
-  },
-  {
-    slug: "supabase",
-    name: "Supabase Expert",
-    description:
-      "Database design, RLS policies, and Supabase best practices",
-    author: "community",
-    category: "development",
-    icon: "⚡",
-    source: "community/supabase-skill",
-  },
-  {
-    slug: "seo-optimizer",
-    name: "SEO Optimizer",
-    description: "Analyze and optimize content for search engine ranking",
-    author: "community",
-    category: "analysis",
-    icon: "📈",
-    source: "community/seo-skill",
-  },
-  {
-    slug: "api-designer",
-    name: "API Designer",
-    description: "Design RESTful and GraphQL APIs with best practices",
-    author: "community",
-    category: "development",
-    icon: "🔌",
-    source: "community/api-designer",
-  },
-  {
-    slug: "data-analyzer",
-    name: "Data Analyzer",
-    description: "Analyze data sets, generate charts, and find insights",
-    author: "community",
-    category: "analysis",
-    icon: "📊",
-    source: "community/data-analyzer",
-  },
-  {
-    slug: "ux-reviewer",
-    name: "UX Reviewer",
-    description:
-      "Review interfaces for usability, accessibility, and design quality",
-    author: "community",
-    category: "creative",
-    icon: "🎯",
-    source: "community/ux-reviewer",
-  },
-  {
-    slug: "security-auditor",
-    name: "Security Auditor",
-    description:
-      "Audit code and infrastructure for security vulnerabilities",
-    author: "community",
-    category: "development",
-    icon: "🔒",
-    source: "community/security-auditor",
-  },
-];
 
 type Tab = "installed" | "browse" | "create";
 
@@ -124,6 +36,8 @@ export default function SkillsPage() {
   const [skills, setSkills] = useState<SkillRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseCategory, setBrowseCategory] = useState<SkillCategory>("all");
 
   const fetchSkills = useCallback(async () => {
     try {
@@ -213,7 +127,8 @@ export default function SkillsPage() {
   const availableBuiltins = BUILTIN_SKILLS.filter(
     (b) => !installedSlugs.has(b.slug)
   );
-  const availableMarketplace = MARKETPLACE_SKILLS.filter(
+  const filteredSkills = searchSkills(browseSearch, browseCategory);
+  const availableMarketplace = filteredSkills.filter(
     (m) => !installedSlugs.has(m.slug)
   );
 
@@ -373,7 +288,45 @@ export default function SkillsPage() {
           {/* Browse tab */}
           {tab === "browse" && (
             <div className="space-y-6">
-              {availableBuiltins.length > 0 && (
+              {/* Search input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search skills..."
+                  value={browseSearch}
+                  onChange={(e) => setBrowseSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              {/* Category filter pills */}
+              <div className="flex flex-wrap gap-2">
+                {SKILL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setBrowseCategory(cat.value)}
+                    className={cn(
+                      "text-xs px-3 py-1.5 rounded-full font-medium transition-colors",
+                      browseCategory === cat.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Skill count */}
+              <p className="text-xs text-muted-foreground">
+                {availableMarketplace.length} skill{availableMarketplace.length !== 1 ? 's' : ''} available
+                {browseSearch && ` matching "${browseSearch}"`}
+                {browseCategory !== 'all' && ` in ${browseCategory}`}
+              </p>
+
+              {/* Built-in skills (only shown when not searching) */}
+              {!browseSearch && browseCategory === 'all' && availableBuiltins.length > 0 && (
                 <div>
                   <h3 className="text-sm font-medium mb-3">Built-in Skills</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -410,14 +363,14 @@ export default function SkillsPage() {
                 </div>
               )}
 
-              {/* Community / Marketplace skills */}
+              {/* Registry skills */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium">
-                    Community Skills
+                    {browseSearch || browseCategory !== 'all' ? 'Results' : 'Community Skills'}
                   </h3>
                   <a
-                    href="https://github.com/vercel-labs/skills"
+                    href="https://skills.sh"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -448,14 +401,12 @@ export default function SkillsPage() {
                               <span
                                 className={cn(
                                   "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                                  skill.author === "vercel"
+                                  skill.author === "Vercel"
                                     ? "bg-foreground text-background"
                                     : "bg-muted text-muted-foreground"
                                 )}
                               >
-                                {skill.author === "vercel"
-                                  ? "Vercel"
-                                  : "Community"}
+                                {skill.author}
                               </span>
                               <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground">
                                 /{skill.slug}
@@ -480,20 +431,26 @@ export default function SkillsPage() {
                 ) : (
                   <div className="text-center py-6">
                     <p className="text-sm text-muted-foreground">
-                      All community skills are installed.
+                      {browseSearch
+                        ? `No skills found matching "${browseSearch}".`
+                        : "All available skills are installed."}
                     </p>
                   </div>
                 )}
               </div>
 
-              {availableBuiltins.length === 0 &&
-                availableMarketplace.length === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-muted-foreground">
-                      All available skills are installed.
-                    </p>
-                  </div>
-                )}
+              {/* Footer link */}
+              <div className="text-center pt-2 pb-4 border-t">
+                <a
+                  href="https://skills.sh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  Browse more at skills.sh
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
           )}
 

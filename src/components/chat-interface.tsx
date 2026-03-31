@@ -884,7 +884,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",
     "/run": (args) => args ? `Use run_code to execute: ${args}` : "Use run_code to execute code in a sandbox. Ask me what to run.",
-    "/skills": () => "Show me available skills. List all installed skills with their slash commands and descriptions.",
+    "/skills": (args) => args
+      ? `Search for skills matching "${args}". Check the /skills page to browse and install skills from the skills.sh registry.`
+      : "Show me available skills. I have 6 built-in skills and 24+ marketplace skills available at /skills.",
     "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
     "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /pm, /email, /meeting, /code, /weekly, /brand",
     // Dynamic skill slash commands → activate_skill tool
