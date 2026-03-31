@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap, KeyRound, Search, Loader2 } from "lucide-react";
 
 interface MCPServer {
@@ -41,9 +41,18 @@ export function MCPServerCard({
   });
   const [discovering, setDiscovering] = useState(false);
   const [savingOAuth, setSavingOAuth] = useState(false);
+  const [autoDiscoveryDone, setAutoDiscoveryDone] = useState(false);
+  const [autoDiscoveryFailed, setAutoDiscoveryFailed] = useState(false);
+  const discoveryRan = useRef(false);
+
+  const needsOAuthSetup =
+    server.auth_type === "oauth" &&
+    !server.last_connected_at &&
+    !server.oauth_authorize_url;
 
   const handleAutoDiscover = useCallback(async () => {
     setDiscovering(true);
+    setAutoDiscoveryFailed(false);
     try {
       const origin = new URL(server.url).origin;
       const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
@@ -51,18 +60,53 @@ export function MCPServerCard({
       });
       if (res.ok) {
         const meta = await res.json();
-        setOauthForm((prev) => ({
-          ...prev,
-          authorizeUrl: meta.authorization_endpoint ?? prev.authorizeUrl,
-          tokenUrl: meta.token_endpoint ?? prev.tokenUrl,
-        }));
+        const authorizeUrl = meta.authorization_endpoint ?? "";
+        const tokenUrl = meta.token_endpoint ?? "";
+        const clientId = meta.client_id ?? window.location.origin;
+
+        if (authorizeUrl) {
+          setOauthForm((prev) => ({
+            ...prev,
+            authorizeUrl,
+            tokenUrl: tokenUrl || prev.tokenUrl,
+            clientId: prev.clientId || clientId,
+          }));
+          setAutoDiscoveryDone(true);
+
+          // Auto-save discovered config to the server
+          try {
+            await fetch(`/api/mcp-servers/${server.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                oauth_authorize_url: authorizeUrl,
+                oauth_token_url: tokenUrl,
+                oauth_client_id: clientId,
+                oauth_client_secret: null,
+              }),
+            });
+            onUpdate?.();
+          } catch {
+            // Save failed but discovery succeeded — user can still connect
+          }
+          return;
+        }
       }
+      setAutoDiscoveryFailed(true);
     } catch {
-      // Discovery not available
+      setAutoDiscoveryFailed(true);
     } finally {
       setDiscovering(false);
     }
-  }, [server.url]);
+  }, [server.url, server.id, onUpdate]);
+
+  // Auto-discover on mount for OAuth servers without config
+  useEffect(() => {
+    if (needsOAuthSetup && !discoveryRan.current) {
+      discoveryRan.current = true;
+      handleAutoDiscover();
+    }
+  }, [needsOAuthSetup, handleAutoDiscover]);
 
   const handleSaveOAuth = useCallback(async () => {
     if (!oauthForm.authorizeUrl || !oauthForm.clientId) return;
@@ -182,35 +226,46 @@ export function MCPServerCard({
       {/* OAuth connect button for OAuth servers without tokens */}
       {server.auth_type === "oauth" && !server.last_connected_at && (
         <div className="px-4 pb-3">
-          {server.oauth_authorize_url && server.oauth_client_id ? (
+          {/* Case 1: Already has saved config OR auto-discovery succeeded — show Connect button */}
+          {(server.oauth_authorize_url && server.oauth_client_id) || autoDiscoveryDone ? (
             <button
               onClick={() => {
+                const authorizeUrl = server.oauth_authorize_url || oauthForm.authorizeUrl;
+                const clientId = server.oauth_client_id || oauthForm.clientId;
+                const tokenUrl = server.oauth_token_url || oauthForm.tokenUrl;
+                const clientSecret = server.oauth_client_secret || oauthForm.clientSecret || undefined;
                 const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
                 const stateObj = {
                   serverId: server.id,
-                  tokenUrl: server.oauth_token_url,
-                  clientId: server.oauth_client_id,
-                  clientSecret: server.oauth_client_secret || undefined,
+                  tokenUrl,
+                  clientId,
+                  clientSecret,
                 };
-                // Use base64url encoding to match the callback decoder
                 const state = btoa(JSON.stringify(stateObj))
                   .replace(/\+/g, "-")
                   .replace(/\//g, "_")
                   .replace(/=+$/, "");
                 const params = new URLSearchParams({
                   response_type: "code",
-                  client_id: server.oauth_client_id!,
+                  client_id: clientId!,
                   redirect_uri: callbackUrl,
                   state,
                 });
-                window.location.href = `${server.oauth_authorize_url}?${params}`;
+                window.location.href = `${authorizeUrl}?${params}`;
               }}
               className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 transition-colors"
             >
               <KeyRound className="h-3 w-3" />
               Connect with OAuth
             </button>
+          ) : discovering ? (
+            /* Case 2: Auto-discovery in progress */
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Discovering OAuth configuration...</span>
+            </div>
           ) : (
+            /* Case 3: Auto-discovery failed or hasn't run — show manual form */
             <div className="space-y-2">
               {!showOAuthConfig ? (
                 <button
@@ -218,7 +273,7 @@ export function MCPServerCard({
                   className="inline-flex items-center gap-2 rounded-md border border-primary text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/10 transition-colors"
                 >
                   <KeyRound className="h-3 w-3" />
-                  Configure OAuth to Connect
+                  {autoDiscoveryFailed ? "Configure OAuth Manually" : "Configure OAuth to Connect"}
                 </button>
               ) : (
                 <div className="space-y-2 rounded-md border p-3 bg-muted/30">

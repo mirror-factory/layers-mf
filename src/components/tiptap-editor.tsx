@@ -9,6 +9,7 @@ import Highlight from "@tiptap/extension-highlight";
 import {
   Bold,
   Italic,
+  Strikethrough,
   Code,
   Sparkles,
   Loader2,
@@ -16,9 +17,14 @@ import {
   Send,
   Heading1,
   Heading2,
+  Heading3,
   List,
   ListOrdered,
   Quote,
+  CodeSquare,
+  Minus,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,8 +69,9 @@ export function TiptapEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] px-4 py-3",
-          "prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base",
+          "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[60vh]",
+          "py-16 px-20",
+          "prose-headings:font-semibold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg",
           "prose-p:leading-relaxed prose-li:leading-relaxed",
           "prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-xs",
           "prose-pre:bg-muted prose-pre:rounded-md prose-pre:p-4",
@@ -177,7 +184,122 @@ export function TiptapEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative flex flex-col h-full", className)}>
+      {/* Sticky toolbar */}
+      {editable && (
+        <div className="sticky top-0 z-40 flex items-center gap-0.5 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-3 py-1.5 flex-wrap">
+          <ToolbarButton
+            active={editor.isActive("heading", { level: 1 })}
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            title="Heading 1"
+          >
+            <Heading1 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("heading", { level: 2 })}
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            title="Heading 2"
+          >
+            <Heading2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("heading", { level: 3 })}
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            title="Heading 3"
+          >
+            <Heading3 className="h-4 w-4" />
+          </ToolbarButton>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          <ToolbarButton
+            active={editor.isActive("bold")}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            title="Bold"
+          >
+            <Bold className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("italic")}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            title="Italic"
+          >
+            <Italic className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("strike")}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("code")}
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            title="Inline Code"
+          >
+            <Code className="h-4 w-4" />
+          </ToolbarButton>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          <ToolbarButton
+            active={editor.isActive("bulletList")}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("orderedList")}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            title="Ordered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("blockquote")}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            title="Blockquote"
+          >
+            <Quote className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive("codeBlock")}
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            title="Code Block"
+          >
+            <CodeSquare className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={false}
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            title="Horizontal Rule"
+          >
+            <Minus className="h-4 w-4" />
+          </ToolbarButton>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          <ToolbarButton
+            active={false}
+            onClick={() => editor.chain().focus().undo().run()}
+            title="Undo"
+            disabled={!editor.can().undo()}
+          >
+            <Undo2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={false}
+            onClick={() => editor.chain().focus().redo().run()}
+            title="Redo"
+            disabled={!editor.can().redo()}
+          >
+            <Redo2 className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+      )}
+
       {/* Bubble menu on text selection */}
       {editor && editable && (
         <BubbleMenu
@@ -199,46 +321,18 @@ export function TiptapEditor({
             <Italic className="h-3.5 w-3.5" />
           </BubbleButton>
           <BubbleButton
+            active={editor.isActive("strike")}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-3.5 w-3.5" />
+          </BubbleButton>
+          <BubbleButton
             active={editor.isActive("code")}
             onClick={() => editor.chain().focus().toggleCode().run()}
             title="Code"
           >
             <Code className="h-3.5 w-3.5" />
-          </BubbleButton>
-          <BubbleButton
-            active={editor.isActive("heading", { level: 1 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            title="Heading 1"
-          >
-            <Heading1 className="h-3.5 w-3.5" />
-          </BubbleButton>
-          <BubbleButton
-            active={editor.isActive("heading", { level: 2 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            title="Heading 2"
-          >
-            <Heading2 className="h-3.5 w-3.5" />
-          </BubbleButton>
-          <BubbleButton
-            active={editor.isActive("bulletList")}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            title="Bullet list"
-          >
-            <List className="h-3.5 w-3.5" />
-          </BubbleButton>
-          <BubbleButton
-            active={editor.isActive("orderedList")}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            title="Numbered list"
-          >
-            <ListOrdered className="h-3.5 w-3.5" />
-          </BubbleButton>
-          <BubbleButton
-            active={editor.isActive("blockquote")}
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            title="Quote"
-          >
-            <Quote className="h-3.5 w-3.5" />
           </BubbleButton>
 
           {/* Divider */}
@@ -315,9 +409,46 @@ export function TiptapEditor({
         </div>
       )}
 
-      {/* Editor content */}
-      <EditorContent editor={editor} />
+      {/* Editor content area — page-like appearance */}
+      <div className="flex-1 overflow-y-auto bg-muted/30 py-8 px-4">
+        <div className="mx-auto max-w-[816px] bg-background rounded-lg shadow-sm border">
+          <EditorContent editor={editor} />
+        </div>
+      </div>
     </div>
+  );
+}
+
+/** Toolbar button for the sticky document toolbar */
+function ToolbarButton({
+  children,
+  active,
+  onClick,
+  title,
+  disabled,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={cn(
+        "rounded p-1.5 transition-colors",
+        active
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        disabled && "opacity-30 cursor-not-allowed",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

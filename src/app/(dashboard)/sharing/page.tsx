@@ -420,6 +420,15 @@ export default function SharingPage() {
                 can be activated by any team member from this page.
               </p>
             </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Org Membership & Visibility</h4>
+              <p>
+                Who sees shared items is determined by org membership. Only members of your
+                organization can access shared conversations, context, and skills. To control
+                who has access, manage your team from{" "}
+                <a href="/settings/team" className="text-primary hover:underline">Settings &rarr; Team</a>.
+              </p>
+            </div>
           </div>
         )}
       </div>

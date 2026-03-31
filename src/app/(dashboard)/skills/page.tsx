@@ -115,6 +115,48 @@ export default function SkillsPage() {
   const [installingMarketplace, setInstallingMarketplace] = useState<
     string | null
   >(null);
+  const [installingLive, setInstallingLive] = useState<string | null>(null);
+  const [installedLive, setInstalledLive] = useState<Set<string>>(new Set());
+
+  const handleInstallLive = async (skill: { name: string; source: string; id: string }) => {
+    setInstallingLive(skill.id);
+    try {
+      const slug = skill.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      let systemPrompt = `Installed from skills.sh. Source: ${skill.source}/${skill.name}`;
+      try {
+        const mdUrl = `https://raw.githubusercontent.com/${skill.source}/main/.claude/skills/${skill.name}/SKILL.md`;
+        const mdRes = await fetch(mdUrl);
+        if (mdRes.ok) {
+          systemPrompt = await mdRes.text();
+        }
+      } catch {
+        // Use placeholder if fetch fails
+      }
+      const res = await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: skill.name,
+          slug,
+          description: "Installed from skills.sh",
+          systemPrompt,
+          category: "marketplace",
+          icon: "\uD83D\uDCE6",
+          isActive: true,
+          source: skill.source,
+          tools: [],
+        }),
+      });
+      if (res.ok) {
+        setInstalledLive((prev) => new Set(prev).add(skill.id));
+        fetchSkills();
+      }
+    } catch {
+      // silent
+    } finally {
+      setInstallingLive(null);
+    }
+  };
 
   const handleInstallMarketplace = async (skill: MarketplaceSkill) => {
     setInstallingMarketplace(skill.slug);
@@ -499,6 +541,23 @@ export default function SkillsPage() {
                             >
                               View <ExternalLink className="h-3 w-3" />
                             </a>
+                            {installedLive.has(skill.id) ? (
+                              <span className="text-xs text-green-600 font-medium whitespace-nowrap">
+                                Installed &#10003;
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleInstallLive(skill)}
+                                disabled={installingLive === skill.id}
+                                className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                              >
+                                {installingLive === skill.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  "Install"
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

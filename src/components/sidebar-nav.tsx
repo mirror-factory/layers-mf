@@ -48,6 +48,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/sharing", label: "Sharing", icon: Share2 },
   { href: "/priority", label: "Priority & Rules", icon: FileText },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
+  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
@@ -66,7 +67,6 @@ const SETTINGS_ITEMS: NavItem[] = [
 
 const MORE_ITEMS: NavItem[] = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/settings/audit", label: "Audit Log", icon: Shield },
 ];

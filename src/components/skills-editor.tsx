@@ -12,6 +12,8 @@ import {
   Sparkles,
   Eye,
   Send,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TiptapEditor } from "@/components/tiptap-editor";
@@ -102,6 +104,8 @@ export function SkillsEditor() {
   const [editorContent, setEditorContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
 
   // AI-assisted editing
   const [aiEditPrompt, setAiEditPrompt] = useState("");
@@ -260,115 +264,136 @@ export function SkillsEditor() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] rounded-lg border bg-card overflow-hidden">
-      {/* Left panel: File tree */}
-      <aside className="w-60 shrink-0 border-r flex flex-col bg-muted/20">
-        <div className="px-3 py-2.5 border-b">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Skills Files
-          </p>
+      {/* Left panel: File tree (collapsible) */}
+      <aside
+        className={cn(
+          "shrink-0 border-r flex flex-col bg-muted/20 transition-all duration-200",
+          treeCollapsed ? "w-10" : "w-60",
+        )}
+      >
+        <div className={cn("flex items-center border-b", treeCollapsed ? "justify-center py-2.5" : "px-3 py-2.5")}>
+          {!treeCollapsed && (
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex-1">
+              Skills Files
+            </p>
+          )}
+          <button
+            onClick={() => setTreeCollapsed((v) => !v)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            title={treeCollapsed ? "Expand file tree" : "Collapse file tree"}
+          >
+            {treeCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto py-1">
-          {Object.entries(tree).map(([category, catSkills]) => (
-            <div key={category}>
-              {/* Category folder */}
-              <button
-                onClick={() => toggleCategory(category)}
-                className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors"
-              >
-                <ChevronRight
-                  className={cn(
-                    "h-3 w-3 transition-transform",
-                    expandedCategories.has(category) && "rotate-90",
+
+        {!treeCollapsed && (
+          <div className="flex-1 overflow-y-auto py-1">
+            {Object.entries(tree).map(([category, catSkills]) => (
+              <div key={category}>
+                {/* Category folder */}
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/50 transition-colors"
+                >
+                  <ChevronRight
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      expandedCategories.has(category) && "rotate-90",
+                    )}
+                  />
+                  {expandedCategories.has(category) ? (
+                    <FolderOpen className="h-3.5 w-3.5" />
+                  ) : (
+                    <Folder className="h-3.5 w-3.5" />
                   )}
-                />
-                {expandedCategories.has(category) ? (
-                  <FolderOpen className="h-3.5 w-3.5" />
-                ) : (
-                  <Folder className="h-3.5 w-3.5" />
-                )}
-                <span className="capitalize">{category}</span>
-                <span className="ml-auto text-[10px] opacity-60">
-                  {catSkills.length}
-                </span>
-              </button>
+                  <span className="capitalize">{category}</span>
+                  <span className="ml-auto text-[10px] opacity-60">
+                    {catSkills.length}
+                  </span>
+                </button>
 
-              {/* Skills in this category */}
-              {expandedCategories.has(category) &&
-                catSkills.map((skill) => (
-                  <div key={skill.id} className="pl-4">
-                    {/* Skill folder */}
-                    <button
-                      onClick={() => toggleSkill(skill.id)}
-                      className="flex items-center gap-1.5 w-full px-2 py-1 text-xs hover:bg-accent/50 transition-colors"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "h-3 w-3 transition-transform",
-                          expandedSkills.has(skill.id) && "rotate-90",
-                        )}
-                      />
-                      <span className="shrink-0">{skill.icon}</span>
-                      <span className="truncate">{skill.name}</span>
-                    </button>
-
-                    {/* Skill files */}
-                    {expandedSkills.has(skill.id) && (
-                      <div className="pl-6">
-                        {/* System prompt */}
-                        <button
-                          onClick={() =>
-                            handleSelectFile(skill, {
-                              kind: "prompt",
-                              skillId: skill.id,
-                            })
-                          }
+                {/* Skills in this category */}
+                {expandedCategories.has(category) &&
+                  catSkills.map((skill) => (
+                    <div key={skill.id} className="pl-4">
+                      {/* Skill folder */}
+                      <button
+                        onClick={() => toggleSkill(skill.id)}
+                        className="flex items-center gap-1.5 w-full px-2 py-1 text-xs hover:bg-accent/50 transition-colors"
+                      >
+                        <ChevronRight
                           className={cn(
-                            "flex items-center gap-1.5 w-full px-2 py-1 text-xs hover:bg-accent/50 transition-colors rounded-sm",
-                            selectedFile?.kind === "prompt" &&
-                              selectedSkill?.id === skill.id &&
-                              "bg-accent text-accent-foreground",
+                            "h-3 w-3 transition-transform",
+                            expandedSkills.has(skill.id) && "rotate-90",
                           )}
-                        >
-                          <FileText className="h-3 w-3 text-primary/70" />
-                          <span className="truncate">system-prompt.md</span>
-                        </button>
+                        />
+                        <span className="shrink-0">{skill.icon}</span>
+                        <span className="truncate">{skill.name}</span>
+                      </button>
 
-                        {/* Reference files */}
-                        {(skill.reference_files ?? []).map((ref, idx) => (
+                      {/* Skill files */}
+                      {expandedSkills.has(skill.id) && (
+                        <div className="pl-6">
+                          {/* System prompt */}
                           <button
-                            key={idx}
                             onClick={() =>
                               handleSelectFile(skill, {
-                                kind: "reference",
+                                kind: "prompt",
                                 skillId: skill.id,
-                                index: idx,
                               })
                             }
                             className={cn(
                               "flex items-center gap-1.5 w-full px-2 py-1 text-xs hover:bg-accent/50 transition-colors rounded-sm",
-                              selectedFile?.kind === "reference" &&
+                              selectedFile?.kind === "prompt" &&
                                 selectedSkill?.id === skill.id &&
-                                (selectedFile as { index: number }).index === idx &&
                                 "bg-accent text-accent-foreground",
                             )}
                           >
-                            <FileText className="h-3 w-3 text-muted-foreground" />
-                            <span className="truncate">{ref.name}</span>
+                            <FileText className="h-3 w-3 text-primary/70" />
+                            <span className="truncate">system-prompt.md</span>
                           </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
-          ))}
 
-          {skills.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-6 px-3">
-              No skills installed. Install skills from the Browse tab.
-            </p>
-          )}
-        </div>
+                          {/* Reference files */}
+                          {(skill.reference_files ?? []).map((ref, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleSelectFile(skill, {
+                                  kind: "reference",
+                                  skillId: skill.id,
+                                  index: idx,
+                                })
+                              }
+                              className={cn(
+                                "flex items-center gap-1.5 w-full px-2 py-1 text-xs hover:bg-accent/50 transition-colors rounded-sm",
+                                selectedFile?.kind === "reference" &&
+                                  selectedSkill?.id === skill.id &&
+                                  (selectedFile as { index: number }).index === idx &&
+                                  "bg-accent text-accent-foreground",
+                              )}
+                            >
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                              <span className="truncate">{ref.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            ))}
+
+            {skills.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-6 px-3">
+                No skills installed. Install skills from the Browse tab.
+              </p>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* Right panel: Editor */}

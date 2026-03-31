@@ -2,6 +2,7 @@ export const metadata = { title: "AI Costs" };
 
 import { CostsDashboard } from "./_components/costs-dashboard";
 import { SandboxCostsPanel } from "./_components/sandbox-costs-panel";
+import { CostsExplainer } from "./_components/costs-explainer";
 
 export default function CostsPage() {
   return (
@@ -12,6 +13,7 @@ export default function CostsPage() {
           Gateway spend, token usage, and cost breakdowns by model and user.
         </p>
       </div>
+      <CostsExplainer />
       <CostsDashboard />
 
       {/* Sandbox Compute Costs */}
