@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink, KeyRound, ChevronDown } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink, KeyRound, ChevronDown, Search, Globe } from "lucide-react";
 import { MCPServerCard } from "@/components/mcp-server-card";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +116,17 @@ export default function MCPSettingsPage() {
   // Marketplace state
   const [guideOpen, setGuideOpen] = useState(false);
   const [connectingServer, setConnectingServer] = useState<string | null>(null);
+
+  // Browse / registry state
+  const [browseQuery, setBrowseQuery] = useState("");
+  const [browseResults, setBrowseResults] = useState<
+    { name: string; description: string; url: string; type: string; website: string; auth: "oauth" | "bearer" | "none" }[]
+  >([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseLoaded, setBrowseLoaded] = useState(false);
+  const [browseApiKeyInputs, setBrowseApiKeyInputs] = useState<Record<string, string>>({});
+  const [browseConnecting, setBrowseConnecting] = useState<string | null>(null);
+  const browseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Show success/error from OAuth redirect
   useEffect(() => {
@@ -369,6 +380,181 @@ export default function MCPSettingsPage() {
   const isServerConnected = (serverUrl: string) =>
     servers.some((s) => s.url === serverUrl);
 
+  /* ─── Browse / Registry search ─── */
+
+  const searchRegistry = useCallback(async (query: string) => {
+    setBrowseLoading(true);
+    try {
+      const params = query ? `?q=${encodeURIComponent(query)}` : "";
+      const res = await fetch(`/api/mcp/registry${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBrowseResults(data.servers ?? []);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setBrowseLoading(false);
+      setBrowseLoaded(true);
+    }
+  }, []);
+
+  const handleBrowseSearch = useCallback(
+    (value: string) => {
+      setBrowseQuery(value);
+      if (browseDebounceRef.current) clearTimeout(browseDebounceRef.current);
+      browseDebounceRef.current = setTimeout(() => searchRegistry(value), 300);
+    },
+    [searchRegistry]
+  );
+
+  // Load browse results on first render
+  useEffect(() => {
+    if (!browseLoaded) searchRegistry("");
+  }, [browseLoaded, searchRegistry]);
+
+  const handleInstallBrowseServer = async (server: {
+    name: string;
+    url: string;
+    auth: "oauth" | "bearer" | "none";
+  }) => {
+    if (isServerConnected(server.url)) return;
+    setBrowseConnecting(server.url);
+    setFormError("");
+
+    try {
+      if (server.auth === "oauth") {
+        // OAuth flow: discover, save, PKCE redirect
+        let authorizeUrl = "";
+        let tokenUrl = "";
+        let clientId = "";
+
+        const discoverRes = await fetch("/api/mcp/discover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serverUrl: server.url,
+            appName: server.name,
+            callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+          }),
+        });
+        if (discoverRes.ok) {
+          const discovered = await discoverRes.json();
+          authorizeUrl = discovered.authorizeUrl ?? "";
+          tokenUrl = discovered.tokenUrl ?? "";
+          clientId = discovered.clientId ?? "";
+        }
+
+        if (!authorizeUrl || !clientId) {
+          setFormError(`Could not auto-discover OAuth for ${server.name}. Try adding it manually below.`);
+          setBrowseConnecting(null);
+          return;
+        }
+
+        const res = await fetch("/api/mcp-servers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: server.name,
+            url: server.url,
+            authType: "oauth",
+            transportType: "http",
+            oauthAuthorizeUrl: authorizeUrl,
+            oauthTokenUrl: tokenUrl,
+            oauthClientId: clientId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setFormError(data.error || `Failed to save ${server.name}`);
+          setBrowseConnecting(null);
+          return;
+        }
+
+        // PKCE + redirect
+        const codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, "0")).join("");
+        const codeChallenge = btoa(
+          String.fromCharCode(...new Uint8Array(
+            await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))
+          ))
+        ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+        const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+        const stateObj = { serverId: data.server.id, tokenUrl, clientId, codeVerifier };
+        const state = btoa(JSON.stringify(stateObj))
+          .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+        const params = new URLSearchParams({
+          response_type: "code",
+          client_id: clientId,
+          redirect_uri: callbackUrl,
+          state,
+          code_challenge: codeChallenge,
+          code_challenge_method: "S256",
+          scope: "openid profile email offline_access",
+        });
+
+        window.location.href = `${authorizeUrl}?${params}`;
+        return;
+      }
+
+      if (server.auth === "bearer") {
+        const key = browseApiKeyInputs[server.url]?.trim();
+        if (!key) {
+          setFormError(`Enter an API key for ${server.name}`);
+          setBrowseConnecting(null);
+          return;
+        }
+
+        const res = await fetch("/api/mcp-servers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: server.name,
+            url: server.url,
+            apiKey: key,
+            authType: "bearer",
+            transportType: "http",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setFormError(data.error || `Failed to save ${server.name}`);
+          setBrowseConnecting(null);
+          return;
+        }
+
+        setBrowseApiKeyInputs((prev) => ({ ...prev, [server.url]: "" }));
+        fetchServers();
+        setBrowseConnecting(null);
+        return;
+      }
+
+      // auth === "none"
+      const res = await fetch("/api/mcp-servers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: server.name,
+          url: server.url,
+          authType: "none",
+          transportType: "http",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || `Failed to save ${server.name}`);
+      } else {
+        fetchServers();
+      }
+      setBrowseConnecting(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Network error");
+      setBrowseConnecting(null);
+    }
+  };
+
   const handleConnectRecommended = async (server: RecommendedServer) => {
     if (server.comingSoon || isServerConnected(server.url)) return;
     setConnectingServer(server.url);
@@ -568,6 +754,156 @@ export default function MCPSettingsPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Browse MCP Servers — Registry + Curated */}
+      <div className="mb-6">
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold">Browse MCP Servers</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Search the MCP registry and popular servers
+          </p>
+        </div>
+
+        {/* Search input */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search servers... e.g. github, stripe, postgres"
+            value={browseQuery}
+            onChange={(e) => handleBrowseSearch(e.target.value)}
+            className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {browseLoading && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
+
+        {/* Results grid */}
+        {browseLoaded && browseResults.length === 0 && !browseLoading && (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Globe className="h-6 w-6 text-muted-foreground/40 mx-auto mb-1.5" />
+            <p className="text-sm text-muted-foreground">
+              {browseQuery ? `No servers found for "${browseQuery}"` : "No servers available"}
+            </p>
+          </div>
+        )}
+
+        {browseResults.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {browseResults.map((server) => {
+              const connected = isServerConnected(server.url);
+              const connecting = browseConnecting === server.url;
+              const showApiKeyInput = server.auth === "bearer" && !connected;
+
+              return (
+                <div
+                  key={server.url}
+                  className="rounded-lg border bg-card p-4 space-y-2"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-sm">{server.name}</h3>
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                            server.auth === "oauth"
+                              ? "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                              : server.auth === "bearer"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {server.auth === "oauth" ? "OAuth" : server.auth === "bearer" ? "API Key" : "No Auth"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {server.description}
+                      </p>
+                      {server.website && (
+                        <a
+                          href={server.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-1"
+                        >
+                          Website
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      {connected ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400 bg-green-500/10 px-2.5 py-1.5 rounded-md">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Connected
+                        </span>
+                      ) : !showApiKeyInput ? (
+                        <button
+                          onClick={() => handleInstallBrowseServer(server)}
+                          disabled={connecting}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {connecting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Plus className="h-3 w-3" />
+                          )}
+                          {connecting ? "Installing..." : "Install"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Inline API key input for bearer auth */}
+                  {showApiKeyInput && (
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="API key..."
+                        value={browseApiKeyInputs[server.url] ?? ""}
+                        onChange={(e) =>
+                          setBrowseApiKeyInputs((prev) => ({
+                            ...prev,
+                            [server.url]: e.target.value,
+                          }))
+                        }
+                        className="flex-1 rounded-md border bg-background px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => handleInstallBrowseServer(server)}
+                        disabled={connecting || !browseApiKeyInputs[server.url]?.trim()}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {connecting ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Plus className="h-3 w-3" />
+                        )}
+                        {connecting ? "Installing..." : "Install"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Footer link */}
+        <div className="mt-3 text-center">
+          <a
+            href="https://registry.modelcontextprotocol.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Powered by MCP Registry
+            <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
       </div>
 
