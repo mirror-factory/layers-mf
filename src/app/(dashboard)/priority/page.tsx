@@ -685,29 +685,65 @@ export default function PriorityPage() {
           />
         </button>
         {guideOpen && (
-          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-3 border-t pt-3">
+          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-4 border-t pt-3">
             <div>
               <h4 className="font-medium text-foreground mb-1">Priority Documents</h4>
               <p>
-                Priority documents are always loaded into Granger&apos;s system prompt.
-                They provide persistent context about your team, projects, and priorities
-                so Granger stays informed across every conversation.
+                Priority documents are <span className="text-foreground font-medium">prepended to every system prompt message</span> &mdash;
+                they are the very first thing Granger reads before any conversation. They do <em>not</em> overwrite the base instructions;
+                they <span className="text-foreground font-medium">add context on top</span> of them.
               </p>
+              <p className="mt-1.5">
+                Order matters: document #1 is read first, document #5 is read last.
+                Place the most critical context at the top.
+              </p>
+              <div className="mt-2 rounded-md bg-muted/50 p-3">
+                <p className="text-xs font-medium text-foreground mb-1">Example priority documents:</p>
+                <ul className="text-xs space-y-0.5">
+                  <li>&bull; Team roster with roles and responsibilities</li>
+                  <li>&bull; Q2 OKRs and key milestones</li>
+                  <li>&bull; Client brief for Project X</li>
+                  <li>&bull; Product spec or PRD for the current sprint</li>
+                  <li>&bull; Brand voice and style guidelines</li>
+                </ul>
+              </div>
             </div>
             <div>
               <h4 className="font-medium text-foreground mb-1">Rules</h4>
               <p>
-                Rules define behavior constraints for Granger (e.g., &quot;Always respond
-                in Spanish&quot; or &quot;Never share budget details externally&quot;).
-                They are injected into every conversation.
+                Rules are injected as a <span className="text-foreground font-medium">&quot;User Rules&quot; section at the end</span> of
+                the system prompt. They are hard constraints &mdash; Granger must follow them in every response.
               </p>
+              <div className="mt-2 rounded-md bg-muted/50 p-3">
+                <p className="text-xs font-medium text-foreground mb-1">Example rules:</p>
+                <ul className="text-xs space-y-0.5">
+                  <li>&bull; &quot;Always respond in Spanish&quot;</li>
+                  <li>&bull; &quot;Never share financial details externally&quot;</li>
+                  <li>&bull; &quot;Use casual, friendly tone&quot;</li>
+                  <li>&bull; &quot;Always cite sources when referencing meeting notes&quot;</li>
+                  <li>&bull; &quot;Prioritize Linear issues tagged urgent&quot;</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">How the prompt is assembled</h4>
+              <div className="rounded-md bg-muted/50 p-3 font-mono text-xs space-y-1">
+                <p className="text-foreground">[Base instructions]</p>
+                <p>&darr;</p>
+                <p className="text-foreground">[Priority Doc #1] &rarr; [Priority Doc #2] &rarr; ... &rarr; [Priority Doc #N]</p>
+                <p>&darr;</p>
+                <p className="text-foreground">[## User Rules]</p>
+                <p>&darr;</p>
+                <p className="text-foreground">[User Message]</p>
+              </div>
             </div>
             <div>
               <h4 className="font-medium text-foreground mb-1">Managing</h4>
               <ul className="list-disc list-inside space-y-0.5">
-                <li>Drag to reorder documents by priority</li>
+                <li>Reorder documents using the up/down arrows to set priority</li>
                 <li>Toggle on/off to temporarily disable without deleting</li>
                 <li>Add new documents from scratch or from your context library</li>
+                <li>Click the pencil icon to edit a document inline</li>
               </ul>
             </div>
           </div>

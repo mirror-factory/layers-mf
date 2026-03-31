@@ -1169,6 +1169,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
   const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -1796,19 +1797,40 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
             return (
               <>
-                {/* File tree sidebar */}
-                <div className="w-44 shrink-0 border-r flex flex-col bg-muted/20">
-                  <div className="px-3 py-2 border-b">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Files</p>
+                {/* File tree sidebar — collapsible */}
+                {fileTreeCollapsed ? (
+                  <div className="shrink-0 border-r flex flex-col bg-muted/20">
+                    <button
+                      onClick={() => setFileTreeCollapsed(false)}
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                      aria-label="Expand file tree"
+                      title="Show files"
+                    >
+                      <PanelRightOpen className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <FileTree
-                      files={tree}
-                      selectedPath={currentPath}
-                      onSelectFile={(path) => { setSelectedFilePath(path); setArtifactViewMode("code"); }}
-                    />
+                ) : (
+                  <div className="w-44 shrink-0 border-r flex flex-col bg-muted/20">
+                    <div className="px-3 py-2 border-b flex items-center justify-between">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Files</p>
+                      <button
+                        onClick={() => setFileTreeCollapsed(true)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Collapse file tree"
+                        title="Hide files"
+                      >
+                        <PanelRightClose className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <FileTree
+                        files={tree}
+                        selectedPath={currentPath}
+                        onSelectFile={(path) => { setSelectedFilePath(path); setArtifactViewMode("code"); }}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Code/Preview area — or TipTap editor for documents */}
                 <div className="flex-1 flex flex-col min-w-0">

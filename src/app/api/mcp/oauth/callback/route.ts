@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   // Parse state — contains serverId and the MCP server's token endpoint
   // Accept both standard base64 and base64url encoding
-  let stateData: { serverId: string; tokenUrl: string; clientId: string; clientSecret?: string };
+  let stateData: { serverId: string; tokenUrl: string; clientId: string; clientSecret?: string; codeVerifier?: string };
   try {
     // Normalize base64url to standard base64 before decoding
     const normalized = state.replace(/-/g, "+").replace(/_/g, "/");
@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
         redirect_uri: callbackUrl,
         client_id: stateData.clientId,
         ...(stateData.clientSecret ? { client_secret: stateData.clientSecret } : {}),
+        ...(stateData.codeVerifier ? { code_verifier: stateData.codeVerifier } : {}),
       }),
     });
 

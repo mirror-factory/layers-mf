@@ -398,7 +398,7 @@ export default function SharingPage() {
           />
         </button>
         {guideOpen && (
-          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-3 border-t pt-3">
+          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-4 border-t pt-3">
             <div>
               <h4 className="font-medium text-foreground mb-1">Share with your team</h4>
               <p>
@@ -409,15 +409,44 @@ export default function SharingPage() {
             <div>
               <h4 className="font-medium text-foreground mb-1">Conversations</h4>
               <p>
-                Team members can view shared conversations and continue collaborating.
-                The owner controls sharing access and can revoke it at any time.
+                When you share a conversation, team members can view it in their Sharing tab.
+                Shared conversations show who shared them and when. The owner controls access and
+                can revoke it at any time.
+              </p>
+              <div className="mt-2 rounded-md bg-muted/50 p-3">
+                <p className="text-xs font-medium text-foreground mb-1">Access levels:</p>
+                <ul className="text-xs space-y-0.5">
+                  <li>&bull; <span className="text-foreground font-medium">View</span> &mdash; read-only access to the conversation history</li>
+                  <li>&bull; <span className="text-foreground font-medium">Edit</span> &mdash; can continue the conversation and add messages</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Context Items</h4>
+              <p>
+                Context items (documents, meeting notes, synced files) are <span className="text-foreground font-medium">org-wide by default</span> &mdash;
+                all members can see them in the Context Library and search them in chat.
+              </p>
+              <div className="mt-2 rounded-md bg-muted/50 p-3">
+                <p className="text-xs font-medium text-foreground mb-1">Example:</p>
+                <p className="text-xs">
+                  Alfonso syncs a client call transcript from Granola &rarr; Kyle can search it in chat &rarr;
+                  Bobby sees it in Context Library. No extra sharing step needed.
+                </p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Skills</h4>
+              <p>
+                Skills you create are available to all org members. Any team member can
+                activate a shared skill from this page and start using it in their conversations.
               </p>
             </div>
             <div>
-              <h4 className="font-medium text-foreground mb-1">Context & Skills</h4>
+              <h4 className="font-medium text-foreground mb-1">Link Sharing</h4>
               <p>
-                Context items are automatically shared across the org. Skills shared here
-                can be activated by any team member from this page.
+                Generate a shareable URL for any conversation &mdash; anyone in your org with
+                the link can access it. Useful for posting in Slack or email threads.
               </p>
             </div>
             <div>

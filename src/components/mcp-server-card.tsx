@@ -3,6 +3,22 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Trash2, ChevronDown, ChevronRight, Wrench, Globe, Zap, KeyRound, Search, Loader2 } from "lucide-react";
 
+/* ─── PKCE Helpers ─── */
+
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 interface MCPServer {
   id: string;
   name: string;
@@ -62,7 +78,36 @@ export function MCPServerCard({
         const meta = await res.json();
         const authorizeUrl = meta.authorization_endpoint ?? "";
         const tokenUrl = meta.token_endpoint ?? "";
-        const clientId = meta.client_id ?? window.location.origin;
+        const registrationEndpoint = meta.registration_endpoint ?? "";
+        let clientId = meta.client_id ?? "";
+
+        // Dynamic Client Registration: if a registration_endpoint is provided
+        // and we don't already have a clientId, register a new client
+        if (registrationEndpoint && !clientId) {
+          try {
+            const regRes = await fetch(registrationEndpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                client_name: "Granger",
+                redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
+                grant_types: ["authorization_code", "refresh_token"],
+                response_types: ["code"],
+                token_endpoint_auth_method: "none",
+              }),
+            });
+            if (regRes.ok) {
+              const regData = await regRes.json();
+              clientId = regData.client_id ?? "";
+            }
+          } catch {
+            // Registration failed — fall back to origin as clientId
+          }
+        }
+
+        if (!clientId) {
+          clientId = window.location.origin;
+        }
 
         if (authorizeUrl) {
           setOauthForm((prev) => ({
@@ -229,17 +274,23 @@ export function MCPServerCard({
           {/* Case 1: Already has saved config OR auto-discovery succeeded — show Connect button */}
           {(server.oauth_authorize_url && server.oauth_client_id) || autoDiscoveryDone ? (
             <button
-              onClick={() => {
+              onClick={async () => {
                 const authorizeUrl = server.oauth_authorize_url || oauthForm.authorizeUrl;
                 const clientId = server.oauth_client_id || oauthForm.clientId;
                 const tokenUrl = server.oauth_token_url || oauthForm.tokenUrl;
                 const clientSecret = server.oauth_client_secret || oauthForm.clientSecret || undefined;
                 const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+
+                // Generate PKCE code_verifier and code_challenge
+                const codeVerifier = generateCodeVerifier();
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+
                 const stateObj = {
                   serverId: server.id,
                   tokenUrl,
                   clientId,
                   clientSecret,
+                  codeVerifier,
                 };
                 const state = btoa(JSON.stringify(stateObj))
                   .replace(/\+/g, "-")
@@ -250,6 +301,8 @@ export function MCPServerCard({
                   client_id: clientId!,
                   redirect_uri: callbackUrl,
                   state,
+                  code_challenge: codeChallenge,
+                  code_challenge_method: "S256",
                 });
                 window.location.href = `${authorizeUrl}?${params}`;
               }}
