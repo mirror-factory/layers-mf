@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
+import { FileTree, buildFileTree, findFileNode } from "@/components/file-tree";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -231,6 +232,8 @@ interface ActiveArtifact {
   description?: string;
   contextId?: string;
   previewUrl?: string;
+  /** Multi-file support for run_project results */
+  files?: { path: string; content: string }[];
 }
 
 /** Extract URLs from text (markdown links, bare URLs, and footnote references) */
@@ -295,11 +298,24 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
     const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
 
+    // Extract multi-file project files if available
+    const sFiles = Array.isArray(sbox.files)
+      ? (sbox.files as { path: string; content: string }[])
+      : undefined;
+    const sFileCount = typeof sbox.fileCount === "number" ? sbox.fileCount : undefined;
+
     // If we have a previewUrl AND code AND it succeeded, show artifact card
     if (sPreviewUrl && sCode && sExitCode === 0) {
       return (
         <button
-          onClick={() => onOpenArtifact?.({ filename: sFilename, language: sLanguage, code: sCode, previewUrl: sPreviewUrl, description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}` })}
+          onClick={() => onOpenArtifact?.({
+            filename: sFilename,
+            language: sLanguage,
+            code: sCode,
+            previewUrl: sPreviewUrl,
+            description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}`,
+            files: sFiles,
+          })}
           className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
@@ -307,8 +323,35 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{sFilename}</p>
-            <p className="text-xs text-muted-foreground">{sLanguage} — Click to open</p>
+            <p className="text-xs text-muted-foreground">
+              {sFileCount && sFileCount > 1 ? `${sFileCount} files` : sLanguage} — Click to open
+            </p>
             <p className="text-[10px] text-muted-foreground/60 mt-0.5">Preview URL is temporary — it expires after ~2 minutes</p>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
+      );
+    }
+
+    // Multi-file project without preview → show as artifact card so user can browse all files
+    if (sFiles && sFiles.length > 1) {
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: sFilename,
+            language: sLanguage,
+            code: sCode,
+            description: sExitCode === 0 ? `${sFiles.length} files` : `Exit code: ${sExitCode}`,
+            files: sFiles,
+          })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <FileCode2 className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{sFilename}</p>
+            <p className="text-xs text-muted-foreground">{sFiles.length} files — Click to open</p>
           </div>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
         </button>
@@ -906,6 +949,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const prevSourceCountRef = useRef(0);
   const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
   const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -1186,7 +1230,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); }} />
+                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(artifact.files?.[0]?.path ?? null); }} />
                       ))}
                     </div>
                   )}
@@ -1382,74 +1426,112 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
       </div>
 
-      {/* Right panel — Artifact viewer (takes priority over context panel) */}
+      {/* Right panel — Artifact viewer with file tree (mini IDE) */}
       {activeArtifact ? (
-        <aside className="hidden md:flex w-[50%] min-w-[400px] shrink-0 border-l flex-col bg-card">
-          <div className="flex items-center justify-between px-4 py-2 border-b">
-            <div className="flex items-center gap-2 min-w-0">
-              <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium truncate">{activeArtifact.filename}</span>
-              <span className="text-[10px] text-muted-foreground shrink-0">{activeArtifact.language}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="flex rounded-md border bg-background overflow-hidden mr-1">
-                <button
-                  onClick={() => setArtifactViewMode("code")}
-                  className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
-                >
-                  Code
-                </button>
-                <button
-                  onClick={() => setArtifactViewMode("preview")}
-                  className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
-                >
-                  Preview
-                </button>
-              </div>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          {activeArtifact.description && (
-            <div className="px-4 py-1.5 border-b bg-muted/10">
-              <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
-            </div>
-          )}
-          <div className="flex-1 overflow-auto">
-            {artifactViewMode === "code" && (
-              <CodeBlock code={activeArtifact.code} language={activeArtifact.language as import("shiki").BundledLanguage} showLineNumbers>
-                <div />
-              </CodeBlock>
-            )}
-            {artifactViewMode === "preview" && (
-              <iframe
-                srcDoc={(() => {
-                  const code = activeArtifact.code;
-                  const lang = activeArtifact.language;
-                  // HTML → render directly
-                  if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
-                  // JSX/TSX/React → wrap in HTML with CDN React + Babel
-                  if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
-                    if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
-                      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
-                    }
-                    // Plain JS → run in script tag
-                    return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
-                  }
-                  // CSS → wrap in styled HTML
-                  if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
-                  // SVG → wrap
-                  if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
-                  // Fallback → show as code
-                  return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
-                })()}
-                className="w-full h-full bg-white"
-                sandbox="allow-scripts"
-                title={`Preview of ${activeArtifact.filename}`}
-              />
-            )}
-          </div>
+        <aside className="hidden md:flex w-[50%] min-w-[400px] shrink-0 border-l bg-card">
+          {(() => {
+            // Build file tree from multi-file project or single file
+            const artifactFiles = activeArtifact.files?.length
+              ? activeArtifact.files
+              : [{ path: activeArtifact.filename, content: activeArtifact.code }];
+            const tree = buildFileTree(artifactFiles);
+            const currentPath = selectedFilePath ?? artifactFiles[0]?.path ?? null;
+            const currentNode = currentPath ? findFileNode(tree, currentPath) : null;
+            const displayCode = currentNode?.content ?? activeArtifact.code;
+            const displayLang = currentNode?.language ?? activeArtifact.language;
+            const displayName = currentNode?.name ?? activeArtifact.filename;
+
+            return (
+              <>
+                {/* File tree sidebar */}
+                <div className="w-44 shrink-0 border-r flex flex-col bg-muted/20">
+                  <div className="px-3 py-2 border-b">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Files</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <FileTree
+                      files={tree}
+                      selectedPath={currentPath}
+                      onSelectFile={(path) => { setSelectedFilePath(path); setArtifactViewMode("code"); }}
+                    />
+                  </div>
+                </div>
+
+                {/* Code/Preview area */}
+                <div className="flex-1 flex flex-col min-w-0">
+                  {/* Header bar */}
+                  <div className="flex items-center justify-between px-4 py-2 border-b">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">{displayName}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{displayLang}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex rounded-md border bg-background overflow-hidden mr-1">
+                        <button
+                          onClick={() => setArtifactViewMode("code")}
+                          className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          Code
+                        </button>
+                        <button
+                          onClick={() => setArtifactViewMode("preview")}
+                          className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          Preview
+                        </button>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {activeArtifact.description && (
+                    <div className="px-4 py-1.5 border-b bg-muted/10">
+                      <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
+                    </div>
+                  )}
+                  <div className="flex-1 overflow-auto">
+                    {artifactViewMode === "code" && (
+                      <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
+                        <div />
+                      </CodeBlock>
+                    )}
+                    {artifactViewMode === "preview" && (
+                      activeArtifact.previewUrl ? (
+                        <iframe
+                          src={activeArtifact.previewUrl}
+                          className="w-full h-full bg-white"
+                          sandbox="allow-scripts allow-same-origin"
+                          title={`Preview of ${activeArtifact.filename}`}
+                        />
+                      ) : (
+                        <iframe
+                          srcDoc={(() => {
+                            const code = displayCode;
+                            const lang = displayLang;
+                            if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
+                            if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
+                              if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
+                                return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
+                              }
+                              return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
+                            }
+                            if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
+                            if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
+                            return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
+                          })()}
+                          className="w-full h-full bg-white"
+                          sandbox="allow-scripts"
+                          title={`Preview of ${activeArtifact.filename}`}
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </aside>
       ) : (
         <>
