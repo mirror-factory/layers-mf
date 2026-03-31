@@ -749,8 +749,8 @@ export default function MCPSettingsPage() {
             const connected = isServerConnected(server.url);
             const connecting = connectingServer === server.url;
             return (
+              <div key={server.url} className="space-y-2">
               <div
-                key={server.url}
                 className="rounded-lg border bg-card p-4 flex items-start gap-3"
               >
                 <span className="text-2xl shrink-0 mt-0.5">{server.icon}</span>
@@ -821,6 +821,7 @@ export default function MCPSettingsPage() {
                   </button>
                 </div>
               )}
+              </div>
             );
           })}
         </div>
