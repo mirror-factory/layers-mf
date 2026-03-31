@@ -300,9 +300,13 @@ export async function POST(request: NextRequest) {
   const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
   const allTools = { ...baseTools, ...mcpTools };
 
+  // Inject real-time date/time into instructions
+  const now = new Date();
+  const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
+
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
-    instructions: AGENT_INSTRUCTIONS,
+    instructions: AGENT_INSTRUCTIONS + dateTimeContext,
     tools: allTools,
     stopWhen: stepCountIs(20),
     onStepFinish: ({ usage, toolCalls, text }) => {

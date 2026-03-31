@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Send, Loader2, Bot, User,
+  Send, Loader2, Bot, User, Square,
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
@@ -233,27 +233,30 @@ interface ActiveArtifact {
   previewUrl?: string;
 }
 
-/** Extract URLs from text (markdown links and bare URLs) */
-function extractUrls(text: string): { url: string; title?: string }[] {
+/** Extract URLs from text (markdown links, bare URLs, and footnote references) */
+function extractUrls(text: string): { url: string; title: string }[] {
   const seen = new Set<string>();
-  const results: { url: string; title?: string }[] = [];
+  const results: { url: string; title: string }[] = [];
+
   // Match markdown links: [title](url)
-  const mdLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   let match;
-  while ((match = mdLinkRegex.exec(text)) !== null) {
+  while ((match = mdRegex.exec(text)) !== null) {
     if (!seen.has(match[2])) {
       seen.add(match[2]);
       results.push({ url: match[2], title: match[1] });
     }
   }
-  // Match bare URLs not already captured
-  const bareUrlRegex = /(?<!\]\()https?:\/\/[^\s)\]]+/g;
-  while ((match = bareUrlRegex.exec(text)) !== null) {
+
+  // Match bare URLs not already captured (negative lookbehind excludes markdown link URLs)
+  const bareRegex = /(?<!\()https?:\/\/[^\s)\]>]+/g;
+  while ((match = bareRegex.exec(text)) !== null) {
     if (!seen.has(match[0])) {
       seen.add(match[0]);
-      results.push({ url: match[0] });
+      results.push({ url: match[0], title: getHostname(match[0]) });
     }
   }
+
   return results;
 }
 
@@ -305,6 +308,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{sFilename}</p>
             <p className="text-xs text-muted-foreground">{sLanguage} — Click to open</p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Preview URL is temporary — it expires after ~2 minutes</p>
           </div>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
         </button>
@@ -370,7 +374,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             <MessageResponse>{wsResult}</MessageResponse>
           </div>
         )}
-        {citations.length > 0 && (
+        {citations.length > 0 ? (
           <div className="px-3 py-2 bg-muted/30 border-t space-y-1.5">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
             <div className="flex flex-wrap gap-1.5">
@@ -380,15 +384,19 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
                   href={c.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  className="group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs hover:bg-accent transition-colors relative"
                   title={c.url}
                 >
-                  <span className="text-[10px] font-medium text-primary">[{i + 1}]</span>
-                  <span className="truncate max-w-[140px]">{c.title ?? getHostname(c.url)}</span>
-                  <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                  <span className="font-medium text-primary">[{i + 1}]</span>
+                  <span className="text-muted-foreground truncate max-w-[180px]">{c.title}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
                 </a>
               ))}
             </div>
+          </div>
+        ) : !wsError && (
+          <div className="px-3 py-2 bg-muted/30 border-t">
+            <p className="text-[10px] text-muted-foreground">Search powered by Perplexity — results may include information from multiple sources</p>
           </div>
         )}
       </div>
@@ -863,7 +871,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -1287,9 +1295,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
                   }
                 }}
               />
-              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()} data-testid="chat-submit" aria-label="Send message">
-                <Send className="h-4 w-4" />
-              </Button>
+              {isLoading ? (
+                <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop">
+                  <Square className="h-3 w-3" />
+                </Button>
+              ) : (
+                <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim()} data-testid="chat-submit" aria-label="Send message">
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line</p>

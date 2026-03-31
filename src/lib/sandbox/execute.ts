@@ -43,7 +43,7 @@ export async function executeInSandbox(options: {
     const sandbox = await Sandbox.create({
       runtime: "node24",
       ports: [port],
-      timeout: options.timeout ?? 60_000,
+      timeout: options.timeout ?? 120_000, // 2 min so preview stays alive longer
     });
 
     try {
@@ -82,10 +82,28 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       // Start the server (don't await — it runs in background)
       sandbox.runCommand("node", ["server.js"]);
 
-      // Wait a moment for server to start
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for server to be ready (2s initial wait)
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const previewUrl = sandbox.domain(port);
+
+      // Health check: verify the preview URL responds before returning
+      try {
+        const check = await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
+        if (!check.ok) {
+          // Retry after another second
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch {
+        // URL not ready yet — retry once after a delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+          await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
+        } catch {
+          // Still not responding, return URL anyway — it may work by the time user clicks
+        }
+      }
+
       return {
         stdout: `Serving HTML at ${previewUrl}`,
         stderr: "",

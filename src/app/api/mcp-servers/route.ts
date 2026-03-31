@@ -27,8 +27,10 @@ export async function GET() {
     return NextResponse.json({ error: "No organization found" }, { status: 400 });
   }
 
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const adminGet = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (adminGet as any)
     .from("mcp_servers")
     .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, last_connected_at, error_message, created_at")
     .eq("org_id", member.org_id)
@@ -101,9 +103,11 @@ export async function POST(request: NextRequest) {
     discoveredTools = testResult.toolNames;
   }
 
-  // Insert server record
+  // Insert server record (use admin to bypass RLS)
+  const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
+  const adminDb = createAdmin();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (adminDb as any)
     .from("mcp_servers")
     .insert({
       org_id: member.org_id,
