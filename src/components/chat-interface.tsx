@@ -243,23 +243,29 @@ function ToolCallCard({ part }: { part: ToolPart }) {
     const sStderr = typeof sbox.stderr === "string" ? sbox.stderr : "";
     const sExitCode = typeof sbox.exitCode === "number" ? sbox.exitCode : 1;
     const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
+    const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
 
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
-        {/* Code that was executed */}
+        {/* Collapsible code — show filename header, expand to see code */}
         {sCode && (
-          <CodeSandbox
-            filename={sFilename}
-            language={sLanguage}
-            code={sCode}
-          />
+          <details className="group">
+            <summary className="flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer hover:bg-muted">
+              <span className="text-muted-foreground">▶</span>
+              <span className="font-mono">{sFilename}</span>
+              <span className="text-muted-foreground">({sLanguage})</span>
+              <span className={cn("ml-auto", sExitCode === 0 ? "text-green-600" : "text-red-600")}>
+                {sExitCode === 0 ? "✓ Success" : `✗ Exit ${sExitCode}`}
+              </span>
+            </summary>
+            <div className="border-t">
+              <CodeSandbox filename={sFilename} language={sLanguage} code={sCode} />
+            </div>
+          </details>
         )}
-        {/* Terminal output */}
-        <div className="border-t bg-zinc-950 text-green-400 p-3 font-mono text-xs max-h-48 overflow-y-auto">
-          <div className="flex items-center gap-2 text-zinc-500 mb-1">
-            <span>$</span>
-            <span>{sExitCode === 0 ? "Exit 0" : `Exit ${sExitCode}`}</span>
-          </div>
+        {/* Terminal output — only show if there's actual output */}
+        {hasOutput && (
+        <div className={cn("bg-zinc-950 text-green-400 p-3 font-mono text-xs max-h-48 overflow-y-auto", sCode ? "border-t" : "")}>
           {sStdout && (
             <pre className="whitespace-pre-wrap">{sStdout}</pre>
           )}
@@ -267,13 +273,14 @@ function ToolCallCard({ part }: { part: ToolPart }) {
             <pre className="whitespace-pre-wrap text-red-400">{sStderr}</pre>
           )}
         </div>
+        )}
         {/* Live preview iframe */}
-        {sandboxOutput.previewUrl && (
+        {sPreviewUrl && (
           <div className="border-t">
             <div className="flex items-center justify-between px-3 py-1 bg-muted text-xs">
               <span>Live Preview</span>
               <a
-                href={sandboxOutput.previewUrl as string}
+                href={sPreviewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
@@ -282,7 +289,7 @@ function ToolCallCard({ part }: { part: ToolPart }) {
               </a>
             </div>
             <iframe
-              src={sandboxOutput.previewUrl as string}
+              src={sPreviewUrl}
               className="w-full h-64 border-0"
               sandbox="allow-scripts allow-same-origin"
               title="Sandbox preview"

@@ -55,9 +55,11 @@ When users say things like "every morning check my Linear", "remind me tomorrow"
 Common cron patterns: "0 7 * * 1-5" = weekdays 7am, "0 9 * * 1" = Mondays 9am, "0 */2 * * *" = every 2 hours.
 For one-shot: use "once:2026-04-01T09:00:00Z" format.
 
-**Code Execution:**
-- run_code — execute JavaScript/TypeScript/Python in a sandboxed VM. Use for calculations, data processing, API testing, generating reports, or creating quick tools on the fly. Can install npm/pip packages. Returns stdout + optional live preview URL.
-- write_code — create a code artifact (display only, no execution). Use when the user just wants to see code.
+**Code:**
+- write_code — create a code artifact with preview. Use for HTML/CSS/JS previews, templates, configs, scripts the user wants to SEE. HTML artifacts get an inline iframe preview automatically.
+- run_code — EXECUTE code in a sandboxed Vercel VM. Use ONLY when code needs to RUN (calculations, API calls, data processing, npm scripts). Do NOT use run_code for HTML previews — use write_code instead. Only use run_code when you need stdout output from actual execution.
+
+IMPORTANT: For HTML/CSS/web content → write_code (has iframe preview). For scripts that compute/fetch → run_code (has terminal output).
 
 **Approvals:**
 - list_approvals — query the approval queue directly. Use for /approve and when users ask about pending actions.
