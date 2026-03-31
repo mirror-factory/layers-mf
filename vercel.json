@@ -13,28 +13,8 @@
       "schedule": "0 0 1 * *"
     },
     {
-      "path": "/api/cron/drive-watch-renewal",
-      "schedule": "0 */20 * * *"
-    },
-    {
-      "path": "/api/cron/discord-alerts",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/cron/ingest",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cron/synthesis",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/linear-check",
-      "schedule": "*/3 * * * *"
-    },
-    {
-      "path": "/api/cron/execute-schedules",
-      "schedule": "* * * * *"
     }
   ],
   "functions": {
