@@ -479,12 +479,12 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     // === Code execution tool ===
     run_code: tool({
       description:
-        "Write and execute code in a sandboxed environment. Use for: running scripts, data processing, calculations, generating reports, testing APIs, creating quick tools. The code runs in an isolated Vercel Sandbox VM. Returns stdout, stderr, and optionally a live preview URL.",
+        "Write and execute code in a sandboxed Vercel VM. Use for: running scripts, data processing, calculations, API testing, or serving HTML/CSS/React for live preview. For HTML: auto-serves with a static server and returns a live preview URL. For JS/Python: executes and returns stdout.",
       inputSchema: z.object({
-        code: z.string().describe("The code to execute"),
+        code: z.string().describe("The code to execute or serve"),
         language: z
-          .enum(["javascript", "typescript", "python"])
-          .describe("Programming language"),
+          .enum(["javascript", "typescript", "python", "html"])
+          .describe("Programming language. Use 'html' for web pages that need a live preview URL."),
         filename: z
           .string()
           .optional()

@@ -8,22 +8,98 @@ export interface SandboxResult {
 }
 
 /**
+ * Detect if code is HTML content that should be served, not executed.
+ */
+function isHtmlContent(code: string, filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'html' || ext === 'htm') return true;
+  if (code.trim().startsWith('<!DOCTYPE') || code.trim().startsWith('<html')) return true;
+  return false;
+}
+
+/**
  * Execute code in a Vercel Sandbox microVM.
  * Supports Node.js and Python runtimes.
+ * Auto-detects HTML and serves it with a static server for live preview.
  */
 export async function executeInSandbox(options: {
   code: string;
-  language: "javascript" | "typescript" | "python";
+  language: "javascript" | "typescript" | "python" | "html";
   filename?: string;
   installPackages?: string[];
   exposePort?: number;
   timeout?: number;
 }): Promise<SandboxResult> {
-  const runtime = options.language === "python" ? "python3.13" : "node24";
   const filename =
     options.filename ??
-    (options.language === "python" ? "main.py" : "index.js");
+    (options.language === "python" ? "main.py" :
+     options.language === "html" ? "index.html" : "index.js");
 
+  const isHtml = options.language === "html" || isHtmlContent(options.code, filename);
+
+  // For HTML content: serve it with a simple static server
+  if (isHtml) {
+    const port = options.exposePort ?? 3000;
+    const sandbox = await Sandbox.create({
+      runtime: "node24",
+      ports: [port],
+      timeout: options.timeout ?? 60_000,
+    });
+
+    try {
+      // Write the HTML file
+      await sandbox.writeFiles([
+        { path: "public/index.html", content: Buffer.from(options.code) },
+      ]);
+
+      // Create a simple static file server
+      const serverCode = `
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+const server = http.createServer((req, res) => {
+  const filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+  const ext = path.extname(filePath);
+  const contentType = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' }[ext] || 'text/plain';
+
+  try {
+    const content = fs.readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+  } catch {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
+server.listen(${port}, () => console.log('Serving on port ${port}'));
+`;
+      await sandbox.writeFiles([
+        { path: "server.js", content: Buffer.from(serverCode) },
+      ]);
+
+      // Start the server (don't await — it runs in background)
+      sandbox.runCommand("node", ["server.js"]);
+
+      // Wait a moment for server to start
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const previewUrl = sandbox.domain(port);
+      return {
+        stdout: `Serving HTML at ${previewUrl}`,
+        stderr: "",
+        exitCode: 0,
+        previewUrl,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { stdout: "", stderr: msg, exitCode: 1 };
+    }
+  }
+
+  // For regular code: execute and return output
+  const runtime = options.language === "python" ? "python3.13" : "node24";
   const sandbox = await Sandbox.create({
     runtime,
     ports: options.exposePort ? [options.exposePort] : [],
@@ -31,25 +107,16 @@ export async function executeInSandbox(options: {
   });
 
   try {
-    // Write the code file
     await sandbox.writeFiles([
       { path: filename, content: Buffer.from(options.code) },
     ]);
 
-    // Install packages if needed
     if (options.installPackages?.length) {
-      const installCmd =
-        options.language === "python"
-          ? "pip"
-          : "npm";
-      const installArgs =
-        options.language === "python"
-          ? ["install", ...options.installPackages]
-          : ["install", ...options.installPackages];
+      const installCmd = options.language === "python" ? "pip" : "npm";
+      const installArgs = ["install", ...options.installPackages];
       await sandbox.runCommand(installCmd, installArgs);
     }
 
-    // Run the code
     const cmd = options.language === "python" ? "python3" : "node";
     const result = await sandbox.runCommand(cmd, [filename]);
 
@@ -57,7 +124,6 @@ export async function executeInSandbox(options: {
     const stderr = await result.stderr();
     const exitCode = result.exitCode;
 
-    // Get preview URL if a port was exposed
     const previewUrl = options.exposePort
       ? sandbox.domain(options.exposePort)
       : undefined;
@@ -70,6 +136,5 @@ export async function executeInSandbox(options: {
     if (!options.exposePort) {
       await sandbox.stop();
     }
-    // If port exposed, keep sandbox alive for preview (it'll auto-timeout)
   }
 }
