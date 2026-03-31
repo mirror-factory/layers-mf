@@ -20,7 +20,7 @@ export async function GET() {
 
   // Run all queries in parallel
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [eventsResult, approvalsResult, inboxResult] = await Promise.all([
+  const [eventsResult, approvalsResult, inboxResult, systemChatsResult] = await Promise.all([
     // Recent schedule completions (scheduled_actions not in DB types yet)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (adminDb as any)
@@ -47,11 +47,22 @@ export async function GET() {
       .eq('status', 'unread')
       .gte('created_at', fiveMinutesAgo)
       .limit(5),
+
+    // Recent system-initiated conversations (from schedules, etc.)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (adminDb as any)
+      .from('conversations')
+      .select('id, title, created_at, initiated_by')
+      .eq('org_id', member.org_id)
+      .eq('initiated_by', 'schedule')
+      .gte('created_at', fiveMinutesAgo)
+      .limit(5),
   ]);
 
   return NextResponse.json({
     events: eventsResult.data ?? [],
     approvals: approvalsResult.data ?? [],
     inbox: inboxResult.data ?? [],
+    systemChats: systemChatsResult.data ?? [],
   });
 }

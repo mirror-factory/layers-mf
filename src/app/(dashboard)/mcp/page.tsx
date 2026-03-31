@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink } from "lucide-react";
+import { Plug, Loader2, CheckCircle2, XCircle, Plus, ExternalLink, KeyRound } from "lucide-react";
 import { MCPServerCard } from "@/components/mcp-server-card";
+
+type AuthType = "none" | "bearer" | "oauth";
 
 interface MCPServer {
   id: string;
   name: string;
   url: string;
   transport_type: "http" | "sse";
+  auth_type: AuthType;
   is_active: boolean;
   discovered_tools: { name: string }[];
   last_connected_at: string | null;
@@ -29,10 +32,25 @@ export default function MCPSettingsPage() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [authType, setAuthType] = useState<AuthType>("bearer");
   const [transportType, setTransportType] = useState<"http" | "sse">("http");
   const [testState, setTestState] = useState<TestState>({ status: "idle" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Show success/error from OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+    const error = params.get("error");
+    if (success) {
+      setTestState({ status: "success", toolCount: 0, toolNames: [] });
+      window.history.replaceState({}, "", "/mcp");
+    } else if (error) {
+      setFormError(error);
+      window.history.replaceState({}, "", "/mcp");
+    }
+  }, []);
 
   const fetchServers = useCallback(async () => {
     try {
@@ -64,7 +82,7 @@ export default function MCPSettingsPage() {
       const res = await fetch("/api/mcp-servers/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), apiKey: apiKey || undefined, transportType }),
+        body: JSON.stringify({ url: url.trim(), apiKey: apiKey || undefined, transportType, authType }),
       });
       const data = await res.json();
       if (data.success) {
@@ -96,6 +114,7 @@ export default function MCPSettingsPage() {
           name: name.trim(),
           url: url.trim(),
           apiKey: apiKey || undefined,
+          authType,
           transportType,
         }),
       });
@@ -104,6 +123,7 @@ export default function MCPSettingsPage() {
         setName("");
         setUrl("");
         setApiKey("");
+        setAuthType("bearer");
         setTransportType("http");
         setTestState({ status: "idle" });
         fetchServers();
@@ -219,18 +239,49 @@ export default function MCPSettingsPage() {
           </div>
 
           <div>
-            <label htmlFor="mcp-apikey" className="text-xs font-medium text-muted-foreground block mb-1">
-              API Key <span className="text-muted-foreground font-normal">(optional)</span>
+            <label htmlFor="mcp-auth-type" className="text-xs font-medium text-muted-foreground block mb-1">
+              Authentication
             </label>
-            <input
-              id="mcp-apikey"
-              type="password"
-              placeholder="sk-..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <select
+              id="mcp-auth-type"
+              value={authType}
+              onChange={(e) => setAuthType(e.target.value as AuthType)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="none">None</option>
+              <option value="bearer">API Key</option>
+              <option value="oauth">OAuth</option>
+            </select>
           </div>
+
+          {authType === "bearer" && (
+            <div>
+              <label htmlFor="mcp-apikey" className="text-xs font-medium text-muted-foreground block mb-1">
+                API Key
+              </label>
+              <input
+                id="mcp-apikey"
+                type="password"
+                placeholder="sk-..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          )}
+
+          {authType === "oauth" && (
+            <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 mb-1">
+                <KeyRound className="h-4 w-4" />
+                <span className="font-medium text-foreground text-xs">OAuth Authentication</span>
+              </div>
+              <p className="text-xs">
+                Save the server first, then use the &quot;Connect with OAuth&quot; button
+                on the server card to authorize access.
+              </p>
+            </div>
+          )}
 
           <div>
             <label htmlFor="mcp-transport" className="text-xs font-medium text-muted-foreground block mb-1">

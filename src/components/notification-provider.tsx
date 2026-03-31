@@ -24,6 +24,11 @@ interface InboxEvent {
   title: string;
 }
 
+interface SystemChatEvent {
+  id: string;
+  title: string | null;
+}
+
 export function NotificationProvider() {
   const permissionGranted = useRef(false);
   const seenIdsRef = useRef(new Set<string>());
@@ -62,6 +67,9 @@ export function NotificationProvider() {
       if (!res.ok) return;
       const data = await res.json();
 
+      // Build a set of system chat IDs so schedule events can link to them
+      const systemChats = (data.systemChats ?? []) as SystemChatEvent[];
+
       // Check for newly completed schedule runs
       for (const event of (data.events ?? []) as ScheduleEvent[]) {
         const isLinear = event.target_service === 'linear' || event.name.toLowerCase().includes('linear');
@@ -93,6 +101,16 @@ export function NotificationProvider() {
           inbox.title,
           `inbox-${inbox.id}`,
           '/inbox',
+        );
+      }
+
+      // Check for system-initiated conversations (from schedules, etc.)
+      for (const chat of systemChats) {
+        notify(
+          chat.title || 'Schedule completed',
+          'Click to see results and follow up',
+          `system-chat-${chat.id}`,
+          `/chat?id=${chat.id}`,
         );
       }
     } catch {

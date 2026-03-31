@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization found" }, { status: 400 });
   }
 
-  let body: { name?: string; url?: string; apiKey?: string; transportType?: "http" | "sse" };
+  let body: { name?: string; url?: string; apiKey?: string; authType?: string; transportType?: "http" | "sse" };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { name, url, apiKey, transportType } = body;
+  const { name, url, apiKey, authType, transportType } = body;
 
   if (!name || !url) {
     return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
