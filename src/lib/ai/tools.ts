@@ -476,6 +476,60 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    list_schedules: tool({
+      description: "List all scheduled actions. Use when user asks about schedules, /schedule, or wants to see what is running.",
+      inputSchema: z.object({
+        status: z.enum(["active", "paused", "completed", "all"]).optional().describe("Filter by status, default all"),
+      }),
+      execute: async (input) => {
+        const query = (supabase as any).from("scheduled_actions").select("id, name, description, schedule, status, action_type, target_service, last_run_at, next_run_at, run_count").eq("org_id", orgId).order("created_at", { ascending: false });
+        if (input.status && input.status !== "all") query.eq("status", input.status);
+        const { data, error } = await query.limit(20);
+        if (error) return { error: error.message };
+        return { schedules: data ?? [], total: data?.length ?? 0 };
+      },
+    }),
+
+    edit_schedule: tool({
+      description: "Edit an existing scheduled action. Can change name, schedule, status (pause/resume), or description. Use when user says 'change the schedule', 'pause it', 'make it run every hour instead'.",
+      inputSchema: z.object({
+        id: z.string().describe("Schedule ID to edit"),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        schedule: z.string().optional().describe("New cron expression or once:ISO_DATE"),
+        status: z.enum(["active", "paused"]).optional().describe("Pause or resume"),
+      }),
+      execute: async (input) => {
+        const updates: Record<string, unknown> = {};
+        if (input.name) updates.name = input.name;
+        if (input.description) updates.description = input.description;
+        if (input.schedule) {
+          updates.schedule = input.schedule;
+          updates.next_run_at = input.schedule.startsWith("once:") ? input.schedule.replace("once:", "") : calculateNextCron(input.schedule);
+        }
+        if (input.status) updates.status = input.status;
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await (supabase as any).from("scheduled_actions").update(updates).eq("id", input.id).eq("org_id", orgId).select("id, name, status, schedule").single();
+        if (error) return { error: error.message };
+        if (!data) return { error: "Schedule not found" };
+        return { message: `Updated "${data.name}" — status: ${data.status}, schedule: ${data.schedule}`, schedule: data };
+      },
+    }),
+
+    delete_schedule: tool({
+      description: "Delete a scheduled action permanently. Use when user says 'remove that schedule', 'delete it', 'cancel the recurring task'.",
+      inputSchema: z.object({
+        id: z.string().describe("Schedule ID to delete"),
+      }),
+      execute: async (input) => {
+        const { data, error } = await (supabase as any).from("scheduled_actions").delete().eq("id", input.id).eq("org_id", orgId).select("id, name").single();
+        if (error) return { error: error.message };
+        if (!data) return { error: "Schedule not found" };
+        return { message: `Deleted schedule "${data.name}"`, deleted: true };
+      },
+    }),
+
     // === Code execution tool ===
     run_code: tool({
       description:

@@ -49,11 +49,14 @@ Prefer using specialist agents over individual tools — they have deeper knowle
 - list_drive_files — list and search Drive files
 
 **Scheduling:**
-- schedule_action — schedule a recurring or one-time action
+- schedule_action — create a recurring or one-time scheduled action
+- list_schedules — list all scheduled actions (active, paused, or all)
+- edit_schedule — edit a schedule's name, cron, status (pause/resume)
+- delete_schedule — permanently remove a scheduled action
 
-When users say things like "every morning check my Linear", "remind me tomorrow", "weekly digest", convert to a cron expression and call schedule_action.
-Common cron patterns: "0 7 * * 1-5" = weekdays 7am, "0 9 * * 1" = Mondays 9am, "0 */2 * * *" = every 2 hours.
-For one-shot: use "once:2026-04-01T09:00:00Z" format.
+When users say "every morning check my Linear", convert to cron and call schedule_action.
+When they say "pause that schedule", "change it to hourly", "delete the digest" → use edit_schedule or delete_schedule.
+Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_DATE" = one-shot.
 
 **Code:**
 - write_code — create a code artifact with inline preview. Best for static HTML/CSS/JS.
