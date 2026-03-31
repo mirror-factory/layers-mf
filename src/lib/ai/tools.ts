@@ -645,6 +645,37 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         return { message: "Action proposed. Waiting for approval.", approval_id: data.id };
       },
     }),
+
+    // === Skill activation tool ===
+    activate_skill: tool({
+      description:
+        "Activate a skill to load its specialized instructions and tools. Use when the user types a skill slash command (e.g. /pm, /email, /meeting, /code, /weekly, /brand) or says 'use the [skill name] skill'.",
+      inputSchema: z.object({
+        skill_slug: z.string().describe("The slug of the skill to activate"),
+      }),
+      execute: async ({ skill_slug }: { skill_slug: string }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: skill, error } = await (supabase as any)
+          .from("skills")
+          .select("*")
+          .eq("org_id", orgId)
+          .eq("slug", skill_slug)
+          .eq("is_active", true)
+          .single();
+
+        if (error || !skill) {
+          return { error: `Skill "${skill_slug}" not found or inactive` };
+        }
+
+        return {
+          activated: true,
+          name: skill.name,
+          systemPrompt: skill.system_prompt,
+          tools: skill.tools,
+          message: `Skill "${skill.name}" activated. ${skill.description}`,
+        };
+      },
+    }),
   };
 
   return applyPermissions(allTools, permissions);

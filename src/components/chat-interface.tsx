@@ -805,6 +805,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     downloadFile(json, filename, "application/json");
   }, [getDebugJSON, conversationId]);
 
+  // Dynamic skill slash commands fetched from API
+  const [skillMenuItems, setSkillMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/skills")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.skills) return;
+        const items = (data.skills as { slug: string; name: string; description: string; icon: string; slash_command: string | null; is_active: boolean }[])
+          .filter((s) => s.is_active && s.slash_command)
+          .map((s) => ({
+            cmd: s.slash_command!,
+            label: s.name,
+            description: s.description,
+            icon: s.icon,
+          }));
+        setSkillMenuItems(items);
+      })
+      .catch(() => {});
+  }, []);
+
   // Slash command definitions with metadata for the autocomplete menu
   const SLASH_MENU_ITEMS = [
     { cmd: "/linear", label: "Linear", description: "Query issues, create tasks", icon: "⚡" },
@@ -817,7 +837,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "✅" },
     { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
+    { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
+    // Dynamic skill commands appended from API
+    ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/skills", "/help", "/email" ].includes(si.cmd)),
   ];
 
   // Slash command mappings — expand to explicit tool instructions for the AI
@@ -833,7 +856,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",
     "/run": (args) => args ? `Use run_code to execute: ${args}` : "Use run_code to execute code in a sandbox. Ask me what to run.",
-    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run",
+    "/skills": () => "Show me available skills. List all installed skills with their slash commands and descriptions.",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /skills, /pm, /email, /meeting, /code, /weekly, /brand",
+    // Dynamic skill slash commands → activate_skill tool
+    ...Object.fromEntries(
+      skillMenuItems.map((si) => [
+        si.cmd,
+        (args: string) => {
+          const slug = si.cmd.replace(/^\//, "");
+          return args
+            ? `Use the activate_skill tool with skill_slug "${slug}". Then help me with: ${args}`
+            : `Use the activate_skill tool with skill_slug "${slug}"`;
+        },
+      ])
+    ),
   };
 
   // Filter menu items based on what the user has typed
