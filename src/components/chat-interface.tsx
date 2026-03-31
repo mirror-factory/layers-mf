@@ -1251,6 +1251,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/notion", label: "Notion", description: "Search pages and databases", icon: "📝" },
     { cmd: "/granola", label: "Granola", description: "Meeting transcripts", icon: "🎙️" },
     { cmd: "/drive", label: "Drive", description: "Search Google Drive files", icon: "📁" },
+    { cmd: "/github", label: "GitHub", description: "Repos, PRs, issues, commits", icon: "🐙" },
     { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "⏰" },
     { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "✅" },
     { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
@@ -1274,6 +1275,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       ? `Search my Granola meetings about: ${args}. Prefer MCP tools (query_granola_meetings, list_meetings, get_meeting_transcript) if available, otherwise fall back to ask_granola_agent.`
       : "Show my recent Granola meetings. Prefer MCP tools (list_meetings, get_meetings) if available, otherwise fall back to ask_granola_agent.",
     "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
+    "/github": (args) => args
+      ? `Use GitHub MCP tools to: ${args}. Available tools include: list_issues, search_code, list_pull_requests, list_commits, get_file_contents, create_pull_request, search_repositories.`
+      : "Use GitHub MCP tools to show my recent GitHub activity. Try list_issues or list_pull_requests to see what's open.",
     "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",
@@ -1903,7 +1907,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                 body: JSON.stringify({
                                   snapshotId: activeArtifact.snapshotId ?? undefined,
                                   runCommand: activeArtifact.runCommand ?? "npm start",
-                                  exposePort: activeArtifact.exposePort ?? 3000,
+                                  exposePort: activeArtifact.exposePort ?? 5173,
                                   files: activeArtifact.files,
                                 }),
                               });

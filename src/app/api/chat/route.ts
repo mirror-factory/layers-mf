@@ -300,11 +300,12 @@ export async function POST(request: NextRequest) {
 
   // Load active MCP servers for this org and merge their tools
   let mcpTools: Record<string, unknown> = {};
+  let mcpToolsList = ""; // For injecting into system prompt
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: mcpServers } = await (adminDb as any)
       .from("mcp_servers")
-      .select("url, api_key_encrypted, transport_type")
+      .select("name, url, api_key_encrypted, transport_type, discovered_tools")
       .eq("org_id", orgId)
       .eq("is_active", true);
 
@@ -319,11 +320,15 @@ export async function POST(request: NextRequest) {
           })
         )
       );
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
         if (result.status === "fulfilled") {
           Object.assign(mcpTools, result.value.tools);
         }
       }
+
+      // Note: MCP tool definitions are already sent via the tools parameter.
+      // We don't inject tool names into the system prompt to save tokens.
     }
   } catch (err) {
     console.error("[chat] MCP server loading failed:", err);

@@ -85,30 +85,34 @@ const getDocumentSchema = z.object({
 /** Generate boilerplate files for project templates so the model only sends custom code */
 function getTemplateFiles(template: string): { path: string; content: string }[] {
   if (template === "react") {
+    // Use Vite for React — CRA doesn't work in sandboxes (binds to localhost only)
     return [
       { path: "package.json", content: JSON.stringify({
-        name: "app", version: "1.0.0", private: true,
-        dependencies: { react: "^18.2.0", "react-dom": "^18.2.0", "react-scripts": "^5.0.1" },
-        scripts: { start: "react-scripts start", build: "react-scripts build" },
-        browserslist: { production: [">0.2%", "not dead"], development: ["last 1 chrome version"] },
+        name: "app", private: true, type: "module",
+        scripts: { dev: "vite --host 0.0.0.0", build: "vite build" },
+        dependencies: { react: "^18.2.0", "react-dom": "^18.2.0" },
+        devDependencies: { "@vitejs/plugin-react": "^4.0.0", vite: "^5.0.0" },
       }, null, 2) },
-      { path: "public/index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>App</title></head><body><noscript>Enable JavaScript</noscript><div id="root"></div></body></html>' },
-      { path: "src/index.js", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport './index.css';\nimport App from './App';\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<React.StrictMode><App /></React.StrictMode>);" },
+      { path: "index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>' },
+      { path: "vite.config.js", content: "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()], server: { host: '0.0.0.0', port: 5173 } });" },
+      { path: "src/main.jsx", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport './index.css';\nimport App from './App.jsx';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);" },
       { path: "src/index.css", content: "* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: -apple-system, system-ui, sans-serif; }" },
-      { path: "src/App.js", content: "import React from 'react';\n\nexport default function App() {\n  return <div style={{padding: '2rem', textAlign: 'center'}}>\n    <h1>App is running</h1>\n    <p>Edit src/App.js to get started</p>\n  </div>;\n}" },
+      { path: "src/App.jsx", content: "import React from 'react';\n\nexport default function App() {\n  return <div style={{padding: '2rem', textAlign: 'center'}}>\n    <h1>App is running</h1>\n    <p>Edit src/App.jsx to get started</p>\n  </div>;\n}" },
     ];
   }
   if (template === "vite") {
     return [
       { path: "package.json", content: JSON.stringify({
         name: "app", private: true, type: "module",
-        scripts: { dev: "vite", build: "vite build" },
+        scripts: { dev: "vite --host 0.0.0.0", build: "vite build" },
         dependencies: { react: "^18.2.0", "react-dom": "^18.2.0" },
         devDependencies: { "@vitejs/plugin-react": "^4.0.0", vite: "^5.0.0" },
       }, null, 2) },
       { path: "index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>' },
-      { path: "vite.config.js", content: "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()] });" },
-      { path: "src/main.jsx", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);" },
+      { path: "vite.config.js", content: "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()], server: { host: '0.0.0.0', port: 5173 } });" },
+      { path: "src/main.jsx", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport './index.css';\nimport App from './App.jsx';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);" },
+      { path: "src/index.css", content: "* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: -apple-system, system-ui, sans-serif; }" },
+      { path: "src/App.jsx", content: "import React from 'react';\n\nexport default function App() {\n  return <div style={{padding: '2rem', textAlign: 'center'}}>\n    <h1>App is running</h1>\n    <p>Edit src/App.jsx to get started</p>\n  </div>;\n}" },
     ];
   }
   if (template === "python") {
@@ -589,9 +593,9 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           content: z.string().describe("File content"),
         })).optional().describe("Additional files to add to an existing sandbox (for incremental edits). Use this on follow-up calls to add/update files without re-scaffolding."),
         install_command: z.string().optional().describe("Install command, e.g. 'npm install recharts' for additional packages"),
-        run_command: z.string().describe("Command to run, e.g. 'npm start' or 'python main.py'"),
+        run_command: z.string().describe("Command to run, e.g. 'npm run dev' for React/Vite, 'python main.py' for Python. Do NOT use 'npm start' — use 'npm run dev' for web apps."),
         read_output_files: z.array(z.string()).optional().describe("Paths of output files to read back after execution"),
-        expose_port: z.number().optional().describe("Port to expose for live preview (3000 for React, 5173 for Vite, 3000 for Next.js)"),
+        expose_port: z.number().optional().describe("Port to expose for live preview. Use 5173 for React/Vite apps, 3000 for Next.js, 8000 for Python."),
         description: z.string().optional(),
       }),
       execute: async (input) => {

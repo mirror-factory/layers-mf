@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     const result = await executeProject({
       files: body.files ?? [],
       installCommand,
-      runCommand: body.runCommand ?? "npm start",
-      exposePort: body.exposePort ?? 3000,
+      runCommand: body.runCommand ?? "npm run dev",
+      exposePort: body.exposePort ?? 5173,
       snapshotId: body.snapshotId,
     });
 
