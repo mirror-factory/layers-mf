@@ -15,6 +15,10 @@ interface RecommendedServer {
   toolCount: number;
   auth: "oauth" | "bearer" | "none";
   comingSoon?: boolean;
+  /** Direct link to get API key / set up credentials */
+  credentialsUrl?: string;
+  /** Short label for the credentials link */
+  credentialsLabel?: string;
 }
 
 const RECOMMENDED_SERVERS: RecommendedServer[] = [
@@ -22,9 +26,11 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     name: "GitHub",
     url: "https://api.githubcopilot.com/mcp/",
     icon: "\uD83D\uDC19",
-    description: "Repos, PRs, issues, commits, Actions, releases. Requires a GitHub Personal Access Token.",
+    description: "Repos, PRs, issues, commits, Actions, releases",
     toolCount: 15,
     auth: "bearer",
+    credentialsUrl: "https://github.com/settings/tokens?type=beta",
+    credentialsLabel: "Get a Personal Access Token",
   },
   {
     name: "Granola",
@@ -33,6 +39,8 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     description: "Meeting transcripts, notes, and recordings",
     toolCount: 5,
     auth: "oauth",
+    credentialsUrl: "https://granola.ai/account",
+    credentialsLabel: "Granola account",
   },
   {
     name: "Slack",
@@ -42,6 +50,8 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     toolCount: 10,
     auth: "oauth",
     comingSoon: true,
+    credentialsUrl: "https://api.slack.com/apps",
+    credentialsLabel: "Slack API apps",
   },
   {
     name: "Google Drive",
@@ -51,6 +61,8 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     toolCount: 8,
     auth: "oauth",
     comingSoon: true,
+    credentialsUrl: "https://console.cloud.google.com/apis/credentials",
+    credentialsLabel: "Google Cloud Console",
   },
   {
     name: "Notion",
@@ -60,6 +72,8 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     toolCount: 10,
     auth: "oauth",
     comingSoon: true,
+    credentialsUrl: "https://www.notion.so/my-integrations",
+    credentialsLabel: "Notion integrations",
   },
   {
     name: "Linear",
@@ -69,6 +83,8 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     toolCount: 12,
     auth: "oauth",
     comingSoon: true,
+    credentialsUrl: "https://linear.app/settings/api",
+    credentialsLabel: "Linear API settings",
   },
 ];
 
@@ -767,6 +783,16 @@ export default function MCPSettingsPage() {
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
                     {server.description}
                   </p>
+                  {server.credentialsUrl && (
+                    <a
+                      href={server.credentialsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline mt-1"
+                    >
+                      {server.credentialsLabel ?? "Get credentials"} <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
                 </div>
                 <div className="shrink-0">
                   {connected ? (

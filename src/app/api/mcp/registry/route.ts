@@ -12,7 +12,7 @@ interface RegistryServer {
 }
 
 const CURATED_SERVERS: RegistryServer[] = [
-  { name: "GitHub", description: "Official GitHub MCP — repos, PRs, issues, commits, Actions", url: "https://api.githubcopilot.com/mcp/", type: "streamable-http", website: "https://github.com/github/github-mcp-server", auth: "oauth" },
+  { name: "GitHub", description: "Official GitHub MCP — repos, PRs, issues, commits, Actions. Get a token at github.com/settings/tokens", url: "https://api.githubcopilot.com/mcp/", type: "streamable-http", website: "https://github.com/settings/tokens?type=beta", auth: "bearer" },
   { name: "Granola", description: "Meeting transcripts, notes, recordings", url: "https://mcp.granola.ai/mcp", type: "streamable-http", website: "https://granola.ai", auth: "oauth" },
   { name: "Sentry", description: "Error tracking, performance monitoring, release health", url: "https://mcp.sentry.dev/mcp", type: "streamable-http", website: "https://sentry.io", auth: "oauth" },
   { name: "Cloudflare", description: "Workers, KV, R2, DNS, analytics", url: "https://mcp.cloudflare.com/mcp", type: "streamable-http", website: "https://cloudflare.com", auth: "oauth" },
