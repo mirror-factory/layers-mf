@@ -146,36 +146,23 @@ export default function MCPSettingsPage() {
         let tokenUrl = oauthTokenUrl;
         let clientId = oauthClientId;
 
-        // Step 1: Auto-discover OAuth endpoints
+        // Step 1: Auto-discover OAuth endpoints via server-side proxy (avoids CORS)
         if (!authorizeUrl) {
           try {
-            const origin = new URL(url.trim()).origin;
-            const discoverRes = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
-              headers: { Accept: "application/json" },
+            const discoverRes = await fetch("/api/mcp/discover", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                serverUrl: url.trim(),
+                appName: name.trim() || "Granger",
+                callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+              }),
             });
             if (discoverRes.ok) {
-              const meta = await discoverRes.json();
-              authorizeUrl = meta.authorization_endpoint ?? "";
-              tokenUrl = meta.token_endpoint ?? "";
-
-              // Step 2: Dynamic client registration if available
-              if (meta.registration_endpoint && !clientId) {
-                const regRes = await fetch(meta.registration_endpoint, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    client_name: name.trim() || "Granger",
-                    redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
-                    grant_types: ["authorization_code", "refresh_token"],
-                    response_types: ["code"],
-                    token_endpoint_auth_method: "none",
-                  }),
-                });
-                if (regRes.ok) {
-                  const regData = await regRes.json();
-                  clientId = regData.client_id ?? "";
-                }
-              }
+              const discovered = await discoverRes.json();
+              authorizeUrl = discovered.authorizeUrl ?? "";
+              tokenUrl = discovered.tokenUrl ?? "";
+              clientId = discovered.clientId ?? "";
             }
           } catch {
             // Discovery failed — check if user provided manual config
