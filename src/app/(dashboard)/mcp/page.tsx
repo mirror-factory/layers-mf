@@ -22,9 +22,9 @@ const RECOMMENDED_SERVERS: RecommendedServer[] = [
     name: "GitHub",
     url: "https://api.githubcopilot.com/mcp/",
     icon: "\uD83D\uDC19",
-    description: "Repos, PRs, issues, commits, Actions, releases",
+    description: "Repos, PRs, issues, commits, Actions, releases. Requires a GitHub Personal Access Token.",
     toolCount: 15,
-    auth: "oauth",
+    auth: "bearer",
   },
   {
     name: "Granola",
@@ -555,13 +555,55 @@ export default function MCPSettingsPage() {
     }
   };
 
+  // Track which recommended server is showing an API key input
+  const [recommendedApiKeyFor, setRecommendedApiKeyFor] = useState<string | null>(null);
+  const [recommendedApiKey, setRecommendedApiKey] = useState("");
+
   const handleConnectRecommended = async (server: RecommendedServer) => {
     if (server.comingSoon || isServerConnected(server.url)) return;
+
+    // For bearer auth, show API key input instead of immediate connect
+    if (server.auth === "bearer") {
+      if (recommendedApiKeyFor === server.url && recommendedApiKey.trim()) {
+        // User entered a key — save and connect
+        setConnectingServer(server.url);
+        try {
+          const res = await fetch("/api/mcp-servers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: server.name,
+              url: server.url,
+              apiKey: recommendedApiKey.trim(),
+              authType: "bearer",
+              transportType: "http",
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setFormError(data.error || `Failed to connect ${server.name}`);
+          } else {
+            setRecommendedApiKeyFor(null);
+            setRecommendedApiKey("");
+            fetchServers();
+          }
+        } catch {
+          setFormError("Network error");
+        } finally {
+          setConnectingServer(null);
+        }
+        return;
+      }
+      // Show the key input
+      setRecommendedApiKeyFor(server.url);
+      return;
+    }
+
+    // OAuth flow
     setConnectingServer(server.url);
     setFormError("");
 
     try {
-      // Step 1: Discover OAuth endpoints
       let authorizeUrl = "";
       let tokenUrl = "";
       let clientId = "";
@@ -752,6 +794,33 @@ export default function MCPSettingsPage() {
                   )}
                 </div>
               </div>
+              {/* Inline API key input for bearer auth servers */}
+              {recommendedApiKeyFor === server.url && !connected && (
+                <div className="-mt-2 mb-1 ml-11 flex gap-2">
+                  <input
+                    type="password"
+                    placeholder={`${server.name} API key or token`}
+                    value={recommendedApiKey}
+                    onChange={(e) => setRecommendedApiKey(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleConnectRecommended(server); }}
+                    className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleConnectRecommended(server)}
+                    disabled={!recommendedApiKey.trim() || connecting}
+                    className="rounded bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setRecommendedApiKeyFor(null); setRecommendedApiKey(""); }}
+                    className="text-xs text-muted-foreground hover:text-foreground px-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             );
           })}
         </div>
