@@ -513,6 +513,39 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Approval query tool ===
+    list_approvals: tool({
+      description: 'List pending approval items. Use when the user asks about approvals, /approve, or wants to see what actions are waiting for review.',
+      inputSchema: z.object({
+        status: z.enum(['pending', 'approved', 'rejected', 'all']).optional().describe('Filter by status, default pending'),
+        limit: z.number().optional(),
+      }),
+      execute: async (input) => {
+        const status = input.status ?? 'pending';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const query = (supabase as any).from('approval_queue').select('id, action_type, target_service, payload, reasoning, conflict_reason, status, created_at, reviewed_at');
+        if (status !== 'all') query.eq('status', status);
+        query.eq('org_id', orgId).order('created_at', { ascending: false }).limit(input.limit ?? 10);
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        return {
+          items: (data ?? []).map((item: { id: string; action_type: string; target_service: string; reasoning: string; conflict_reason: string | null; status: string; created_at: string; reviewed_at: string | null; payload: Record<string, unknown> }) => ({
+            id: item.id,
+            action: item.action_type,
+            service: item.target_service,
+            reasoning: item.reasoning,
+            conflict: item.conflict_reason,
+            status: item.status,
+            created: item.created_at,
+            reviewed: item.reviewed_at,
+            payload: item.payload,
+            approve_url: `/approvals`,
+          })),
+          total: data?.length ?? 0,
+        };
+      },
+    }),
+
     // === Approval tool ===
     propose_action: tool({
       description: "Propose a write action for partner approval before executing. Use for ALL write operations.",

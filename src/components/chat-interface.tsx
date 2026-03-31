@@ -139,14 +139,14 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
         if (data.execution?.success) {
           const exec = data.execution;
           if (exec.issue) {
-            setResult(`Created: ${exec.issue.identifier} — ${exec.issue.url}`);
+            setResult(`✓ Created ${exec.issue.identifier}: "${exec.issue.title ?? ""}" — ${exec.issue.url}`);
           } else if (exec.draft) {
-            setResult(`Draft saved: ${exec.draft.id}`);
+            setResult(`✓ Draft saved — open_gmail`);
           } else {
-            setResult(`Executed: ${JSON.stringify(exec, null, 2)}`);
+            setResult(`✓ Executed successfully: ${JSON.stringify(exec, null, 2)}`);
           }
         } else if (data.execution?.error) {
-          setResult(`Execution failed: ${data.execution.error}`);
+          setResult(`✗ Execution failed: ${data.execution.error}`);
         } else if (data.execution?.reason) {
           setResult(`Approved (not auto-executed: ${data.execution.reason})`);
         } else {
@@ -192,8 +192,15 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
         </div>
       )}
       {result && (
-        <div className={cn("text-xs p-2 rounded", status === "approved" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-muted text-muted-foreground")}>
-          {result?.includes("https://") ? (
+        <div className={cn("text-xs p-2 rounded", status === "approved" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : status === "rejected" ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-muted text-muted-foreground")}>
+          {result.includes("open_gmail") ? (
+            <span>
+              {result.replace("open_gmail", "")}{" "}
+              <a href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:opacity-80">
+                Open in Gmail →
+              </a>
+            </span>
+          ) : result.includes("https://") ? (
             <>
               {result.split(/(https:\/\/\S+)/g).map((part, i) =>
                 part.startsWith("https://") ? (
@@ -745,7 +752,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     "/notion": (args) => args ? `Use the ask_notion_agent tool to find: ${args}` : "Use the ask_notion_agent tool to list my pages",
     "/granola": (args) => args ? `Use the ask_granola_agent tool to find meetings about: ${args}` : "Use the ask_granola_agent tool to show recent meetings",
     "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
-    "/approve": () => "Show me all pending items in the approval queue using search_context",
+    "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",
     "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule",

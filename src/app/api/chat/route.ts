@@ -58,7 +58,8 @@ For one-shot: use "once:2026-04-01T09:00:00Z" format.
 **Code:**
 - write_code — create code artifacts (scripts, configs, templates)
 
-**Actions:**
+**Approvals:**
+- list_approvals — query the approval queue directly. Use for /approve and when users ask about pending actions.
 - propose_action — propose any write action for partner approval
 
 ## Slash Commands
@@ -69,7 +70,7 @@ Users may use slash commands. When you see these, call the corresponding tool:
 - /granola → call ask_granola_agent
 - /drive → call ask_drive_agent
 - /schedule → list scheduled actions (tell user to visit /schedules page to manage them)
-- /approve → describe pending approvals from search_context
+- /approve → call list_approvals (NOT search_context)
 
 ## Guidelines
 - Use specialist agents (ask_linear_agent, ask_gmail_agent, etc.) for service-specific requests — they can multi-step and have deeper domain knowledge
