@@ -1478,9 +1478,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           onClick={() => setArtifactViewMode("preview")}
                           className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
                         >
-                          Preview
+                          {activeArtifact.previewUrl ? "▶ Live" : "Preview"}
                         </button>
                       </div>
+                      {activeArtifact.previewUrl && (
+                        <a
+                          href={activeArtifact.previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary hover:underline flex items-center gap-1 mr-1"
+                        >
+                          Open in new tab <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
                         <X className="h-4 w-4" />
                       </Button>
