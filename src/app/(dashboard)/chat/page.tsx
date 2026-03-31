@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, Loader2, X, Menu } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, X, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Conversation {
@@ -54,6 +54,22 @@ export default function ChatPage() {
   }
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [panelVisible, setPanelVisible] = useState(true);
+
+  // Load conversation panel preference from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("chat-panel-visible");
+    if (stored === "false") setPanelVisible(false);
+    // Default hidden on mobile (handled by CSS), shown on desktop
+  }, []);
+
+  const togglePanel = () => {
+    setPanelVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem("chat-panel-visible", String(next));
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-screen">
@@ -68,8 +84,9 @@ export default function ChatPage() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r flex flex-col bg-card transition-transform duration-200 md:static md:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r flex flex-col bg-card transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          panelVisible ? "md:static md:translate-x-0" : "md:hidden"
         )}
       >
         <div className="p-3 border-b flex items-center gap-2">
@@ -144,6 +161,14 @@ export default function ChatPage() {
               aria-label="Open conversations"
             >
               <Menu className="h-5 w-5" />
+            </button>
+            <button
+              onClick={togglePanel}
+              className="hidden md:inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label={panelVisible ? "Hide conversation list" : "Show conversation list"}
+              title={panelVisible ? "Hide conversation list" : "Show conversation list"}
+            >
+              {panelVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
             <div>
               <h1 className="text-lg font-semibold">Chat with Granger</h1>

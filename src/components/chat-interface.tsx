@@ -8,6 +8,7 @@ import {
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
+  PanelRightClose, PanelRightOpen,
 } from "lucide-react";
 import { CodeSandbox } from "@/components/code-sandbox";
 import {
@@ -759,6 +760,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
 
   const isLoading = status === "streaming" || status === "submitted";
   const [shareOpen, setShareOpen] = useState(false);
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const prevSourceCountRef = useRef(0);
+
+  // Load context panel preference from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("chat-context-panel");
+    if (stored === "true") setContextPanelOpen(true);
+  }, []);
 
   const getDebugJSON = useCallback(() => ({
     conversationId,
@@ -870,6 +879,23 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
     }
     return [];
   })();
+
+  // Auto-open context panel when new search results arrive
+  useEffect(() => {
+    if (latestSources.length > 0 && prevSourceCountRef.current === 0) {
+      setContextPanelOpen(true);
+      localStorage.setItem("chat-context-panel", "true");
+    }
+    prevSourceCountRef.current = latestSources.length;
+  }, [latestSources.length]);
+
+  const toggleContextPanel = () => {
+    setContextPanelOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("chat-context-panel", String(next));
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
@@ -1161,60 +1187,82 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
         </div>
       </div>
 
-      {/* Right: context panel (hidden on mobile) */}
-      <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
-        <div className="px-4 py-3 border-b flex items-center gap-2">
-          <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
-          {latestSources.length > 0 && (
-            <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
-          )}
-        </div>
+      {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
+      {!contextPanelOpen && (
+        <button
+          onClick={toggleContextPanel}
+          className="hidden lg:flex items-center justify-center w-8 shrink-0 border-l bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          aria-label="Show context panel"
+          title="Show context panel"
+        >
+          <PanelRightOpen className="h-4 w-4" />
+        </button>
+      )}
 
-        <div className="flex-1 overflow-y-auto">
-          {latestSources.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
-              <FileText className="h-6 w-6 mb-2 opacity-30" />
-              <p className="text-xs">Send a message to see which documents were retrieved.</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {latestSources.map((s, i) => {
-                const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
-                const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
-                return (
-                  <div key={s.id} className="px-4 py-3 space-y-1.5">
-                    <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
-                        {s.description_short && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                            {s.description_short}
-                          </p>
-                        )}
+      {/* Right: context panel (hidden by default, opens on search results) */}
+      {contextPanelOpen && (
+        <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
+          <div className="px-4 py-3 border-b flex items-center gap-2">
+            <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
+            {latestSources.length > 0 && (
+              <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
+            )}
+            <button
+              onClick={toggleContextPanel}
+              className="ml-auto inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label="Hide context panel"
+              title="Hide context panel"
+            >
+              <PanelRightClose className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {latestSources.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
+                <FileText className="h-6 w-6 mb-2 opacity-30" />
+                <p className="text-xs">Send a message to see which documents were retrieved.</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {latestSources.map((s, i) => {
+                  const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
+                  const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
+                  return (
+                    <div key={s.id} className="px-4 py-3 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
+                          {s.description_short && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                              {s.description_short}
+                            </p>
+                          )}
+                        </div>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <SrcIcon className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">
+                          {SOURCE_LABEL[s.source_type] ?? s.source_type}
+                        </span>
+                        <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
+                        <span className="text-[10px] text-muted-foreground">
+                          {s.content_type.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <ScoreBar score={s.rrf_score} />
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <SrcIcon className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">
-                        {SOURCE_LABEL[s.source_type] ?? s.source_type}
-                      </span>
-                      <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
-                      <span className="text-[10px] text-muted-foreground">
-                        {s.content_type.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <ScoreBar score={s.rrf_score} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </aside>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
