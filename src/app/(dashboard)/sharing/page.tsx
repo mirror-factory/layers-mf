@@ -14,6 +14,7 @@ import {
   Search,
   Eye,
   Pencil,
+  ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -314,6 +315,7 @@ export default function SharingPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -379,6 +381,47 @@ export default function SharingPage() {
             Conversations, context, and skills shared across your team.
           </p>
         </div>
+      </div>
+
+      {/* Guide */}
+      <div className="rounded-lg border bg-card">
+        <button
+          onClick={() => setGuideOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent/50 transition-colors rounded-lg"
+        >
+          <span>How Sharing Works</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              guideOpen && "rotate-180"
+            )}
+          />
+        </button>
+        {guideOpen && (
+          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-3 border-t pt-3">
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Share with your team</h4>
+              <p>
+                Share conversations, context items, and skills with your team.
+                Everything shared here is visible to all members of your organization.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Conversations</h4>
+              <p>
+                Team members can view shared conversations and continue collaborating.
+                The owner controls sharing access and can revoke it at any time.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Context & Skills</h4>
+              <p>
+                Context items are automatically shared across the org. Skills shared here
+                can be activated by any team member from this page.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search */}

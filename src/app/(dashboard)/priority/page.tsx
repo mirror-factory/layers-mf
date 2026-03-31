@@ -652,6 +652,7 @@ type Tab = "documents" | "rules";
 
 export default function PriorityPage() {
   const [tab, setTab] = useState<Tab>("documents");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <div className="p-4 sm:p-8 max-w-3xl">
@@ -667,6 +668,50 @@ export default function PriorityPage() {
           Documents and rules that are always loaded into Granger&apos;s system
           prompt. Priority documents provide context, rules define behavior.
         </p>
+      </div>
+
+      {/* Guide */}
+      <div className="mb-6 rounded-lg border bg-card">
+        <button
+          onClick={() => setGuideOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent/50 transition-colors rounded-lg"
+        >
+          <span>How Priority Documents & Rules Work</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              guideOpen && "rotate-180"
+            )}
+          />
+        </button>
+        {guideOpen && (
+          <div className="px-4 pb-4 text-sm text-muted-foreground space-y-3 border-t pt-3">
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Priority Documents</h4>
+              <p>
+                Priority documents are always loaded into Granger&apos;s system prompt.
+                They provide persistent context about your team, projects, and priorities
+                so Granger stays informed across every conversation.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Rules</h4>
+              <p>
+                Rules define behavior constraints for Granger (e.g., &quot;Always respond
+                in Spanish&quot; or &quot;Never share budget details externally&quot;).
+                They are injected into every conversation.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-1">Managing</h4>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Drag to reorder documents by priority</li>
+                <li>Toggle on/off to temporarily disable without deleting</li>
+                <li>Add new documents from scratch or from your context library</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

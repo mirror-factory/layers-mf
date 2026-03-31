@@ -86,8 +86,8 @@ export async function searchSkillsMarketplace(
 ): Promise<{ name: string; source: string; installs: number; id: string; installCommand: string; url: string }[]> {
   try {
     const res = await fetch(
-      `https://skills.sh/api/search?q=${encodeURIComponent(query)}`,
-      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) },
+      `/api/skills/search?q=${encodeURIComponent(query)}`,
+      { signal: AbortSignal.timeout(10000) },
     );
     if (!res.ok) return [];
     const data = await res.json();

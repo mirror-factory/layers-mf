@@ -269,9 +269,20 @@ export function CostsDashboard() {
   }
 
   if (error) {
+    const isAccessError = error.includes("admin access");
     return (
       <Card className="p-6">
-        <p className="text-sm text-muted-foreground">{error}</p>
+        <div className="flex flex-col items-center text-center py-8">
+          <Coins className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm font-medium mb-1">
+            {isAccessError ? "Access Restricted" : "No AI cost data yet"}
+          </p>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            {isAccessError
+              ? error
+              : "Costs will appear here as you use Granger. Start a conversation to see token usage, credits, and spend broken down by model."}
+          </p>
+        </div>
       </Card>
     );
   }
