@@ -1946,12 +1946,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         )}
                         {artifactViewMode === "preview" && (
                           activeArtifact.previewUrl ? (
-                            <iframe
-                              src={activeArtifact.previewUrl}
-                              className="w-full h-full bg-white"
-                              sandbox="allow-scripts allow-same-origin"
-                              title={`Preview of ${activeArtifact.filename}`}
-                            />
+                            <div className="relative w-full h-full">
+                              {/* Loading overlay — hides when iframe loads */}
+                              <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                                <p className="text-sm font-medium text-foreground">Starting sandbox...</p>
+                                <p className="text-xs text-muted-foreground mt-1">Installing packages and building your app</p>
+                              </div>
+                              <iframe
+                                src={activeArtifact.previewUrl}
+                                className="w-full h-full bg-white"
+                                sandbox="allow-scripts allow-same-origin"
+                                title={`Preview of ${activeArtifact.filename}`}
+                                onLoad={(e) => {
+                                  // Hide loader when iframe content loads
+                                  const loader = (e.target as HTMLIFrameElement).parentElement?.querySelector("#preview-loader");
+                                  if (loader) (loader as HTMLElement).style.opacity = "0";
+                                  setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                }}
+                              />
+                            </div>
                           ) : (
                             <iframe
                               srcDoc={(() => {
