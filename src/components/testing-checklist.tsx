@@ -288,6 +288,223 @@ const CHECKLIST: ChecklistItem[] = [
     description: 'Search for a topic in the context library',
     expectedResult: 'Results ranked by RRF score (vector + text combined).',
   },
+
+  // TIPTAP EDITOR
+  {
+    id: 'editor-view',
+    category: 'Editor',
+    title: 'Open document in TipTap editor',
+    description: 'Click any item in /context to open it',
+    expectedResult: 'Rich text editor with toolbar (Bold, Italic, Headings, Lists, Code, Quote). Content is read-only by default.',
+  },
+  {
+    id: 'editor-edit',
+    category: 'Editor',
+    title: 'Edit and save a document',
+    description: 'Click "Edit" → make changes → click "Save"',
+    expectedResult: 'Document updates. Toast notification confirms save.',
+  },
+  {
+    id: 'editor-propose',
+    category: 'Editor',
+    title: 'Propose an edit (majority approval)',
+    description: 'Toggle to "Propose" mode → edit → click "Propose Edit"',
+    expectedResult: 'Edit proposal created. Message shows "Waiting for approval (2/3 required)". Appears on /approvals.',
+  },
+
+  // VERSIONING
+  {
+    id: 'version-history',
+    category: 'Versioning',
+    title: 'View document version history',
+    description: 'Open a document → scroll to "Version History" section',
+    expectedResult: 'List of versions with version number, date, and who edited. Expandable to see content.',
+  },
+  {
+    id: 'version-restore',
+    category: 'Versioning',
+    title: 'Restore a previous version',
+    description: 'Expand a version → click "Restore this version"',
+    expectedResult: 'Document content reverts to the old version. A new version snapshot is created.',
+  },
+
+  // CODE SANDBOX
+  {
+    id: 'code-write',
+    category: 'Code',
+    title: 'Ask Granger to write code',
+    description: 'Ask: "Write a bash script to check server health"',
+    expectedResult: 'CodeSandbox renders inline with syntax highlighting, filename, copy/download buttons. Saved to Context Library.',
+  },
+  {
+    id: 'code-copy',
+    category: 'Code',
+    title: 'Copy and download code artifact',
+    description: 'Click Copy button on a code artifact, then click Download',
+    expectedResult: 'Code copied to clipboard. File downloads with correct filename.',
+  },
+
+  // PERMISSIONS
+  {
+    id: 'perm-view',
+    category: 'Permissions',
+    title: 'View permission settings',
+    description: 'Go to /settings/permissions',
+    expectedResult: 'Per-service cards (Linear, Gmail, Notion, Granola, Drive) with Read/Write toggles.',
+  },
+  {
+    id: 'perm-toggle',
+    category: 'Permissions',
+    title: 'Toggle a permission and verify',
+    description: 'Disable "Linear — Read" → go to chat → try /linear',
+    expectedResult: 'list_linear_issues tool is not available. Re-enable to restore.',
+  },
+
+  // SHARING & EXPORT
+  {
+    id: 'chat-export-md',
+    category: 'Sharing',
+    title: 'Export chat as Markdown',
+    description: 'In chat with messages, click ⋯ menu → "Export Markdown"',
+    expectedResult: 'Downloads a .md file with formatted conversation including tool calls.',
+  },
+  {
+    id: 'chat-export-json',
+    category: 'Sharing',
+    title: 'Export chat as JSON',
+    description: 'Click ⋯ menu → "Export JSON"',
+    expectedResult: 'Downloads a .json file with full message parts array.',
+  },
+  {
+    id: 'chat-share',
+    category: 'Sharing',
+    title: 'Share chat with team member',
+    description: 'Click ⋯ menu → "Share..." → select a team member',
+    expectedResult: 'Conversation shared. Team member can see it in their chat list.',
+    requiresSetup: 'Requires at least 2 users in the org',
+  },
+
+  // SCHEDULES
+  {
+    id: 'schedule-view',
+    category: 'Schedules',
+    title: 'View scheduled actions',
+    description: 'Go to /schedules',
+    expectedResult: '5 default schedules visible: Digest, Alerts, Granola, Synthesis, Linear Check. Active/Paused/Completed tabs.',
+  },
+  {
+    id: 'schedule-run-now',
+    category: 'Schedules',
+    title: 'Run Now on Linear Status Check',
+    description: 'Click ⚡ Run Now on "Linear Status Check"',
+    expectedResult: 'Alert shows result summary. Desktop notification appears. New "Linear Status" doc in /context.',
+    requiresSetup: 'Requires Linear API key connected',
+  },
+  {
+    id: 'schedule-pause',
+    category: 'Schedules',
+    title: 'Pause and resume a schedule',
+    description: 'Click pause on a schedule → click resume',
+    expectedResult: 'Status toggles between Active and Paused.',
+  },
+  {
+    id: 'schedule-chat',
+    category: 'Schedules',
+    title: 'Create schedule via chat',
+    description: 'Ask: "Check my Linear issues every morning at 7am"',
+    expectedResult: 'Granger calls schedule_action tool. New schedule appears on /schedules.',
+  },
+
+  // NOTIFICATIONS
+  {
+    id: 'notif-permission',
+    category: 'Notifications',
+    title: 'Enable desktop notifications',
+    description: 'Allow browser notification permission when prompted (or go to Settings → Notifications)',
+    expectedResult: 'Browser shows "Allow" prompt. After allowing, notifications will appear.',
+  },
+  {
+    id: 'notif-desktop',
+    category: 'Notifications',
+    title: 'Receive a desktop notification',
+    description: 'Click "Run Now" on a schedule with notifications enabled',
+    expectedResult: 'Desktop notification: "Granger: Linear Status Check". Click → navigates to /context.',
+  },
+  {
+    id: 'notif-toast',
+    category: 'Notifications',
+    title: 'See in-app toast notification',
+    description: 'Trigger any notification (schedule run, new approval)',
+    expectedResult: 'Sonner toast appears in bottom-right of the app.',
+  },
+
+  // SUB-AGENTS
+  {
+    id: 'agent-linear',
+    category: 'Sub-Agents',
+    title: 'Linear sub-agent',
+    description: 'Ask: "Show my urgent tasks and list all teams"',
+    expectedResult: 'Granger delegates to ask_linear_agent. Multiple tool calls (list_issues + list_teams). Results formatted.',
+    requiresSetup: 'Requires Linear API key',
+  },
+  {
+    id: 'agent-gmail',
+    category: 'Sub-Agents',
+    title: 'Gmail sub-agent',
+    description: 'Ask: "Search my emails from last week about invoices"',
+    expectedResult: 'Granger delegates to ask_gmail_agent. Shows email subjects, senders, dates.',
+    requiresSetup: 'Requires Google OAuth',
+  },
+
+  // APPROVAL EXECUTION
+  {
+    id: 'approve-execute',
+    category: 'Execution',
+    title: 'Approve and execute a Linear issue creation',
+    description: 'Ask Granger to create a Linear issue → click "Approve & Execute"',
+    expectedResult: 'Issue created in Linear. Clickable URL shown: "Created: PROD-XXX — https://linear.app/..."',
+    requiresSetup: 'Requires Linear API key',
+  },
+  {
+    id: 'approve-reject',
+    category: 'Execution',
+    title: 'Reject a proposed action',
+    description: 'Ask Granger to create something → click "Reject"',
+    expectedResult: 'Status changes to rejected. Action not executed.',
+  },
+  {
+    id: 'approve-edit-proposal',
+    category: 'Execution',
+    title: 'Vote on an edit proposal',
+    description: 'Check /approvals for edit proposals → click Approve or Reject',
+    expectedResult: 'Vote recorded. If 2/3 approve, edit auto-applies to the document.',
+  },
+
+  // SCAFFOLDING
+  {
+    id: 'template-onboarding',
+    category: 'Scaffolding',
+    title: 'Choose org template in onboarding',
+    description: 'New user onboarding → "Choose Template" step → select one → Apply',
+    expectedResult: 'Priority docs, default schedules, and permissions created automatically.',
+    requiresSetup: 'Requires new user signup flow',
+  },
+
+  // LANDING & BRANDING
+  {
+    id: 'brand-landing',
+    category: 'Branding',
+    title: 'Landing page says Granger',
+    description: 'Visit http://localhost:3000 while logged out',
+    expectedResult: '"Your AI Chief of Staff" headline. "Meet Granger" CTA. No "Layers" text.',
+  },
+  {
+    id: 'brand-dark-mode',
+    category: 'Branding',
+    title: 'Dark mode renders correctly',
+    description: 'Toggle dark mode → check chat, approvals, context library, inbox',
+    expectedResult: 'All components have proper dark backgrounds. No white flashes or unreadable text.',
+  },
 ];
 
 const STORAGE_KEY = 'granger-testing-checklist';
