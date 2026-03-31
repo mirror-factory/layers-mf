@@ -5,6 +5,43 @@ export interface SandboxResult {
   stderr: string;
   exitCode: number;
   previewUrl?: string;
+  sandboxId?: string;
+  snapshotId?: string;
+}
+
+// Cache of active sandboxes per org for persistent sessions
+const activeSandboxes = new Map<string, { sandbox: Sandbox; lastUsed: number }>();
+
+/**
+ * Get or create a persistent sandbox for an org.
+ * Reuses existing sandbox if still alive, creates new one otherwise.
+ */
+async function getOrCreateSandbox(options: {
+  orgId?: string;
+  runtime?: "node24" | "python3.13";
+  ports?: number[];
+  timeout?: number;
+  snapshotId?: string;
+}): Promise<Sandbox> {
+  const key = options.orgId ?? "default";
+  const cached = activeSandboxes.get(key);
+
+  // Reuse if still alive and recent (< 5 min since last use)
+  if (cached && Date.now() - cached.lastUsed < 5 * 60 * 1000) {
+    cached.lastUsed = Date.now();
+    return cached.sandbox;
+  }
+
+  // Create new sandbox (from snapshot if available)
+  const sandbox = await Sandbox.create({
+    runtime: options.runtime ?? "node24",
+    ports: options.ports ?? [],
+    timeout: options.timeout ?? 600_000,
+    // ...(options.snapshotId ? { snapshot: options.snapshotId } : {}),
+  });
+
+  activeSandboxes.set(key, { sandbox, lastUsed: Date.now() });
+  return sandbox;
 }
 
 /**
@@ -146,7 +183,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       ? sandbox.domain(options.exposePort)
       : undefined;
 
-    return { stdout, stderr, exitCode, previewUrl };
+    return { stdout, stderr, exitCode, previewUrl, sandboxId: sandbox.id };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { stdout: "", stderr: msg, exitCode: 1 };

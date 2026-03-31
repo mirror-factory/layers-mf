@@ -29,6 +29,7 @@ import {
   Zap,
   Clock,
   Puzzle,
+  Terminal,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -42,6 +43,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/schedules", label: "Schedules", icon: Clock },
   { href: "/skills", label: "Skills", icon: Puzzle },
+  { href: "/sandbox", label: "Sandbox", icon: Terminal },
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
