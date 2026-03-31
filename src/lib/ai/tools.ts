@@ -82,6 +82,43 @@ const getDocumentSchema = z.object({
   id: z.string().describe("The document ID from search_context results"),
 });
 
+/** Generate boilerplate files for project templates so the model only sends custom code */
+function getTemplateFiles(template: string): { path: string; content: string }[] {
+  if (template === "react") {
+    return [
+      { path: "package.json", content: JSON.stringify({
+        name: "app", version: "1.0.0", private: true,
+        dependencies: { react: "^18.2.0", "react-dom": "^18.2.0", "react-scripts": "^5.0.1" },
+        scripts: { start: "react-scripts start", build: "react-scripts build" },
+        browserslist: { production: [">0.2%", "not dead"], development: ["last 1 chrome version"] },
+      }, null, 2) },
+      { path: "public/index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>App</title></head><body><noscript>Enable JavaScript</noscript><div id="root"></div></body></html>' },
+      { path: "src/index.js", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(<React.StrictMode><App /></React.StrictMode>);" },
+      { path: "src/index.css", content: "* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: -apple-system, system-ui, sans-serif; }" },
+    ];
+  }
+  if (template === "vite") {
+    return [
+      { path: "package.json", content: JSON.stringify({
+        name: "app", private: true, type: "module",
+        scripts: { dev: "vite", build: "vite build" },
+        dependencies: { react: "^18.2.0", "react-dom": "^18.2.0" },
+        devDependencies: { "@vitejs/plugin-react": "^4.0.0", vite: "^5.0.0" },
+      }, null, 2) },
+      { path: "index.html", content: '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>' },
+      { path: "vite.config.js", content: "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()] });" },
+      { path: "src/main.jsx", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);" },
+    ];
+  }
+  if (template === "python") {
+    return [
+      { path: "requirements.txt", content: "" },
+      { path: "main.py", content: "# Main entry point\n" },
+    ];
+  }
+  return [];
+}
+
 export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients, userId?: string, permissions?: ToolPermissions) {
   const allTools = {
     search_context: tool({
@@ -532,16 +569,28 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Multi-file project tool ===
     run_project: tool({
-      description: "Create and run a multi-file project in a sandboxed VM. Use for: full apps with multiple files, npm projects, React apps, APIs with routes, data pipelines. IMPORTANT: Keep projects small (max 5-6 files, each under 200 lines). For React apps, use a single App.js with inline styles instead of separate CSS files. Prefer simplicity over completeness.",
+      description:
+        "Create and run a multi-file project in a sandboxed VM. Use for full apps, npm projects, React apps, APIs, data pipelines. " +
+        "Supports templates for quick scaffolding — set `template` to 'react', 'nextjs', or 'vite' and only provide your custom files (App.js, etc). " +
+        "For large projects, call this tool multiple times: first to scaffold, then to add/edit individual files with `add_files`. " +
+        "Sandbox state persists via snapshots — subsequent runs restore instantly without re-installing.",
       inputSchema: z.object({
+        template: z.enum(["none", "react", "nextjs", "vite", "python"]).optional().describe(
+          "Project template to scaffold. 'react' = create-react-app, 'vite' = Vite+React, 'nextjs' = Next.js, 'python' = Python with venv. " +
+          "When using a template, only provide your custom files (e.g. src/App.js) — boilerplate is auto-generated."
+        ),
         files: z.array(z.object({
-          path: z.string().describe("File path, e.g. 'src/index.js', 'package.json', 'public/index.html'"),
+          path: z.string().describe("File path, e.g. 'src/App.js', 'src/components/Dashboard.jsx'"),
           content: z.string().describe("File content"),
-        })).describe("All project files to write"),
-        install_command: z.string().optional().describe("Install command, e.g. 'npm install' or 'pip install -r requirements.txt'"),
-        run_command: z.string().describe("Command to run, e.g. 'node src/index.js' or 'python main.py'"),
+        })).describe("Project files to write. With a template, only include custom/modified files."),
+        add_files: z.array(z.object({
+          path: z.string().describe("File path to add or overwrite"),
+          content: z.string().describe("File content"),
+        })).optional().describe("Additional files to add to an existing sandbox (for incremental edits). Use this on follow-up calls to add/update files without re-scaffolding."),
+        install_command: z.string().optional().describe("Install command, e.g. 'npm install recharts' for additional packages"),
+        run_command: z.string().describe("Command to run, e.g. 'npm start' or 'python main.py'"),
         read_output_files: z.array(z.string()).optional().describe("Paths of output files to read back after execution"),
-        expose_port: z.number().optional().describe("Port to expose for live preview"),
+        expose_port: z.number().optional().describe("Port to expose for live preview (3000 for React, 5173 for Vite, 3000 for Next.js)"),
         description: z.string().optional(),
       }),
       execute: async (input) => {
@@ -552,8 +601,24 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const existingSnapshot = await getLatestSnapshot(orgId);
           const snapshotId = existingSnapshot?.snapshotId;
 
+          // Template scaffolding — generate boilerplate files so the model only sends custom code
+          let allFiles = [...input.files];
+          if (input.template && input.template !== "none") {
+            const templateFiles = getTemplateFiles(input.template);
+            // Template files go first, then user files overwrite any with same path
+            const userPaths = new Set(input.files.map(f => f.path));
+            const scaffoldFiles = templateFiles.filter(f => !userPaths.has(f.path));
+            allFiles = [...scaffoldFiles, ...input.files];
+          }
+
+          // Merge add_files for incremental edits
+          if (input.add_files?.length) {
+            const addPaths = new Set(input.add_files.map(f => f.path));
+            allFiles = [...allFiles.filter(f => !addPaths.has(f.path)), ...input.add_files];
+          }
+
           const result = await executeProject({
-            files: input.files,
+            files: allFiles,
             installCommand: input.install_command,
             runCommand: input.run_command,
             readOutputFiles: input.read_output_files,

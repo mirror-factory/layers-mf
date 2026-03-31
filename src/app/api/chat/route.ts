@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } from "ai";
+import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs, pruneMessages, convertToModelMessages } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools, type ToolClients, type ToolPermissions } from "@/lib/ai/tools";
@@ -445,6 +445,15 @@ export async function POST(request: NextRequest) {
           .then();
       }
     },
+  });
+
+  // Prune old tool calls and reasoning to save tokens on long conversations
+  const modelMessages = await convertToModelMessages(uiMessages);
+  const prunedMessages = pruneMessages({
+    messages: modelMessages,
+    reasoning: "before-last-message",         // keep only latest reasoning
+    toolCalls: "before-last-2-messages",      // keep tool calls from last 2 turns only
+    emptyMessages: "remove",                  // remove empty messages
   });
 
   const response = await createAgentUIStreamResponse({
