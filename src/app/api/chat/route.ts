@@ -304,7 +304,7 @@ export async function POST(request: NextRequest) {
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
     tools: allTools,
-    stopWhen: stepCountIs(6),
+    stopWhen: stepCountIs(20),
     onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;
       if (text) assistantText += text;

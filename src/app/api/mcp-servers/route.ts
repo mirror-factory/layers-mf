@@ -86,13 +86,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
   }
 
-  // Test connection and discover tools
-  const testResult = await testMCPConnection(url, apiKey, transportType);
-  if (!testResult.success) {
-    return NextResponse.json(
-      { error: `Connection failed: ${testResult.error}` },
-      { status: 422 }
-    );
+  // For OAuth servers, skip testing — save first, auth later
+  const isOAuth = authType === "oauth";
+  let discoveredTools: string[] = [];
+
+  if (!isOAuth) {
+    const testResult = await testMCPConnection(url, apiKey, transportType);
+    if (!testResult.success) {
+      return NextResponse.json(
+        { error: `Connection failed: ${testResult.error}` },
+        { status: 422 }
+      );
+    }
+    discoveredTools = testResult.toolNames;
   }
 
   // Insert server record
@@ -106,9 +112,10 @@ export async function POST(request: NextRequest) {
       api_key_encrypted: apiKey || null,
       auth_type: authType ?? (apiKey ? "bearer" : "none"),
       transport_type: transportType ?? "http",
-      is_active: true,
-      discovered_tools: testResult.toolNames.map((t) => ({ name: t })),
-      last_connected_at: new Date().toISOString(),
+      is_active: !isOAuth, // OAuth servers start inactive until authenticated
+      discovered_tools: discoveredTools.map((t) => ({ name: t })),
+      last_connected_at: isOAuth ? null : new Date().toISOString(),
+      error_message: isOAuth ? "OAuth authentication required" : null,
     })
     .select()
     .single();

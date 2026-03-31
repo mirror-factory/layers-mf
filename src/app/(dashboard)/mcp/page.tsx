@@ -332,20 +332,22 @@ export default function MCPSettingsPage() {
           <p className="text-sm text-destructive">{formError}</p>
         )}
 
-        {/* Buttons */}
+        {/* Buttons — different for OAuth vs other auth types */}
         <div className="flex gap-2">
-          <button
-            onClick={handleTest}
-            disabled={testState.status === "testing" || !url.trim()}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {testState.status === "testing" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plug className="h-4 w-4" />
-            )}
-            Test Connection
-          </button>
+          {authType !== "oauth" && (
+            <button
+              onClick={handleTest}
+              disabled={testState.status === "testing" || !url.trim()}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testState.status === "testing" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plug className="h-4 w-4" />
+              )}
+              Test Connection
+            </button>
+          )}
 
           <button
             onClick={handleAdd}
@@ -357,9 +359,15 @@ export default function MCPSettingsPage() {
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            Add Server
+            {authType === "oauth" ? "Save & Connect with OAuth" : "Add Server"}
           </button>
         </div>
+
+        {authType === "oauth" && (
+          <p className="text-xs text-muted-foreground">
+            Save the server first, then use the &quot;Connect with OAuth&quot; button on the server card to complete authentication.
+          </p>
+        )}
       </div>
 
       {/* Servers List */}
