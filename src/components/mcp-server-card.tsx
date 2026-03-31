@@ -61,10 +61,12 @@ export function MCPServerCard({
   const [autoDiscoveryFailed, setAutoDiscoveryFailed] = useState(false);
   const discoveryRan = useRef(false);
 
+  // Re-run discovery if: no config, or client_id looks like a URL (stale fallback), or no last_connected
+  const hasStaleClientId = server.oauth_client_id?.startsWith("http") ?? false;
   const needsOAuthSetup =
     server.auth_type === "oauth" &&
     !server.last_connected_at &&
-    !server.oauth_authorize_url;
+    (!server.oauth_authorize_url || hasStaleClientId);
 
   const handleAutoDiscover = useCallback(async () => {
     setDiscovering(true);
@@ -114,7 +116,7 @@ export function MCPServerCard({
             ...prev,
             authorizeUrl,
             tokenUrl: tokenUrl || prev.tokenUrl,
-            clientId: prev.clientId || clientId,
+            clientId: clientId || prev.clientId,  // Prefer freshly registered clientId
           }));
           setAutoDiscoveryDone(true);
 
@@ -275,10 +277,11 @@ export function MCPServerCard({
           {(server.oauth_authorize_url && server.oauth_client_id) || autoDiscoveryDone ? (
             <button
               onClick={async () => {
-                const authorizeUrl = server.oauth_authorize_url || oauthForm.authorizeUrl;
-                const clientId = server.oauth_client_id || oauthForm.clientId;
-                const tokenUrl = server.oauth_token_url || oauthForm.tokenUrl;
-                const clientSecret = server.oauth_client_secret || oauthForm.clientSecret || undefined;
+                // Prefer form state (freshly discovered) over stale DB values
+                const authorizeUrl = oauthForm.authorizeUrl || server.oauth_authorize_url;
+                const clientId = oauthForm.clientId || server.oauth_client_id;
+                const tokenUrl = oauthForm.tokenUrl || server.oauth_token_url;
+                const clientSecret = oauthForm.clientSecret || server.oauth_client_secret || undefined;
                 const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
 
                 // Generate PKCE code_verifier and code_challenge
