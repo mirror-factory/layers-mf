@@ -472,15 +472,25 @@ export async function executeProject(options: {
     // If exposing a port, run in background and return preview URL
     if (options.exposePort) {
       sandbox.runCommand(parts[0], parts.slice(1));
-      await new Promise(resolve => setTimeout(resolve, 3000));
 
       const previewUrl = sandbox.domain(options.exposePort);
 
-      // Health check
-      try {
-        await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
-      } catch {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      // Poll health check — wait up to 30s for the server to be ready
+      let ready = false;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        try {
+          const res = await fetch(previewUrl, { signal: AbortSignal.timeout(3000) });
+          if (res.ok || res.status < 500) {
+            ready = true;
+            break;
+          }
+        } catch {
+          // Server not ready yet, keep polling
+        }
+      }
+      if (!ready) {
+        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 30s — returning URL anyway`);
       }
 
       return {

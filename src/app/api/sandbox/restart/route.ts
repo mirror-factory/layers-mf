@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/sandbox/restart
- * Restart a sandbox from a snapshot — instant restore with fresh preview URL.
+ * Restart a sandbox from a snapshot or files — returns fresh preview URL.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   }
 
   let body: {
-    snapshotId: string;
+    snapshotId?: string;
     runCommand?: string;
     exposePort?: number;
     files?: { path: string; content: string }[];
@@ -35,8 +35,13 @@ export async function POST(request: NextRequest) {
   try {
     const { executeProject } = await import("@/lib/sandbox/execute");
 
+    // Determine if we need npm install (when no snapshot and files include package.json)
+    const hasPackageJson = body.files?.some(f => f.path === "package.json" || f.path.endsWith("/package.json"));
+    const installCommand = !body.snapshotId && hasPackageJson ? "npm install" : undefined;
+
     const result = await executeProject({
       files: body.files ?? [],
+      installCommand,
       runCommand: body.runCommand ?? "npm start",
       exposePort: body.exposePort ?? 3000,
       snapshotId: body.snapshotId,
