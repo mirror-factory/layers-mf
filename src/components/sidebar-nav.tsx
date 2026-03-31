@@ -46,12 +46,12 @@ const MAIN_ITEMS: NavItem[] = [
 
 const CONNECT_ITEMS: NavItem[] = [
   { href: "/integrations", label: "Integrations", icon: Plug },
+  { href: "/mcp", label: "MCP Servers", icon: Plug },
 ];
 
 const SETTINGS_ITEMS: NavItem[] = [
   { href: "/settings/api-keys", label: "API Keys", icon: Key },
   { href: "/settings/permissions", label: "Permissions", icon: Shield },
-  { href: "/settings/mcp", label: "MCP Servers", icon: Plug },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
