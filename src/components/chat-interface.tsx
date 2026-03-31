@@ -359,7 +359,11 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const ws = output as Record<string, unknown>;
     const wsError = typeof ws.error === "string" ? ws.error : null;
     const wsResult = String(ws.result ?? "");
-    const citations = extractUrls(wsResult);
+    // Use Perplexity's provider citations if available, fall back to URL extraction
+    const providerCitations = Array.isArray(ws.citations)
+      ? (ws.citations as { index: number; url: string }[]).map(c => ({ title: getHostname(c.url), url: c.url }))
+      : [];
+    const citations = providerCitations.length > 0 ? providerCitations : extractUrls(wsResult);
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">

@@ -18,8 +18,9 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const templateParam = searchParams.get("template");
   const promptParam = searchParams.get("prompt");
+  const idParam = searchParams.get("id");
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(idParam);
   const [loading, setLoading] = useState(true);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(promptParam);
 

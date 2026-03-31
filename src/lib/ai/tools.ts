@@ -760,7 +760,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     // === Web search tool ===
     web_search: tool({
       description:
-        "Search the web for current information. Use when the user asks about recent events, needs facts you dont know, wants to look something up, or needs real-time data. Returns results with citations.",
+        "Search the web for current information. Use when the user asks about recent events, needs facts you dont know, wants to look something up, or needs real-time data. Returns results with source citations.",
       inputSchema: z.object({
         query: z.string().describe("The search query"),
       }),
@@ -769,15 +769,21 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const { generateText } = await import("ai");
           const { gateway } = await import("@/lib/ai/config");
 
-          const { text } = await generateText({
+          const result = await generateText({
             model: gateway("perplexity/sonar"),
             prompt: query,
           });
 
+          // Extract sources from provider metadata (Perplexity returns citations)
+          const providerMeta = result.providerMetadata ?? result.experimental_providerMetadata;
+          const perplexityMeta = providerMeta?.perplexity as Record<string, unknown> | undefined;
+          const citations = (perplexityMeta?.citations as string[]) ?? [];
+
           return {
             query,
-            result: text,
+            result: result.text,
             source: "perplexity/sonar",
+            citations: citations.map((url, i) => ({ index: i + 1, url })),
           };
         } catch (err) {
           return {
