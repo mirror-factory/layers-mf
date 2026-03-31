@@ -937,7 +937,7 @@ function HeroSection() {
         </div>
         <div>
           <h1 className="hero-title text-3xl font-bold tracking-tight">
-            Layers
+            Granger
           </h1>
           <p className="hero-subtitle text-sm text-muted-foreground">
             Platform Status Report — March 22, 2026
@@ -945,7 +945,7 @@ function HeroSection() {
         </div>
       </div>
       <p className="hero-desc text-muted-foreground max-w-3xl leading-relaxed mb-5">
-        Layers is the operating system for AI-native teams. It connects every
+        Granger is your AI Chief of Staff. It connects every
         tool you use into a single context layer, then deploys intelligent
         agents that understand what&apos;s happening across your business.
         This report covers the current state of the prototype, what&apos;s been
@@ -1432,9 +1432,9 @@ export default function FeaturesPage() {
       {/* Use Cases CTA */}
       <AnimatedSection className="mb-16">
         <Card className="p-6 text-center border-primary/20 bg-primary/[0.02]">
-          <h3 className="font-semibold mb-2">See Layers in Action</h3>
+          <h3 className="font-semibold mb-2">See Granger in Action</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            6 real-world walkthroughs showing how teams use Layers day-to-day —
+            6 real-world walkthroughs showing how teams use Granger day-to-day —
             from morning briefings to weekly reviews.
           </p>
           <a
@@ -1450,7 +1450,7 @@ export default function FeaturesPage() {
       {/* Footer */}
       <div className="pt-8 border-t text-center text-xs text-muted-foreground">
         <p className="font-medium">
-          Layers Platform v0.1.0 — Mirror Factory
+          Granger v0.1.0 — Mirror Factory
         </p>
         <p className="mt-1">
           {METRICS.linearIssuesDone} issues shipped &middot;{" "}

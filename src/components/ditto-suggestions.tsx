@@ -32,12 +32,12 @@ const SOURCE_BADGE: Record<
   string,
   { label: string; icon: React.ElementType; color: string }
 > = {
-  "google-drive": { label: "Drive", icon: HardDrive, color: "bg-blue-100 text-blue-700" },
-  github: { label: "GitHub", icon: Github, color: "bg-slate-100 text-slate-700" },
-  slack: { label: "Slack", icon: Hash, color: "bg-purple-100 text-purple-700" },
-  granola: { label: "Granola", icon: Mic, color: "bg-orange-100 text-orange-700" },
-  linear: { label: "Linear", icon: GitBranch, color: "bg-indigo-100 text-indigo-700" },
-  upload: { label: "Upload", icon: Upload, color: "bg-green-100 text-green-700" },
+  "google-drive": { label: "Drive", icon: HardDrive, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
+  github: { label: "GitHub", icon: Github, color: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300" },
+  slack: { label: "Slack", icon: Hash, color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
+  granola: { label: "Granola", icon: Mic, color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  linear: { label: "Linear", icon: GitBranch, color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" },
+  upload: { label: "Upload", icon: Upload, color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
 };
 
 export function DittoSuggestions() {

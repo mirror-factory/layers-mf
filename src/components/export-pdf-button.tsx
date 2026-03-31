@@ -25,7 +25,7 @@ interface ExportableItem {
 }
 
 export function exportItemsAsPdf(items: ExportableItem[], title?: string) {
-  const docTitle = title ?? "Layers Export";
+  const docTitle = title ?? "Granger Export";
 
   const html = `<!DOCTYPE html>
 <html>

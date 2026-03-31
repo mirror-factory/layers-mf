@@ -133,7 +133,7 @@ export function IntegrationsConnect({ integrations }: IntegrationsConnectProps) 
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">
-          Connect your tools to start syncing knowledge into Layers.
+          Connect your tools to start syncing knowledge into Granger.
         </p>
         <Button onClick={handleConnect} disabled={connecting}>
           {connecting

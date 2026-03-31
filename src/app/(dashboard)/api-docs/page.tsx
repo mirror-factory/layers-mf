@@ -860,7 +860,7 @@ export default function ApiDocsPage() {
           <h1 className="text-2xl font-semibold">API Reference</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Documentation for all Layers API endpoints. All endpoints are under{" "}
+          Documentation for all Granger API endpoints. All endpoints are under{" "}
           <code className="text-xs bg-muted px-1 py-0.5 rounded">/api</code>.
         </p>
       </div>

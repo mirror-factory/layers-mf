@@ -20,6 +20,52 @@ export interface ToolClients {
   drive?: DriveClient;
 }
 
+export type ServicePermission = { read: boolean; write: boolean };
+
+export type ToolPermissions = {
+  linear?: ServicePermission;
+  gmail?: ServicePermission;
+  notion?: ServicePermission;
+  granola?: ServicePermission;
+  drive?: ServicePermission;
+};
+
+/** Maps tool names to their service and access type (read or write). */
+const TOOL_SERVICE_MAP: Record<string, { service: keyof ToolPermissions; access: "read" | "write" }> = {
+  list_linear_issues:  { service: "linear",  access: "read" },
+  create_linear_issue: { service: "linear",  access: "write" },
+  ask_linear_agent:    { service: "linear",  access: "read" },
+  query_granola:       { service: "granola", access: "read" },
+  ask_granola_agent:   { service: "granola", access: "read" },
+  search_gmail:        { service: "gmail",   access: "read" },
+  draft_email:         { service: "gmail",   access: "write" },
+  ask_gmail_agent:     { service: "gmail",   access: "read" },
+  search_notion:       { service: "notion",  access: "read" },
+  ask_notion_agent:    { service: "notion",  access: "read" },
+  list_drive_files:    { service: "drive",   access: "read" },
+  ask_drive_agent:     { service: "drive",   access: "read" },
+};
+
+/** Filter tools based on user permissions. Tools not in TOOL_SERVICE_MAP are always included. */
+function applyPermissions<T extends Record<string, unknown>>(
+  tools: T,
+  permissions?: ToolPermissions,
+): T {
+  if (!permissions) return tools;
+
+  const filtered = { ...tools };
+  for (const [toolName, mapping] of Object.entries(TOOL_SERVICE_MAP)) {
+    const perm = permissions[mapping.service];
+    if (!perm) continue;
+
+    const allowed = mapping.access === "write" ? perm.write : perm.read;
+    if (!allowed && toolName in filtered) {
+      delete filtered[toolName];
+    }
+  }
+  return filtered;
+}
+
 const searchContextSchema = z.object({
   query: z.string().describe("The search query"),
   limit: z.number().min(1).max(20).describe("Maximum results").optional(),
@@ -36,8 +82,8 @@ const getDocumentSchema = z.object({
   id: z.string().describe("The document ID from search_context results"),
 });
 
-export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients, userId?: string) {
-  return {
+export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients, userId?: string, permissions?: ToolPermissions) {
+  const allTools = {
     search_context: tool({
       description:
         "Search the team knowledge base for relevant documents, meetings, messages, and notes. Call this first to find what context exists before answering.",
@@ -430,6 +476,43 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Code artifact tool ===
+    write_code: tool({
+      description: "Write a code artifact (script, config, template, snippet). Use when the user asks you to write code, create a script, generate a config file, or build a template.",
+      inputSchema: z.object({
+        filename: z.string().describe("Filename with extension, e.g. 'setup.sh', 'config.json'"),
+        language: z.string().describe("Programming language: typescript, python, bash, html, css, json, yaml, markdown, sql, go, rust, ruby, jsx, tsx"),
+        code: z.string().describe("The full code content"),
+        description: z.string().optional().describe("Brief description of what this code does"),
+      }),
+      execute: async (input) => {
+        // Store as a context_item so it's searchable
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from("context_items")
+          .insert({
+            org_id: orgId,
+            source_type: "code",
+            source_id: `code-${Date.now()}`,
+            content_type: "file",
+            title: input.filename,
+            raw_content: input.code,
+            description_short: input.description ?? `${input.language} file: ${input.filename}`,
+            status: "ready",
+          })
+          .select("id")
+          .single();
+
+        return {
+          filename: input.filename,
+          language: input.language,
+          code: input.code,
+          context_id: data?.id,
+          message: `Created ${input.filename}. You can find it in the Context Library.`,
+        };
+      },
+    }),
+
     // === Approval tool ===
     propose_action: tool({
       description: "Propose a write action for partner approval before executing. Use for ALL write operations.",
@@ -453,4 +536,6 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
   };
+
+  return applyPermissions(allTools, permissions);
 }

@@ -19,6 +19,7 @@ import { ContextVersionHistory } from "@/components/context-version-history";
 import { EntityChips } from "@/components/entity-chips";
 import { ExportDropdown } from "@/components/export-dropdown";
 import { DwellTracker } from "@/components/dwell-tracker";
+import { DocumentEditor } from "@/components/document-editor";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -174,18 +175,12 @@ export default async function ContextDetailPage({
         </Card>
       )}
 
-      {/* Raw content */}
+      {/* Rich text content editor */}
       {item.raw_content && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Content</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-              {item.raw_content}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium">Content</h2>
+          <DocumentEditor content={item.raw_content} itemId={item.id} />
+        </div>
       )}
 
       {/* User Annotations */}

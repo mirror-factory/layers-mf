@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { createTools, type ToolClients } from "@/lib/ai/tools";
+import { createTools, type ToolClients, type ToolPermissions } from "@/lib/ai/tools";
 import { GranolaClient, LinearApiClient, NotionClient, GmailClient, DriveClient } from "@/lib/api";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
@@ -54,6 +54,9 @@ Prefer using specialist agents over individual tools — they have deeper knowle
 When users say things like "every morning check my Linear", "remind me tomorrow", "weekly digest", convert to a cron expression and call schedule_action.
 Common cron patterns: "0 7 * * 1-5" = weekdays 7am, "0 9 * * 1" = Mondays 9am, "0 */2 * * *" = every 2 hours.
 For one-shot: use "once:2026-04-01T09:00:00Z" format.
+
+**Code:**
+- write_code — create code artifacts (scripts, configs, templates)
 
 **Actions:**
 - propose_action — propose any write action for partner approval
@@ -232,6 +235,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Load tool permissions for this user
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: partnerSettings } = await (supabase as any)
+    .from("partner_settings")
+    .select("tool_permissions")
+    .eq("user_id", userId)
+    .single();
+  const toolPermissions: ToolPermissions | undefined = partnerSettings?.tool_permissions ?? undefined;
+
   // Extract last user text for auto-titling and analytics
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
   const lastUserText = lastUserMsg
@@ -244,7 +256,7 @@ export async function POST(request: NextRequest) {
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
     instructions: AGENT_INSTRUCTIONS,
-    tools: createTools(supabase, orgId, clients, userId),
+    tools: createTools(supabase, orgId, clients, userId, toolPermissions),
     stopWhen: stepCountIs(6),
     onStepFinish: ({ usage, toolCalls, text }) => {
       runStepCount++;

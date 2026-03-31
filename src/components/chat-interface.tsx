@@ -6,8 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User,
   FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
-  LayoutGrid, ThumbsUp, ThumbsDown, X,
+  LayoutGrid, ThumbsUp, ThumbsDown,
+  MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
 } from "lucide-react";
+import { CodeSandbox } from "@/components/code-sandbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Message,
   MessageContent,
@@ -172,7 +181,7 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
           <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction("approve")}>
             Approve & Execute
           </Button>
-          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleAction("reject")}>
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950" onClick={() => handleAction("reject")}>
             Reject
           </Button>
         </div>
@@ -212,6 +221,23 @@ function ToolCallCard({ part }: { part: ToolPart }) {
   // Check if this is an approval proposal
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
   const approvalOutput = isApproval ? output as Record<string, unknown> : null;
+
+  // Check if this is a code artifact from write_code
+  const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>);
+  const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
+
+  // Render code artifact as CodeSandbox instead of raw JSON
+  if (codeOutput) {
+    return (
+      <CodeSandbox
+        filename={codeOutput.filename as string}
+        language={codeOutput.language as string}
+        code={codeOutput.code as string}
+        description={codeOutput.message as string | undefined}
+        contextId={codeOutput.context_id as string | undefined}
+      />
+    );
+  }
 
   return (
     <>
@@ -393,6 +419,196 @@ function MessageFeedback({
   );
 }
 
+// --- Export & Share helpers ---
+
+function formatMessagesAsMarkdown(
+  messages: UIMessage[],
+  conversationId?: string | null,
+): string {
+  const title = conversationId ? `Conversation ${conversationId}` : "Conversation";
+  const date = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const lines: string[] = [`# ${title}`, `Date: ${date}`, ""];
+
+  for (const m of messages) {
+    const parts = m.parts as { type: string; text?: string }[];
+    const text = getTextContent(parts);
+    const toolParts = getToolParts(parts);
+
+    const roleName = m.role === "user" ? "User" : "Granger";
+    lines.push(`## ${roleName}`);
+
+    if (text) {
+      lines.push("", text, "");
+    }
+
+    for (const tp of toolParts) {
+      const toolName = tp.type.replace("tool-", "");
+      lines.push(`### Tool: ${toolName}`);
+      if ("input" in tp && tp.input) {
+        lines.push("", "**Input:**", "```json", JSON.stringify(tp.input, null, 2), "```", "");
+      }
+      if (tp.state === "output-available" && "output" in tp && tp.output) {
+        const out = typeof tp.output === "string" ? tp.output : JSON.stringify(tp.output, null, 2);
+        lines.push("**Output:**", "```json", out, "```", "");
+      }
+    }
+
+    lines.push("---", "");
+  }
+
+  return lines.join("\n");
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+type TeamMember = { userId: string; email: string; role: string };
+
+function SharePanel({
+  conversationId,
+  onClose,
+}: {
+  conversationId: string;
+  onClose: () => void;
+}) {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [sharedWith, setSharedWith] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [membersRes, sharedRes] = await Promise.all([
+          fetch("/api/team/members"),
+          fetch(`/api/chat/share?conversation_id=${conversationId}`),
+        ]);
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          setMembers(data);
+        }
+        if (sharedRes.ok) {
+          const data = await sharedRes.json();
+          setSharedWith(new Set(data.sharedWith ?? []));
+        }
+      } catch {
+        // fail silently
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [conversationId]);
+
+  const toggleMember = (userId: string) => {
+    setSharedWith((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+    setSaved(false);
+  };
+
+  const handleShare = async () => {
+    if (sharedWith.size === 0) return;
+    setSaving(true);
+    try {
+      await fetch("/api/chat/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          userIds: Array.from(sharedWith),
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => onClose(), 1200);
+    } catch {
+      // fail silently
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border bg-card shadow-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium">Share conversation</p>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : members.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">No team members found.</p>
+      ) : (
+        <div className="space-y-1 max-h-48 overflow-y-auto">
+          {members.map((m) => (
+            <button
+              key={m.userId}
+              onClick={() => toggleMember(m.userId)}
+              className={cn(
+                "flex items-center gap-2 w-full rounded px-2 py-1.5 text-xs transition-colors",
+                sharedWith.has(m.userId)
+                  ? "bg-primary/10 text-foreground"
+                  : "hover:bg-accent text-muted-foreground"
+              )}
+            >
+              <div
+                className={cn(
+                  "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0",
+                  sharedWith.has(m.userId) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                )}
+              >
+                {sharedWith.has(m.userId) && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+              </div>
+              <span className="truncate">{m.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <Button
+        size="sm"
+        className="w-full text-xs h-7"
+        disabled={sharedWith.size === 0 || saving}
+        onClick={handleShare}
+      >
+        {saved ? (
+          <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Shared</span>
+        ) : saving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          `Share with ${sharedWith.size} member${sharedWith.size !== 1 ? "s" : ""}`
+        )}
+      </Button>
+    </div>
+  );
+}
+
 interface ChatInterfaceProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
@@ -472,22 +688,39 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
   });
 
   const isLoading = status === "streaming" || status === "submitted";
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const getDebugJSON = useCallback(() => ({
+    conversationId,
+    model,
+    status,
+    messageCount: messages.length,
+    messages: messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      parts: m.parts,
+    })),
+  }), [messages, conversationId, model, status]);
 
   const copyDebugJSON = useCallback(() => {
-    const debug = {
-      conversationId,
-      model,
-      status,
-      messageCount: messages.length,
-      messages: messages.map((m) => ({
-        id: m.id,
-        role: m.role,
-        parts: m.parts,
-      })),
-    };
-    navigator.clipboard.writeText(JSON.stringify(debug, null, 2));
-    alert("Debug JSON copied to clipboard!");
-  }, [messages, conversationId, model, status]);
+    navigator.clipboard.writeText(JSON.stringify(getDebugJSON(), null, 2));
+  }, [getDebugJSON]);
+
+  const exportMarkdown = useCallback(() => {
+    const md = formatMessagesAsMarkdown(messages, conversationId);
+    const filename = conversationId
+      ? `conversation-${conversationId.slice(0, 8)}.md`
+      : `conversation-${Date.now()}.md`;
+    downloadFile(md, filename, "text/markdown");
+  }, [messages, conversationId]);
+
+  const exportJSON = useCallback(() => {
+    const json = JSON.stringify(getDebugJSON(), null, 2);
+    const filename = conversationId
+      ? `conversation-${conversationId.slice(0, 8)}.json`
+      : `conversation-${Date.now()}.json`;
+    downloadFile(json, filename, "application/json");
+  }, [getDebugJSON, conversationId]);
 
   // Slash command mappings — expand to explicit tool instructions for the AI
   const SLASH_COMMANDS: Record<string, (args: string) => string> = {
@@ -542,13 +775,48 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialMessages
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0">
         {messages.length > 0 && (
-          <div className="flex justify-end px-4 py-1 border-b">
-            <button
-              onClick={copyDebugJSON}
-              className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
-            >
-              Copy Debug JSON
-            </button>
+          <div className="flex justify-end px-4 py-1 border-b relative">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors flex items-center gap-1"
+                  aria-label="Chat actions"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Actions</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={copyDebugJSON}>
+                  <Copy className="h-3.5 w-3.5 mr-2" />
+                  Copy JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportMarkdown}>
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Export Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportJSON}>
+                  <FileJson className="h-3.5 w-3.5 mr-2" />
+                  Export JSON file
+                </DropdownMenuItem>
+                {conversationId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                      <Share2 className="h-3.5 w-3.5 mr-2" />
+                      Share...
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {shareOpen && conversationId && (
+              <SharePanel
+                conversationId={conversationId}
+                onClose={() => setShareOpen(false)}
+              />
+            )}
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

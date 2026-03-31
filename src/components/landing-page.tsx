@@ -61,14 +61,14 @@ const PLANS = [
     name: "Free",
     price: "$0",
     period: "/month",
-    description: "For individuals exploring Layers",
+    description: "For individuals exploring Granger",
     features: [
       "50 credits/month",
       "1 user",
       "3 integrations",
       "Community support",
     ],
-    cta: "Get Started Free",
+    cta: "Meet Granger",
     href: "/signup",
     highlighted: false,
   },
@@ -113,19 +113,19 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-32">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-          The operating system for{" "}
-          <span className="text-primary">AI-native teams</span>
+          Your AI{" "}
+          <span className="text-primary">Chief of Staff</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          Connect every tool into a single context layer. Intelligent agents
-          understand what&apos;s happening across your business.
+          Granger connects every tool into a single context layer and deploys
+          intelligent agents that understand what&apos;s happening across your business.
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Link
             href="/signup"
             className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Get Started Free
+            Meet Granger
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
@@ -268,7 +268,7 @@ export default function LandingPage() {
             href="/signup"
             className="mt-8 inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Get Started Free
+            Meet Granger
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

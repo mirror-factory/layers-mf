@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let exportItems: any[] = [];
-  let exportTitle = "Layers Export";
+  let exportTitle = "Granger Export";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let sessionData: { name: string; goal: string | null; status: string } | null = null;
 
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
     exportItems = data ?? [];
-    exportTitle = `Layers Export — ${exportItems.length} item${exportItems.length !== 1 ? "s" : ""}`;
+    exportTitle = `Granger Export — ${exportItems.length} item${exportItems.length !== 1 ? "s" : ""}`;
   } else if (sessionId) {
     // Export all items linked to a session
     const { data: session } = await supabase

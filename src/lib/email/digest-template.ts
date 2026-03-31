@@ -72,7 +72,7 @@ export function renderDigestHTML(data: DigestData): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Layers Daily Digest</title>
+  <title>Granger Daily Digest</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 32px 16px;">
@@ -83,7 +83,7 @@ export function renderDigestHTML(data: DigestData): string {
           <tr>
             <td style="padding: 32px 24px 16px 24px; background-color: #111827;">
               <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #ffffff;">Good morning, ${escapeHtml(data.userName)}</h1>
-              <p style="margin: 0; font-size: 14px; color: #9ca3af;">Here's your Layers digest for ${escapeHtml(data.date)}</p>
+              <p style="margin: 0; font-size: 14px; color: #9ca3af;">Here's your Granger digest for ${escapeHtml(data.date)}</p>
             </td>
           </tr>
 
@@ -118,7 +118,7 @@ export function renderDigestHTML(data: DigestData): string {
         </table>
 
         <p style="margin: 16px 0 0 0; font-size: 11px; color: #9ca3af; text-align: center;">
-          Layers by Mirror Factory
+          Granger by Mirror Factory
         </p>
       </td>
     </tr>

@@ -67,7 +67,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to Layers</CardTitle>
+          <CardTitle>Sign in to Granger</CardTitle>
           <CardDescription>Enter your email and password to continue.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

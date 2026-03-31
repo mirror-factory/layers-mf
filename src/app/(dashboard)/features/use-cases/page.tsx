@@ -239,7 +239,7 @@ function UseCaseHero() {
         </div>
         <div className="hero-text">
           <h1 className="text-3xl font-bold tracking-tight">
-            How Teams Use Layers
+            How Teams Use Granger
           </h1>
           <p className="text-sm text-muted-foreground">
             Real workflows, step by step
@@ -247,7 +247,7 @@ function UseCaseHero() {
         </div>
       </div>
       <p className="text-muted-foreground max-w-2xl leading-relaxed">
-        Layers connects your tools into a single knowledge layer. Here&apos;s
+        Granger connects your tools into a single knowledge layer. Here&apos;s
         what that looks like in practice — from your morning coffee to your
         end-of-week review.
       </p>
@@ -273,7 +273,7 @@ function UseCase1() {
       <Card className="p-6 mb-6">
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           You arrive at your desk. Instead of checking Slack, Linear, Google
-          Drive, and Discord separately, Layers has already done that for you.
+          Drive, and Discord separately, Granger has already done that for you.
         </p>
 
         <div className="flex flex-wrap gap-2 mb-6">
@@ -291,12 +291,12 @@ function UseCase1() {
               color: "bg-amber-500",
               title: "Morning Digest Email Arrives",
               description:
-                "At 7 AM, Layers emails you a summary: 3 new docs synced from Google Drive, 2 action items from yesterday's meeting, 1 overdue task from Linear, and a key decision made in Slack.",
+                "At 7 AM, Granger emails you a summary: 3 new docs synced from Google Drive, 2 action items from yesterday's meeting, 1 overdue task from Linear, and a key decision made in Slack.",
             },
             {
               icon: Inbox,
               color: "bg-blue-500",
-              title: "Open Your Inbox in Layers",
+              title: "Open Your Inbox in Granger",
               description:
                 "Your inbox shows prioritized items — urgent action items at the top, new context in the middle, and FYI items at the bottom. Each links back to its source.",
             },
@@ -350,7 +350,7 @@ function UseCase2() {
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           Your CEO asks about the pricing decision from last week. The answer
           is scattered across a meeting transcript, a Linear issue, a Google
-          Doc, and a Slack thread. Without Layers, you&apos;d spend 20 minutes
+          Doc, and a Slack thread. Without Granger, you&apos;d spend 20 minutes
           hunting.
         </p>
 
@@ -359,16 +359,16 @@ function UseCase2() {
             {
               icon: MessageSquare,
               color: "bg-blue-500",
-              title: "Ask Layers Chat",
+              title: "Ask Granger Chat",
               description:
-                '"What did we decide about pricing last week?" — Layers expands your query into 4 variations, searches across all sources with hybrid vector + keyword search.',
+                '"What did we decide about pricing last week?" — Granger expands your query into 4 variations, searches across all sources with hybrid vector + keyword search.',
             },
             {
               icon: Brain,
               color: "bg-purple-500",
               title: "AI Synthesizes Across Sources",
               description:
-                "Layers finds the meeting transcript where it was discussed, the Linear issue where it was tracked, the Google Doc with the analysis, and the Slack message confirming it. Trust-weighted ranking puts the Linear issue (authoritative) above the Slack message (context).",
+                "Granger finds the meeting transcript where it was discussed, the Linear issue where it was tracked, the Google Doc with the analysis, and the Slack message confirming it. Trust-weighted ranking puts the Linear issue (authoritative) above the Slack message (context).",
             },
             {
               icon: FileText,
@@ -440,7 +440,7 @@ function UseCase3() {
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           You&apos;re running a 2-week sprint on the billing system. Context is
           spread across Linear issues, meeting notes, a design doc, and Slack
-          discussions. Layers keeps it all scoped.
+          discussions. Granger keeps it all scoped.
         </p>
 
         <FlowDiagram
@@ -457,7 +457,7 @@ function UseCase3() {
               color: "bg-amber-500",
               title: "Content Auto-Links",
               description:
-                'When a Linear issue mentions "billing" or "credits", Layers automatically links it to your session. Same for meeting transcripts, Google Docs, and Slack threads. The AI matches by topic similarity.',
+                'When a Linear issue mentions "billing" or "credits", Granger automatically links it to your session. Same for meeting transcripts, Google Docs, and Slack threads. The AI matches by topic similarity.',
             },
             {
               icon: MessageSquare,
@@ -471,7 +471,7 @@ function UseCase3() {
               color: "bg-purple-500",
               title: "AI Surfaces Insights",
               description:
-                '"New insight: The meeting transcript from Monday mentions a March 28 deadline, but PROD-225 (Stripe setup) is still in Backlog." — Layers finds contradictions across sources automatically.',
+                '"New insight: The meeting transcript from Monday mentions a March 28 deadline, but PROD-225 (Stripe setup) is still in Backlog." — Granger finds contradictions across sources automatically.',
             },
             {
               icon: BarChart3,
@@ -497,7 +497,7 @@ function UseCase4() {
         <div>
           <h2 className="text-xl font-semibold">Onboarding a New Team Member</h2>
           <p className="text-xs text-muted-foreground">
-            They ask questions, Layers has the answers
+            They ask questions, Granger has the answers
           </p>
         </div>
       </div>
@@ -505,7 +505,7 @@ function UseCase4() {
       <Card className="p-6 mb-6">
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           A new engineer joins. Instead of scheduling 5 knowledge-transfer
-          meetings, you point them at Layers. Every meeting transcript, design
+          meetings, you point them at Granger. Every meeting transcript, design
           doc, issue, and decision is already searchable.
         </p>
 
@@ -523,7 +523,7 @@ function UseCase4() {
               color: "bg-blue-500",
               title: "They Ask Questions Naturally",
               description:
-                '"Why did we choose Supabase over Firebase?" — "What\'s the architecture for the AI pipeline?" — "Who owns the billing integration?" — Layers answers with citations to actual team discussions and documents.',
+                '"Why did we choose Supabase over Firebase?" — "What\'s the architecture for the AI pipeline?" — "Who owns the billing integration?" — Granger answers with citations to actual team discussions and documents.',
             },
             {
               icon: Clock,
@@ -595,7 +595,7 @@ function UseCase5() {
               color: "bg-red-500",
               title: "Transcript Syncs via Granola",
               description:
-                "Within seconds of the meeting ending, the full transcript arrives in Layers via webhook. Token-verified for security.",
+                "Within seconds of the meeting ending, the full transcript arrives in Granger via webhook. Token-verified for security.",
             },
             {
               icon: Brain,
@@ -623,7 +623,7 @@ function UseCase5() {
               color: "bg-emerald-500",
               title: "Searchable Forever",
               description:
-                "Six months later, someone asks \"what did we decide in the March planning meeting?\" — Layers finds the exact passage with the decision.",
+                "Six months later, someone asks \"what did we decide in the March planning meeting?\" — Granger finds the exact passage with the decision.",
             },
           ]}
         />
@@ -687,7 +687,7 @@ function UseCase6() {
               color: "bg-violet-500",
               title: "Cross-Source Intelligence",
               description:
-                "Layers doesn't just search — it finds connections. \"The design doc updated Tuesday conflicts with the Linear issue assigned to Marcus.\" These cross-source insights surface automatically.",
+                "Granger doesn't just search — it finds connections. \"The design doc updated Tuesday conflicts with the Linear issue assigned to Marcus.\" These cross-source insights surface automatically.",
             },
             {
               icon: FileText,
@@ -732,7 +732,7 @@ function DataFlowSection() {
 
   return (
     <AnimatedSection className="mb-20">
-      <h2 className="text-xl font-semibold mb-2">How Data Flows Through Layers</h2>
+      <h2 className="text-xl font-semibold mb-2">How Data Flows Through Granger</h2>
       <p className="text-xs text-muted-foreground mb-6">
         From raw content to searchable, actionable intelligence
       </p>
@@ -859,7 +859,7 @@ export default function UseCasesPage() {
             Ready to connect your tools?
           </h2>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Start with one integration. Layers gets smarter with every document,
+            Start with one integration. Granger gets smarter with every document,
             message, and meeting you connect.
           </p>
           <div className="flex justify-center gap-3">
@@ -881,7 +881,7 @@ export default function UseCasesPage() {
       </AnimatedSection>
 
       <div className="mt-12 text-center text-xs text-muted-foreground">
-        <p>Layers Platform — Mirror Factory</p>
+        <p>Granger — Mirror Factory</p>
       </div>
     </div>
   );

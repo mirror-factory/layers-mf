@@ -46,6 +46,7 @@ const CONNECT_ITEMS: NavItem[] = [
 
 const SETTINGS_ITEMS: NavItem[] = [
   { href: "/settings/api-keys", label: "API Keys", icon: Key },
+  { href: "/settings/permissions", label: "Permissions", icon: Shield },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },

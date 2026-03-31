@@ -119,7 +119,7 @@ const PROVIDER_META: Record<
     color: "text-red-600 dark:text-red-400",
   },
   "layers-ai": {
-    label: "Layers AI",
+    label: "Granger AI",
     description: "AI-generated insights and analyses",
     icon: Brain,
     color: "text-primary",

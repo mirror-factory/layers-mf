@@ -35,7 +35,7 @@ export default async function IntegrationsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-1" data-testid="integrations-heading">Integrations</h1>
         <p className="text-muted-foreground text-sm">
-          Connect your tools so Layers can sync meetings, issues, and documents
+          Connect your tools so Granger can sync meetings, issues, and documents
           automatically.
         </p>
       </div>

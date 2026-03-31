@@ -24,7 +24,7 @@ export default function MarketingLayout({
               <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
               <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
             </svg>
-            Layers
+            Granger
           </Link>
           <nav className="hidden items-center gap-6 text-sm md:flex">
             <Link
@@ -57,7 +57,7 @@ export default function MarketingLayout({
               href="/signup"
               className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Get Started
+              Meet Granger
             </Link>
           </div>
         </div>

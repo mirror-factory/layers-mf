@@ -111,7 +111,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Create your account</CardTitle>
-          <CardDescription>Set up Layers for your team.</CardDescription>
+          <CardDescription>Set up Granger for your team.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button

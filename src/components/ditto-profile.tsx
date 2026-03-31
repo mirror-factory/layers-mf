@@ -185,7 +185,7 @@ export function DittoProfileView() {
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           {confidencePct < 30
-            ? "Not enough data yet. Keep using Layers to improve accuracy."
+            ? "Not enough data yet. Keep using Granger to improve accuracy."
             : confidencePct < 60
               ? "Building a picture. Profile will improve with more interactions."
               : "High confidence. Ditto knows your preferences well."}

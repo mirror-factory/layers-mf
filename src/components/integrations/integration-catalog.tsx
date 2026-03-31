@@ -73,10 +73,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Documents, spreadsheets, presentations, and uploaded files",
     description:
-      "Syncs your Google Workspace content and uploaded files into Layers. Content is exported as text, parsed, and processed through the AI pipeline for extraction, embedding, and search.",
+      "Syncs your Google Workspace content and uploaded files into Granger. Content is exported as text, parsed, and processed through the AI pipeline for extraction, embedding, and search.",
     howItWorks: [
       "Connect via Google OAuth through Nango",
-      "Layers queries your Drive for supported files",
+      "Granger queries your Drive for supported files",
       "Google-native files (Docs, Sheets, Slides) are exported as plain text",
       "Uploaded files (PDF, DOCX, XLSX) are downloaded and parsed",
       "Each file runs through the 7-step AI pipeline (extract → chunk → embed)",
@@ -112,10 +112,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Issues, projects, cycles, and comments",
     description:
-      "Syncs your Linear workspace into Layers — issues with full metadata, project overviews, and cycle summaries. Great for keeping your AI assistant aware of engineering work.",
+      "Syncs your Linear workspace into Granger — issues with full metadata, project overviews, and cycle summaries. Great for keeping your AI assistant aware of engineering work.",
     howItWorks: [
       "Connect via Linear OAuth through Nango",
-      "Layers fetches issues via GraphQL (including comments, assignees, labels)",
+      "Granger fetches issues via GraphQL (including comments, assignees, labels)",
       "Projects and cycles are synced as separate context items",
       "Issue metadata (status, priority, assignee, labels) is embedded in the content",
       "Webhook receives real-time updates when issues change",
@@ -150,7 +150,7 @@ const PROVIDERS: ProviderInfo[] = [
       "Syncs recent messages from your Slack workspace. Messages are batched per channel with author names and timestamps, then processed by AI to extract decisions, action items, and key discussions.",
     howItWorks: [
       "Connect via Slack OAuth through Nango",
-      "Layers fetches your public channels via conversations.list",
+      "Granger fetches your public channels via conversations.list",
       "Recent messages are pulled from each channel via conversations.history",
       "Messages are batched per channel into a single document with timestamps",
       "Short messages (< 20 chars) and empty messages are filtered out",
@@ -181,7 +181,7 @@ const PROVIDERS: ProviderInfo[] = [
       "Syncs messages from your Discord servers. Messages are grouped by channel with author attribution and chronological ordering. Bot messages are automatically filtered out.",
     howItWorks: [
       "Connect via Discord OAuth through Nango",
-      "Layers discovers your guilds (servers) and their text channels",
+      "Granger discovers your guilds (servers) and their text channels",
       "Messages are fetched per channel with incremental cursor tracking",
       "Messages are batched chronologically with author names",
       "Bot messages and empty messages are filtered out",
@@ -211,10 +211,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Repository issues with metadata",
     description:
-      "Syncs issues from your GitHub repositories into Layers. Issues include titles, descriptions, labels, and state. Useful for keeping your AI aware of bugs, features, and technical discussions.",
+      "Syncs issues from your GitHub repositories into Granger. Issues include titles, descriptions, labels, and state. Useful for keeping your AI aware of bugs, features, and technical discussions.",
     howItWorks: [
       "Connect via GitHub OAuth through Nango",
-      "Layers fetches your most recently pushed repositories",
+      "Granger fetches your most recently pushed repositories",
       "Issues (open and closed) are pulled from each repo with metadata",
       "Issue body text becomes the content, metadata is appended",
       "Issues without a body or with very short bodies are skipped",
@@ -245,7 +245,7 @@ const PROVIDERS: ProviderInfo[] = [
       "Syncs meeting transcripts from Granola — your AI meeting assistant. Transcripts include full conversation text and attendee metadata. Perfect for making past meetings searchable.",
     howItWorks: [
       "Connect via Granola auth through Nango, or receive webhooks directly",
-      "Layers fetches meeting documents via the Granola API",
+      "Granger fetches meeting documents via the Granola API",
       "Transcripts include the full conversation text",
       "Attendee names and emails are extracted and appended",
       "Short transcripts (< 50 chars) are skipped",
@@ -274,10 +274,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Meetings, events, and scheduling data",
     description:
-      "Syncs your Google Calendar events into Layers — upcoming and recent meetings, attendees, locations, and Google Meet links. Events are processed through the AI pipeline for extraction, embedding, and search.",
+      "Syncs your Google Calendar events into Granger — upcoming and recent meetings, attendees, locations, and Google Meet links. Events are processed through the AI pipeline for extraction, embedding, and search.",
     howItWorks: [
       "Connect via Google OAuth through Nango",
-      "Layers queries your primary calendar for events (30 days past and future)",
+      "Granger queries your primary calendar for events (30 days past and future)",
       "Events include summary, description, attendees, location, and Meet links",
       "Each event runs through the AI pipeline (extract → embed → search)",
       "Auto-links calendar events to related context items",
@@ -305,10 +305,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Pages, databases, and wiki content",
     description:
-      "Syncs Notion pages into Layers. Notion blocks (paragraphs, headings, lists, code, callouts, toggles) are converted to plain text and processed through the AI pipeline for extraction, embedding, and search.",
+      "Syncs Notion pages into Granger. Notion blocks (paragraphs, headings, lists, code, callouts, toggles) are converted to plain text and processed through the AI pipeline for extraction, embedding, and search.",
     howItWorks: [
       "Connect via Notion OAuth through Nango",
-      "Layers searches your workspace for pages via the Notion Search API",
+      "Granger searches your workspace for pages via the Notion Search API",
       "Page content is fetched block-by-block, including nested children (depth 2)",
       "Blocks are converted to plain text — headings, lists, code, quotes, callouts, to-dos",
       "Each page runs through the 7-step AI pipeline (extract → chunk → embed)",
@@ -337,10 +337,10 @@ const PROVIDERS: ProviderInfo[] = [
     status: "active",
     tagline: "Email threads and messages from your inbox",
     description:
-      "Syncs recent email messages from your Gmail inbox into Layers. Emails include subject, sender, recipients, and body text. Content is processed through the AI pipeline for extraction, embedding, and search.",
+      "Syncs recent email messages from your Gmail inbox into Granger. Emails include subject, sender, recipients, and body text. Content is processed through the AI pipeline for extraction, embedding, and search.",
     howItWorks: [
       "Connect via Google OAuth through Nango",
-      "Layers lists recent messages from the last 7 days via the Gmail API",
+      "Granger lists recent messages from the last 7 days via the Gmail API",
       "Each message is fetched in full format with headers and body",
       "Plain text body is extracted (base64url decoded), with snippet as fallback",
       "Emails with very short content (< 30 chars) are skipped",

@@ -92,7 +92,7 @@ const SOURCE_META: Record<string, { label: string; icon: React.ElementType; colo
   linear:         { label: "Linear",       icon: GitBranch, color: "text-indigo-500",  bg: "bg-indigo-500/10" },
   notion:         { label: "Notion",       icon: FileText,  color: "text-slate-700",   bg: "bg-slate-500/10" },
   upload:         { label: "Uploads",      icon: Upload,    color: "text-green-600",   bg: "bg-green-500/10" },
-  "layers-ai":    { label: "Layers AI",    icon: Brain,     color: "text-primary",     bg: "bg-primary/10" },
+  "layers-ai":    { label: "Granger AI",    icon: Brain,     color: "text-primary",     bg: "bg-primary/10" },
 };
 
 const CONTENT_TYPE_ICON: Record<string, React.ElementType> = {

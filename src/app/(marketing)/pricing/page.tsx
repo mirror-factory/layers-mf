@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Check, X } from "lucide-react";
 
 export const metadata = {
-  title: "Pricing | Layers",
+  title: "Pricing | Granger",
   description: "Simple, transparent pricing for teams of all sizes.",
 };
 
@@ -11,8 +11,8 @@ const PLANS = [
     name: "Free",
     price: "$0",
     period: "/month",
-    description: "For individuals exploring Layers",
-    cta: "Get Started Free",
+    description: "For individuals exploring Granger",
+    cta: "Meet Granger",
     href: "/signup",
     highlighted: false,
   },
@@ -76,7 +76,7 @@ const FAQ = [
   },
   {
     q: "How do integrations work?",
-    a: "Integrations connect your existing tools (Slack, GitHub, Linear, Notion, etc.) to Layers via OAuth. Once connected, content is automatically synced and indexed.",
+    a: "Integrations connect your existing tools (Slack, GitHub, Linear, Notion, etc.) to Granger via OAuth. Once connected, content is automatically synced and indexed.",
   },
   {
     q: "Is my data secure?",
@@ -221,7 +221,7 @@ export default function PricingPage() {
             href="/signup"
             className="mt-8 inline-flex h-11 items-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Get Started Free
+            Meet Granger
           </Link>
         </div>
       </section>

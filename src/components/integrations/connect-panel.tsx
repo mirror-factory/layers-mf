@@ -388,7 +388,7 @@ export function ConnectPanel({ initialIntegrations }: ConnectPanelProps) {
             No integrations connected
           </p>
           <p className="text-xs mt-1">
-            Connect your tools to sync knowledge into Layers automatically.
+            Connect your tools to sync knowledge into Granger automatically.
           </p>
         </div>
       )}

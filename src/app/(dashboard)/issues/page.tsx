@@ -115,7 +115,7 @@ const SPRINTS: Sprint[] = [
   {
     name: "Context Engineering Architecture (Mar 17)",
     description:
-      "Fundamental rearchitecture of how Layers handles content. Phase 1: versioning schema with append-only history table (no embeddings stored = 80% storage savings), user overlay columns that sync never overwrites. Phase 2: SHA-256 content hashing with field-level diff — skips re-embedding on metadata-only changes, saving AI credits. Phase 3: weekly rolling windows for Slack/Discord messages — no more data loss on re-sync. Phase 4: source trust weighting (sliders 0.1-2.0), user annotations, chat feedback. Phase 5: multi-query expansion, trust-weighted ranking, freshness decay with content-type-specific half-lives. Phase 6: version history timeline UI, content health dashboard (0-100 score). Backed by 628-line architecture doc with diagrams.",
+      "Fundamental rearchitecture of how Granger handles content. Phase 1: versioning schema with append-only history table (no embeddings stored = 80% storage savings), user overlay columns that sync never overwrites. Phase 2: SHA-256 content hashing with field-level diff — skips re-embedding on metadata-only changes, saving AI credits. Phase 3: weekly rolling windows for Slack/Discord messages — no more data loss on re-sync. Phase 4: source trust weighting (sliders 0.1-2.0), user annotations, chat feedback. Phase 5: multi-query expansion, trust-weighted ranking, freshness decay with content-type-specific half-lives. Phase 6: version history timeline UI, content health dashboard (0-100 score). Backed by 628-line architecture doc with diagrams.",
     issues: [
       { id: null, title: "Phase 1: Schema — versioning columns + versions table", status: "Done", linearUrl: null },
       { id: null, title: "Phase 2: Change detection — SHA-256 hashing + field diff", status: "Done", linearUrl: null },
@@ -184,7 +184,7 @@ const SPRINTS: Sprint[] = [
   {
     name: "Sprint 8 — Self-Service + External Teams (Mar 19)",
     description:
-      "Open Layers to external teams. Public signup flow with plan selection (Free: 50 credits/mo, Starter: 500, Pro: 5000). Stripe subscriptions with proration on plan changes. Monthly credit reset cron with carry-over (up to 2x monthly allocation). Organization settings expansion (slug, billing email, data export). API key management for programmatic access. Plan selection page with feature comparison table. Landing page for unauthenticated users with hero, feature highlights, and CTA. Success metric: first external team signs up and reaches active use within 48 hours.",
+      "Open Granger to external teams. Public signup flow with plan selection (Free: 50 credits/mo, Starter: 500, Pro: 5000). Stripe subscriptions with proration on plan changes. Monthly credit reset cron with carry-over (up to 2x monthly allocation). Organization settings expansion (slug, billing email, data export). API key management for programmatic access. Plan selection page with feature comparison table. Landing page for unauthenticated users with hero, feature highlights, and CTA. Success metric: first external team signs up and reaches active use within 48 hours.",
     issues: [
       { id: null, title: "Public signup with plan selection", status: "Done", linearUrl: null },
       { id: null, title: "Subscription management API", status: "Done", linearUrl: null },
@@ -198,7 +198,7 @@ const SPRINTS: Sprint[] = [
   {
     name: "Sprint 9 — Canvas + Polish (Mar 22)",
     description:
-      "Spatial canvas workspace for visual content exploration. Drag context items onto an infinite pan/zoom canvas, resize and reposition, draw connections between related items. AI auto-layout groups items by topic clusters using embedding similarity. PDF export for sharing. Final UX polish pass across every page (spacing, typography, color consistency). Accessibility audit (ARIA labels, focus management, contrast). Onboarding improvements based on user feedback. Comprehensive user guide documentation. Full regression E2E suite on production. Launch checklist (security audit, monitoring, backups, incident runbook). Target: 3-5 external teams actively using Layers.",
+      "Spatial canvas workspace for visual content exploration. Drag context items onto an infinite pan/zoom canvas, resize and reposition, draw connections between related items. AI auto-layout groups items by topic clusters using embedding similarity. PDF export for sharing. Final UX polish pass across every page (spacing, typography, color consistency). Accessibility audit (ARIA labels, focus management, contrast). Onboarding improvements based on user feedback. Comprehensive user guide documentation. Full regression E2E suite on production. Launch checklist (security audit, monitoring, backups, incident runbook). Target: 3-5 external teams actively using Granger.",
     issues: [
       { id: null, title: "Canvas data model + API", status: "Done", linearUrl: null },
       { id: null, title: "Canvas workspace UI (drag/zoom)", status: "Done", linearUrl: null },
@@ -315,7 +315,7 @@ export default function IssuesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Issue Tracker</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          All work items across Layers — Linear-tracked and untracked.
+          All work items across Granger — Linear-tracked and untracked.
         </p>
       </div>
 
