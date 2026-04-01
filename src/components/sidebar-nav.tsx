@@ -13,12 +13,8 @@ import {
   Plug,
   BarChart3,
   LogOut,
-  Users,
   UserCog,
   Shield,
-  Bell,
-  CreditCard,
-  Key,
   Menu,
   X,
   Coins,
@@ -61,18 +57,11 @@ const CONNECT_ITEMS: NavItem[] = [
 ];
 
 const SETTINGS_ITEMS: NavItem[] = [
-  { href: "/settings/api-keys", label: "API Keys", icon: Key },
-  { href: "/settings/integrations", label: "Chat SDK", icon: Zap },
-  { href: "/settings/permissions", label: "Permissions", icon: Shield },
-  { href: "/settings/profile", label: "Profile", icon: UserCog },
-  { href: "/settings/team", label: "Team", icon: Users },
-  { href: "/settings/notifications", label: "Notifications", icon: Bell },
+  { href: "/settings", label: "Settings", icon: UserCog },
 ];
 
 const MORE_ITEMS: NavItem[] = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/settings/billing", label: "Billing", icon: CreditCard },
-  { href: "/settings/audit", label: "Audit Log", icon: Shield },
 ];
 
 function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { pathname: string; collapsed?: boolean }) {
@@ -83,7 +72,7 @@ function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { p
       className={cn(
         "flex items-center rounded-md text-sm transition-colors",
         collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2",
-        pathname === href
+        (pathname === href || (href !== "/home" && href !== "/chat" && pathname.startsWith(href + "/")))
           ? "bg-primary/10 text-primary font-medium"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
