@@ -81,6 +81,19 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
     (totalUsed / 1_000_000) * pricing.input +
     (500 / 1_000_000) * pricing.output;
 
+  // Estimate cumulative conversation cost (all messages sent so far)
+  const userMessages = messages.filter((m) => m.role === "user").length;
+  const assistantTokens = messages
+    .filter((m) => m.role === "assistant")
+    .reduce(
+      (sum, msg) =>
+        sum + estimateMessageTokens(msg as { role: string; parts?: { type: string; text?: string; input?: unknown; output?: unknown }[] }),
+      0,
+    );
+  const cumulativeCost =
+    (historyTokens / 1_000_000) * pricing.input * (userMessages / Math.max(1, messages.length)) +
+    (assistantTokens / 1_000_000) * pricing.output;
+
   const segments: SegmentDef[] = [
     { key: "system", label: "System", tokens: systemTokens, color: "bg-blue-500" },
     { key: "rules", label: "Rules", tokens: rulesTokens, color: "bg-purple-500" },
@@ -158,9 +171,16 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
               </span>
               <span>{formatTokens(available)} available</span>
             </div>
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-3 w-3" />
-              <span>~{formatCost(costPerMessage)}/msg</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                <span>~{formatCost(costPerMessage)}/msg</span>
+              </div>
+              {cumulativeCost > 0.0001 && (
+                <span className="text-[10px] border-l pl-2">
+                  ~{formatCost(cumulativeCost)} total
+                </span>
+              )}
             </div>
           </div>
 
