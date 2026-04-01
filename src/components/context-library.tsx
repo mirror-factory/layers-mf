@@ -55,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ContextInfoPanel } from "@/components/context-info-panel";
 import {
   Tooltip,
   TooltipContent,
@@ -384,7 +385,7 @@ function ItemActions({
 }
 
 /* ---------- Grid Card ---------- */
-function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null }) {
+function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onInfoClick }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null; onInfoClick?: (item: ContextItem) => void }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -412,10 +413,10 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId }: { 
         />
       </div>
 
-      <Link
-        href={`/context/${item.id}`}
-        className="flex flex-col h-full p-4"
-        onClick={() => {
+      <div
+        className="flex flex-col h-full p-4 cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
           trackInteraction({
             type: "click",
             resourceType: "context_item",
@@ -424,6 +425,7 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId }: { 
             contentType: item.content_type,
             metadata: { fromPage: "/context" },
           });
+          onInfoClick?.(item);
         }}
       >
         {/* Icon + source badge header */}
@@ -483,7 +485,7 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId }: { 
             )}
           </div>
         )}
-      </Link>
+      </div>
     </div>
   );
 }
@@ -643,6 +645,8 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [infoPanelItem, setInfoPanelItem] = useState<typeof items[0] | null>(null);
+  const [infoPanelOpen, setInfoPanelOpen] = useState(false);
 
   // Debounced search tracking
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1036,6 +1040,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 onToggle={() => toggleItem(item.id)}
                 onDelete={handleDeleteItem}
                 deletingId={deletingItemId}
+                onInfoClick={(item) => { setInfoPanelItem(item); setInfoPanelOpen(true); }}
               />
             ))}
           </div>
@@ -1109,6 +1114,12 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
           </div>
         </div>
       )}
+
+      <ContextInfoPanel
+        item={infoPanelItem}
+        open={infoPanelOpen}
+        onOpenChange={setInfoPanelOpen}
+      />
     </div>
   );
 }
