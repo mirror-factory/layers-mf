@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ContextLibrary } from "@/components/context-library";
+import { PageExplainer } from "@/components/page-explainer";
 import { Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -57,6 +58,16 @@ export default async function ContextPage(props: {
           </Link>
         </Button>
       </div>
+
+      <PageExplainer
+        title="How the Context Library Works"
+        sections={[
+          { title: "What goes here", content: "Documents, meeting transcripts, code files, and messages from all connected integrations. Everything Granger can search when answering questions." },
+          { title: "Hybrid search", content: "Search uses both vector embeddings (semantic meaning) and BM25 text matching, combined with Reciprocal Rank Fusion for best results." },
+          { title: "Sources", content: "Items are synced automatically from Google Drive, GitHub, Slack, Linear, and Granola. You can also upload files manually (PDF, DOCX, TXT, MD, up to 10MB)." },
+          { title: "Processing", content: "Uploaded documents are automatically processed: text extracted, embeddings generated, and entities identified. Status shows as 'Ready' when complete." },
+        ]}
+      />
 
       <ContextLibrary items={items ?? []} initialSearch={initialSearch} />
     </div>

@@ -3,6 +3,7 @@ export const metadata = { title: "Integrations" };
 import { createClient } from "@/lib/supabase/server";
 import { ConnectPanel } from "@/components/integrations/connect-panel";
 import { IntegrationCatalog } from "@/components/integrations/integration-catalog";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function IntegrationsPage() {
   const supabase = await createClient();
@@ -39,6 +40,14 @@ export default async function IntegrationsPage() {
           automatically.
         </p>
       </div>
+      <PageExplainer
+        title="How Integrations Work"
+        sections={[
+          { title: "Nango OAuth", content: "Integrations use Nango for secure OAuth connections. Click 'Connect' to authorize Granger to access your Google Drive, GitHub, Slack, Linear, or other services." },
+          { title: "Automatic sync", content: "Once connected, Granger syncs documents, issues, messages, and files into the Context Library automatically. Webhooks trigger real-time updates." },
+          { title: "MCP servers", content: "For deeper integrations, connect MCP (Model Context Protocol) servers in the MCP Servers page. MCP gives Granger direct tool access to external services." },
+        ]}
+      />
       <ConnectPanel initialIntegrations={integrations ?? []} />
 
       <div className="mt-12">

@@ -2,6 +2,7 @@ export const metadata = { title: "Inbox" };
 
 import { createClient } from "@/lib/supabase/server";
 import { InboxList } from "@/components/inbox-list";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function InboxPage() {
   const supabase = await createClient();
@@ -25,6 +26,14 @@ export default async function InboxPage() {
           Action items, decisions, and mentions surfaced by your agents.
         </p>
       </div>
+      <PageExplainer
+        title="How Inbox Works"
+        sections={[
+          { title: "What appears here", content: "Action items, decisions, and @mentions surfaced by Granger from your meetings, messages, and tasks. Items are prioritized by urgency." },
+          { title: "Sources", content: "Inbox items come from scheduled digests, integration syncs, and agent analysis of your connected services (Linear, Gmail, Granola, Slack)." },
+          { title: "Actions", content: "Mark items as done, snooze them, or dismiss. Items you act on help Granger learn what matters to you." },
+        ]}
+      />
       <InboxList initialItems={items ?? []} />
     </div>
   );

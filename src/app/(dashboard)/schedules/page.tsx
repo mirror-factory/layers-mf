@@ -2,6 +2,7 @@ export const metadata = { title: "Schedules" };
 
 import { createClient } from "@/lib/supabase/server";
 import { ScheduleList } from "@/components/schedule-list";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function SchedulesPage() {
   const supabase = await createClient();
@@ -35,6 +36,14 @@ export default async function SchedulesPage() {
           Recurring and one-time tasks managed by Granger.
         </p>
       </div>
+      <PageExplainer
+        title="How Schedules Work"
+        sections={[
+          { title: "What are schedules", content: "Recurring or one-time tasks that Granger executes automatically. Examples: 'Check my Linear every morning', 'Send a weekly digest', 'Sync Drive files daily'." },
+          { title: "Creating schedules", content: "Ask Granger in chat: 'every morning check my Linear issues'. Granger converts natural language to cron expressions and creates the schedule." },
+          { title: "Managing schedules", content: "Pause, resume, edit, or delete schedules here. Each schedule shows its cron expression, last run time, and next scheduled execution." },
+        ]}
+      />
       <ScheduleList initialSchedules={schedules ?? []} />
     </div>
   );
