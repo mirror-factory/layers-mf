@@ -8,20 +8,25 @@ import {
   MessageSquare,
   Inbox,
   Plug,
-  BarChart3,
-  FolderKanban,
-  Zap,
-  HeartPulse,
+  Coins,
   BookOpen,
-  Sparkles,
   UserCog,
-  Users,
   CreditCard,
-  ClipboardList,
-  ShieldCheck,
+  FileSearch,
   Bell,
+  Shield,
+  Scale,
   Upload,
   PlusCircle,
+  Clock,
+  Puzzle,
+  FileCode2,
+  Terminal,
+  Share2,
+  FileText,
+  Key,
+  Zap,
+  CheckSquare,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -42,32 +47,39 @@ interface CommandEntry {
 }
 
 const NAVIGATION: CommandEntry[] = [
-  { href: "/", label: "Home", icon: Home, keywords: "dashboard overview", shortcut: "G H" },
-  { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge", shortcut: "G C" },
-  { href: "/chat", label: "Chat", icon: MessageSquare, keywords: "conversation ai assistant" },
-  { href: "/sessions", label: "Sessions", icon: FolderKanban, keywords: "projects workspace", shortcut: "G S" },
-  { href: "/inbox", label: "Inbox", icon: Inbox, keywords: "messages notifications", shortcut: "G I" },
-  { href: "/actions", label: "Actions", icon: Zap, keywords: "tasks automations" },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "metrics usage stats", shortcut: "G A" },
-  { href: "/analytics/health", label: "Content Health", icon: HeartPulse, keywords: "quality freshness analytics" },
-  { href: "/integrations", label: "Integrations", icon: Plug, keywords: "connect apps services" },
-  { href: "/features", label: "Features", icon: Sparkles, keywords: "capabilities roadmap" },
-  { href: "/api-docs", label: "API Docs", icon: BookOpen, keywords: "documentation reference endpoints" },
+  { href: "/home", label: "Home", icon: Home, keywords: "dashboard overview greeting", shortcut: "G H" },
+  { href: "/chat", label: "Chat", icon: MessageSquare, keywords: "conversation ai assistant ask", shortcut: "G C" },
+  { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge search", shortcut: "G L" },
+  { href: "/inbox", label: "Inbox", icon: Inbox, keywords: "action items decisions mentions", shortcut: "G I" },
+  { href: "/approvals", label: "Approvals", icon: CheckSquare, keywords: "review queue pending", shortcut: "G A" },
+  { href: "/schedules", label: "Schedules", icon: Clock, keywords: "cron recurring tasks automation" },
+  { href: "/skills", label: "Skills", icon: Puzzle, keywords: "capabilities agent tools" },
+  { href: "/artifacts", label: "Artifacts", icon: FileCode2, keywords: "code documents files generated" },
+  { href: "/sandbox", label: "Sandbox", icon: Terminal, keywords: "run code preview execute" },
+  { href: "/analytics/costs", label: "AI Costs", icon: Coins, keywords: "spending tokens usage billing" },
+  { href: "/integrations", label: "Integrations", icon: Plug, keywords: "connect google drive slack github" },
+  { href: "/mcp", label: "MCP Servers", icon: Plug, keywords: "model context protocol tools" },
+  { href: "/sharing", label: "Sharing", icon: Share2, keywords: "publish collaborate share" },
+  { href: "/priority", label: "Priority & Rules", icon: FileText, keywords: "system prompt documents rules" },
+  { href: "/how-it-works", label: "How It Works", icon: BookOpen, keywords: "guide architecture documentation" },
 ];
 
 const SETTINGS: CommandEntry[] = [
-  { href: "/settings/profile", label: "Profile", icon: UserCog, keywords: "account user preferences" },
-  { href: "/settings/team", label: "Team", icon: Users, keywords: "members organization roles" },
-  { href: "/settings/billing", label: "Billing", icon: CreditCard, keywords: "credits subscription payments plan pricing" },
-  { href: "/settings/audit", label: "Audit Log", icon: ClipboardList, keywords: "history activity events" },
-  { href: "/settings/source-trust", label: "Source Trust", icon: ShieldCheck, keywords: "trust verification reliability" },
-  { href: "/settings/notifications", label: "Notifications", icon: Bell, keywords: "alerts email preferences" },
+  { href: "/settings", label: "Settings Hub", icon: UserCog, keywords: "preferences configuration", shortcut: "G S" },
+  { href: "/settings/api-keys", label: "API Keys", icon: Key, keywords: "tokens access gateway" },
+  { href: "/settings/permissions", label: "Permissions", icon: Shield, keywords: "access control tools read write" },
+  { href: "/settings/integrations", label: "Chat SDK", icon: Zap, keywords: "discord slack webhook embed" },
+  { href: "/settings/billing", label: "Billing", icon: CreditCard, keywords: "credits subscription payments" },
+  { href: "/settings/notifications", label: "Notifications", icon: Bell, keywords: "email digest alerts" },
+  { href: "/settings/source-trust", label: "Source Trust", icon: Scale, keywords: "weight priority scoring" },
+  { href: "/settings/audit", label: "Audit Log", icon: FileSearch, keywords: "activity history events" },
 ];
 
 const ACTIONS: CommandEntry[] = [
-  { href: "/context/upload-meeting", label: "Upload Document", icon: Upload, keywords: "import file meeting notes" },
-  { href: "/sessions?create=true", label: "New Session", icon: PlusCircle, keywords: "start create project" },
-  { href: "/integrations", label: "Connect Integration", icon: Plug, keywords: "add service app" },
+  { href: "/chat", label: "New Conversation", icon: PlusCircle, keywords: "start chat create" },
+  { href: "/context", label: "Upload Document", icon: Upload, keywords: "import file meeting pdf" },
+  { href: "/integrations", label: "Connect Integration", icon: Plug, keywords: "add service oauth" },
+  { href: "/schedules", label: "Create Schedule", icon: Clock, keywords: "automate recurring cron" },
 ];
 
 export function CommandPalette() {
@@ -117,16 +129,16 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search pages and actions…" />
+      <CommandInput placeholder="Search pages, settings, and actions…" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
+        <CommandGroup heading="Pages">
           {renderItems(NAVIGATION)}
         </CommandGroup>
         <CommandGroup heading="Settings">
           {renderItems(SETTINGS)}
         </CommandGroup>
-        <CommandGroup heading="Actions">
+        <CommandGroup heading="Quick Actions">
           {renderItems(ACTIONS)}
         </CommandGroup>
       </CommandList>
