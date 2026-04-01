@@ -31,6 +31,7 @@ import {
   Puzzle,
   Terminal,
   FileText,
+  FileCode2,
   Share2,
   BookOpen,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/skills", label: "Skills", icon: Puzzle },
   { href: "/sharing", label: "Sharing", icon: Share2 },
   { href: "/priority", label: "Priority & Rules", icon: FileText },
+  { href: "/artifacts", label: "Artifacts", icon: FileCode2 },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
   { href: "/analytics/costs", label: "AI Costs", icon: Coins },
   { href: "/how-it-works", label: "How It Works", icon: BookOpen },
