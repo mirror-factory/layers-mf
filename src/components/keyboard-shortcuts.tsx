@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Keyboard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,10 +21,11 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ["Cmd", "K"], description: "Open command palette" },
       { keys: ["G", "H"], description: "Go to Home" },
-      { keys: ["G", "C"], description: "Go to Context Library" },
-      { keys: ["G", "S"], description: "Go to Sessions" },
+      { keys: ["G", "C"], description: "Go to Chat" },
+      { keys: ["G", "L"], description: "Go to Context Library" },
       { keys: ["G", "I"], description: "Go to Inbox" },
-      { keys: ["G", "A"], description: "Go to Analytics" },
+      { keys: ["G", "A"], description: "Go to Approvals" },
+      { keys: ["G", "S"], description: "Go to Settings" },
     ],
   },
   {
@@ -33,6 +33,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ["?"], description: "Open keyboard shortcuts" },
       { keys: ["Esc"], description: "Close dialogs / panels" },
+      { keys: ["N"], description: "New conversation (on Chat page)" },
+      { keys: ["/"], description: "Focus search (on Context Library)" },
     ],
   },
   {
@@ -40,6 +42,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ["Enter"], description: "Send message" },
       { keys: ["Shift", "Enter"], description: "New line" },
+      { keys: ["/"], description: "Open slash commands" },
     ],
   },
 ];
@@ -63,15 +66,6 @@ export function KeyboardShortcuts() {
 
   return (
     <>
-      {/* Floating ? button */}
-      <button
-        onClick={handleToggle}
-        className="fixed bottom-4 right-4 z-40 flex h-8 w-8 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-        aria-label="Keyboard shortcuts"
-      >
-        <Keyboard className="h-4 w-4" />
-      </button>
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
