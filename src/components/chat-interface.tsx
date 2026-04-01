@@ -1703,9 +1703,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 ))}
               </SelectContent>
             </Select>
-            {/* Interview UI — renders above prompt when ask_user tool is pending */}
+            {/* Interview UI — renders as overlay above the input area */}
             {pendingInterview && (
-              <div className="mb-2 px-2">
+              <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
                 <InterviewUI
                   interview={pendingInterview}
                   onSubmit={handleInterviewSubmit}

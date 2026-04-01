@@ -167,10 +167,23 @@ async function getOrCreateSandbox(options: {
     return cached.sandbox;
   }
 
-  const sandbox = await Sandbox.create(createParams(options));
+  // Remove stale entry
+  if (cached) activeSandboxes.delete(key);
 
-  activeSandboxes.set(key, { sandbox, lastUsed: Date.now() });
-  return sandbox;
+  // Retry up to 3 times on create failure
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const sandbox = await Sandbox.create(createParams(options));
+      activeSandboxes.set(key, { sandbox, lastUsed: Date.now() });
+      return sandbox;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`[sandbox] Create attempt ${attempt + 1}/3 failed: ${lastError.message}`);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  throw lastError ?? new Error("Failed to create sandbox after 3 attempts");
 }
 
 /**
@@ -484,9 +497,11 @@ export async function executeProject(options: {
 
       const previewUrl = sandbox.domain(options.exposePort);
 
-      // Poll health check — wait up to 60s for the server to compile and start
+      // Poll health check — wait up to 90s for the server to compile and start
       let ready = false;
-      for (let attempt = 0; attempt < 20; attempt++) {
+      // Initial wait — npm install + Vite compilation needs time
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      for (let attempt = 0; attempt < 28; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         try {
           const res = await fetch(previewUrl, {
@@ -503,7 +518,7 @@ export async function executeProject(options: {
         }
       }
       if (!ready) {
-        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 60s — returning URL anyway`);
+        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 90s — returning URL anyway`);
       }
 
       return {
