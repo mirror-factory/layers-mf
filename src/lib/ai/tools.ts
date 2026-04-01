@@ -857,6 +857,37 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Web tools ===
+    web_browse: tool({
+      description: "Fetch a URL and extract text content. Use to read web pages, docs, articles.",
+      inputSchema: z.object({
+        url: z.string().describe("Full URL to fetch"),
+      }),
+      execute: async ({ url }) => {
+        try {
+          const res = await fetch(url, {
+            headers: { "User-Agent": "Granger/1.0 (AI Assistant)" },
+            signal: AbortSignal.timeout(15000),
+          });
+          if (!res.ok) return { error: `HTTP ${res.status}: ${res.statusText}` };
+          const html = await res.text();
+          // Strip HTML tags, scripts, styles → plain text
+          const text = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 8000);
+          return { url, title: html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? url, content: text, length: text.length };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Fetch failed" };
+        }
+      },
+    }),
+
+    // web_search is defined below (existing tool)
+
     // === Code artifact tool ===
     write_code: tool({
       description: "Write a code artifact with inline preview.",

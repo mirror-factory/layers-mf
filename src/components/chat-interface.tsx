@@ -1288,6 +1288,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
     { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
+    { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "🌐" },
     { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
     // Dynamic skill commands appended from API
@@ -1331,6 +1332,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         ? `Search for skills matching "${args}". Check the /skills page.`
         : "Show me available skills at /skills.";
     },
+    "/web": (args) => args ? `Use the web_browse tool to fetch and read this URL: ${args}` : "Use the web_browse tool. What URL would you like me to read?",
     "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
     "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /skill create, /pm, /email, /meeting, /code, /weekly, /brand",
     // Dynamic skill slash commands → activate_skill tool
