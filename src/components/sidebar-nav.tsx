@@ -39,7 +39,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
 const MAIN_ITEMS: NavItem[] = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/home", label: "Home", icon: Home },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/approvals", label: "Approvals", icon: CheckSquare },
   { href: "/context", label: "Context Library", icon: Library },
@@ -189,7 +189,7 @@ export function SidebarNav({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0",
           collapsed ? "w-[48px]" : "w-56",
           open ? "translate-x-0" : "-translate-x-full"
         )}

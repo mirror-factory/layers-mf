@@ -54,7 +54,7 @@ export default async function DashboardLayout({
       : "Your org";
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row overflow-hidden">
       <OnboardingRedirect />
       <SidebarNav email={user!.email ?? ""} orgName={orgName} />
       <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
