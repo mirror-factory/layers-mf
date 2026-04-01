@@ -61,25 +61,21 @@ export default async function ContextDetailPage({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
-  const [{ data: item }, { count: versionCount }, { count: docVersionCount }] = await Promise.all([
+  const [{ data: item }, { count: docVersionCount }] = await Promise.all([
     sb
       .from("context_items")
       .select(
-        "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
+        "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, source_metadata, source_created_at, priority_weight",
       )
       .eq("id", id)
       .eq("org_id", member.org_id)
       .single(),
     sb
-      .from("context_item_versions")
-      .select("id", { count: "exact", head: true })
-      .eq("context_item_id", id)
-      .eq("org_id", member.org_id),
-    sb
       .from("document_versions")
       .select("id", { count: "exact", head: true })
       .eq("context_item_id", id),
   ]);
+  const versionCount = docVersionCount ?? 0;
 
   if (!item) notFound();
 
@@ -135,17 +131,17 @@ export default async function ContextDetailPage({
         </div>
         <div className="flex items-center gap-2">
           <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
-            {item.user_title ?? item.title}
+            {item.title}
           </h1>
-          {((versionCount ?? 0) + (docVersionCount ?? 0)) > 0 && (
+          {versionCount > 0 && (
             <Badge variant="outline" className="text-xs">
-              {(versionCount ?? 0) + (docVersionCount ?? 0)} {((versionCount ?? 0) + (docVersionCount ?? 0)) === 1 ? "version" : "versions"}
+              {versionCount} {versionCount === 1 ? "version" : "versions"}
             </Badge>
           )}
           <ExportDropdown itemIds={[item.id]} />
         </div>
-        {item.user_title && (
-          <p className="text-sm text-muted-foreground">Original: {item.title}</p>
+        {item.source_created_at && (
+          <p className="text-xs text-muted-foreground">Source created: {new Date(item.source_created_at).toLocaleDateString()}</p>
         )}
         {item.description_short && (
           <p className="text-muted-foreground">{item.description_short}</p>
@@ -203,10 +199,10 @@ export default async function ContextDetailPage({
       {/* User Annotations */}
       <ContextAnnotations
         itemId={item.id}
-        userTitle={item.user_title ?? null}
-        userNotes={item.user_notes ?? null}
-        userTags={item.user_tags ?? []}
-        trustWeight={item.trust_weight ?? 1.0}
+        userTitle={null}
+        userNotes={null}
+        userTags={[]}
+        trustWeight={item.priority_weight ?? 1.0}
         aiTitle={item.title}
       />
 
