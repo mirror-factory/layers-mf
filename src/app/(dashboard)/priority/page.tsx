@@ -14,6 +14,9 @@ import {
   X,
   Check,
   BookOpen,
+  Eye,
+  Zap,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -646,9 +649,173 @@ function RulesSection() {
   );
 }
 
+/* ─── Prompt Preview Section ─── */
+
+function PromptPreviewSection() {
+  const [preview, setPreview] = useState<{
+    systemPromptTokens: number;
+    rulesTokens: number;
+    rulesCount: number;
+    toolsTokens: number;
+    mcpServerCount: number;
+    totalFixedTokens: number;
+    contextWindow: number;
+    availableForHistory: number;
+    pricing: { input: number; output: number };
+  } | null>(null);
+  const [docs, setDocs] = useState<{ filename: string; content: string; is_active?: boolean }[]>([]);
+  const [rules, setRules] = useState<{ text: string; is_active: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/chat/context-stats?modelId=anthropic/claude-sonnet-4.6").then((r) => r.ok ? r.json() : null),
+      fetch("/api/priority-docs").then((r) => r.ok ? r.json() : null),
+      fetch("/api/rules").then((r) => r.ok ? r.json() : null),
+    ]).then(([stats, docsData, rulesData]) => {
+      if (stats) setPreview(stats);
+      if (docsData?.docs) setDocs(docsData.docs);
+      if (rulesData?.rules) setRules(rulesData.rules);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!preview) {
+    return <p className="text-sm text-muted-foreground py-8 text-center">Could not load prompt preview.</p>;
+  }
+
+  const activeDocs = docs.filter((d) => d.is_active !== false);
+  const activeRules = rules.filter((r) => r.is_active);
+  const estimateTokens = (text: string) => Math.ceil(text.length / 4);
+
+  const sections = [
+    {
+      label: "Base Instructions",
+      tokens: preview.systemPromptTokens,
+      color: "bg-blue-500",
+      description: "Agent persona, tool descriptions, slash commands, guidelines",
+    },
+    {
+      label: `Priority Documents (${activeDocs.length})`,
+      tokens: activeDocs.reduce((sum, d) => sum + estimateTokens(d.content), 0),
+      color: "bg-purple-500",
+      description: activeDocs.map((d) => d.filename).join(", ") || "None active",
+    },
+    {
+      label: `Rules (${activeRules.length})`,
+      tokens: preview.rulesTokens,
+      color: "bg-amber-500",
+      description: activeRules.length > 0 ? activeRules.map((r) => r.text.slice(0, 40)).join("; ") : "None active",
+    },
+    {
+      label: `Tools (${preview.mcpServerCount} MCP servers)`,
+      tokens: preview.toolsTokens,
+      color: "bg-green-500",
+      description: "Built-in tools + MCP server tools",
+    },
+  ];
+
+  const totalFixed = sections.reduce((sum, s) => sum + s.tokens, 0);
+  const pctUsed = (totalFixed / preview.contextWindow) * 100;
+  const costPerMsg = (totalFixed / 1_000_000) * preview.pricing.input + (500 / 1_000_000) * preview.pricing.output;
+
+  const formatTokens = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary card */}
+      <div className="rounded-lg border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" />
+            System Prompt Breakdown
+          </h3>
+          <div className="text-xs text-muted-foreground">
+            Claude Sonnet 4.6 (200K context)
+          </div>
+        </div>
+
+        {/* Visual bar */}
+        <div className="h-3 bg-muted rounded-full overflow-hidden flex mb-3">
+          {sections.map((s) => (
+            <div
+              key={s.label}
+              className={cn("h-full transition-all", s.color)}
+              style={{ width: `${Math.max(0.5, (s.tokens / preview.contextWindow) * 100)}%` }}
+              title={`${s.label}: ${formatTokens(s.tokens)}`}
+            />
+          ))}
+        </div>
+
+        {/* Section breakdown */}
+        <div className="space-y-2">
+          {sections.map((s) => (
+            <div key={s.label} className="flex items-center gap-2 text-xs">
+              <div className={cn("h-2.5 w-2.5 rounded-full shrink-0", s.color)} />
+              <span className="font-medium w-48">{s.label}</span>
+              <span className="font-mono text-muted-foreground w-14 text-right">{formatTokens(s.tokens)}</span>
+              <span className="text-muted-foreground truncate flex-1">{s.description}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Totals */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1">
+              <Zap className="h-3 w-3" />
+              {formatTokens(totalFixed)} fixed ({pctUsed.toFixed(1)}%)
+            </span>
+            <span>{formatTokens(preview.availableForHistory)} for conversation</span>
+          </div>
+          <span className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3" />
+            ~${costPerMsg.toFixed(4)}/msg
+          </span>
+        </div>
+      </div>
+
+      {/* Raw prompt preview */}
+      <div className="rounded-lg border bg-card">
+        <div className="px-4 py-3 border-b">
+          <h4 className="text-sm font-medium">Assembled Prompt (simplified)</h4>
+          <p className="text-xs text-muted-foreground">This is approximately what Granger sees at the start of each conversation.</p>
+        </div>
+        <pre className="p-4 text-xs font-mono text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto bg-muted/30">
+{`[AGENT_INSTRUCTIONS — ${formatTokens(preview.systemPromptTokens)} tokens]
+You are Granger, Mirror Factory's AI chief of staff...
+(persona, tools, slash commands, guidelines)
+
+${activeDocs.length > 0 ? activeDocs.map((d, i) => `[PRIORITY DOC #${i + 1}: ${d.filename} — ${formatTokens(estimateTokens(d.content))} tokens]
+${d.content.slice(0, 200)}${d.content.length > 200 ? "..." : ""}`).join("\n\n") : "[NO PRIORITY DOCUMENTS]"}
+
+${activeRules.length > 0 ? `[USER RULES — ${formatTokens(preview.rulesTokens)} tokens]
+${activeRules.map((r, i) => `${i + 1}. ${r.text}`).join("\n")}` : "[NO RULES]"}
+
+[TOOL DEFINITIONS — ${formatTokens(preview.toolsTokens)} tokens]
+(${preview.mcpServerCount} MCP servers + built-in tools)
+
+[Current Date & Time]
+Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+
+--- conversation history follows ---`}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Page ─── */
 
-type Tab = "documents" | "rules";
+type Tab = "documents" | "rules" | "preview";
 
 export default function PriorityPage() {
   const [tab, setTab] = useState<Tab>("documents");
@@ -756,6 +923,7 @@ export default function PriorityPage() {
           [
             { value: "documents" as Tab, label: "Priority Documents" },
             { value: "rules" as Tab, label: "Rules" },
+            { value: "preview" as Tab, label: "Preview Prompt" },
           ] as const
         ).map((t) => (
           <button
@@ -776,6 +944,7 @@ export default function PriorityPage() {
       {/* Content */}
       {tab === "documents" && <PriorityDocumentsSection />}
       {tab === "rules" && <RulesSection />}
+      {tab === "preview" && <PromptPreviewSection />}
     </div>
   );
 }
