@@ -107,13 +107,17 @@ export function SidebarNav({
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
+  const [hovered, setHovered] = useState(false);
 
-  // Load collapsed preference from localStorage
+  // Collapsed by default, but expand on hover
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
-    if (stored === "true") setCollapsed(true);
+    if (stored === "false") setCollapsed(false);
   }, []);
+
+  // When hovered and collapsed, visually expand
+  const isVisuallyCollapsed = collapsed && !hovered;
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -152,7 +156,7 @@ export function SidebarNav({
   }
 
   const renderItems = (items: NavItem[]) =>
-    items.map((item) => <NavLink key={item.href} {...item} pathname={pathname} collapsed={collapsed} />);
+    items.map((item) => <NavLink key={item.href} {...item} pathname={pathname} collapsed={isVisuallyCollapsed} />);
 
   return (
     <>
@@ -165,8 +169,7 @@ export function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Zap className="h-5 w-5 text-primary" />
-        <span className="font-semibold text-sm">Granger</span>
+        <span className="font-serif text-lg font-bold tracking-tight text-primary">Granger</span>
       </div>
 
       {/* Backdrop (mobile only) */}
@@ -181,15 +184,20 @@ export function SidebarNav({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0",
-          collapsed ? "w-[48px]" : "w-56",
+          isVisuallyCollapsed ? "w-[48px]" : "w-56",
           open ? "translate-x-0" : "-translate-x-full"
         )}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
         {/* Logo */}
-        <div className={cn("flex items-center border-b", collapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
+        <div className={cn("flex items-center border-b", isVisuallyCollapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            {!collapsed && <span className="font-semibold text-sm">Granger</span>}
+            {!isVisuallyCollapsed ? (
+              <span className="font-serif text-lg font-bold tracking-tight text-primary">Granger</span>
+            ) : (
+              <span className="font-serif text-lg font-bold text-primary">G</span>
+            )}
           </div>
           <button
             onClick={() => setOpen(false)}
@@ -201,7 +209,7 @@ export function SidebarNav({
         </div>
 
         {/* Org name */}
-        {!collapsed && (
+        {!isVisuallyCollapsed && (
           <div className="px-4 py-3 border-b">
             <p className="text-xs text-muted-foreground">Organization</p>
             <p className="text-sm font-medium truncate">{orgName}</p>
@@ -209,22 +217,22 @@ export function SidebarNav({
         )}
 
         {/* Nav */}
-        <nav className={cn("flex-1 space-y-0.5 overflow-y-auto", collapsed ? "p-1" : "p-2")} role="navigation" aria-label="Main navigation">
+        <nav className={cn("flex-1 space-y-0.5 overflow-y-auto", isVisuallyCollapsed ? "p-1" : "p-2")} role="navigation" aria-label="Main navigation">
           {/* Main */}
-          <SectionLabel collapsed={collapsed}>Main</SectionLabel>
+          <SectionLabel collapsed={isVisuallyCollapsed}>Main</SectionLabel>
           {renderItems(MAIN_ITEMS)}
 
           {/* Connect */}
-          <SectionLabel collapsed={collapsed}>Connect</SectionLabel>
+          <SectionLabel collapsed={isVisuallyCollapsed}>Connect</SectionLabel>
           {renderItems(CONNECT_ITEMS)}
 
           {/* Settings */}
-          <SectionLabel collapsed={collapsed}>Settings</SectionLabel>
+          <SectionLabel collapsed={isVisuallyCollapsed}>Settings</SectionLabel>
           {renderItems(SETTINGS_ITEMS)}
 
           {/* More (collapsible) */}
-          {!collapsed ? (
-            <SectionLabel collapsed={collapsed}>
+          {!isVisuallyCollapsed ? (
+            <SectionLabel collapsed={isVisuallyCollapsed}>
               <button
                 onClick={() => setMoreOpen((prev) => !prev)}
                 className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
@@ -241,7 +249,7 @@ export function SidebarNav({
           ) : (
             <div className="my-2 border-t" />
           )}
-          {(moreOpen || collapsed) && renderItems(MORE_ITEMS)}
+          {(moreOpen || isVisuallyCollapsed) && renderItems(MORE_ITEMS)}
         </nav>
 
         {/* Collapse toggle (desktop only) */}
@@ -257,17 +265,17 @@ export function SidebarNav({
         </div>
 
         {/* User */}
-        <div className={cn("border-t space-y-1", collapsed ? "p-1" : "p-3")}>
-          {!collapsed && <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>}
+        <div className={cn("border-t space-y-1", isVisuallyCollapsed ? "p-1" : "p-3")}>
+          {!isVisuallyCollapsed && <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>}
 
           {/* Credit balance */}
           {credits !== null && (
             <Link
               href="/settings/billing"
-              title={collapsed ? `${credits.toLocaleString()} credits` : undefined}
+              title={isVisuallyCollapsed ? `${credits.toLocaleString()} credits` : undefined}
               className={cn(
                 "flex items-center rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
+                isVisuallyCollapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
                 credits < 10
                   ? "text-red-500"
                   : credits < 50
@@ -276,7 +284,7 @@ export function SidebarNav({
               )}
             >
               <Coins className="h-4 w-4" />
-              {!collapsed && (
+              {!isVisuallyCollapsed && (
                 <>
                   <span>{credits.toLocaleString()} credits</span>
                   {credits < 10 && (
@@ -291,30 +299,30 @@ export function SidebarNav({
           <Link
             href="/admin"
             aria-current={pathname === "/admin" ? "page" : undefined}
-            title={collapsed ? "Admin" : undefined}
+            title={isVisuallyCollapsed ? "Admin" : undefined}
             className={cn(
               "flex items-center rounded-md text-sm transition-colors",
-              collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
+              isVisuallyCollapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
               pathname === "/admin"
                 ? "bg-primary/10 text-primary font-medium"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Shield className="h-4 w-4" />
-            {!collapsed && "Admin"}
+            {!isVisuallyCollapsed && "Admin"}
           </Link>
 
-          {!collapsed && <ThemeToggle />}
+          {!isVisuallyCollapsed && <ThemeToggle />}
           <button
             onClick={handleSignOut}
-            title={collapsed ? "Sign out" : undefined}
+            title={isVisuallyCollapsed ? "Sign out" : undefined}
             className={cn(
               "flex w-full items-center rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
-              collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2"
+              isVisuallyCollapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2"
             )}
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && "Sign out"}
+            {!isVisuallyCollapsed && "Sign out"}
           </button>
         </div>
       </aside>

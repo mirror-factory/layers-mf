@@ -19,9 +19,8 @@ import {
   Inbox,
   Clock,
   Calendar,
-  Zap,
-  TrendingUp,
 } from "lucide-react";
+import { HomeHero } from "@/components/home-hero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -121,38 +120,16 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-8 max-w-6xl mx-auto">
-      {/* Hero greeting */}
-      <div className="relative rounded-xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border p-6 sm:p-8 overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 text-primary/60 text-xs font-medium mb-2">
-            <Zap className="h-3.5 w-3.5" />
-            <span>Granger — AI Chief of Staff</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">{greeting}, {displayName}</h1>
-          <p className="text-muted-foreground mt-1.5 max-w-lg">
-            {pendingApprovals > 0
-              ? `You have ${pendingApprovals} pending approval${pendingApprovals > 1 ? "s" : ""} and ${totalDocs} documents in your knowledge base.`
-              : `Your knowledge base has ${totalDocs} documents across ${totalIntegrations} source${totalIntegrations !== 1 ? "s" : ""}.`}
-          </p>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Chat with Granger
-            </Link>
-            <Link
-              href="/context"
-              className="inline-flex items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              Browse Context
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Hero greeting with pixel canvas */}
+      <HomeHero
+        greeting={greeting}
+        displayName={displayName}
+        subtitle={
+          pendingApprovals > 0
+            ? `You have ${pendingApprovals} pending approval${pendingApprovals > 1 ? "s" : ""} and ${totalDocs} documents in your knowledge base.`
+            : `Your knowledge base has ${totalDocs} documents across ${totalIntegrations} source${totalIntegrations !== 1 ? "s" : ""}.`
+        }
+      />
 
       {/* Stats row */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
