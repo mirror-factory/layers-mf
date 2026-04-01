@@ -129,7 +129,13 @@ function createParams(options: {
   snapshotId?: string;
   env?: Record<string, string>;
 }) {
-  const env = { HOST: "0.0.0.0", ...options.env };
+  // Inject AI Gateway key so sandbox apps can call AI models
+  const gatewayKey = process.env.AI_GATEWAY_API_KEY;
+  const env = {
+    HOST: "0.0.0.0",
+    ...(gatewayKey ? { AI_GATEWAY_API_KEY: gatewayKey } : {}),
+    ...options.env,
+  };
   if (options.snapshotId) {
     return {
       source: { type: "snapshot" as const, snapshotId: options.snapshotId },
