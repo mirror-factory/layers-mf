@@ -432,90 +432,173 @@ Two options for SDK users:
 - Rules: hard constraints appended to system prompt
 - Tool definitions: ~50-150 tokens each, sent every request
 - Conversation history: persisted in DB, loaded on chat open
+- `logUsage()` writes to `usage_logs` table with inputTokens/outputTokens per request
+- `onStepFinish` callback in ToolLoopAgent tracks usage per step
 
-#### What We Need
+#### Research Findings (2026-03-31)
 
-**1. Full Context Window Visibility**
-- Show exact token breakdown per message: system prompt, priority docs, rules, tool definitions, history, user message
-- Show total context usage as a visual bar: [used / available]
-- Show cost-per-message based on current model's rates
-- Expandable debug panel in chat UI
-- Export context snapshot for debugging
+**AI SDK v6 offers:**
+- `pruneMessages()` with per-tool granularity: `[{ type: 'before-last-message', tools: ['search'] }]`
+- `convertToModelMessages()` for UIMessage → ModelMessage conversion
+- `validateUIMessages()` to check loaded messages against current tool schemas
+- Language model middleware (`wrapGenerate`, `wrapStream`) for custom interceptors
+- NO built-in token counting utility
+- NO built-in conversation summarization middleware
+- NO automatic context window management in ToolLoopAgent
 
-**2. Smart Compaction (Research Required)**
-- **Claude Code approach**: summarizes old turns into a compact paragraph, preserves key facts
-- **Sliding window**: drop oldest messages when approaching context limit
-- **Semantic compaction**: use a fast model (Haiku) to summarize old turns before dropping
-- **Hybrid**: keep last N turns verbatim, summarize everything before that
-- Research: what's the best approach for multi-tool agentic conversations?
+**Gateway provides per-request:**
+- `experimental_providerMetadata.gateway.cost` — actual USD cost
+- `experimental_providerMetadata.gateway.marketCost` — market rate
+- `experimental_providerMetadata.gateway.generationId` — unique request ID
+- `experimental_providerMetadata.gateway.provider` — which provider served it
+- NO aggregate spend reports API (must build from usage_logs)
+- NO per-user tags in gateway (must track in our own DB)
 
-**3. Context Authoring System**
-- Priority documents are "authored context" — user-curated info the AI always knows
-- Rules are "authored constraints" — behavior guardrails
-- Need a clear authoring workflow: create, edit, preview, test
-- Preview: show how a priority doc changes the system prompt
-- Test: send a test message and see how the AI responds with vs without the doc
+#### Implementation Plan
 
-**4. Context Quality Metrics**
-- Track: did the AI use the context? (did it reference priority docs in its response?)
-- Track: context utilization rate (how much of the context window is actually used?)
-- Track: compaction effectiveness (how many tokens saved, any quality loss?)
-- Surface in AI Costs dashboard
+**1. Token Counter (can build now)**
+- No SDK utility exists — estimate tokens as `Math.ceil(text.length / 4)` (rough but workable)
+- For precise counting: use `tiktoken` npm package for OpenAI, Anthropic's tokenizer for Claude
+- Show breakdown in an expandable debug panel below the chat input
+- Calculate cost using model pricing from `src/lib/ai/config.ts`
 
-**5. Tool Loading Strategy**
-- Currently: ALL tool definitions sent every request (~3K tokens for 25+ tools)
-- Research: two-pass routing (first call picks service, second call uses specific tools)
-- Research: dynamic tool loading based on conversation topic
-- Research: tool definition compression (shorter descriptions save tokens)
+**2. Context Window Visualization (can build now)**
+- Visual bar in chat UI: `[system: X | docs: Y | rules: Z | tools: W | history: H | available: A]`
+- Color-coded segments with token counts
+- Updates in real-time as you type / add priority docs
+- Click to expand → see exact breakdown
 
-#### Research Questions
-- How does Claude Code handle context compaction across 100+ turn conversations?
-- What does the Vercel AI SDK offer beyond pruneMessages?
-- Can we use embeddings to determine which priority docs are relevant to each message?
-- Is there a tiktoken equivalent for the gateway models to count tokens accurately?
+**3. Smart Compaction (build custom middleware)**
+- AI SDK has NO built-in summarization — we must build it ourselves
+- Use `wrapGenerate` middleware pattern:
+  1. Before each LLM call, check total message tokens
+  2. If over threshold (e.g., 80% of context window), summarize old turns
+  3. Use Haiku ($0.25/M input) to generate a 1-paragraph summary of turns 1-N
+  4. Replace turns 1-N with the summary message
+  5. Keep last 3 turns verbatim
+- Middleware code pattern:
+  ```typescript
+  const compactionMiddleware = () => ({
+    wrapGenerate: async ({ doGenerate, params }) => {
+      const tokenEstimate = estimateTokens(params.prompt);
+      if (tokenEstimate > MAX_CONTEXT * 0.8) {
+        params.prompt = await compactHistory(params.prompt);
+      }
+      return doGenerate();
+    }
+  });
+  ```
+
+**4. Context Authoring System (can build now)**
+- Already have Priority Docs + Rules UI
+- Add: "Preview Prompt" button that shows the assembled system prompt
+- Add: "Test Response" button that sends a test message and shows side-by-side comparison (with vs without the doc)
+- Add: token cost estimate for each priority doc
+
+**5. Tool Loading Optimization (research + build)**
+- Current: ~3K tokens for 25+ built-in tools + 44 GitHub MCP tools = ~7K tokens/request
+- **Per-tool pruneMessages**: strip MCP tool results aggressively (they're large)
+  ```typescript
+  pruneMessages({ toolCalls: [
+    { type: 'before-last-message', tools: ['list_issues', 'get_file_contents'] }
+  ]})
+  ```
+- **Two-pass routing** (future): meta-tool that picks service, then loads specific tools
+- **Tool description compression**: shorten all descriptions to <20 words (saves ~30% tokens)
+
+---
+
+### Embedding System & Benchmarking
+
+#### Current State (Researched 2026-03-31)
+- **Model**: `openai/text-embedding-3-small` (1536 dimensions) via AI Gateway
+- **Code**: `src/lib/ai/embed.ts` — `generateEmbedding()` and `generateEmbeddings()`
+- **Search**: `src/lib/db/search.ts` — hybrid search (vector + BM25/RRF) via Supabase RPCs
+- **Ingestion**: embeddings generated during upload, sync, and cron ingest
+- **Cost**: 0.5 credits per embedding call, ~$0.02/M tokens for text-embedding-3-small
+- **Eval files exist**: `src/lib/evals/retrieval.eval.ts`, `src/lib/evals/performance.eval.ts`
+
+#### Available Models via AI Gateway
+| Provider | Model | Dimensions | Cost |
+|----------|-------|-----------|------|
+| OpenAI | text-embedding-3-small | 1536 | $0.02/M tokens |
+| OpenAI | text-embedding-3-large | 3072 | $0.13/M tokens |
+| Google | gemini-embedding-001 | 3072 | ~$0.004/M tokens |
+| Google | text-embedding-004 | 768 | ~$0.004/M tokens |
+| Mistral | mistral-embed | 1024 | $0.10/M tokens |
+| Cohere | embed-english-v3.0 | 1024 | $0.10/M tokens |
+
+#### Switching is trivial:
+```typescript
+// Current
+const model = gateway.textEmbeddingModel('openai/text-embedding-3-small');
+// Switch to Google
+const model = gateway.textEmbeddingModel('google/text-embedding-004');
+```
+
+**BUT**: Switching dimensions (1536 → 768) requires re-embedding ALL existing context_items and updating the Supabase vector index dimension. This is a migration, not a config change.
+
+#### Benchmarking Plan
+1. **Test dataset**: Select 50 queries from real chat history + 50 synthetic queries
+2. **Ground truth**: Manually label which context_items should match each query
+3. **Run both models** on the same queries against the same context_items
+4. **Metrics**: precision@5, recall@5, MRR, latency, cost
+5. **Script**: Python in sandbox, outputs CSV → visualize in a sandbox React chart
+6. **Decision**: switch if Google is >10% better retrieval at lower cost
+
+#### Benchmarking Framework (Reusable)
+```typescript
+interface Benchmark {
+  name: string;
+  testCases: { input: unknown; expectedOutput: unknown }[];
+  run: (input: unknown) => Promise<unknown>;
+  evaluate: (actual: unknown, expected: unknown) => number; // 0-1 score
+}
+```
+- Store benchmark results in `benchmark_results` table
+- Track over time (detect regression)
+- `/benchmark` slash command triggers a run
+- Research Agent skill designs and runs experiments
 
 ---
 
-### Embedding System & Benchmarking (Research Required)
+### Error Handling & Production Readiness
 
-#### Current State
-- Using OpenAI embeddings via AI Gateway for vector search
-- `search_context_items` RPC does hybrid search (vector + BM25/RRF)
+**Current gaps:**
+- No global error boundary (React ErrorBoundary component)
+- No error tracking service (Sentry, LogRocket, etc.)
+- Silent failures throughout (fire-and-forget patterns everywhere)
+- No user-facing error messages beyond generic "Failed to load"
 
-#### What We Need
+**What to build:**
+1. React ErrorBoundary wrapping the app layout
+2. Sentry integration (free tier: 5K errors/month) or Vercel's built-in error tracking
+3. Toast notifications for non-critical errors (already have sonner)
+4. Error logging to a `error_logs` table for debugging
+5. Retry logic for transient failures (MCP connections, sandbox starts)
 
-**1. Gemini Embedding Comparison**
-- Test Google's `text-embedding-004` vs OpenAI's `text-embedding-3-small`
-- Compare: retrieval quality, latency, cost, dimension size
-- Run on our actual context_items data — real-world benchmark
-- Measure: precision@k, recall@k, MRR (Mean Reciprocal Rank)
+### Security Hardening
 
-**2. Benchmarking Framework**
-- A reusable system for comparing any two approaches (models, embeddings, prompts)
-- Input: test dataset (queries + expected results)
-- Output: metrics dashboard with statistical significance
-- Can be used for: embedding quality, model quality, prompt effectiveness, tool accuracy
+**Current gaps:**
+- OAuth tokens stored as plain text in `api_key_encrypted` column (not actually encrypted)
+- No CSRF protection on form submissions
+- No input sanitization beyond basic Zod validation
+- GitHub PATs stored in DB alongside OAuth tokens
 
-**3. Benchmark Use Cases
-- Embedding quality: which provider retrieves the right documents?
-- Model quality: which model gives the best chat responses?
-- Prompt engineering: which system prompt formulation works best?
-- Tool accuracy: which tool gets called correctly most often?
-- Context compaction: does summarization lose important information?
+**What to build:**
+1. Encrypt sensitive columns with Supabase Vault or application-level encryption
+2. CSRF tokens on all mutation endpoints
+3. Rate limiting on expensive operations (sandbox create, MCP connect, embedding generation)
+4. Input length limits on all text fields (prevent prompt injection via large inputs)
+5. Content Security Policy headers (already have basic ones in vercel.json)
 
-**4. Case Study Pipeline**
-- Run benchmarks → generate reports → publish as case studies
-- Automated: benchmark runs on schedule, tracks changes over time
-- Visual: charts showing improvement/regression
-- Shareable: can be published on the documentation site
+### AI Costs Dashboard Fix
 
-**5. Research Agent**
-- Dedicated agent/skill that can: design experiments, run benchmarks, analyze results
-- Uses sandbox to run comparison scripts
-- Outputs structured reports to Context Library
-- Can be triggered via `/benchmark` slash command
+**Root cause found**: The `usage_logs` table EXISTS (migration 20260317020000) and `logUsage()` writes to it, but the AI Costs API route fails because:
+1. The Supabase generated types don't include `usage_logs` (need to regenerate)
+2. The API uses `supabase.from("usage_logs")` which TypeScript rejects at runtime with typed client
 
----
+**Fix**: Use admin client (bypasses types) like other routes do, or regenerate Supabase types.
 
 ### Multi-User Real-Time Chat
 - @mention team members in conversations
