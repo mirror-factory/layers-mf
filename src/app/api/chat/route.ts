@@ -445,18 +445,44 @@ export async function POST(request: NextRequest) {
           .catch(() => {});
       }
 
-      // Auto-title: set conversation title after first assistant response
+      // Auto-title: generate a short title from user message + assistant response
       if (conversationId && lastUserText) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        void (adminDb as any)
-          .from("conversations")
-          .update({
-            title: lastUserText.slice(0, 50),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", conversationId)
-          .is("title", null)
-          .then();
+        void (async () => {
+          try {
+            // Only title untitled conversations
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: conv } = await (adminDb as any)
+              .from("conversations")
+              .select("title")
+              .eq("id", conversationId)
+              .single();
+            if (conv?.title) return;
+
+            // Generate a concise title using a fast model
+            const { generateText } = await import("ai");
+            const { gateway } = await import("@ai-sdk/gateway");
+            const { text: generatedTitle } = await generateText({
+              model: gateway("anthropic/claude-haiku-4-5-20251001"),
+              prompt: `Generate a 3-6 word title for this conversation. No quotes, no punctuation at end. Just the title.\n\nUser: ${lastUserText.slice(0, 200)}`,
+              maxOutputTokens: 20,
+            });
+
+            const title = generatedTitle.trim().slice(0, 80) || lastUserText.slice(0, 50);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (adminDb as any)
+              .from("conversations")
+              .update({ title, updated_at: new Date().toISOString() })
+              .eq("id", conversationId);
+          } catch {
+            // Fallback: use truncated user message
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (adminDb as any)
+              .from("conversations")
+              .update({ title: lastUserText.slice(0, 50), updated_at: new Date().toISOString() })
+              .eq("id", conversationId)
+              .is("title", null);
+          }
+        })();
       }
     },
   });
