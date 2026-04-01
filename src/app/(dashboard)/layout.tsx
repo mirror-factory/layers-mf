@@ -8,6 +8,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 import { TestingChecklist } from "@/components/testing-checklist";
 import { NotificationProvider } from "@/components/notification-provider";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 // Pages within the dashboard route group that should be publicly accessible
 const PUBLIC_DASHBOARD_PATHS = ["/features"];
@@ -57,12 +58,13 @@ export default async function DashboardLayout({
     <div className="flex h-screen flex-col md:flex-row overflow-hidden">
       <OnboardingRedirect />
       <SidebarNav email={user!.email ?? ""} orgName={orgName} />
-      <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
-        <div className="border-b bg-card px-4 py-2 sm:px-6">
+      <main id="main-content" className="flex-1 overflow-auto pb-16 md:pb-0" tabIndex={-1}>
+        <div className="border-b bg-card px-4 py-2 sm:px-6 hidden md:block">
           <Breadcrumbs />
         </div>
         {children}
       </main>
+      <MobileBottomNav />
       <CommandPalette />
       <KeyboardShortcuts />
       <TestingChecklist />

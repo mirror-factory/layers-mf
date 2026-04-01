@@ -1629,7 +1629,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="border-t p-3 sm:p-4 relative"
+          className="border-t p-3 sm:p-4 pb-20 md:pb-3 relative"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
