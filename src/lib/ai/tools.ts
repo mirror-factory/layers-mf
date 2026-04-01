@@ -870,7 +870,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           });
 
           // Extract sources from provider metadata (Perplexity returns citations)
-          const providerMeta = result.providerMetadata ?? result.experimental_providerMetadata;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const providerMeta = result.providerMetadata ?? (result as any).experimental_providerMetadata;
           const perplexityMeta = providerMeta?.perplexity as Record<string, unknown> | undefined;
           const citations = (perplexityMeta?.citations as string[]) ?? [];
 

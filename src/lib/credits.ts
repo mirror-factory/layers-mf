@@ -86,7 +86,8 @@ export async function checkCredits(
 ): Promise<{ sufficient: boolean; balance: number }> {
   const adminDb = createAdminClient();
 
-  const { data, error } = await adminDb
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (adminDb as any)
     .from("organizations")
     .select("credit_balance")
     .eq("id", orgId)
@@ -116,7 +117,8 @@ export async function deductCredits(
 
   // Atomic deduction via RPC — the function checks balance >= amount
   // and returns the new balance in a single UPDATE statement.
-  const { data: newBalance, error } = await adminDb.rpc("deduct_credits", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: newBalance, error } = await (adminDb as any).rpc("deduct_credits", {
     p_org_id: orgId,
     p_amount: amount,
   });
@@ -124,7 +126,8 @@ export async function deductCredits(
   if (error) {
     // RPC raises exception if insufficient credits or org not found
     // Fetch current balance for the error message
-    const { data: org } = await adminDb
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: org } = await (adminDb as any)
       .from("organizations")
       .select("credit_balance")
       .eq("id", orgId)

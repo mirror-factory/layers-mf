@@ -28,7 +28,8 @@ export async function GET() {
     return new Response("No organization found", { status: 400 });
   }
 
-  const { data: canvases, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvases, error } = await (supabase as any)
     .from("canvases")
     .select("id, name, description, viewport, settings, created_by, created_at, updated_at")
     .eq("org_id", member.org_id)
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: canvas, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvas, error } = await (supabase as any)
     .from("canvases")
     .insert({
       org_id: member.org_id,

@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
     if (existing) continue; // Skip duplicates
 
     // Insert as processing
-    const { data: item, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: item, error } = await (supabase as any)
       .from('context_items')
       .insert({
         org_id: org.id,

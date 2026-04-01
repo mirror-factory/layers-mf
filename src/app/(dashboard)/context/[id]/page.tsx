@@ -58,8 +58,10 @@ export default async function ContextDetailPage({
 
   if (!member) notFound();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any;
   const [{ data: item }, { count: versionCount }, { count: docVersionCount }] = await Promise.all([
-    supabase
+    sb
       .from("context_items")
       .select(
         "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
@@ -67,12 +69,12 @@ export default async function ContextDetailPage({
       .eq("id", id)
       .eq("org_id", member.org_id)
       .single(),
-    supabase
+    sb
       .from("context_item_versions")
       .select("id", { count: "exact", head: true })
       .eq("context_item_id", id)
       .eq("org_id", member.org_id),
-    supabase
+    sb
       .from("document_versions")
       .select("id", { count: "exact", head: true })
       .eq("context_item_id", id),

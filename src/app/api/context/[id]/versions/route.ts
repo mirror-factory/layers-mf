@@ -38,7 +38,8 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { data: versions, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: versions, error } = await (supabase as any)
     .from("context_item_versions")
     .select(
       "version_number, title, change_type, changed_fields, changed_by, created_at, raw_content",
@@ -52,7 +53,7 @@ export async function GET(
     return NextResponse.json({ error: "Failed to fetch versions" }, { status: 500 });
   }
 
-  const mapped = (versions ?? []).map((v) => ({
+  const mapped = (versions ?? []).map((v: any) => ({
     version_number: v.version_number,
     title: v.title,
     change_type: v.change_type,

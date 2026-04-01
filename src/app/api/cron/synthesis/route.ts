@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     Date.now() - 30 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const { data: items } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: items } = await (supabase as any)
     .from("context_items")
     .select(
       "title, description_short, description_long, source_type, content_type, entities, ingested_at"
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   // Build context summary for the synthesis prompt
   const contextSummary = items
-    .map((item, i) => {
+    .map((item: any, i: number) => {
       const entities = item.entities as Record<string, string[]> | null;
       const entityStr = entities
         ? `People: ${(entities.people ?? []).join(", ")} | Topics: ${(entities.topics ?? []).join(", ")} | Actions: ${(entities.action_items ?? []).length} | Decisions: ${(entities.decisions ?? []).length}`
@@ -69,7 +70,7 @@ ${entityStr}`;
   // Run synthesis with Opus (flagship model per TASK_MODELS)
   const { text, usage } = await generateText({
     model: gateway(TASK_MODELS.synthesis),
-    maxTokens: 4000,
+    maxOutputTokens: 4000,
     prompt: `You are Granger, Mirror Factory's AI chief of staff. Analyze the past 30 days of team context and produce a strategic synthesis.
 
 ## Context Library (${items.length} items from last 30 days)
@@ -92,7 +93,8 @@ Be specific. Cite source items by title and date. Don't hedge — state your ass
   });
 
   // Store synthesis as a context_item (compound knowledge loop)
-  const { data: synthItem } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: synthItem } = await (supabase as any)
     .from("context_items")
     .insert({
       org_id: org.id,
@@ -121,8 +123,8 @@ Be specific. Cite source items by title and date. Don't hedge — state your ass
     );
   }
 
-  const promptTokens = usage?.promptTokens ?? 0;
-  const completionTokens = usage?.completionTokens ?? 0;
+  const promptTokens = (usage as any)?.promptTokens ?? usage?.inputTokens ?? 0;
+  const completionTokens = (usage as any)?.completionTokens ?? usage?.outputTokens ?? 0;
   const costEstimate = (
     (promptTokens * 0.015) / 1000 +
     (completionTokens * 0.075) / 1000

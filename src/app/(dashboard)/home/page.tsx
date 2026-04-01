@@ -68,7 +68,8 @@ export default async function HomePage() {
       .from("context_items")
       .select("id", { count: "exact", head: true })
       .eq("org_id", orgId),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
       .from("approvals")
       .select("id", { count: "exact", head: true })
       .eq("org_id", orgId)

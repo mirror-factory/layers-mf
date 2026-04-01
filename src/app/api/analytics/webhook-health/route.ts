@@ -39,7 +39,8 @@ export async function GET() {
   // Use admin client to read webhook_events (no RLS / no org_id on this table)
   const admin = createAdminClient();
 
-  const { data: events, error } = await admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: events, error } = await (admin as any)
     .from("webhook_events")
     .select("provider, status, created_at")
     .order("created_at", { ascending: false });

@@ -84,7 +84,8 @@ export async function processContextItem(
     );
 
     // Create inbox items from action items / decisions
-    await createInboxItems(supabase, orgId, contextItemId, extraction, item.source_type);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await createInboxItems(supabase, orgId, contextItemId, extraction as any, item.source_type);
 
     return {
       contextItemId,
@@ -145,7 +146,8 @@ async function linkToSessions(
   extraction: ExtractionResult
 ): Promise<string[]> {
   // Fetch active sessions for the org
-  const { data: sessions } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: sessions } = await (supabase as any)
     .from("sessions")
     .select("id, name, goal")
     .eq("org_id", orgId)
@@ -190,7 +192,8 @@ Return matches only for sessions where this content would be useful. If none mat
 
   if (links.length > 0) {
     // Check for existing links to avoid duplicates
-    const { data: existing } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
       .from("session_context_links")
       .select("session_id")
       .eq("context_item_id", contextItemId)
@@ -205,7 +208,8 @@ Return matches only for sessions where this content would be useful. If none mat
     const newLinks = links.filter((l) => !existingIds.has(l.session_id));
 
     if (newLinks.length > 0) {
-      await supabase.from("session_context_links").insert(newLinks);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("session_context_links").insert(newLinks);
     }
   }
 

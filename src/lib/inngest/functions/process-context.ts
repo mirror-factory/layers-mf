@@ -79,7 +79,8 @@ Extract the title, summaries, entities, sentiment, and an executive summary. Be 
       );
 
       // Delete old chunks if reprocessing
-      await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
         .from("context_chunks")
         .delete()
         .eq("context_item_id", contextItemId);
@@ -94,7 +95,8 @@ Extract the title, summaries, entities, sentiment, and an executive summary. Be 
         metadata: c.metadata as Record<string, string | number>,
       }));
 
-      const { data: inserted } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: inserted } = await (supabase as any)
         .from("context_chunks")
         .insert(rows)
         .select("id, content");
@@ -111,7 +113,8 @@ Extract the title, summaries, entities, sentiment, and an executive summary. Be 
 
       // Update each chunk with its embedding
       for (let i = 0; i < chunks.length; i++) {
-        await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
           .from("context_chunks")
           .update({ embedding: embeddings[i] as unknown as string })
           .eq("id", chunks[i].id);
@@ -135,17 +138,19 @@ Extract the title, summaries, entities, sentiment, and an executive summary. Be 
     // Step 6: Create inbox items
     await step.run("create-inbox", async () => {
       await createInboxItems(
-        supabase,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        supabase as any,
         orgId,
         contextItemId,
-        extraction,
+        extraction as any,
         item.source_type
       );
     });
 
     // Step 7: Auto-link to active sessions
     const linkedSessions = await step.run("link-sessions", async () => {
-      const { data: sessions } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: sessions } = await (supabase as any)
         .from("sessions")
         .select("id, name, goal")
         .eq("org_id", orgId)
@@ -192,7 +197,8 @@ Return matches only for sessions where this content would be useful. If none mat
         }));
 
       if (links.length > 0) {
-        const { data: existing } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existing } = await (supabase as any)
           .from("session_context_links")
           .select("session_id")
           .eq("context_item_id", contextItemId)
@@ -207,7 +213,8 @@ Return matches only for sessions where this content would be useful. If none mat
         const newLinks = links.filter((l) => !existingIds.has(l.session_id));
 
         if (newLinks.length > 0) {
-          await supabase.from("session_context_links").insert(newLinks);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from("session_context_links").insert(newLinks);
         }
       }
 
@@ -218,7 +225,8 @@ Return matches only for sessions where this content would be useful. If none mat
     const connections = await step.run("find-connections", async () => {
       return findCrossSourceConnections(contextItemId, orgId, {
         maxCandidates: 5,
-        supabase,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        supabase: supabase as any,
       });
     });
 
@@ -232,7 +240,8 @@ Return matches only for sessions where this content would be useful. If none mat
 
         // Find sessions that contain the new item or any related items
         const allItemIds = [contextItemId, ...relatedItemIds];
-        const { data: sessionLinks } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: sessionLinks } = await (supabase as any)
           .from("session_context_links")
           .select("session_id, context_item_id")
           .in("context_item_id", allItemIds);
@@ -245,7 +254,8 @@ Return matches only for sessions where this content would be useful. If none mat
         ];
 
         // Create an insight per session for the most significant connections
-        const insightRows = sessionIds.map((sessionId: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const insightRows = (sessionIds as string[]).map((sessionId: string) => {
           const criticalConnections = connections.filter(
             (c) => c.severity === "critical"
           );
@@ -293,7 +303,8 @@ Return matches only for sessions where this content would be useful. If none mat
           .map((c) => `${c.type}: ${c.description}`)
           .join("\n");
 
-        await supabase.from("context_items").insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("context_items").insert({
           org_id: orgId,
           source_type: "layers-ai",
           source_id: `insight-${contextItemId}-${Date.now()}`,

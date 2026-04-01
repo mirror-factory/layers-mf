@@ -109,7 +109,7 @@ async function executeApprovedAction(
           const client = new LinearApiClient(creds.token_encrypted);
           const { id: issueId, ...updates } = payload;
           const result = await client.updateIssue(issueId as string, updates);
-          return { success: true, ...result };
+          return { updated: true, ...result };
         }
         break;
       }

@@ -32,7 +32,8 @@ export async function GET(
     return new Response("No organization found", { status: 400 });
   }
 
-  const { data: version, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: version, error } = await (supabase as any)
     .from("context_item_versions")
     .select(
       "version_number, title, raw_content, content_hash, source_metadata, change_type, changed_fields, changed_by, created_at, source_updated_at",

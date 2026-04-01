@@ -13,7 +13,8 @@ export const sessionAgentFunction = inngest.createFunction(
 
     // Step 1: Find active sessions
     const sessions = await step.run("find-active-sessions", async () => {
-      const { data } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
         .from("sessions")
         .select("id, org_id, name, updated_at")
         .eq("status", "active");
@@ -29,7 +30,8 @@ export const sessionAgentFunction = inngest.createFunction(
       const newLinks = await step.run(
         `check-new-content-${session.id}`,
         async () => {
-          const { data } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data } = await (supabase as any)
             .from("session_context_links")
             .select("context_item_id, created_at")
             .eq("session_id", session.id)
@@ -47,7 +49,7 @@ export const sessionAgentFunction = inngest.createFunction(
       // Step 3: Generate a summary delta for the session
       await step.run(`generate-insight-${session.id}`, async () => {
         // Fetch the new items' details
-        const itemIds = newLinks.map((l) => l.context_item_id);
+        const itemIds = newLinks.map((l: any) => l.context_item_id);
         const { data: items } = await supabase
           .from("context_items")
           .select("id, title, source_type, description_short")

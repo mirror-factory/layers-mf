@@ -40,7 +40,8 @@ export async function generateDittoProfile(
   const supabase = createAdminClient();
 
   // Fetch last 200 interactions
-  const { data: interactions } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: interactions } = await (supabase as any)
     .from("user_interactions")
     .select(
       "interaction_type, resource_type, query, source_type, content_type, metadata, created_at"

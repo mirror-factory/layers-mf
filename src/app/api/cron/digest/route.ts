@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
   const digestChannelId = process.env.DISCORD_DIGEST_CHANNEL_ID;
 
   // Fetch users with digest_enabled = true
-  const { data: prefs, error: prefsError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prefs, error: prefsError } = await (supabase as any)
     .from("notification_preferences")
     .select("user_id, org_id")
     .eq("digest_enabled", true);
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
           .map((i) => `[${i.priority}] ${i.title}: ${i.type}`)
           .join("\n");
 
-        await supabase.from("context_items").insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("context_items").insert({
           org_id: org_id,
           source_type: "layers-ai",
           source_id: `digest-${user_id}-${new Date().toISOString().split("T")[0]}`,
@@ -126,7 +128,8 @@ async function generateDiscordDigest(
   const supabase = createAdminClient();
 
   // Look up Discord user ID for @mention
-  const { data: profile } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase as any)
     .from("profiles")
     .select("full_name")
     .eq("id", userId)

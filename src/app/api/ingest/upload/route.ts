@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
   // 2. Insert context_item as pending (with content_hash for dedup)
   const contentHash = createHash("sha256").update(parsed.text).digest("hex");
 
-  const { data: item, error: insertError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: item, error: insertError } = await (supabase as any)
     .from("context_items")
     .insert({
       org_id: member.org_id,
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
           title: extraction.title,
           description_short: extraction.description_short,
           description_long: extraction.description_long,
-          entities: extraction.entities as unknown as Record<string, unknown>,
+          entities: extraction.entities as any,
           embedding: embedding as unknown as string,
           status: "ready",
           processed_at: new Date().toISOString(),
