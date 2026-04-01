@@ -20,6 +20,7 @@ import { EntityChips } from "@/components/entity-chips";
 import { ExportDropdown } from "@/components/export-dropdown";
 import { DwellTracker } from "@/components/dwell-tracker";
 import { DocumentEditor } from "@/components/document-editor";
+import { ContentViewer } from "@/components/content-viewer";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -181,12 +182,22 @@ export default async function ContextDetailPage({
         </Card>
       )}
 
-      {/* Rich text content editor */}
+      {/* Content viewer — type-aware rendering */}
       {item.raw_content && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-medium">Content</h2>
-          <DocumentEditor content={item.raw_content} itemId={item.id} />
-        </div>
+        item.content_type === "document" && item.source_type !== "layers-ai" ? (
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium">Content</h2>
+            <DocumentEditor content={item.raw_content} itemId={item.id} />
+          </div>
+        ) : (
+          <ContentViewer
+            content={item.raw_content}
+            contentType={item.content_type}
+            sourceType={item.source_type}
+            title={item.title}
+            itemId={item.id}
+          />
+        )
       )}
 
       {/* User Annotations */}
