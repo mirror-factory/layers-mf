@@ -1,6 +1,7 @@
 export const metadata = { title: "Source Trust" };
 
 import { SourceTrustSettings } from "@/components/source-trust-settings";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default function SourceTrustPage() {
   return (
@@ -12,6 +13,14 @@ export default function SourceTrustPage() {
           Higher weight means more prominence in results.
         </p>
       </div>
+      <PageExplainer
+        title="How Source Trust Works"
+        sections={[
+          { title: "Weight Sources", content: "Assign a trust weight to each connected source. Higher weights boost that source in search results and AI answers." },
+          { title: "Priority Scoring", content: "When multiple sources mention the same topic, trust weights determine which answer the AI favors." },
+          { title: "Defaults", content: "All sources start at equal weight. Adjust as you learn which sources are most reliable for your team." },
+        ]}
+      />
       <SourceTrustSettings />
     </div>
   );

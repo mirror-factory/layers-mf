@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PermissionSettings } from "@/components/permission-settings";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function PermissionsPage() {
   const supabase = await createClient();
@@ -20,6 +21,14 @@ export default async function PermissionsPage() {
           Write actions always go through the approval queue.
         </p>
       </div>
+      <PageExplainer
+        title="How Permissions Work"
+        sections={[
+          { title: "Read vs Write", content: "Read permissions let the AI view data from a service. Write permissions let it create or modify resources." },
+          { title: "Tool Access", content: "Each tool maps to a specific service action. Disable individual tools to limit what the agent can do." },
+          { title: "Approval Queue", content: "All write actions require your explicit approval before they execute, regardless of permission settings." },
+        ]}
+      />
       <PermissionSettings />
     </div>
   );

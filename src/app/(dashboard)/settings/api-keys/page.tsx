@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PartnerSettings } from "@/components/partner-settings";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function ApiKeysPage() {
   const supabase = await createClient();
@@ -35,6 +36,14 @@ export default async function ApiKeysPage() {
           securely.
         </p>
       </div>
+      <PageExplainer
+        title="How API Keys Work"
+        sections={[
+          { title: "Gateway Access", content: "API keys let external tools and scripts access Granger through the AI Gateway on your behalf." },
+          { title: "Key Rotation", content: "Rotate keys regularly. Old keys are revoked immediately when you generate a replacement." },
+          { title: "Security", content: "Keys are encrypted at rest. Never share them in public repos or client-side code." },
+        ]}
+      />
       <PartnerSettings
         settings={settings}
         credentials={credentials ?? []}

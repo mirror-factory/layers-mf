@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BillingSettings } from "@/components/billing-settings";
 import { UsageHistory } from "@/components/usage-history";
 import { Separator } from "@/components/ui/separator";
+import { PageExplainer } from "@/components/page-explainer";
 
 export default async function BillingSettingsPage() {
   const supabase = await createClient();
@@ -31,6 +32,14 @@ export default async function BillingSettingsPage() {
           Manage your credit balance and purchase additional credits.
         </p>
       </div>
+      <PageExplainer
+        title="How Billing Works"
+        sections={[
+          { title: "Credits", content: "Your plan includes a monthly credit allowance. Each AI call consumes credits based on model and token count." },
+          { title: "Usage-Based", content: "When credits run out, additional usage is billed at per-token rates through your connected payment method." },
+          { title: "Payments", content: "Billing is handled through Stripe. You can update your card, view invoices, and manage your plan here." },
+        ]}
+      />
       <BillingSettings isOwnerOrAdmin={isOwnerOrAdmin} />
 
       <Separator className="my-8" />
