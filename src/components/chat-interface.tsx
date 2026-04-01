@@ -1287,6 +1287,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
+    { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
     { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
     // Dynamic skill commands appended from API
@@ -1309,6 +1310,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     "/github": (args) => args
       ? `Use GitHub MCP tools to: ${args}. Available tools include: list_issues, search_code, list_pull_requests, list_commits, get_file_contents, create_pull_request, search_repositories.`
       : "Use GitHub MCP tools to show my recent GitHub activity. Try list_issues or list_pull_requests to see what's open.",
+    "/ingest": (args) => args
+      ? `Use the ingest_github_repo tool to import the repository "${args}" into the context library. Clone it, read the key files (README, src/, lib/, package.json, etc.), skip node_modules/.git/binaries, and save as context items.`
+      : "Use the ingest_github_repo tool. Ask me which GitHub repository to import (e.g., owner/repo).",
     "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
     "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
     "/schedule": () => "Show me all scheduled actions and their status",

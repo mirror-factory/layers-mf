@@ -759,6 +759,104 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === GitHub repo ingestion tool ===
+    ingest_github_repo: tool({
+      description: "Import a GitHub repo into the context library. Clones, reads key files, saves as searchable context.",
+      inputSchema: z.object({
+        repo: z.string().describe("GitHub repo in owner/repo format"),
+        branch: z.string().optional().describe("Branch to clone, defaults to main"),
+      }),
+      execute: async ({ repo, branch }) => {
+        try {
+          const { Sandbox } = await import("@vercel/sandbox");
+          const sandbox = await Sandbox.create({ runtime: "node24", timeout: 120_000 });
+
+          // Clone the repo
+          const branchArg = branch ? `--branch ${branch}` : "";
+          const cloneResult = await sandbox.runCommand("git", [
+            "clone", "--depth", "1", branchArg, `https://github.com/${repo}.git`, "repo",
+          ].filter(Boolean));
+
+          if (cloneResult.exitCode !== 0) {
+            const stderr = await cloneResult.stderr();
+            await sandbox.stop();
+            return { error: `Clone failed: ${stderr}` };
+          }
+
+          // Find key files (skip binaries, node_modules, .git, large files)
+          const findResult = await sandbox.runCommand("find", [
+            "repo", "-type", "f",
+            "-not", "-path", "*/node_modules/*",
+            "-not", "-path", "*/.git/*",
+            "-not", "-path", "*/dist/*",
+            "-not", "-path", "*/.next/*",
+            "-not", "-name", "*.png", "-not", "-name", "*.jpg",
+            "-not", "-name", "*.ico", "-not", "-name", "*.woff*",
+            "-not", "-name", "*.lock", "-not", "-name", "package-lock.json",
+            "-size", "-50k",
+          ]);
+          const allFiles = (await findResult.stdout()).split("\n").filter(Boolean);
+
+          // Prioritize important files
+          const priority = ["README", "package.json", "tsconfig", ".env.example", "Dockerfile"];
+          const srcFiles = allFiles.filter(f =>
+            f.includes("/src/") || f.includes("/lib/") || f.includes("/app/") ||
+            f.includes("/pages/") || f.includes("/components/") ||
+            priority.some(p => f.includes(p))
+          ).slice(0, 50); // Max 50 files
+
+          // Read file contents
+          const items: { path: string; content: string }[] = [];
+          for (const filePath of srcFiles) {
+            try {
+              const stream = await sandbox.readFile({ path: filePath });
+              if (stream) {
+                const chunks: Buffer[] = [];
+                for await (const chunk of stream) {
+                  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                }
+                const content = Buffer.concat(chunks).toString("utf-8");
+                if (content.length > 0 && content.length < 50000) {
+                  items.push({ path: filePath.replace("repo/", ""), content });
+                }
+              }
+            } catch { /* skip unreadable files */ }
+          }
+
+          await sandbox.stop();
+
+          // Save each file as a context_item
+          let savedCount = 0;
+          for (const item of items) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error } = await (supabase as any)
+              .from("context_items")
+              .insert({
+                org_id: orgId,
+                source_type: "github",
+                source_id: `${repo}:${item.path}`,
+                title: `${repo}: ${item.path}`,
+                raw_content: item.content,
+                content_type: "code",
+                status: "ready",
+                ingested_at: new Date().toISOString(),
+              });
+            if (!error) savedCount++;
+          }
+
+          return {
+            repo,
+            totalFiles: allFiles.length,
+            importedFiles: savedCount,
+            skippedFiles: items.length - savedCount,
+            files: items.map(i => i.path).slice(0, 20),
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Ingestion failed" };
+        }
+      },
+    }),
+
     // === Code artifact tool ===
     write_code: tool({
       description: "Write a code artifact with inline preview.",
