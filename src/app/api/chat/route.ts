@@ -229,6 +229,7 @@ export async function POST(request: NextRequest) {
   const toolCallCounts: Record<string, number> = {};
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let totalGatewayCost = 0;
   let runStepCount = 0;
   let assistantText = "";
 
@@ -365,10 +366,14 @@ export async function POST(request: NextRequest) {
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
     onStepFinish: ({ usage, toolCalls, text, providerMetadata }) => {
-      // Capture gateway generation ID for observability
-      const generationId = providerMetadata?.gateway?.generationId as string | undefined;
+      // Capture gateway cost and generation ID for observability
+      const gw = providerMetadata?.gateway as Record<string, unknown> | undefined;
+      const generationId = gw?.generationId as string | undefined;
+      const gatewayCost = gw?.cost as number | undefined;
+      const gatewayMarketCost = gw?.marketCost as number | undefined;
+      if (gatewayCost != null) totalGatewayCost += gatewayCost;
       if (generationId) {
-        console.log(`[chat] gateway generationId=${generationId} user=${userId} model=${modelTier} org=${orgId}`);
+        console.log(`[chat] gw=${generationId} cost=$${gatewayCost?.toFixed(6) ?? "?"} market=$${gatewayMarketCost?.toFixed(6) ?? "?"} model=${modelTier}`);
       }
       runStepCount++;
       if (text) assistantText += text;
@@ -404,6 +409,7 @@ export async function POST(request: NextRequest) {
           stepCount: runStepCount,
           durationMs: Date.now() - startTime,
           toolCalls: Object.entries(toolCallCounts).map(([tool, count]) => ({ tool, count })),
+          gatewayCostUsd: totalGatewayCost > 0 ? totalGatewayCost : undefined,
         },
       });
 
