@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs, pruneMessages, convertToModelMessages } from "ai";
+import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs, pruneMessages, convertToModelMessages, wrapLanguageModel } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools, type ToolClients, type ToolPermissions } from "@/lib/ai/tools";
@@ -8,6 +8,8 @@ import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
 import { loadRules, formatRulesForPrompt } from "@/lib/ai/priority-docs";
+import { createCompactionMiddleware } from "@/lib/ai/compaction-middleware";
+import { getContextWindow } from "@/lib/ai/token-counter";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
@@ -348,8 +350,15 @@ export async function POST(request: NextRequest) {
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
 
+  // Wrap the model with compaction middleware to auto-summarize long conversations
+  const baseModel = gateway(modelId);
+  const compactedModel = wrapLanguageModel({
+    model: baseModel,
+    middleware: createCompactionMiddleware(getContextWindow(modelId)),
+  });
+
   const agent = new ToolLoopAgent({
-    model: gateway(modelId),
+    model: compactedModel,
     instructions: AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
     tools: allTools,
     stopWhen: stepCountIs(20),

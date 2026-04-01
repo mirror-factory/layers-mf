@@ -47,6 +47,7 @@ import {
   type ToolPart,
 } from "@/components/ai-elements/tool";
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
+import { ContextWindowBar } from "@/components/chat/context-window-bar";
 
 const MODELS = [
   // Flagship
@@ -1797,6 +1798,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line · Drop files to attach</p>
+          {messages.length > 0 && (
+            <ContextWindowBar messages={messages} modelId={model} className="mt-1.5" />
+          )}
         </div>
       </div>
 

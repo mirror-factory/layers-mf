@@ -63,6 +63,49 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Consu
 - `src/app/globals.css` — CSS variables and Tailwind base styles
 - `src/lib/utils.ts` — shared utilities
 
+## Component Registry
+
+Key components for LLM lookup (88 total across 4 dirs):
+
+| Name | Location | Description | Tags |
+|------|----------|-------------|------|
+| ChatInterface | src/components/chat-interface.tsx | Full agentic chat with tools, context, artifacts | chat, ai |
+| TiptapEditor | src/components/tiptap-editor.tsx | Rich text editor with AI assist | editor, ai |
+| MCPServerCard | src/components/mcp-server-card.tsx | MCP connection card with PKCE OAuth | mcp, oauth |
+| ContextLibrary | src/components/context-library.tsx | Browse/manage context items | context, library |
+| SidebarNav | src/components/sidebar-nav.tsx | Main sidebar navigation | navigation, layout |
+| InterviewUI | src/components/interview-ui.tsx | ask_user tool interview form | interview, form |
+| SkillsEditor | src/components/skills-editor.tsx | Manage skills with editor | skills, editor |
+| ContextWindowBar | src/components/chat/context-window-bar.tsx | Token counter + context visualization | chat, tokens |
+| Message | src/components/ai-elements/message.tsx | UIMessage renderer with Markdown | ai-elements |
+| Tool | src/components/ai-elements/tool.tsx | Tool call display with status | ai-elements |
+
+**shadcn/ui** (24 in `src/components/ui/`): Button, Card, Input, Badge, Select, Dialog, Tabs, DropdownMenu, Command, Tooltip, etc.
+
+## API Registry
+
+118 routes total. Key routes:
+
+| Path | Method | Description | Auth |
+|------|--------|-------------|------|
+| /api/chat | POST | Agentic chat with ToolLoopAgent | Supabase |
+| /api/chat/history | GET | Fetch chat messages | Supabase |
+| /api/chat/context-stats | GET | Token counts for system/rules/tools | Supabase |
+| /api/context/search | POST | Hybrid search (vector + BM25) | Supabase |
+| /api/context/[id] | GET/PATCH/DELETE | CRUD context item | Supabase |
+| /api/analytics/costs | GET | AI costs by model/user/date | Supabase |
+| /api/mcp-servers | GET/POST | List/add MCP servers | Supabase |
+| /api/mcp/discover | POST | Discover MCP from registry | Supabase |
+| /api/skills | GET/POST | List/create skills | Supabase |
+| /api/schedules | GET/POST | List/create schedules | Supabase |
+| /api/approval | GET/POST | List/create approvals | Supabase |
+| /api/priority-docs | GET/POST/PATCH/DELETE | Priority doc management | Supabase |
+| /api/rules | GET/POST/PATCH/DELETE | Rules management | Supabase |
+| /api/sandbox/restart | POST | Restart sandbox | Supabase |
+
+**Cron**: /api/cron/{digest,ingest,synthesis,execute-schedules,linear-check,credit-reset}
+**Webhooks**: /api/webhooks/{stripe,linear,nango,google-drive,discord}
+
 ## Vercel AI SDK Docs
 
 [AI SDK Docs Index]
