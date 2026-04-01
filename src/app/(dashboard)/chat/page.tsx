@@ -37,6 +37,9 @@ export default function ChatPage() {
     fetchConversations();
   }, [fetchConversations]);
 
+  // When no conversation is selected and no URL param, show new chat directly
+  const showNewChat = !activeId && !idParam;
+
   // Auto-create a conversation and set the initial prompt when ?prompt= is present
   useEffect(() => {
     if (!initialPrompt || loading) return;
@@ -206,24 +209,12 @@ export default function ChatPage() {
         <div className="flex-1 overflow-hidden">
           {activeId ? (
             <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} />
+          ) : showNewChat ? (
+            <ChatInterface key="new" initialTemplateId={templateParam} initialPrompt={initialPrompt} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageSquare className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm font-medium text-foreground">
-                Select or start a conversation
-              </p>
-              <p className="text-xs mt-1">
-                Click &quot;New conversation&quot; to get started.
-              </p>
-              <Button
-                onClick={createConversation}
-                variant="outline"
-                size="sm"
-                className="mt-4 gap-2"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                New conversation
-              </Button>
+              <Loader2 className="h-5 w-5 animate-spin mb-2" />
+              <p className="text-xs">Loading...</p>
             </div>
           )}
         </div>
