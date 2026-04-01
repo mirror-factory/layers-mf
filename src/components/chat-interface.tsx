@@ -1646,12 +1646,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </div>
                   )}
 
-                  {/* Feedback buttons — assistant messages only, not while streaming */}
+                  {/* Feedback + cost — assistant messages only, not while streaming */}
                   {m.role === "assistant" && !isStreaming && text && (
-                    <MessageFeedback
-                      messageId={m.id}
-                      conversationId={conversationId}
-                    />
+                    <div className="flex items-center gap-2">
+                      <MessageFeedback
+                        messageId={m.id}
+                        conversationId={conversationId}
+                      />
+                      <span className="text-[10px] text-muted-foreground/50" title="Estimated cost">
+                        ~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}
+                      </span>
+                    </div>
                   )}
                 </Message>
               </div>
