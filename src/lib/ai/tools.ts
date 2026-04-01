@@ -127,8 +127,7 @@ function getTemplateFiles(template: string): { path: string; content: string }[]
 export function createTools(supabase: AnySupabase, orgId: string, clients?: ToolClients, userId?: string, permissions?: ToolPermissions) {
   const allTools = {
     search_context: tool({
-      description:
-        "Search the team knowledge base for relevant documents, meetings, messages, and notes. Call this first to find what context exists before answering.",
+      description: "Search knowledge base for documents, meetings, notes. Call first before answering.",
       inputSchema: searchContextSchema,
       execute: async ({ query, limit, filters }: z.infer<typeof searchContextSchema>) => {
         // Try chunk-based search first (richer context), fall back to item-level
@@ -182,8 +181,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     get_document: tool({
-      description:
-        "Fetch the full text content of a specific document by its ID. Use this when a search result seems highly relevant and you need the complete content to answer accurately.",
+      description: "Fetch full document content by ID. Use when search result needs deeper reading.",
       inputSchema: getDocumentSchema,
       execute: async ({ id }: z.infer<typeof getDocumentSchema>) => {
         const { data, error } = await supabase
@@ -214,7 +212,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Linear tools ===
     list_linear_issues: tool({
-      description: "Query Linear issues with filters. Use for finding tasks, checking status, seeing what is assigned to whom. Call this when users ask about tasks, issues, or Linear.",
+      description: "Query Linear issues with filters. For tasks, status checks, assignments.",
       inputSchema: z.object({
         state: z.string().optional().describe("Filter by state like 'In Progress', 'Todo', 'Done'"),
         assignee: z.string().optional().describe("Filter by assignee name or 'me'"),
@@ -230,7 +228,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     create_linear_issue: tool({
-      description: "Create a new Linear issue. Routes through approval queue for partner review before execution.",
+      description: "Create Linear issue. Routes through approval queue.",
       inputSchema: z.object({
         title: z.string(),
         team: z.string().describe("Team key like 'PROD' or 'SERV'"),
@@ -252,7 +250,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Granola tool ===
     query_granola: tool({
-      description: "Search meeting notes and transcripts from Granola. Returns recent meetings with summaries and attendees.",
+      description: "Search Granola meeting notes and transcripts.",
       inputSchema: z.object({
         since: z.string().optional().describe("ISO date to search from, e.g. '2026-03-01'"),
         limit: z.number().optional().describe("Max meetings to return, default 10"),
@@ -266,7 +264,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Gmail tools ===
     search_gmail: tool({
-      description: "Search emails using Gmail query syntax. Examples: 'from:john', 'subject:invoice', 'newer_than:7d', 'is:unread'.",
+      description: "Search Gmail. Syntax: from:, subject:, newer_than:, is:unread.",
       inputSchema: z.object({
         query: z.string().describe("Gmail search query"),
         limit: z.number().optional().describe("Max results, default 10"),
@@ -279,7 +277,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     draft_email: tool({
-      description: "Draft a Gmail email. Routes through approval queue before saving.",
+      description: "Draft Gmail email. Routes through approval queue.",
       inputSchema: z.object({
         to: z.string(), subject: z.string(), body: z.string(),
       }),
@@ -297,7 +295,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Notion tool ===
     search_notion: tool({
-      description: "Search Notion pages and databases shared with the integration.",
+      description: "Search Notion pages and databases.",
       inputSchema: z.object({
         query: z.string().optional().describe("Search query text"),
         limit: z.number().optional().describe("Max results, default 10"),
@@ -311,7 +309,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Drive tool ===
     list_drive_files: tool({
-      description: "List and search Google Drive files (Docs, Sheets, Slides).",
+      description: "List and search Google Drive files.",
       inputSchema: z.object({
         query: z.string().optional().describe("Search query for file names"),
         limit: z.number().optional().describe("Max results, default 20"),
@@ -326,7 +324,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     // === Sub-agent delegating tools ===
     ask_linear_agent: tool({
       description:
-        "Delegate to the Linear specialist agent for any task/issue management questions. Use this for ALL Linear-related requests instead of calling Linear tools directly.",
+        "Delegate to Linear specialist. Use for ALL task/issue requests.",
       inputSchema: z.object({
         query: z
           .string()
@@ -519,7 +517,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     list_schedules: tool({
-      description: "List all scheduled actions. Use when user asks about schedules, /schedule, or wants to see what is running.",
+      description: "List scheduled actions. For /schedule command.",
       inputSchema: z.object({
         status: z.enum(["active", "paused", "completed", "all"]).optional().describe("Filter by status, default all"),
       }),
@@ -533,7 +531,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     edit_schedule: tool({
-      description: "Edit an existing scheduled action. Can change name, schedule, status (pause/resume), or description. Use when user says 'change the schedule', 'pause it', 'make it run every hour instead'.",
+      description: "Edit schedule: change name, timing, status (pause/resume).",
       inputSchema: z.object({
         id: z.string().describe("Schedule ID to edit"),
         name: z.string().optional(),
@@ -560,7 +558,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     }),
 
     delete_schedule: tool({
-      description: "Delete a scheduled action permanently. Use when user says 'remove that schedule', 'delete it', 'cancel the recurring task'.",
+      description: "Delete a scheduled action permanently.",
       inputSchema: z.object({
         id: z.string().describe("Schedule ID to delete"),
       }),
@@ -763,7 +761,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Code artifact tool ===
     write_code: tool({
-      description: "Write a code artifact (script, config, template, snippet). Use when the user asks you to write code, create a script, generate a config file, or build a template.",
+      description: "Write a code artifact with inline preview.",
       inputSchema: z.object({
         filename: z.string().describe("Filename with extension, e.g. 'setup.sh', 'config.json'"),
         language: z.string().describe("Programming language: typescript, python, bash, html, css, json, yaml, markdown, sql, go, rust, ruby, jsx, tsx"),
@@ -800,7 +798,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Approval query tool ===
     list_approvals: tool({
-      description: 'List pending approval items. Use when the user asks about approvals, /approve, or wants to see what actions are waiting for review.',
+      description: "List pending approvals. For /approve command.",
       inputSchema: z.object({
         status: z.enum(['pending', 'approved', 'rejected', 'all']).optional().describe('Filter by status, default pending'),
         limit: z.number().optional(),
@@ -833,7 +831,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
     // === Approval tool ===
     propose_action: tool({
-      description: "Propose a write action for partner approval before executing. Use for ALL write operations.",
+      description: "Propose write action for approval. Use for ALL writes.",
       inputSchema: z.object({
         action_type: z.enum(["create_task", "send_message", "draft_email", "update_task", "send_slack", "update_issue"]),
         target_service: z.enum(["linear", "slack", "gmail", "discord", "notion"]),
