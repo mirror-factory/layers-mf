@@ -1226,7 +1226,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
   // Dynamic skill slash commands fetched from API
   const [skillMenuItems, setSkillMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string }[]>([]);
+  // Dynamic MCP server slash commands
+  const [mcpMenuItems, setMcpMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string; toolNames: string[] }[]>([]);
+
   useEffect(() => {
+    // Fetch skills
     fetch("/api/skills")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
@@ -1240,6 +1244,30 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             icon: s.icon,
           }));
         setSkillMenuItems(items);
+      })
+      .catch(() => {});
+
+    // Fetch active MCP servers to generate auto-commands
+    fetch("/api/mcp-servers")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.servers) return;
+        const items = (data.servers as { name: string; is_active: boolean; discovered_tools: { name: string }[] | null }[])
+          .filter((s) => s.is_active)
+          .map((s) => {
+            const slug = s.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+            const toolNames = (s.discovered_tools ?? []).map((t) => t.name);
+            return {
+              cmd: `/${slug}`,
+              label: s.name,
+              description: toolNames.length > 0
+                ? `${toolNames.length} MCP tools: ${toolNames.slice(0, 3).join(", ")}${toolNames.length > 3 ? "..." : ""}`
+                : "MCP server",
+              icon: "🔌",
+              toolNames,
+            };
+          });
+        setMcpMenuItems(items);
       })
       .catch(() => {});
   }, []);
@@ -1263,6 +1291,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
     // Dynamic skill commands appended from API
     ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/search", "/skills", "/help", "/email" ].includes(si.cmd)),
+    // Dynamic MCP server commands
+    ...mcpMenuItems.filter((mi) => ![ "/linear", "/gmail", "/notion", "/granola", "/drive", "/github" ].includes(mi.cmd)),
   ];
 
   // Slash command mappings — expand to explicit tool instructions for the AI
@@ -1308,6 +1338,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           return args
             ? `Use the activate_skill tool with skill_slug "${slug}". Then help me with: ${args}`
             : `Use the activate_skill tool with skill_slug "${slug}"`;
+        },
+      ])
+    ),
+    // Dynamic MCP server slash commands → use MCP tools
+    ...Object.fromEntries(
+      mcpMenuItems.map((mi) => [
+        mi.cmd,
+        (args: string) => {
+          const toolList = mi.toolNames.length > 0
+            ? `Available MCP tools from ${mi.label}: ${mi.toolNames.join(", ")}.`
+            : `Use ${mi.label} MCP tools.`;
+          return args
+            ? `${toolList} Help me with: ${args}`
+            : `${toolList} What can this server do?`;
         },
       ])
     ),
