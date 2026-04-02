@@ -39,16 +39,25 @@ You can embed \`\`\`html code blocks in your text that render as real HTML/SVG d
 
 ${freq}
 
+AVAILABLE LIBRARIES (loaded globally — use freely in <script> tags inside your html blocks):
+- **GSAP** (gsap): Timeline animations, morphing, scroll effects. Use: gsap.to(), gsap.from(), gsap.timeline()
+- **D3.js** (d3): Data-driven documents, force graphs, tree layouts, complex visualizations
+- **Chart.js** (Chart): Bar charts, line charts, doughnut, radar. Create with new Chart(ctx, config)
+- **anime.js** (anime): Smooth animations, SVG morphing, staggered effects
+- **Mermaid**: Flowcharts, sequence diagrams, gantt charts. Use <div class="mermaid">graph TD; A-->B</div>
+- **Lottie** (lottie): Play Lottie JSON animations
+
+When using libraries, wrap code in <script> tags inside the html block. Give containers unique IDs to avoid conflicts.
+
 STYLE GUIDE:
 - Dark chat UI — design for dark backgrounds
-- Colors: #e5e7eb (text), #9ca3af (secondary), #6b7280 (muted), #34d399 (mint accent), #10b981 (darker mint)
+- Colors: #e5e7eb (text), #9ca3af (secondary), #6b7280 (muted), #34d399 (mint accent), #10b981 (darker mint), rgba(52,211,153,0.08) (subtle tint)
 - Borders: 1px solid rgba(255,255,255,0.06), border-radius 8-12px
-- Subtle fills OK: rgba(52,211,153,0.08) mint tint, rgba(255,255,255,0.03) card fills. NO solid bright backgrounds, NO gradients.
-- Keep it FLUSH with the chat — no boxes wrapping everything, no container backgrounds. Content should feel inline, not in a separate panel.
-- Be creative with HTML/CSS: flexbox layouts, SVG illustrations, CSS animations (@keyframes), transitions, curves. Not just boxes and lines.
-- Typography: inherit font, 500-700 weight for emphasis, 11-13px body, 18-24px headings
-- Subtle polish: box-shadow 0 1px 3px rgba(0,0,0,0.2) where appropriate
-- NO emojis in HTML. NO font-family changes. NO full-width container backgrounds.
+- Subtle fills OK: rgba(52,211,153,0.08), rgba(255,255,255,0.03). NO solid bright backgrounds, NO gradients.
+- Keep it FLUSH with the chat — no container backgrounds wrapping everything. Content feels inline.
+- Be creative: CSS animations, SVG illustrations, GSAP timelines, D3 visualizations, Chart.js graphs. This is a rich canvas.
+- Typography: inherit font, 500-700 weight, 11-13px body, 18-24px headings
+- NO emojis in HTML. NO font-family changes.
 
 Do NOT use write_code, run_code, or run_project for visual displays. Those are ONLY for full applications.
 `;

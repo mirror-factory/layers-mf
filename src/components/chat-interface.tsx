@@ -361,13 +361,7 @@ function RichMessageResponse({ text }: { text: string }) {
           return <MessageResponse key={i}>{part.content}</MessageResponse>;
         }
         if (part.type === "html") {
-          return (
-            <div
-              key={i}
-              className="my-2 inline-html-render"
-              dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
-            />
-          );
+          return <InlineHtmlBlock key={i} html={part.content} />;
         }
         return null;
       })}
@@ -375,15 +369,51 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** Sanitize HTML for inline rendering — strip scripts and gradients, allow subtle fills */
-function sanitizeInlineHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
-    .replace(/javascript:/gi, "")
-    // Strip gradients only — allow solid/rgba backgrounds
-    .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
-    .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
+/** Inline HTML block that renders HTML and executes scripts (for GSAP, D3, Chart.js, etc.) */
+function InlineHtmlBlock({ html }: { html: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+
+    // Strip gradients from inline styles
+    const cleaned = html
+      .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
+      .replace(/javascript:/gi, "")
+      .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
+      .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
+
+    // Extract scripts and HTML separately
+    const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
+    const scripts: string[] = [];
+    let match;
+    while ((match = scriptRegex.exec(cleaned)) !== null) {
+      if (match[1].trim()) scripts.push(match[1]);
+    }
+    const htmlWithoutScripts = cleaned.replace(scriptRegex, "");
+
+    // Set the HTML content
+    container.innerHTML = htmlWithoutScripts;
+
+    // Execute scripts in order (allows GSAP, D3, Chart.js, anime.js, mermaid)
+    for (const code of scripts) {
+      try {
+        const fn = new Function(code);
+        fn();
+      } catch (err) {
+        console.warn("[inline-html] Script error:", err);
+      }
+    }
+
+    // Auto-initialize mermaid diagrams if present
+    if (container.querySelector(".mermaid") && typeof window !== "undefined" && (window as unknown as Record<string, unknown>).mermaid) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).mermaid.run({ nodes: container.querySelectorAll(".mermaid") });
+    }
+  }, [html]);
+
+  return <div ref={containerRef} className="my-2 inline-html-render" />;
 }
 
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
