@@ -9,8 +9,9 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap,
+  Paperclip, Image as ImageIcon, FileType, Zap, Sparkles,
 } from "lucide-react";
+import { JsonRenderInline } from "@/components/json-render-inline";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
@@ -369,6 +370,25 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   // Check if this is an approval proposal
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
   const approvalOutput = isApproval ? output as Record<string, unknown> : null;
+
+  // Check if this is a json-render inline UI result
+  const isJsonRender = isDone && output && typeof output === "object"
+    && (output as Record<string, unknown>).type === "json-render"
+    && (output as Record<string, unknown>).spec;
+  if (isJsonRender) {
+    const jr = output as { title: string; spec: Record<string, unknown> };
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden max-w-2xl">
+        <div className="px-3 py-2 border-b bg-muted/30 flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium">{jr.title}</span>
+        </div>
+        <div className="p-4">
+          <JsonRenderInline spec={jr.spec} />
+        </div>
+      </div>
+    );
+  }
 
   // Check if this is a sandbox execution result (has exitCode + stdout)
   const isSandboxResult = isDone && output && typeof output === "object"
@@ -1287,6 +1307,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
+    { cmd: "/ui", label: "Render UI", description: "Generate interactive UI inline", icon: "✨" },
     { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
     { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "🌐" },
     { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
@@ -1332,6 +1353,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         ? `Search for skills matching "${args}". Check the /skills page.`
         : "Show me available skills at /skills.";
     },
+    "/ui": (args) => args
+      ? `Use the render_ui tool to create an interactive inline UI for: ${args}. Use shadcn/ui components (Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs). Output a json-render spec with root + elements.`
+      : "Use the render_ui tool to create interactive UI inline. What would you like me to visualize?",
     "/web": (args) => args ? `Use the web_browse tool to fetch and read this URL: ${args}` : "Use the web_browse tool. What URL would you like me to read?",
     "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
     "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /skill create, /pm, /email, /meeting, /code, /weekly, /brand",
