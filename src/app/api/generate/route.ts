@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { text } = await generateText({
-      model: gateway("google/gemini-2.5-flash-lite"),
+      model: gateway("google/gemini-3.1-flash-lite-preview"),
       prompt,
       system,
       maxOutputTokens: maxTokens,

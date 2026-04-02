@@ -61,7 +61,7 @@ const MODELS = [
   // Fast
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", tier: "fast" },
   { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "fast" },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite", tier: "fast" },
+  { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini Flash Lite", tier: "fast" },
 ] as const;
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
@@ -1234,7 +1234,7 @@ interface ChatInterfaceInnerProps {
 }
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
-  const [model, setModel] = useState<string>("google/gemini-2.5-flash-lite");
+  const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
   const [visualLevel, setVisualLevel] = useState<string>(() => {
     if (typeof window !== "undefined") return localStorage.getItem("granger-visual-level") ?? "medium";
     return "medium";
