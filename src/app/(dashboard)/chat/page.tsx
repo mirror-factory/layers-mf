@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, Loader2, X, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function relativeTime(dateStr: string): string {
@@ -99,6 +99,7 @@ export default function ChatPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load conversation panel preference from localStorage
   useEffect(() => {
@@ -134,18 +135,15 @@ export default function ChatPage() {
         )}
       >
         <div className="p-2 border-b flex items-center gap-1.5">
-          <Button
-            onClick={createConversation}
-            variant="outline"
-            className="flex-1 justify-start gap-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
-            size="sm"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New chat
-          </Button>
+          <input
+            type="text"
+            placeholder="Search chats…"
+            className="flex-1 rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
+          />
           <button
             onClick={() => { setSidebarOpen(false); setPanelVisible(false); }}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Close sidebar"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -167,7 +165,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {conversations.map((conv) => {
+          {conversations.filter((conv) => !searchQuery || (conv.title ?? "").toLowerCase().includes(searchQuery)).map((conv) => {
             const displayTitle = conv.title || "New conversation";
             return (
               <div

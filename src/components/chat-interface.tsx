@@ -9,7 +9,7 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock,
+  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2,
 } from "lucide-react";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
@@ -953,37 +953,37 @@ function MessageFeedback({
   }, [submitFeedback]);
 
   return (
-    <div className="flex items-center gap-1 mt-1">
+    <div className="flex items-center gap-1">
       <div className="flex items-center gap-0.5">
         <button
           type="button"
           onClick={handleThumbsUp}
           disabled={!!selected}
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
+            "p-1 rounded transition-colors",
             selected === "positive"
-              ? "text-green-600 dark:text-green-400"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-primary"
+              : "text-primary/60 hover:text-primary"
           )}
           aria-label="Thumbs up"
           data-testid="feedback-thumbs-up"
         >
-          <ThumbsUp className={cn("h-3.5 w-3.5", selected === "positive" && "fill-current")} />
+          <ThumbsUp className={cn("h-3 w-3", selected === "positive" && "fill-current")} />
         </button>
         <button
           type="button"
           onClick={handleThumbsDown}
           disabled={!!selected}
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
+            "p-1 rounded transition-colors",
             selected === "negative"
-              ? "text-red-600 dark:text-red-400"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-red-400"
+              : "text-red-400/60 hover:text-red-400"
           )}
           aria-label="Thumbs down"
           data-testid="feedback-thumbs-down"
         >
-          <ThumbsDown className={cn("h-3.5 w-3.5", selected === "negative" && "fill-current")} />
+          <ThumbsDown className={cn("h-3 w-3", selected === "negative" && "fill-current")} />
         </button>
       </div>
 
@@ -1837,20 +1837,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     <SourceCitation sources={sources} />
                   )}
 
-                  {/* Actions row — copy, options, branch, feedback, cost — all on one line */}
+                  {/* Actions row — copy, branch, feedback, cost */}
                   {m.role === "assistant" && !isStreaming && text && (
                     <div className="flex items-center gap-1 mt-1">
-                      <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted" title="Copy"><Copy className="h-3 w-3 text-muted-foreground" /></button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1 rounded hover:bg-muted" title="More"><MoreHorizontal className="h-3 w-3 text-muted-foreground" /></button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}><Copy className="h-3 w-3 mr-2" /> Copy text</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted transition-colors" title="Copy"><Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" /></button>
                       {conversationId && (
-                        <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted" title="Branch"><GitBranch className="h-3 w-3 text-muted-foreground" /></button>
+                        <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted transition-colors" title="Branch"><GitBranch className="h-3 w-3 text-primary/60 hover:text-primary" /></button>
                       )}
                       <MessageFeedback messageId={m.id} conversationId={conversationId} />
                       <span className="text-[10px] text-muted-foreground/40 ml-1">~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}</span>
@@ -1883,7 +1875,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="border-t p-3 sm:p-4 pb-20 md:pb-3 relative"
+          className="p-3 sm:p-4 pb-6 relative"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -1900,44 +1892,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
-          <div className="flex flex-col gap-2 max-w-5xl mx-auto sm:flex-row sm:gap-3">
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Visual level toggle */}
-            <div className="flex items-center border rounded-md h-9 overflow-hidden shrink-0">
-              {(["off", "low", "med", "high"] as const).map((lvl) => {
-                const value = lvl === "med" ? "medium" : lvl;
-                const isActive = visualLevel === value;
-                return (
-                  <button
-                    key={lvl}
-                    onClick={() => {
-                      setVisualLevel(value);
-                      localStorage.setItem("granger-visual-level", value);
-                    }}
-                    className={cn(
-                      "px-2 py-1 text-[10px] font-medium transition-colors",
-                      isActive
-                        ? "bg-primary/15 text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    title={`Visual mode: ${value}`}
-                  >
-                    {lvl === "off" ? "○" : lvl === "low" ? "◔" : lvl === "med" ? "◑" : "●"}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="max-w-5xl mx-auto rounded-2xl border bg-card/80 backdrop-blur shadow-lg p-3">
             {/* Interview UI — renders as overlay above the input area */}
             {pendingInterview && (
               <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
@@ -1975,10 +1930,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             )}
 
-            <div className="flex flex-col flex-1 gap-1.5">
               {/* Pending file previews */}
               {pendingFiles.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 px-1">
+                <div className="flex flex-wrap gap-1.5 mb-2">
                   {pendingFiles.map(pf => {
                     const Icon = getFileIcon(pf.file.type);
                     return (
@@ -2003,44 +1957,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 </div>
               )}
 
-              <div className="flex gap-2 sm:gap-3">
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ACCEPTED_EXTENSIONS}
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files?.length) addFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-                {/* Paperclip attach button */}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label="Attach files"
-                  title="Attach files"
-                  className="shrink-0"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                {/* Context window toggle */}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setShowContextBar(prev => !prev)}
-                  aria-label="Toggle context window"
-                  title="Context window"
-                  className="shrink-0"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_EXTENSIONS}
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
 
+              <div className="flex items-end gap-2">
                 <textarea
                   data-testid="chat-input"
                   aria-label="Chat message input"
@@ -2054,7 +1984,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   }}
                   placeholder="Ask about your documents, meetings, or team… (type / for commands)"
                   rows={1}
-                  className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-sm focus:outline-none placeholder:text-muted-foreground"
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
                     // Slash menu navigation
@@ -2085,17 +2015,110 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     }
                   }}
                 />
+
+                {/* Right-side icon buttons */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Attach files"
+                    title="Attach files"
+                    className="h-8 w-8"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowContextBar(prev => !prev)}
+                    aria-label="Toggle context window"
+                    title="Context window"
+                    className="h-8 w-8"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+
+                  {/* Settings dropdown — model selector + visual level */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat settings" title="Chat settings">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 p-3 space-y-3">
+                      {/* Model selector */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
+                        <Select value={model} onValueChange={setModel}>
+                          <SelectTrigger className="w-full text-xs h-8" data-testid="model-selector" aria-label="Select AI model">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MODELS.map((m) => (
+                              <SelectItem key={m.id} value={m.id} className="text-xs">
+                                {m.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <DropdownMenuSeparator />
+                      {/* Visual level */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
+                        <div className="flex items-center border rounded-md overflow-hidden">
+                          {(["off", "low", "med", "high"] as const).map((lvl) => {
+                            const value = lvl === "med" ? "medium" : lvl;
+                            const isActive = visualLevel === value;
+                            return (
+                              <button
+                                key={lvl}
+                                onClick={() => {
+                                  setVisualLevel(value);
+                                  localStorage.setItem("granger-visual-level", value);
+                                }}
+                                className={cn(
+                                  "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                                  isActive
+                                    ? "bg-primary/15 text-primary"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                                title={`Visual mode: ${value}`}
+                              >
+                                {lvl === "off" ? "○" : lvl === "low" ? "◔" : lvl === "med" ? "◑" : "●"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {/* Context window stats preview */}
+                      {messages.length > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Context</label>
+                            <p className="text-[10px] text-muted-foreground">{messages.length} messages in conversation</p>
+                          </div>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Send / Stop button */}
                 {isLoading ? (
-                  <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop">
+                  <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop" className="h-8 w-8 shrink-0">
                     <Square className="h-3 w-3" />
                   </Button>
                 ) : (
-                  <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} data-testid="chat-submit" aria-label="Send message">
+                  <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} data-testid="chat-submit" aria-label="Send message" className="h-8 w-8 shrink-0">
                     <Send className="h-4 w-4" />
                   </Button>
                 )}
               </div>
-            </div>
           </div>
           {/* Context window bar — pops up above prompt area */}
           {showContextBar && messages.length > 0 && (
