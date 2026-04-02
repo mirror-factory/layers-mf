@@ -473,9 +473,27 @@ export async function executeProject(options: {
   }));
 
   try {
+    // Patch Vite configs: ensure allowedHosts: true so sandbox domains work
+    const patchedFiles = options.files.map(f => {
+      if ((f.path.endsWith("vite.config.js") || f.path.endsWith("vite.config.ts")) &&
+          !f.content.includes("allowedHosts: true")) {
+        // Replace any existing allowedHosts value, or inject into server config
+        let patched = f.content.replace(/allowedHosts:\s*['"][^'"]*['"]/g, "allowedHosts: true");
+        if (!patched.includes("allowedHosts")) {
+          // If no allowedHosts at all, try to add it to server config
+          patched = patched.replace(
+            /server:\s*\{/,
+            "server: { allowedHosts: true,",
+          );
+        }
+        return { ...f, content: patched };
+      }
+      return f;
+    });
+
     // Write all project files
     await sandbox.writeFiles(
-      options.files.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
+      patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
     );
 
     // Install dependencies if specified (skip if restored from snapshot with same packages)
