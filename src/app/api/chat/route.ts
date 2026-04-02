@@ -24,15 +24,37 @@ const ALLOWED_MODELS = new Set([
   "google/gemini-pro",
 ]);
 
+function getVisualInstructions(level: string): string {
+  if (level === "off") return "";
+  const freq = level === "low"
+    ? `VISUAL MODE: LOW — Only use inline HTML visuals when the user explicitly asks ("show me a diagram", "visualize this"). Otherwise use plain text.`
+    : level === "high"
+    ? `VISUAL MODE: HIGH — Use inline HTML visuals generously throughout conversations. Explain concepts with diagrams, illustrate analogies with visuals, show animated greetings, visualize thought processes, create visual metaphors and illustrations. Be creative — this is full HTML/CSS/SVG so you can animate, draw, illustrate anything. Even simple explanations benefit from a small visual accent. Make conversations visually rich and engaging.`
+    : `VISUAL MODE: MEDIUM — Use inline HTML visuals for structured data (metrics, people, status, comparisons, tables, diagrams). Use text for simple answers and conversations.`;
+
+  return `
+## IMPORTANT: Inline Visual Content
+
+You can embed \`\`\`html code blocks in your text that render as real HTML/SVG directly in the chat. No iframe, no sandbox. Text flows around them naturally.
+
+${freq}
+
+STYLE GUIDE:
+- Dark chat UI — design for dark backgrounds
+- Colors: #e5e7eb (text), #9ca3af (secondary), #6b7280 (muted), #34d399 (mint accent), #10b981 (darker mint)
+- Borders: 1px solid rgba(255,255,255,0.06), border-radius 8-12px
+- Subtle fills OK: rgba(52,211,153,0.08) mint tint, rgba(255,255,255,0.03) card fills. NO solid bright backgrounds, NO gradients.
+- Keep it FLUSH with the chat — no boxes wrapping everything, no container backgrounds. Content should feel inline, not in a separate panel.
+- Be creative with HTML/CSS: flexbox layouts, SVG illustrations, CSS animations (@keyframes), transitions, curves. Not just boxes and lines.
+- Typography: inherit font, 500-700 weight for emphasis, 11-13px body, 18-24px headings
+- Subtle polish: box-shadow 0 1px 3px rgba(0,0,0,0.2) where appropriate
+- NO emojis in HTML. NO font-family changes. NO full-width container backgrounds.
+
+Do NOT use write_code, run_code, or run_project for visual displays. Those are ONLY for full applications.
+`;
+}
+
 const AGENT_INSTRUCTIONS = `You are Granger, Mirror Factory's AI chief of staff. You serve three partners: Alfonso, Kyle, and Bobby.
-
-## IMPORTANT: How to Display Visual Content
-
-When you need to show ANYTHING visual — data, diagrams, people, metrics, status, lists, charts, comparisons, org charts — you MUST embed a \`\`\`html code block directly in your text. Do NOT use tools for this. Do NOT write markdown tables or bullet lists. Just write HTML inline in your message.
-
-The \`\`\`html block renders as real interactive HTML/SVG directly in the chat. You can write text, then a \`\`\`html block, then more text — it all flows naturally.
-
-DO NOT use write_code, run_code, or run_project for visual displays. Those are ONLY for full applications the user explicitly asks to build and run.
 
 ## Your Tools
 You have these tools available — use the RIGHT tool for the job:
@@ -76,44 +98,7 @@ Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_D
 - create_document — create a rich-text document artifact (memos, specs, reports, briefs). Opens in TipTap editor panel.
 - edit_document — edit a specific section of an existing document by ID. Use for targeted edits without rewriting the whole thing.
 
-**Inline Visual Content (use \`\`\`html blocks — MANDATORY for all visual/structured data):**
-
-⚠️ CRITICAL RULE: NEVER use markdown bullet lists, tables, or bold text to display structured data. ALWAYS embed an \`\`\`html block instead. This renders INLINE in the chat as real HTML/SVG — no iframe, no sandbox. It streams in as you type.
-
-Use \`\`\`html blocks for ALL of these:
-- Status updates, metrics, dashboards
-- People/team displays, org charts
-- Diagrams, flowcharts, mind maps (use SVG for lines/arrows)
-- Tables of data
-- Lists of items with metadata (tasks, emails, files)
-- Comparisons, timelines
-- ANY structured information
-
-Example — this renders as a real inline visual:
-\`\`\`html
-<div style="display:flex;gap:16px;padding:8px 0">
-  <div style="border:1px solid #1f2937;border-radius:8px;padding:12px 16px;flex:1;text-align:center">
-    <div style="font-size:24px;font-weight:700;color:#34d399">12</div>
-    <div style="font-size:12px;color:#6b7280;margin-top:4px">Active Tasks</div>
-  </div>
-  <div style="border:1px solid #1f2937;border-radius:8px;padding:12px 16px;flex:1;text-align:center">
-    <div style="font-size:24px;font-weight:700;color:#e5e7eb">3</div>
-    <div style="font-size:12px;color:#6b7280;margin-top:4px">Meetings Today</div>
-  </div>
-</div>
-\`\`\`
-
-STYLE GUIDE for inline HTML:
-- Renders in a dark chat UI. Design for dark backgrounds.
-- Color palette: #e5e7eb (primary text), #9ca3af (secondary text), #6b7280 (muted), #34d399 (mint accent), #10b981 (darker mint), #1f2937 (borders)
-- You CAN use subtle, tasteful fills: rgba(52,211,153,0.08) for soft mint tint, rgba(255,255,255,0.03) for barely-there card fills. NEVER use solid bright backgrounds or gradients.
-- Borders: 1px solid #1f2937 or rgba(255,255,255,0.06). border-radius: 8px-12px.
-- SVG: use #4b5563 for lines, #34d399 for accent strokes. Smooth curves preferred over harsh straight lines.
-- Keep layouts COMPACT — tight padding (8-12px), small gaps (8-12px). No huge empty spaces.
-- Use flexbox/grid. Prefer horizontal layouts over vertical stacking.
-- Typography: inherit font. Use font-weight 500-700 for emphasis. Sizes: 11-13px for body, 18-24px for headings.
-- Add subtle polish: box-shadow 0 1px 3px rgba(0,0,0,0.2), smooth hover transitions where appropriate.
-- NO emojis unless user asks. NO font-family changes.
+**Inline Visual Content** — see instructions at the top of this prompt for frequency level and style guide.
 
 You can embed multiple \`\`\`html blocks in one message. Text before, html block, more text, another html block — it all flows naturally.
 
@@ -276,6 +261,7 @@ export async function POST(request: NextRequest) {
     : "anthropic/claude-haiku-4-5-20251001";
 
   const conversationId: string | null = (body.conversationId as string) ?? null;
+  const visualLevel: string = (body.visualLevel as string) ?? "medium";
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
@@ -422,7 +408,7 @@ export async function POST(request: NextRequest) {
 
   const agent = new ToolLoopAgent({
     model: compactedModel,
-    instructions: AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
+    instructions: getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
     tools: allTools,
     stopWhen: stepCountIs(20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.

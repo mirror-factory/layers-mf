@@ -1194,6 +1194,10 @@ interface ChatInterfaceInnerProps {
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
   const [model, setModel] = useState<string>("google/gemini-2.5-flash-lite");
+  const [visualLevel, setVisualLevel] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("granger-visual-level") ?? "medium";
+    return "medium";
+  });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1208,7 +1212,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model, conversationId },
+      body: { model, conversationId, visualLevel },
     }),
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1865,6 +1869,31 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 ))}
               </SelectContent>
             </Select>
+            {/* Visual level toggle */}
+            <div className="flex items-center border rounded-md h-9 overflow-hidden shrink-0">
+              {(["off", "low", "med", "high"] as const).map((lvl) => {
+                const value = lvl === "med" ? "medium" : lvl;
+                const isActive = visualLevel === value;
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => {
+                      setVisualLevel(value);
+                      localStorage.setItem("granger-visual-level", value);
+                    }}
+                    className={cn(
+                      "px-2 py-1 text-[10px] font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    title={`Visual mode: ${value}`}
+                  >
+                    {lvl === "off" ? "○" : lvl === "low" ? "◔" : lvl === "med" ? "◑" : "●"}
+                  </button>
+                );
+              })}
+            </div>
             {/* Interview UI — renders as overlay above the input area */}
             {pendingInterview && (
               <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
