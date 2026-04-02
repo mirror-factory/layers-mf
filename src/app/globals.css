@@ -72,16 +72,18 @@
   line-height: 1.6;
   overflow: visible;
   background: transparent !important;
+  position: relative;
+  clear: both;
+}
+.inline-html-render canvas {
+  display: block;
+  max-width: 100%;
 }
 .inline-html-render svg {
   max-width: 100%;
   height: auto;
   overflow: visible;
 }
-.inline-html-render * {
-  max-width: 100%;
-}
-/* Strip solid backgrounds — allow subtle rgba fills */
 .inline-html-render > div {
   background-image: none !important;
 }
