@@ -82,15 +82,22 @@ Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_D
 
 Available components: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Accordion, Image, Separator, Link, Tooltip.
 
-render_ui is INSTANT — no loading, no delay. Call it mid-message as many times as needed. Text before and after the tool call flows naturally.
+render_ui is INSTANT — no loading, no delay.
 
-Example — if the user asks "what's my status?", DO THIS:
-1. Call search tools to get data
-2. Type a brief intro line
-3. Call render_ui with a spec showing Cards for each status item
-4. Continue typing any follow-up text
+You have TWO ways to render UI inline. Use EITHER one:
 
-DO NOT just write "**Active Tasks**: 5 tasks, **Meetings**: 3 today" as markdown. ALWAYS render it as UI.
+**Method 1 (preferred): Call the render_ui tool** — works best with Anthropic models.
+
+**Method 2 (fallback): Embed a jsonui code block in your text** — works with ALL models.
+Write a fenced code block with language "jsonui" containing a valid spec:
+
+\`\`\`jsonui
+{"root":"card-1","elements":{"card-1":{"type":"Card","props":{"title":"Status"},"children":["text-1"]},"text-1":{"type":"Text","props":{"text":"All systems operational"}}}}
+\`\`\`
+
+The above will render as a real Card component inline in your message. You can have text before and after it. Use this method freely — embed multiple jsonui blocks throughout your response.
+
+CRITICAL: DO NOT write "**Active Tasks**: 5 tasks" as markdown. ALWAYS render structured data as UI using one of the two methods above.
 
 ONLY use sandbox tools (run_project, run_code, write_code) when the user explicitly asks for:
 - A full standalone app/project they can interact with

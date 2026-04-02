@@ -326,6 +326,63 @@ function DocumentArtifactEditor({ content, documentId }: { content: string; docu
   );
 }
 
+/**
+ * Rich message response that detects ```jsonui blocks in text
+ * and renders them as inline json-render components.
+ * Works with ANY model — the AI just needs to output JSON in a code fence.
+ */
+function RichMessageResponse({ text }: { text: string }) {
+  // Split text on ```jsonui ... ``` or ```json-render ... ``` blocks
+  const jsonuiRegex = /```(?:jsonui|json-render|json_render)\s*\n([\s\S]*?)\n```/g;
+  const parts: { type: "text" | "jsonui"; content: string }[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = jsonuiRegex.exec(text)) !== null) {
+    // Text before this block
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: "jsonui", content: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  // Remaining text after last block
+  if (lastIndex < text.length) {
+    parts.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  // If no jsonui blocks found, render normally
+  if (parts.length <= 1 && parts[0]?.type === "text") {
+    return <MessageResponse>{text}</MessageResponse>;
+  }
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.type === "text" && part.content.trim()) {
+          return <MessageResponse key={i}>{part.content}</MessageResponse>;
+        }
+        if (part.type === "jsonui") {
+          try {
+            const spec = JSON.parse(part.content);
+            if (spec.root && spec.elements) {
+              return (
+                <div key={i} className="my-3">
+                  <JsonRenderInline spec={spec} />
+                </div>
+              );
+            }
+          } catch {
+            // Invalid JSON — render as code block
+            return <MessageResponse key={i}>{`\`\`\`json\n${part.content}\n\`\`\``}</MessageResponse>;
+          }
+        }
+        return null;
+      })}
+    </>
+  );
+}
+
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
@@ -1687,13 +1744,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     );
                   })()}
 
-                  {/* Text response */}
+                  {/* Text response — with inline json-render detection */}
                   {text && (
                     <MessageContent>
                       {m.role === "user" ? (
                         text
                       ) : (
-                        <MessageResponse>{text}</MessageResponse>
+                        <RichMessageResponse text={text} />
                       )}
                     </MessageContent>
                   )}
