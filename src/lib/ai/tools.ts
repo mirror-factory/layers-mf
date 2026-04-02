@@ -653,8 +653,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
               source_id: `project-${Date.now()}`,
               content_type: "file",
               title: input.description ?? `Project: ${input.files.length} files`,
-              raw_content: input.files.map(f => `// === ${f.path} ===\n${f.content}`).join("\n\n"),
-              description_short: `${input.files.length} files: ${input.files.map(f => f.path).join(", ")}`,
+              raw_content: allFiles.map(f => `// === ${f.path} ===\n${f.content}`).join("\n\n"),
+              description_short: `${allFiles.length} files: ${allFiles.map(f => f.path).join(", ")}`,
               status: "ready",
             });
           }
@@ -668,8 +668,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             snapshotId: result.snapshotId ?? null,
             restoredFromSnapshot: !!snapshotId,
             outputFiles: result.outputFiles,
-            fileCount: input.files.length,
-            files: input.files,
+            fileCount: allFiles.length,
+            files: allFiles,
             runCommand: input.run_command,
             exposePort: input.expose_port,
             success: result.exitCode === 0,
