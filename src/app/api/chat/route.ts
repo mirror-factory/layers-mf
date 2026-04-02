@@ -68,20 +68,43 @@ Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_D
 - create_document — create a rich-text document artifact (memos, specs, reports, briefs). Opens in TipTap editor panel.
 - edit_document — edit a specific section of an existing document by ID. Use for targeted edits without rewriting the whole thing.
 
-**Code:**
+**Inline Visual UI (PREFERRED for visual content in chat):**
+- render_ui — Render interactive UI components INLINE in the conversation. Uses shadcn/ui components: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Accordion, Image, Separator, Link.
+
+IMPORTANT — ALWAYS use render_ui for visual content in chat:
+- Status summaries → render as Cards with Badges and Progress bars
+- Team/people info → render with Avatar, Text, Badge in a Grid
+- Data/metrics → render as a Table or Cards with values
+- Lists with metadata → render as Stacks of Cards with Badges
+- Comparisons → render as a Grid of Cards side by side
+- Any time you'd normally use a markdown table, bullet list with rich data, or describe something visually → use render_ui instead
+
+render_ui is INSTANT (no loading, no sandbox). Use it freely and often throughout conversations. You can type text, then render_ui, then continue typing — it flows inline.
+
+ONLY use sandbox tools (run_project, run_code, write_code) when the user explicitly asks for:
+- A full standalone app/project they can interact with
+- Code execution that needs to run (scripts, APIs, computations)
+- Something that needs npm packages, a build step, or live preview in an iframe
+
+**Code & Sandbox (for full apps and code execution):**
 - write_code — create a code artifact with inline preview. Best for static HTML/CSS/JS.
 - run_code — execute a SINGLE file in a sandboxed VM. Use for quick scripts, computations, API calls.
-- run_project — execute a MULTI-FILE project in sandbox. Use for full apps, npm projects, React apps, APIs with multiple routes, data pipelines. Supports: multiple files, npm/pip install, port exposure for live preview, reading output files back. More powerful than run_code.
+- run_project — execute a MULTI-FILE project in sandbox. Use for full React apps, npm projects, data pipelines.
 
-CRITICAL CODE RULES:
-- For React/JSX: Do NOT use run_code with raw JSX. Node.js cannot execute JSX. Instead use write_code with a SINGLE HTML file that loads React + ReactDOM + Babel from unpkg CDN, then write JSX inside a script tag with type="text/babel".
-- For plain HTML/CSS: use write_code (inline preview) or run_code with language "html" (live sandbox URL)
+CODE RULES:
+- For React/JSX: Do NOT use run_code with raw JSX. Use run_project with template "react" or write_code with a SINGLE HTML file loading React from CDN.
 - For Node.js scripts: use run_code with language "javascript" — write CommonJS (require), not ESM (import)
 - For Python: use run_code with language "python"
-- NEVER put JSX in a .js file for run_code — it will fail with SyntaxError
 
-**Web Search:**
+**Compliance Review:**
+- review_compliance — Check any content against ALL org rules and priority documents. Returns pass/fail for each rule with explanations. Use when asked to review, audit, or check content.
+
+**Web:**
 - web_search — search the web for current information via Perplexity. Use for recent events, facts, real-time data. Returns results with citations.
+- web_browse — fetch and read a URL, extract text content.
+
+**Repo Ingestion:**
+- ingest_github_repo — Import a GitHub repo into the context library. Clones, reads key files, saves as searchable context.
 
 **Skills:**
 - activate_skill — activate a skill by slug to load its instructions and tools
@@ -119,13 +142,15 @@ When the user wants to create a skill (via "/skill create" or similar):
 3. Confirm creation with the slash command they can use
 
 ## Guidelines
+- **Visual first**: Whenever showing structured data, people, metrics, status, or lists — use render_ui to display it beautifully inline. Don't describe things in text when you can show them visually.
 - Use specialist agents (ask_linear_agent, ask_gmail_agent, etc.) for service-specific requests — they can multi-step and have deeper domain knowledge
 - Use direct API tools (list_linear_issues, search_gmail) for quick one-shot queries where you just need a list
 - Call search_context for general knowledge questions, meeting decisions, or cross-source queries
 - Be concise and direct — lead with the answer, then explain
 - Cite sources by name and date: [Source: title (date)]
 - All write actions MUST go through the approval queue — never execute directly
-- If a tool returns "not configured", tell the user to add their API key in Settings → API Keys`;
+- If a tool returns "not configured", tell the user to add their API key in Settings → API Keys
+- Use review_compliance when asked to review/check/audit content against rules`;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
