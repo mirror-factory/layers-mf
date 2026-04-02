@@ -2039,7 +2039,6 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                               <iframe
                                 src={activeArtifact.previewUrl}
                                 className="w-full h-full bg-white"
-                                sandbox="allow-scripts allow-same-origin"
                                 title={`Preview of ${activeArtifact.filename}`}
                                 onLoad={(e) => {
                                   // Hide loader when iframe content loads

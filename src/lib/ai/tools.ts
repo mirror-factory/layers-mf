@@ -622,7 +622,39 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
           if (template !== "none") {
             const templateFiles = getTemplateFiles(template);
-            const scaffoldFiles = templateFiles.filter(f => !userPaths.has(f.path));
+
+            // Detect the actual App entry file from user files
+            const appFile = input.files.find(f =>
+              f.path.match(/App\.(jsx?|tsx?)$/) && !f.path.includes("components/")
+            );
+            const appImportPath = appFile
+              ? "./" + appFile.path.replace(/^src\//, "")
+              : "./App.jsx";
+
+            // Detect if user has CSS files to import
+            const appCss = input.files.find(f =>
+              f.path.match(/App\.css$/) || f.path === "src/App.css"
+            );
+            const indexCss = input.files.find(f =>
+              f.path.match(/index\.css$/) || f.path === "src/index.css"
+            );
+
+            // Build a custom main.jsx that imports the right files
+            const mainImports = [
+              "import React from 'react';",
+              "import ReactDOM from 'react-dom/client';",
+              indexCss ? `import './${indexCss.path.replace(/^src\//, "")}';` : "",
+              appCss ? `import './${appCss.path.replace(/^src\//, "")}';` : "",
+              `import App from '${appImportPath.replace(/\.(jsx?|tsx?)$/, "")}';`,
+            ].filter(Boolean).join("\n");
+            const mainContent = `${mainImports}\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);`;
+
+            // Replace template main.jsx with custom one
+            const patchedTemplateFiles = templateFiles.map(f =>
+              f.path === "src/main.jsx" ? { ...f, content: mainContent } : f
+            );
+
+            const scaffoldFiles = patchedTemplateFiles.filter(f => !userPaths.has(f.path));
             allFiles = [...scaffoldFiles, ...input.files];
           }
 
