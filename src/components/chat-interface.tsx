@@ -9,7 +9,7 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap,
+  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3,
 } from "lucide-react";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
@@ -1262,6 +1262,7 @@ interface ChatInterfaceInnerProps {
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
   const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
+  const [showContextBar, setShowContextBar] = useState(false);
   const [visualLevel, setVisualLevel] = useState<string>(() => {
     if (typeof window !== "undefined") return localStorage.getItem("granger-visual-level") ?? "medium";
     return "medium";
@@ -1719,19 +1720,24 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               <Bot className="h-10 w-10 mb-3 opacity-30" />
               <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
               <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
-              <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
+              <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
                 {[
-                  "Show my in-progress Linear issues",
-                  "What are our Q2 priorities?",
-                  "What decisions were made about the roadmap?",
-                  "Summarize last week\u2019s meetings",
-                  "Search my recent emails",
-                  "What Notion pages do we have?",
-                ].map((prompt) => (
+                  { text: "Chart my overdue Linear tasks by priority", accent: true },
+                  { text: "Research competitor pricing and write a brief", accent: false },
+                  { text: "Summarize my last Granola meeting into action items", accent: false },
+                  { text: "Build a dashboard app from our recent metrics", accent: true },
+                  { text: "Look up our brand guidelines and create a landing page", accent: false },
+                  { text: "Show my week ahead — tasks, meetings, deadlines", accent: true },
+                ].map(({ text: prompt, accent }) => (
                   <button
                     key={prompt}
                     onClick={() => sendMessage({ text: prompt })}
-                    className="rounded-full border bg-background px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+                    className={cn(
+                      "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
+                      accent
+                        ? "border-primary/30 text-primary hover:bg-primary/10"
+                        : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
                   >
                     {prompt}
                   </button>
@@ -2045,20 +2051,39 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
                   aria-label="Attach files"
-                  title="Attach files (images, PDFs, text)"
+                  title="Attach files"
                   className="shrink-0"
                 >
                   <Paperclip className="h-4 w-4" />
+                </Button>
+                {/* Context window toggle */}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowContextBar(prev => !prev)}
+                  aria-label="Toggle context window"
+                  title="Context window"
+                  className="shrink-0"
+                >
+                  <BarChart3 className="h-4 w-4" />
                 </Button>
 
                 <textarea
                   data-testid="chat-input"
                   aria-label="Chat message input"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto-expand textarea
+                    const el = e.target;
+                    el.style.height = "auto";
+                    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                  }}
                   placeholder="Ask about your documents, meetings, or team… (type / for commands)"
                   rows={1}
                   className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                  style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
                     // Slash menu navigation
                     if (slashMenuFiltered.length > 0) {
@@ -2100,9 +2125,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line · Drop files to attach</p>
-          {messages.length > 0 && (
-            <ContextWindowBar messages={messages} modelId={model} className="mt-1.5" />
+          {showContextBar && messages.length > 0 && (
+            <ContextWindowBar messages={messages} modelId={model} className="mt-2" />
           )}
         </div>
       </div>
