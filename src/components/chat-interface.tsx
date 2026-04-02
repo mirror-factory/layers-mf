@@ -415,7 +415,7 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
   Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
   Chart.defaults.responsive = true;
-  Chart.defaults.maintainAspectRatio = true;
+  Chart.defaults.maintainAspectRatio = false;
 }
 // Height reporting — poll until stable
 var lastH = 0, stableCount = 0;

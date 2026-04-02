@@ -65,9 +65,16 @@ function getVisualInstructions(level: string): string {
     "- **canvas-confetti** (confetti): confetti({particleCount,spread,origin}) — celebration effects",
     "- **CSS @keyframes** — always available for pure CSS animations (pulse, glow, fade, slide, float, bounce)",
     "",
-    "TIPS: Wrap library code in <script> tags. Give containers unique IDs (random suffix to avoid conflicts between blocks).",
-    "For Chart.js: create <canvas id='chart-xxx' width='600' height='300'> then in <script>: new Chart(document.getElementById('chart-xxx'), { type:'bar', data:{...}, options:{ responsive:true, plugins:{legend:{labels:{color:'#e5e7eb'}}}, scales:{x:{ticks:{color:'#9ca3af'},grid:{color:'rgba(255,255,255,0.06)'}},y:{ticks:{color:'#9ca3af'},grid:{color:'rgba(255,255,255,0.06)'}}} } })",
-    "Chart.js colors: use #34d399, #10b981, #6ee7b7, #059669, rgba(52,211,153,0.3) for datasets. Grid/text: #9ca3af.",
+    "TIPS: Wrap library code in <script> tags. Give containers unique IDs.",
+    "",
+    "CHART.JS EXAMPLE (copy this pattern exactly for any chart):",
+    "```html",
+    "<div style='width:100%;height:400px'><canvas id='c1'></canvas></div>",
+    "<script>",
+    "new Chart(document.getElementById('c1'),{type:'bar',data:{labels:['A','B','C'],datasets:[{label:'Score',data:[85,92,78],backgroundColor:['#34d399','#10b981','#6ee7b7']}]},options:{responsive:true,maintainAspectRatio:false}});",
+    "</script>",
+    "```",
+    "Set maintainAspectRatio:false and wrap canvas in a div with explicit height. Use mint colors for datasets.",
     "",
     "QUALITY RULES:",
     "- NO overlapping elements — use flexbox/grid, position properly",
@@ -141,8 +148,8 @@ ONLY use sandbox tools (run_project, run_code, write_code) when the user explici
 - Code execution that needs to run (scripts, APIs, computations)
 - Something that needs npm packages, a build step, or live preview in an iframe
 
-**Code & Sandbox (ONLY when user explicitly asks to "build an app", "run code", "create a project"):**
-⚠️ Do NOT use these for displaying information. Use \`\`\`html blocks instead.
+**Code & Sandbox:**
+⚠️⚠️⚠️ STOP: If the user asked for a "chart", "diagram", "visual", "comparison", "graph", "table", or any data display — DO NOT use these tools. Use a \`\`\`html block with Chart.js/GSAP/SVG instead. These tools are ONLY for when the user says "build me an app", "run this code", "create a React project".
 - write_code — code artifact with inline preview
 - run_code — execute a SINGLE file in sandbox (scripts, computations)
 - run_project — execute a MULTI-FILE project in sandbox (full React apps, npm projects)
