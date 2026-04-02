@@ -369,10 +369,9 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** CDN libraries injected into every sandboxed iframe for inline HTML */
+/** CDN libraries for inline HTML rendering */
 const INLINE_LIBS = [
   "https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js",
-  "https://cdn.jsdelivr.net/npm/gsap@3/dist/MotionPathPlugin.min.js",
   "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
   "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js",
   "https://cdn.jsdelivr.net/npm/roughjs@4/bundled/rough.js",
@@ -381,82 +380,76 @@ const INLINE_LIBS = [
 ];
 
 /**
- * Inline HTML block — renders in a sandboxed iframe for full JS execution
- * with ZERO injection risk (iframe cannot access parent page, cookies, or DOM).
- * Libraries (GSAP, Chart.js, anime.js, Rough.js, Zdog, confetti) are injected.
+ * Inline HTML block — renders directly in DOM with dangerouslySetInnerHTML.
+ * Scripts execute via dynamic script elements for Chart.js/GSAP support.
+ * No iframe = no height issues.
  */
 function InlineHtmlBlock({ html }: { html: string }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(400);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const libsLoaded = useRef(false);
 
-  // Build the full HTML document for the iframe
-  const iframeSrc = useMemo(() => {
-    const libScripts = INLINE_LIBS.map(url => `<script src="${url}"><\/script>`).join("\n");
-    return `<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: hsl(160,15%,5%) !important; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #e5e7eb; line-height: 1.6;
-  }
-  canvas { background: transparent !important; display: block; min-height: 530px; }
-  a { color: #34d399; }
-</style>
-${libScripts}
-</head><body>${html}
-<script>
-// Chart.js dark theme defaults
-if (typeof Chart !== 'undefined') {
-  Chart.defaults.color = '#9ca3af';
-  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-  Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
-  Chart.defaults.responsive = true;
-  Chart.defaults.maintainAspectRatio = false;
-}
-// Height reporting
-function rh() {
-  var all = document.body.querySelectorAll('*');
-  var maxBottom = 0;
-  for (var i = 0; i < all.length; i++) {
-    var r = all[i].getBoundingClientRect();
-    if (r.bottom > maxBottom) maxBottom = r.bottom;
-  }
-  var h = Math.ceil(maxBottom) + 16;
-  if (h > 30) window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
-}
-setTimeout(rh, 200);
-setTimeout(rh, 800);
-setTimeout(rh, 2000);
-setTimeout(rh, 4000);
-<\/script></body></html>`;
-  }, [html]);
-
-  // Listen for height messages from the iframe
   useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (e.data?.type === "inline-html-height" && typeof e.data.height === "number") {
-        const h = Math.max(200, Math.min(e.data.height, 800));
-        setHeight(h);
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+
+    // Load CDN libs once (appended to document head)
+    if (!libsLoaded.current) {
+      libsLoaded.current = true;
+      for (const url of INLINE_LIBS) {
+        if (!document.querySelector(`script[src="${url}"]`)) {
+          const s = document.createElement("script");
+          s.src = url;
+          s.async = true;
+          document.head.appendChild(s);
+        }
       }
     }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
+
+    // Strip gradients from inline styles
+    const cleaned = html
+      .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
+      .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
+
+    // Separate scripts from HTML
+    const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
+    const scripts: string[] = [];
+    let match;
+    while ((match = scriptRegex.exec(cleaned)) !== null) {
+      if (match[1].trim()) scripts.push(match[1]);
+    }
+    const htmlOnly = cleaned.replace(scriptRegex, "");
+
+    // Set HTML
+    container.innerHTML = htmlOnly;
+
+    // Execute scripts after a delay (let CDN libs load)
+    const timer = setTimeout(() => {
+      for (const code of scripts) {
+        try {
+          // Set Chart.js dark defaults before each script
+          if (typeof (window as unknown as Record<string, unknown>).Chart !== "undefined") {
+            const C = (window as unknown as Record<string, { defaults: Record<string, unknown> }>).Chart;
+            C.defaults.color = "#9ca3af";
+            C.defaults.borderColor = "rgba(255,255,255,0.06)";
+            C.defaults.responsive = true;
+            C.defaults.maintainAspectRatio = false;
+          }
+          const fn = new Function(code);
+          fn();
+        } catch (err) {
+          console.warn("[inline-html] Script error:", err);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [html]);
 
   return (
-    <iframe
-      ref={iframeRef}
-      srcDoc={iframeSrc}
-      width="100%"
-      height={height}
-      className="my-2 border-0 block"
-      style={{ background: "hsl(160,15%,5%)", colorScheme: "dark", borderRadius: "8px" }}
-      sandbox="allow-scripts"
-      title="Inline visual"
+    <div
+      ref={containerRef}
+      className="my-2 inline-html-render"
+      style={{ minHeight: "50px" }}
     />
   );
 }
