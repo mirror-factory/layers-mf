@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
-const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: {
@@ -45,7 +45,7 @@ export default function RootLayout({
       <head>
         {/* Libraries for inline visual rendering in chat — loaded once, available to all sandboxed iframes */}
       </head>
-      <body className={`${inter.className} ${playfair.variable} min-h-screen bg-background font-sans antialiased`}>
+      <body className={`${inter.className} ${spaceGrotesk.variable} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider>
           {children}
           <Toaster richColors position="bottom-right" />

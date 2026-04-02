@@ -4,13 +4,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, Bot, User, Square,
+  Send, Loader2, User, Square,
   FileText, Mic, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
   Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock,
 } from "lucide-react";
+import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
@@ -1727,7 +1728,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <Bot className="h-10 w-10 mb-3 opacity-30" />
+              <div className="mb-3 opacity-60">
+                <NeuralDots size={48} dotCount={14} />
+              </div>
               <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
               <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
               <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
@@ -1772,14 +1775,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
             return (
               <div key={m.id} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
-                <div
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {m.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </div>
+                {m.role === "user" ? (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                    <User className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <div className="rounded-full overflow-hidden ring-1 ring-primary/10 shrink-0" style={{ width: 36, height: 36 }}>
+                    <NeuralDots size={40} dotCount={12} />
+                  </div>
+                )}
 
                 <Message from={m.role} className="min-w-0 flex-1">
                   {/* Tool call cards */}
@@ -1858,9 +1862,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {isLoading && (
-            <div className="inline-flex items-center gap-1.5 py-0.5">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground">Thinking…</span>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full overflow-hidden ring-1 ring-primary/10 shrink-0" style={{ width: 36, height: 36 }}>
+                <NeuralDots size={40} dotCount={12} />
+              </div>
+              <div>
+                <p className="text-sm text-foreground">Thinking…</p>
+                <p className="text-[10px] text-muted-foreground">Processing your request</p>
+              </div>
             </div>
           )}
 

@@ -25,7 +25,7 @@ export function HomeHero({ greeting, displayName, subtitle }: HomeHeroProps) {
         <p className="text-xs font-medium text-primary/70 tracking-wide uppercase mb-2">
           Granger
         </p>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight">
           {greeting}, {displayName}
         </h1>
         <p className="text-muted-foreground mt-2 max-w-lg text-sm">

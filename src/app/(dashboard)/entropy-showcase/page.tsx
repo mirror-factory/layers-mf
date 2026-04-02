@@ -8,7 +8,7 @@ export default function EntropyShowcasePage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-16">
       <div>
-        <h1 className="text-2xl font-serif font-bold mb-2">Animation Showcase</h1>
+        <h1 className="text-2xl font-display font-bold mb-2">Animation Showcase</h1>
         <p className="text-muted-foreground text-sm">NeuralDots — multi-layer SVG neural network animation for the Granger brand.</p>
       </div>
 
@@ -205,7 +205,7 @@ export default function EntropyShowcasePage() {
               <div className="rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
                 <NeuralDots size={32} dotCount={6} />
               </div>
-              <span className="font-serif text-3xl font-bold text-primary">Granger</span>
+              <span className="font-display text-3xl font-bold text-primary">Granger</span>
             </div>
             <p className="text-sm text-muted-foreground">Your AI Chief of Staff</p>
           </div>

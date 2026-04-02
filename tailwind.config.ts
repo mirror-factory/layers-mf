@@ -17,7 +17,7 @@ const config: Config = {
   	},
   	extend: {
   		fontFamily: {
-  			serif: ['var(--font-serif)', 'Georgia', 'serif'],
+  			display: ['var(--font-display)', 'Inter', 'sans-serif'],
   		},
   		colors: {
   			border: 'hsl(var(--border))',

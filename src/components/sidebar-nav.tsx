@@ -169,7 +169,7 @@ export function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span className="font-serif text-lg font-bold tracking-tight text-primary">Granger</span>
+        <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
       </div>
 
       {/* Backdrop (mobile only) */}
@@ -194,9 +194,9 @@ export function SidebarNav({
         <div className={cn("flex items-center border-b", isVisuallyCollapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
             {!isVisuallyCollapsed ? (
-              <span className="font-serif text-lg font-bold tracking-tight text-primary">Granger</span>
+              <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
             ) : (
-              <span className="font-serif text-lg font-bold text-primary">G</span>
+              <span className="font-display text-lg font-bold text-primary">G</span>
             )}
           </div>
           <div className="flex items-center gap-1">
