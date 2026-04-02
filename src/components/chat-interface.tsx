@@ -387,15 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Estimate height from content — canvas/chart needs ~350px, SVG/HTML varies
-  const estimatedHeight = useMemo(() => {
-    if (html.includes("<canvas")) return 350;
-    if (html.includes("<svg")) return 300;
-    // Count rough lines of visible content
-    const lines = html.replace(/<[^>]+>/g, "").split("\n").filter(l => l.trim()).length;
-    return Math.max(120, Math.min(lines * 28, 500));
-  }, [html]);
-  const [height, setHeight] = useState(estimatedHeight);
+  const [height, setHeight] = useState(400);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -452,14 +444,8 @@ setTimeout(rh, 1500);
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.data?.type === "inline-html-height" && typeof e.data.height === "number") {
-        // Only shrink from estimate or grow slightly — never add huge empty space
-        const reported = e.data.height;
-        setHeight(prev => {
-          if (reported < 40) return prev; // ignore tiny values
-          if (reported < prev) return reported; // shrink to fit
-          if (reported > prev && reported < prev * 1.5) return reported; // modest growth OK
-          return prev; // reject huge jumps
-        });
+        const h = Math.max(60, Math.min(e.data.height, 600));
+        setHeight(h);
       }
     }
     window.addEventListener("message", onMessage);
