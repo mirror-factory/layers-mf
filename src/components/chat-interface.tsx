@@ -369,7 +369,7 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** Inline HTML block that renders HTML and executes scripts (for GSAP, D3, Chart.js, etc.) */
+/** Inline HTML block — renders HTML+CSS only, no JavaScript (safe from injection) */
 function InlineHtmlBlock({ html }: { html: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -377,35 +377,16 @@ function InlineHtmlBlock({ html }: { html: string }) {
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // Strip gradients from inline styles
+    // Strip ALL scripts, event handlers, and dangerous patterns
     const cleaned = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
       .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
       .replace(/javascript:/gi, "")
       .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
       .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
 
-    // Extract scripts and HTML separately
-    const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
-    const scripts: string[] = [];
-    let match;
-    while ((match = scriptRegex.exec(cleaned)) !== null) {
-      if (match[1].trim()) scripts.push(match[1]);
-    }
-    const htmlWithoutScripts = cleaned.replace(scriptRegex, "");
-
-    // Set the HTML content
-    container.innerHTML = htmlWithoutScripts;
-
-    // Execute scripts — allow full DOM access for interactivity
-    // Scripts need to find elements, attach handlers, call fetch, use GSAP etc.
-    for (const code of scripts) {
-      try {
-        const fn = new Function(code);
-        fn();
-      } catch (err) {
-        console.warn("[inline-html] Script error:", err);
-      }
-    }
+    // Set the sanitized HTML content (CSS animations still work via @keyframes in <style>)
+    container.innerHTML = cleaned;
   }, [html]);
 
   return <div ref={containerRef} className="my-2 inline-html-render" />;

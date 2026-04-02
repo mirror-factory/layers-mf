@@ -36,64 +36,42 @@ const ALLOWED_MODELS = new Set([
   "anthropic/claude-sonnet-4.5",
 ]);
 
+
 function getVisualInstructions(level: string): string {
   if (level === "off") return "";
-  const freq = level === "low"
-    ? `VISUAL MODE: LOW — Only use inline HTML visuals when the user explicitly asks ("show me a diagram", "visualize this"). Otherwise use plain text.`
-    : level === "high"
-    ? `VISUAL MODE: HIGH — Use inline HTML visuals generously throughout conversations. Explain concepts with diagrams, illustrate analogies with visuals, show animated greetings, visualize thought processes, create visual metaphors and illustrations. Be creative — this is full HTML/CSS/SVG so you can animate, draw, illustrate anything. Even simple explanations benefit from a small visual accent. Make conversations visually rich and engaging.`
-    : `VISUAL MODE: MEDIUM — Use inline HTML visuals for structured data (metrics, people, status, comparisons, tables, diagrams). Use text for simple answers and conversations.`;
-
-  return `
-## IMPORTANT: Inline Visual Content
-
-You can embed \`\`\`html code blocks in your text that render as real HTML/SVG directly in the chat. No iframe, no sandbox. Text flows around them naturally.
-
-${freq}
-
-AVAILABLE LIBRARIES (loaded globally — use in <script> tags inside html blocks):
-- **GSAP** (gsap): Timeline animations, morphing, staggered effects. PREFERRED for all animations. Use: gsap.to(), gsap.from(), gsap.timeline(), gsap.fromTo(). Always wrap in: if(typeof gsap!=='undefined'){...}
-- **anime.js** (anime): Alternative animation lib. Use: anime({targets,translateX,duration,easing}). Wrap in: if(typeof anime!=='undefined'){...}
-
-AVOID these (unreliable in inline context):
-- Mermaid — syntax errors are common, use SVG diagrams instead
-- D3.js — timing issues with inline rendering, use CSS/SVG/GSAP instead
-- Chart.js — use styled HTML/CSS bars and SVG instead for simple charts
-
-INLINE AI-POWERED TOOLS:
-Your html blocks can include interactive tools that call AI. Use the /api/generate endpoint:
-\`\`\`
-fetch('/api/generate', {
-  method: 'POST',
-  headers: {'Content-Type':'application/json'},
-  body: JSON.stringify({ prompt: 'Write a tagline for a coffee shop', system: 'You are a copywriter', maxTokens: 100 })
-}).then(r=>r.json()).then(d=> outputEl.textContent = d.text)
-\`\`\`
-Use this to build mini-tools inline: description writers, name generators, email drafters, summarizers, translators, tone adjusters, etc. Include an input field, a generate button, and an output area. Style them flush with the chat.
-
-QUALITY RULES (critical — follow strictly):
-- Always check library exists before using: if(typeof gsap!=='undefined'){...}
-- Give ALL containers unique IDs using random suffixes: id="chart-${Math.random().toString(36).slice(2,8)}"
-- NO loading spinners or "Building..." placeholders — render content immediately
-- NO overlapping elements — test your layout mentally. Use proper positioning.
-- ALL text must be legible: minimum 12px font-size, proper contrast against dark background
-- Prefer GSAP for animations — it's reliable, smooth, and powerful
-- Use CSS animations (@keyframes) as fallback if GSAP isn't loaded yet
-- Max height 400px for any visual block — don't dominate the chat
-- Prefer pure CSS/SVG/HTML over JS libraries when possible — more reliable
-
-STYLE GUIDE:
-- Dark chat UI — design for dark backgrounds
-- Colors: #e5e7eb (text), #9ca3af (secondary), #6b7280 (muted), #34d399 (mint accent), #10b981 (darker mint), rgba(52,211,153,0.08) (subtle tint)
-- Borders: 1px solid rgba(255,255,255,0.06), border-radius 8-12px
-- Subtle fills OK: rgba(52,211,153,0.08), rgba(255,255,255,0.03). NO solid bright backgrounds, NO gradients.
-- Keep it FLUSH with the chat — no container backgrounds wrapping everything. Content feels inline.
-- Be creative: CSS animations, SVG illustrations, GSAP timelines, D3 visualizations, Chart.js graphs. This is a rich canvas.
-- Typography: inherit font, 500-700 weight, 11-13px body, 18-24px headings
-- NO emojis in HTML. NO font-family changes.
-
-Do NOT use write_code, run_code, or run_project for visual displays. Those are ONLY for full applications.
-`;
+  const freqMap: Record<string, string> = {
+    low: "VISUAL MODE: LOW — Only use inline HTML visuals when the user explicitly asks. Otherwise use plain text.",
+    medium: "VISUAL MODE: MEDIUM — Use inline HTML visuals for structured data (metrics, people, status, comparisons, tables, diagrams). Use text for simple answers.",
+    high: "VISUAL MODE: HIGH — Use inline HTML visuals generously. Explain concepts with diagrams, illustrate analogies, animate greetings, visualize thought processes. Be creative with HTML+CSS+SVG. Even simple explanations benefit from a small visual accent.",
+  };
+  const freq = freqMap[level] ?? freqMap.medium;
+  return [
+    "## IMPORTANT: Inline Visual Content",
+    "",
+    "Embed ```html code blocks in your text — they render as real HTML/SVG inline in the chat. No iframe, no sandbox.",
+    "",
+    freq,
+    "",
+    "CAPABILITIES: HTML + CSS + SVG only. NO JavaScript (<script> stripped for security). Use CSS @keyframes for animations. <style> tags work.",
+    "",
+    "QUALITY RULES:",
+    "- NO overlapping elements — use flexbox/grid",
+    "- ALL text minimum 12px, high contrast",
+    "- Max height 400px per visual",
+    "- NO loading placeholders — render immediately",
+    "- Use CSS @keyframes generously: pulse, fade, glow, slide, float",
+    "",
+    "STYLE GUIDE:",
+    "- Dark background UI",
+    "- Colors: #e5e7eb (text), #9ca3af (secondary), #6b7280 (muted), #34d399 (mint), #10b981 (dark mint)",
+    "- Fills: rgba(52,211,153,0.08) mint tint, rgba(255,255,255,0.03) card. NO solid bright backgrounds, NO gradients.",
+    "- Borders: 1px solid rgba(255,255,255,0.06), border-radius 8-12px",
+    "- Keep FLUSH — no wrapping boxes, content feels inline",
+    "- Typography: inherit font, 500-700 weight, 12-13px body, 18-24px headings",
+    "- NO emojis in HTML. NO font-family changes.",
+    "",
+    "Do NOT use write_code/run_code/run_project for visuals — those are for full applications only.",
+  ].join("\n");
 }
 
 const AGENT_INSTRUCTIONS = `You are Granger, Mirror Factory's AI chief of staff. You serve three partners: Alfonso, Kyle, and Bobby.

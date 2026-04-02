@@ -42,12 +42,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Libraries for inline HTML rendering in chat — only reliable ones */}
-        <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js" defer />
-        <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/MotionPathPlugin.min.js" defer />
-        <script src="https://cdn.jsdelivr.net/npm/animejs@3/lib/anime.min.js" defer />
-      </head>
+      <head />
       <body className={`${inter.className} ${playfair.variable} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider>
           {children}
