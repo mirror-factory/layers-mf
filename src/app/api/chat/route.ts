@@ -15,13 +15,25 @@ import type { Json } from "@/lib/database.types";
 export const maxDuration = 60;
 
 const ALLOWED_MODELS = new Set([
-  "anthropic/claude-haiku-4-5-20251001",
-  "anthropic/claude-sonnet-4.5",
+  // Flagship
   "anthropic/claude-opus-4.6",
+  "openai/gpt-5.4",
+  "google/gemini-3-pro",
+  // Balanced
+  "anthropic/claude-sonnet-4.6",
+  "openai/gpt-5.4-mini",
+  "google/gemini-3-flash",
+  // Fast
+  "anthropic/claude-haiku-4.5",
+  "anthropic/claude-haiku-4-5-20251001", // legacy ID
+  "openai/gpt-5-nano",
+  "google/gemini-2.5-flash-lite",
+  // Legacy (in case old conversations reference these)
   "openai/gpt-4o-mini",
   "openai/gpt-4o",
   "google/gemini-flash",
   "google/gemini-pro",
+  "anthropic/claude-sonnet-4.5",
 ]);
 
 function getVisualInstructions(level: string): string {
