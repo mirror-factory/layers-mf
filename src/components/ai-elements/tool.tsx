@@ -113,7 +113,7 @@ export const ToolHeader = ({
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center gap-2 py-1 px-0 text-xs transition-colors hover:text-foreground",
+        "inline-flex items-center gap-1.5 py-0.5 text-xs transition-colors hover:text-foreground",
         config.color,
         className,
       )}
@@ -122,12 +122,12 @@ export const ToolHeader = ({
       {config.icon}
       <span className="text-muted-foreground">{friendlyName}</span>
       {state === "output-available" && (
-        <span className="text-primary">&#10003;</span>
+        <span className="text-primary text-[10px]">&#10003;</span>
       )}
       {state === "output-error" && (
-        <span className="text-red-400">failed</span>
+        <span className="text-red-400 text-[10px]">failed</span>
       )}
-      <ChevronRight className="h-3 w-3 text-muted-foreground/50 transition-transform group-data-[state=open]:rotate-90 ml-auto" />
+      <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/40 transition-transform group-data-[state=open]:rotate-90" />
     </CollapsibleTrigger>
   );
 };

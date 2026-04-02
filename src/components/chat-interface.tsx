@@ -1858,10 +1858,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {isLoading && (
-            <div className="flex items-center gap-2 py-1">
-              <div className="relative h-5 w-5 rounded-full overflow-hidden shrink-0">
-                <Entropy size={20} />
-              </div>
+            <div className="inline-flex items-center gap-1.5 py-0.5">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
               <span className="text-xs text-muted-foreground">Thinking…</span>
             </div>
           )}
@@ -2090,8 +2088,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             </div>
           </div>
+          {/* Context window bar — pops up above prompt area */}
           {showContextBar && messages.length > 0 && (
-            <ContextWindowBar messages={messages} modelId={model} className="mt-2" />
+            <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
+              <div className="max-w-5xl mx-auto">
+                <ContextWindowBar messages={messages} modelId={model} />
+              </div>
+            </div>
           )}
         </div>
       </div>
