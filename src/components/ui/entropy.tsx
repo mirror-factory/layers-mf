@@ -25,8 +25,8 @@ export function Entropy({ className = "", size = 400 }: EntropyProps) {
     canvas.style.height = `${size}px`
     ctx.scale(dpr, dpr)
 
-    // 使用黑色主题
-    const particleColor = '#ffffff'
+    // Mint theme
+    const particleColor = '#34d399'
 
     class Particle {
       x: number
@@ -161,17 +161,7 @@ export function Entropy({ className = "", size = 400 }: EntropyProps) {
         })
       })
 
-      // 添加分隔线和文字
-      ctx.strokeStyle = `${particleColor}4D`
-      ctx.lineWidth = 0.5
-      ctx.beginPath()
-      ctx.moveTo(size / 2, 0)
-      ctx.lineTo(size / 2, size)
-      ctx.stroke()
-
-      ctx.font = '12px monospace'
-      ctx.fillStyle = '#ffffff'
-      ctx.textAlign = 'center'
+      // No divider or text — clean particle animation only
 
       time++
       animationId = requestAnimationFrame(animate)
@@ -187,7 +177,7 @@ export function Entropy({ className = "", size = 400 }: EntropyProps) {
   }, [size])
 
   return (
-    <div className={`relative bg-black ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
       <canvas
         ref={canvasRef}
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
