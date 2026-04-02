@@ -39,15 +39,25 @@ You can embed \`\`\`html code blocks in your text that render as real HTML/SVG d
 
 ${freq}
 
-AVAILABLE LIBRARIES (loaded globally — use freely in <script> tags inside your html blocks):
-- **GSAP** (gsap): Timeline animations, morphing, scroll effects. Use: gsap.to(), gsap.from(), gsap.timeline()
-- **D3.js** (d3): Data-driven documents, force graphs, tree layouts, complex visualizations
-- **Chart.js** (Chart): Bar charts, line charts, doughnut, radar. Create with new Chart(ctx, config)
-- **anime.js** (anime): Smooth animations, SVG morphing, staggered effects
-- **Mermaid**: Flowcharts, sequence diagrams, gantt charts. Use <div class="mermaid">graph TD; A-->B</div>
-- **Lottie** (lottie): Play Lottie JSON animations
+AVAILABLE LIBRARIES (loaded globally — use in <script> tags inside html blocks):
+- **GSAP** (gsap): Timeline animations, morphing, staggered effects. PREFERRED for all animations. Use: gsap.to(), gsap.from(), gsap.timeline(), gsap.fromTo(). Always wrap in: if(typeof gsap!=='undefined'){...}
+- **anime.js** (anime): Alternative animation lib. Use: anime({targets,translateX,duration,easing}). Wrap in: if(typeof anime!=='undefined'){...}
 
-When using libraries, wrap code in <script> tags inside the html block. Give containers unique IDs to avoid conflicts.
+AVOID these (unreliable in inline context):
+- Mermaid — syntax errors are common, use SVG diagrams instead
+- D3.js — timing issues with inline rendering, use CSS/SVG/GSAP instead
+- Chart.js — use styled HTML/CSS bars and SVG instead for simple charts
+
+QUALITY RULES (critical — follow strictly):
+- Always check library exists before using: if(typeof gsap!=='undefined'){...}
+- Give ALL containers unique IDs using random suffixes: id="chart-${Math.random().toString(36).slice(2,8)}"
+- NO loading spinners or "Building..." placeholders — render content immediately
+- NO overlapping elements — test your layout mentally. Use proper positioning.
+- ALL text must be legible: minimum 12px font-size, proper contrast against dark background
+- Prefer GSAP for animations — it's reliable, smooth, and powerful
+- Use CSS animations (@keyframes) as fallback if GSAP isn't loaded yet
+- Max height 400px for any visual block — don't dominate the chat
+- Prefer pure CSS/SVG/HTML over JS libraries when possible — more reliable
 
 STYLE GUIDE:
 - Dark chat UI — design for dark backgrounds
