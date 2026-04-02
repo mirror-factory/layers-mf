@@ -398,34 +398,45 @@ function InlineHtmlBlock({ html }: { html: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: transparent !important; }
+  html, body { background: transparent !important; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #e5e7eb; line-height: 1.6; padding: 0;
+    color: #e5e7eb; line-height: 1.6;
   }
-  canvas { background: transparent !important; }
+  canvas { background: transparent !important; display: block; }
   a { color: #34d399; }
 </style>
 ${libScripts}
 </head><body>${html}
 <script>
-// Set Chart.js dark defaults if loaded
+// Chart.js dark theme defaults
 if (typeof Chart !== 'undefined') {
   Chart.defaults.color = '#9ca3af';
   Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-  Chart.defaults.backgroundColor = 'transparent';
   Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
+  Chart.defaults.responsive = true;
+  Chart.defaults.maintainAspectRatio = true;
 }
-// Auto-resize
+// Height reporting — poll until stable
+var lastH = 0, stableCount = 0;
 function rh() {
-  var h = document.body.scrollHeight || document.body.offsetHeight || 200;
+  var els = document.body.children;
+  var h = 0;
+  for (var i = 0; i < els.length; i++) {
+    var r = els[i].getBoundingClientRect();
+    var bottom = r.top + r.height;
+    if (bottom > h) h = bottom;
+  }
+  h = Math.ceil(h) + 8;
+  if (h < 20) h = 200;
+  if (h !== lastH) { lastH = h; stableCount = 0; }
+  else { stableCount++; }
   window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
+  if (stableCount < 5) setTimeout(rh, 500);
 }
-setTimeout(rh, 50);
-setTimeout(rh, 300);
-setTimeout(rh, 1000);
-setTimeout(rh, 3000);
-new ResizeObserver(rh).observe(document.body);
+setTimeout(rh, 100);
+setTimeout(rh, 500);
+setTimeout(rh, 1500);
 <\/script></body></html>`;
   }, [html]);
 
@@ -445,7 +456,7 @@ new ResizeObserver(rh).observe(document.body);
       ref={iframeRef}
       srcDoc={iframeSrc}
       className="my-2 w-full border-0"
-      style={{ height: height > 0 ? `${height}px` : "auto", minHeight: height > 0 ? undefined : "100px", background: "transparent", colorScheme: "dark", border: "none" }}
+      style={{ height: height > 0 ? `${height}px` : "200px", background: "transparent", colorScheme: "dark", border: "none", transition: "height 0.2s ease" }}
       sandbox="allow-scripts"
       // eslint-disable-next-line react/no-unknown-property
       {...{ allowtransparency: "true" } as Record<string, string>}
