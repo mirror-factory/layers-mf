@@ -1093,6 +1093,118 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
+    // === Artifact tools ===
+    artifact_list: tool({
+      description: "List artifacts. Filter by type, search by title.",
+      inputSchema: z.object({
+        type: z.enum(["code", "document", "sandbox"]).optional().describe("Filter by artifact type"),
+        search: z.string().optional().describe("Search artifacts by title"),
+        limit: z.number().optional().default(10).describe("Max results to return"),
+      }),
+      execute: async ({ type, search, limit }) => {
+        const sb = supabase as any;
+        let query = sb
+          .from("artifacts")
+          .select("id, type, title, description_oneliner, tags, current_version, total_cost_usd, updated_at")
+          .eq("org_id", orgId)
+          .order("updated_at", { ascending: false })
+          .limit(limit ?? 10);
+
+        if (type) query = query.eq("type", type);
+        if (search) query = query.ilike("title", `%${search}%`);
+
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        return { artifacts: data ?? [], count: (data ?? []).length };
+      },
+    }),
+
+    artifact_get: tool({
+      description: "Get artifact content and version history.",
+      inputSchema: z.object({
+        artifactId: z.string().describe("The artifact ID"),
+      }),
+      execute: async ({ artifactId }) => {
+        const sb = supabase as any;
+
+        // Fetch the artifact
+        const { data: artifact, error: artErr } = await sb
+          .from("artifacts")
+          .select("*")
+          .eq("id", artifactId)
+          .eq("org_id", orgId)
+          .single();
+
+        if (artErr || !artifact) return { error: artErr?.message ?? "Artifact not found" };
+
+        // Fetch files for current version
+        const { data: files } = await sb
+          .from("artifact_files")
+          .select("file_path, content, language, size_bytes")
+          .eq("artifact_id", artifactId)
+          .eq("version_number", artifact.current_version);
+
+        // Get version count
+        const { count: versionCount } = await sb
+          .from("artifact_versions")
+          .select("id", { count: "exact", head: true })
+          .eq("artifact_id", artifactId);
+
+        return {
+          artifact,
+          files: files ?? [],
+          versionCount: versionCount ?? 0,
+        };
+      },
+    }),
+
+    artifact_version: tool({
+      description: "List or restore artifact versions.",
+      inputSchema: z.object({
+        artifactId: z.string().describe("The artifact ID"),
+        action: z.enum(["list", "restore"]).describe("Action to perform"),
+        versionNumber: z.number().optional().describe("Version number to restore (required for restore)"),
+      }),
+      execute: async ({ artifactId, action, versionNumber }) => {
+        const sb = supabase as any;
+
+        if (action === "list") {
+          const { data: versions, error } = await sb
+            .from("artifact_versions")
+            .select("version_number, change_summary, change_type, created_at, created_by_ai, model_used, cost_usd")
+            .eq("artifact_id", artifactId)
+            .order("version_number", { ascending: false });
+
+          if (error) return { error: error.message };
+          return { versions: versions ?? [] };
+        }
+
+        // Restore action
+        if (!versionNumber) return { error: "versionNumber is required for restore" };
+
+        // Get the target version's content
+        const { data: targetVersion, error: tvErr } = await sb
+          .from("artifact_versions")
+          .select("content")
+          .eq("artifact_id", artifactId)
+          .eq("version_number", versionNumber)
+          .single();
+
+        if (tvErr || !targetVersion) return { error: tvErr?.message ?? "Version not found" };
+
+        const result = await createVersion(sb, {
+          artifactId,
+          content: targetVersion.content,
+          changeSummary: `Restored from version ${versionNumber}`,
+          changeType: "restore",
+          createdBy: userId,
+          createdByAi: true,
+        });
+
+        return result;
+      },
+    }),
+
     // === Web tools ===
     web_browse: tool({
       description: "Fetch a URL and extract text content. Use to read web pages, docs, articles.",
