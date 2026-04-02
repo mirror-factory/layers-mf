@@ -74,6 +74,11 @@
   background: transparent !important;
   position: relative;
   clear: both;
+  /* Force flex item to respect child height */
+  flex-shrink: 0;
+  min-height: fit-content;
+  height: auto !important;
+  contain: none;
 }
 .inline-html-render canvas {
   display: block;
