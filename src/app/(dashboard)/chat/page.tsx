@@ -117,22 +117,22 @@ export default function ChatPage() {
           panelVisible ? "md:static md:translate-x-0" : "md:hidden"
         )}
       >
-        <div className="p-3 border-b flex items-center gap-2">
+        <div className="p-2 border-b flex items-center gap-1.5">
           <Button
             onClick={createConversation}
             variant="outline"
-            className="flex-1 justify-start gap-2 text-xs"
+            className="flex-1 justify-start gap-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
             size="sm"
           >
             <Plus className="h-3.5 w-3.5" />
-            New conversation
+            New chat
           </Button>
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
+            onClick={() => { setSidebarOpen(false); setPanelVisible(false); }}
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
             aria-label="Close sidebar"
           >
-            <X className="h-4 w-4" />
+            <PanelLeftClose className="h-4 w-4" />
           </button>
         </div>
 
@@ -181,26 +181,33 @@ export default function ChatPage() {
 
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="border-b px-4 sm:px-6 py-2 shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="border-b px-3 py-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            {/* Sidebar toggle — always visible */}
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
-              aria-label="Open conversations"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
-            <button
-              onClick={togglePanel}
-              className="hidden md:inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label={panelVisible ? "Hide conversation list" : "Show conversation list"}
-              title={panelVisible ? "Hide conversation list" : "Show conversation list"}
+              onClick={() => {
+                // Mobile: toggle sidebar overlay. Desktop: toggle panel
+                if (window.innerWidth < 768) setSidebarOpen(true);
+                else togglePanel();
+              }}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
+              aria-label={panelVisible ? "Hide conversations" : "Show conversations"}
+              title={panelVisible ? "Hide conversations" : "Show conversations"}
             >
               {panelVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
-            <h1 className="text-sm font-semibold">Chat with Granger</h1>
+            {/* New chat — always visible, accent color */}
+            <button
+              onClick={createConversation}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
+              aria-label="New conversation"
+              title="New conversation"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <div className="flex-1" />
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              Ask across all your team&apos;s context
+              Chat with Granger
             </span>
           </div>
         </div>
