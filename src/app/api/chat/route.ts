@@ -82,6 +82,20 @@ Common cron: "0 7 * * 1-5" = weekdays 7am, "0 */2 * * *" = every 2h, "once:ISO_D
 
 Available components: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Accordion, Image, Separator, Link, Tooltip.
 
+DESIGN RULES for render_ui specs (follow these strictly):
+- Use Grid with 2-3 columns for people, metrics, and comparisons — NEVER stack cards vertically when they could be side-by-side
+- Keep Cards COMPACT — short titles, small text, no unnecessary nesting. A card with just a name + badge should be tiny, not a huge block.
+- Use Stack with direction "horizontal" + gap "3" for inline items (badges, avatars in a row)
+- For people: put Avatar + Name + Badge in ONE compact horizontal Stack inside a Card. NOT a title on the card.
+- Card titles should be null/omitted when the content speaks for itself
+- Use Badge variants: "default" for primary info, "secondary" for labels, "outline" for subtle metadata
+- Text props: use "muted" variant for secondary info, "sm" or "xs" size for details
+- For org charts: use Grid columns=1 for the leader, then Grid columns=2 for reports underneath
+- For metrics: use a Grid of Cards, each card has ONE number (Heading size "2xl") + label (Text muted)
+- For tables: use actual Table component with proper head/body rows, NOT stacked Cards
+- NEVER make a Card that's mostly empty space — pack content tightly
+- Max width should fit naturally in chat — don't create huge wide layouts
+
 render_ui is INSTANT — no loading, no delay.
 
 You have TWO ways to render UI inline. Use EITHER one:
