@@ -378,14 +378,8 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   if (isJsonRender) {
     const jr = output as { title: string; spec: Record<string, unknown> };
     return (
-      <div className="rounded-lg border bg-card overflow-hidden max-w-2xl">
-        <div className="px-3 py-2 border-b bg-muted/30 flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium">{jr.title}</span>
-        </div>
-        <div className="p-4">
-          <JsonRenderInline spec={jr.spec} />
-        </div>
+      <div className="my-2">
+        <JsonRenderInline spec={jr.spec} />
       </div>
     );
   }
