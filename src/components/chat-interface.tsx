@@ -327,31 +327,35 @@ function DocumentArtifactEditor({ content, documentId }: { content: string; docu
 }
 
 /**
- * Rich message response that detects ```jsonui blocks in text
- * and renders them as inline json-render components.
- * Works with ANY model — the AI just needs to output JSON in a code fence.
+ * Rich message response that detects inline visual blocks in text:
+ * - ```html ... ``` → renders as real HTML/SVG inline (diagrams, charts, animations)
+ * - ```jsonui ... ``` → renders as json-render components
+ * Works with ANY model. HTML blocks render progressively as they stream in.
  */
 function RichMessageResponse({ text }: { text: string }) {
-  // Split text on ```jsonui ... ``` or ```json-render ... ``` blocks
-  const jsonuiRegex = /```(?:jsonui|json-render|json_render)\s*\n([\s\S]*?)\n```/g;
-  const parts: { type: "text" | "jsonui"; content: string }[] = [];
+  // Match ```html, ```svg, ```jsonui, ```json-render blocks
+  const blockRegex = /```(?:html|svg|jsonui|json-render|json_render)\s*\n([\s\S]*?)(?:\n```|$)/g;
+  const parts: { type: "text" | "html" | "jsonui"; content: string }[] = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = jsonuiRegex.exec(text)) !== null) {
-    // Text before this block
+  while ((match = blockRegex.exec(text)) !== null) {
+    const lang = text.slice(match.index + 3, text.indexOf("\n", match.index)).trim();
     if (match.index > lastIndex) {
       parts.push({ type: "text", content: text.slice(lastIndex, match.index) });
     }
-    parts.push({ type: "jsonui", content: match[1] });
+    if (lang === "html" || lang === "svg") {
+      parts.push({ type: "html", content: match[1] });
+    } else {
+      parts.push({ type: "jsonui", content: match[1] });
+    }
     lastIndex = match.index + match[0].length;
   }
-  // Remaining text after last block
   if (lastIndex < text.length) {
     parts.push({ type: "text", content: text.slice(lastIndex) });
   }
 
-  // If no jsonui blocks found, render normally
+  // No special blocks — render normally
   if (parts.length <= 1 && parts[0]?.type === "text") {
     return <MessageResponse>{text}</MessageResponse>;
   }
@@ -361,6 +365,15 @@ function RichMessageResponse({ text }: { text: string }) {
       {parts.map((part, i) => {
         if (part.type === "text" && part.content.trim()) {
           return <MessageResponse key={i}>{part.content}</MessageResponse>;
+        }
+        if (part.type === "html") {
+          return (
+            <div
+              key={i}
+              className="my-3 inline-html-render"
+              dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
+            />
+          );
         }
         if (part.type === "jsonui") {
           try {
@@ -373,7 +386,6 @@ function RichMessageResponse({ text }: { text: string }) {
               );
             }
           } catch {
-            // Invalid JSON — render as code block
             return <MessageResponse key={i}>{`\`\`\`json\n${part.content}\n\`\`\``}</MessageResponse>;
           }
         }
@@ -381,6 +393,15 @@ function RichMessageResponse({ text }: { text: string }) {
       })}
     </>
   );
+}
+
+/** Sanitize HTML for inline rendering — allow SVG, styles, common elements */
+function sanitizeInlineHtml(html: string): string {
+  // Remove script tags and event handlers for safety
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
+    .replace(/javascript:/gi, "");
 }
 
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {

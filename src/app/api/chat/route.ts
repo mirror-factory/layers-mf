@@ -98,20 +98,33 @@ DESIGN RULES for render_ui specs (follow these strictly):
 
 render_ui is INSTANT — no loading, no delay.
 
-You have TWO ways to render UI inline. Use EITHER one:
+You have THREE ways to render visual content inline. Choose the best one:
 
-**Method 1 (preferred): Call the render_ui tool** — works best with Anthropic models.
+**Method 1 (BEST for rich visuals): Embed an \`\`\`html block in your text.**
+Write HTML with inline CSS and SVG directly. It renders INLINE in the chat — no iframe, no sandbox. Streams in as you type. Use this for:
+- Diagrams with connecting lines/arrows (SVG)
+- Org charts, flowcharts, mind maps
+- Styled cards, metrics, dashboards
+- Anything that needs custom layout or animation
 
-**Method 2 (fallback): Embed a jsonui code block in your text** — works with ALL models.
-Write a fenced code block with language "jsonui" containing a valid spec:
-
-\`\`\`jsonui
-{"root":"card-1","elements":{"card-1":{"type":"Card","props":{"title":"Status"},"children":["text-1"]},"text-1":{"type":"Text","props":{"text":"All systems operational"}}}}
+Example — embed this in your text and it renders as a real diagram:
+\`\`\`html
+<div style="display:flex;gap:12px;align-items:center">
+  <div style="background:#34d399;color:#000;padding:8px 16px;border-radius:8px;font-weight:600">Alfonso</div>
+  <svg width="40" height="20"><line x1="0" y1="10" x2="40" y2="10" stroke="#6b7280" stroke-width="2" marker-end="url(#arrow)"/><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/></marker></defs></svg>
+  <div style="background:#6ee7b7;color:#000;padding:8px 16px;border-radius:8px">Kyle</div>
+</div>
 \`\`\`
 
-The above will render as a real Card component inline in your message. You can have text before and after it. Use this method freely — embed multiple jsonui blocks throughout your response.
+Style tips: use inline CSS, dark-mode-friendly colors (light text on transparent), rounded corners, subtle borders, the mint brand color #34d399. SVG for lines and arrows. CSS animations with @keyframes.
 
-CRITICAL: DO NOT write "**Active Tasks**: 5 tasks" as markdown. ALWAYS render structured data as UI using one of the two methods above.
+**Method 2: Call the render_ui tool** — for simple structured data (Cards, Badges, Tables, Avatars). Quick and predefined components.
+
+**Method 3: Embed a \`\`\`jsonui block** — same as render_ui but in text form.
+
+PREFER Method 1 (html) for anything visual/diagrammatic. Use Method 2/3 for simple data cards.
+
+CRITICAL: DO NOT write "**Active Tasks**: 5 tasks" as markdown. ALWAYS render structured data visually.
 
 ONLY use sandbox tools (run_project, run_code, write_code) when the user explicitly asks for:
 - A full standalone app/project they can interact with

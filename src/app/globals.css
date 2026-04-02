@@ -65,6 +65,29 @@
   }
 }
 
+/* Inline HTML render — scoped styles for AI-generated HTML/SVG in chat */
+.inline-html-render {
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  line-height: 1.6;
+  overflow: hidden;
+}
+.inline-html-render svg {
+  max-width: 100%;
+  height: auto;
+}
+.inline-html-render * {
+  max-width: 100%;
+}
+/* Fade-in animation for inline rendered content */
+.inline-html-render {
+  animation: inlineRenderFadeIn 0.3s ease-out;
+}
+@keyframes inlineRenderFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* TipTap editor styles */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
