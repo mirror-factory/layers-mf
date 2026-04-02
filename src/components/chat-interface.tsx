@@ -387,7 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(570);
+  const [height, setHeight] = useState(500);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -417,26 +417,21 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.responsive = true;
   Chart.defaults.maintainAspectRatio = false;
 }
-// Height reporting — poll until stable
-var lastH = 0, stableCount = 0;
+// Height reporting
 function rh() {
-  var els = document.body.children;
-  var h = 0;
-  for (var i = 0; i < els.length; i++) {
-    var r = els[i].getBoundingClientRect();
-    var bottom = r.top + r.height;
-    if (bottom > h) h = bottom;
+  var all = document.body.querySelectorAll('*');
+  var maxBottom = 0;
+  for (var i = 0; i < all.length; i++) {
+    var r = all[i].getBoundingClientRect();
+    if (r.bottom > maxBottom) maxBottom = r.bottom;
   }
-  h = Math.ceil(h) + 8;
-  if (h < 20) h = 200;
-  if (h !== lastH) { lastH = h; stableCount = 0; }
-  else { stableCount++; }
-  window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
-  if (stableCount < 5) setTimeout(rh, 500);
+  var h = Math.ceil(maxBottom) + 16;
+  if (h > 30) window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
 }
-setTimeout(rh, 100);
-setTimeout(rh, 500);
-setTimeout(rh, 1500);
+setTimeout(rh, 200);
+setTimeout(rh, 800);
+setTimeout(rh, 2000);
+setTimeout(rh, 4000);
 <\/script></body></html>`;
   }, [html]);
 
