@@ -73,7 +73,7 @@ function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { p
         "flex items-center rounded-md text-sm transition-colors",
         collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2",
         (pathname === href || (href !== "/home" && href !== "/chat" && pathname.startsWith(href + "/")))
-          ? "bg-primary/10 text-primary font-medium"
+          ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
       {...(collapsed ? { title: label } : {})}

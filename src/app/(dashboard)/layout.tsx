@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { Breadcrumbs } from "@/components/breadcrumbs";
+
 import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
@@ -59,9 +59,6 @@ export default async function DashboardLayout({
       <OnboardingRedirect />
       <SidebarNav email={user!.email ?? ""} orgName={orgName} />
       <main id="main-content" className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0" tabIndex={-1}>
-        <div className="border-b bg-card px-4 py-2 sm:px-6 hidden md:block">
-          <Breadcrumbs />
-        </div>
         <div className="flex-1 overflow-auto">
           {children}
         </div>
