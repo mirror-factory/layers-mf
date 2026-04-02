@@ -943,6 +943,153 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       },
     }),
 
+    // === Compliance review tool ===
+    review_compliance: tool({
+      description: "Review content against org rules and priority documents. Checks each rule/guideline individually and returns pass/fail with explanations. Use when asked to review, audit, check compliance, or validate content against brand guidelines, rules, or standards.",
+      inputSchema: z.object({
+        content: z.string().describe("The content to review (document text, web page content, draft, etc.)"),
+        content_label: z.string().optional().describe("What this content is, e.g. 'Blog post draft', 'Landing page copy'"),
+      }),
+      execute: async ({ content, content_label }) => {
+        // 1. Fetch all active rules
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: rules } = await (supabase as any)
+          .from("rules")
+          .select("id, text, is_active, priority")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .order("priority", { ascending: true });
+
+        // 2. Fetch all active priority documents
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: docs } = await (supabase as any)
+          .from("priority_documents")
+          .select("id, filename, content, is_active, weight")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .order("weight", { ascending: true });
+
+        const activeRules = (rules ?? []) as { id: string; text: string; priority: number }[];
+        const activeDocs = (docs ?? []) as { id: string; filename: string; content: string }[];
+
+        if (activeRules.length === 0 && activeDocs.length === 0) {
+          return {
+            type: "compliance-review" as const,
+            content_label: content_label ?? "Content",
+            error: "No active rules or priority documents found. Add rules in Priority & Rules page.",
+            checks: [],
+            summary: { total: 0, passed: 0, failed: 0, warnings: 0 },
+          };
+        }
+
+        // 3. Build checklist items from rules + extract guidelines from priority docs
+        const checkItems: { id: string; source: string; rule: string }[] = [];
+
+        for (const rule of activeRules) {
+          checkItems.push({
+            id: rule.id,
+            source: "Rule",
+            rule: rule.text,
+          });
+        }
+
+        // Extract key guidelines from priority docs (use first 200 chars as summary)
+        for (const doc of activeDocs) {
+          // Split doc content into distinct guidelines/bullet points
+          const lines = doc.content
+            .split(/\n/)
+            .map((l: string) => l.trim())
+            .filter((l: string) => l.length > 10 && (l.startsWith("-") || l.startsWith("•") || l.startsWith("*") || l.match(/^\d+\./)));
+
+          if (lines.length > 0) {
+            // Use individual bullet points as guidelines
+            for (const line of lines.slice(0, 10)) {
+              checkItems.push({
+                id: `${doc.id}-${checkItems.length}`,
+                source: doc.filename,
+                rule: line.replace(/^[-•*]\s*/, "").replace(/^\d+\.\s*/, ""),
+              });
+            }
+          } else {
+            // Use doc as a single guideline
+            checkItems.push({
+              id: doc.id,
+              source: doc.filename,
+              rule: doc.content.slice(0, 200),
+            });
+          }
+        }
+
+        // 4. Use Haiku to evaluate each check against the content
+        const { generateObject } = await import("ai");
+        const { gateway } = await import("@ai-sdk/gateway");
+
+        const checksPrompt = checkItems.map((c, i) =>
+          `${i + 1}. [${c.source}] ${c.rule}`
+        ).join("\n");
+
+        const { object: results } = await generateObject({
+          model: gateway("anthropic/claude-haiku-4-5-20251001"),
+          schema: z.object({
+            checks: z.array(z.object({
+              index: z.number(),
+              status: z.enum(["pass", "fail", "warning"]),
+              explanation: z.string().describe("Brief explanation of why it passes or fails"),
+            })),
+          }),
+          prompt: `You are a compliance reviewer. Review the following content against each rule/guideline and determine if the content complies.
+
+CONTENT TO REVIEW (${content_label ?? "Content"}):
+---
+${content.slice(0, 6000)}
+---
+
+RULES AND GUIDELINES TO CHECK:
+${checksPrompt}
+
+For each rule, determine:
+- "pass" if the content follows or doesn't violate the rule
+- "fail" if the content clearly violates or contradicts the rule
+- "warning" if it partially complies or could be improved
+
+Be strict but fair. Return a check for every single rule listed above.`,
+          maxOutputTokens: 2000,
+        });
+
+        // 5. Merge results with check items
+        const checks = checkItems.map((item, i) => {
+          const result = results.checks.find((r) => r.index === i + 1) ?? {
+            status: "warning" as const,
+            explanation: "Could not evaluate",
+          };
+          return {
+            id: item.id,
+            source: item.source,
+            rule: item.rule,
+            status: result.status,
+            explanation: result.explanation,
+          };
+        });
+
+        const passed = checks.filter((c) => c.status === "pass").length;
+        const failed = checks.filter((c) => c.status === "fail").length;
+        const warnings = checks.filter((c) => c.status === "warning").length;
+
+        return {
+          type: "compliance-review" as const,
+          content_label: content_label ?? "Content",
+          checks,
+          summary: {
+            total: checks.length,
+            passed,
+            failed,
+            warnings,
+            score: Math.round((passed / checks.length) * 100),
+          },
+        };
+      },
+    }),
+
     // === Inline UI rendering tool (json-render) ===
     render_ui: tool({
       description: "Render interactive UI inline in chat. Use for dashboards, org charts, data displays, status cards, tables. Outputs a json-render spec with shadcn/ui components: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Accordion, Image, Separator.",

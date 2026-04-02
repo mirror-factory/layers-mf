@@ -384,6 +384,77 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     );
   }
 
+  // Check if this is a compliance review result
+  const isComplianceReview = isDone && output && typeof output === "object"
+    && (output as Record<string, unknown>).type === "compliance-review";
+  if (isComplianceReview) {
+    const review = output as {
+      content_label: string;
+      checks: { id: string; source: string; rule: string; status: string; explanation: string }[];
+      summary: { total: number; passed: number; failed: number; warnings: number; score: number };
+      error?: string;
+    };
+    if (review.error) {
+      return (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          <span className="text-amber-500">⚠</span> {review.error}
+        </div>
+      );
+    }
+    const scoreColor = review.summary.score >= 80 ? "text-green-500" : review.summary.score >= 50 ? "text-amber-500" : "text-red-500";
+    return (
+      <div className="my-3 space-y-3 max-w-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Compliance Review: {review.content_label}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-green-500">✓ {review.summary.passed}</span>
+            <span className="text-red-500">✗ {review.summary.failed}</span>
+            {review.summary.warnings > 0 && <span className="text-amber-500">⚠ {review.summary.warnings}</span>}
+            <span className={`font-bold ${scoreColor}`}>{review.summary.score}%</span>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="h-2 bg-muted rounded-full overflow-hidden flex">
+          {review.summary.passed > 0 && (
+            <div className="bg-green-500 h-full" style={{ width: `${(review.summary.passed / review.summary.total) * 100}%` }} />
+          )}
+          {review.summary.warnings > 0 && (
+            <div className="bg-amber-500 h-full" style={{ width: `${(review.summary.warnings / review.summary.total) * 100}%` }} />
+          )}
+          {review.summary.failed > 0 && (
+            <div className="bg-red-500 h-full" style={{ width: `${(review.summary.failed / review.summary.total) * 100}%` }} />
+          )}
+        </div>
+        {/* Checklist */}
+        <div className="space-y-1.5">
+          {review.checks.map((check, i) => (
+            <div key={check.id ?? i} className="flex items-start gap-2 text-xs">
+              <span className="shrink-0 mt-0.5">
+                {check.status === "pass" ? (
+                  <span className="text-green-500">✓</span>
+                ) : check.status === "fail" ? (
+                  <span className="text-red-500">✗</span>
+                ) : (
+                  <span className="text-amber-500">⚠</span>
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-muted-foreground">[{check.source}]</span>
+                  <span className={check.status === "fail" ? "text-red-400" : ""}>{check.rule}</span>
+                </div>
+                <p className="text-muted-foreground mt-0.5">{check.explanation}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // Check if this is a sandbox execution result (has exitCode + stdout)
   const isSandboxResult = isDone && output && typeof output === "object"
     && "exitCode" in (output as Record<string, unknown>)
@@ -1301,6 +1372,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
+    { cmd: "/review", label: "Review", description: "Check content against rules & guidelines", icon: "📋" },
     { cmd: "/ui", label: "Render UI", description: "Generate interactive UI inline", icon: "✨" },
     { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
     { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "🌐" },
@@ -1347,6 +1419,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         ? `Search for skills matching "${args}". Check the /skills page.`
         : "Show me available skills at /skills.";
     },
+    "/review": (args) => args
+      ? `Use the review_compliance tool to check the following content against all our org rules and priority documents: ${args}`
+      : "Use the review_compliance tool. What content would you like me to review against our rules and guidelines? You can paste text, a URL, or reference a document.",
     "/ui": (args) => args
       ? `Use the render_ui tool to create an interactive inline UI for: ${args}. Use shadcn/ui components (Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs). Output a json-render spec with root + elements.`
       : "Use the render_ui tool to create interactive UI inline. What would you like me to visualize?",
