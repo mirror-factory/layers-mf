@@ -9,7 +9,7 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3,
+  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock,
 } from "lucide-react";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
@@ -48,6 +48,7 @@ import {
 } from "@/components/ai-elements/tool";
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
 import { ContextWindowBar } from "@/components/chat/context-window-bar";
+import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 
 const MODELS = [
   // Flagship
@@ -266,6 +267,10 @@ interface ActiveArtifact {
   runCommand?: string;
   /** Port that was exposed for preview */
   exposePort?: number;
+  /** Artifact system ID */
+  artifactId?: string;
+  /** Current version number */
+  currentVersion?: number;
 }
 
 /** Extract URLs from text (markdown links, bare URLs, and footnote references) */
@@ -610,6 +615,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const sSnapshotId = typeof sbox.snapshotId === "string" ? sbox.snapshotId : undefined;
     const sRunCommand = typeof sbox.runCommand === "string" ? sbox.runCommand : undefined;
     const sExposePort = typeof sbox.exposePort === "number" ? sbox.exposePort : undefined;
+    const sArtifactId = typeof sbox.artifactId === "string" ? sbox.artifactId : undefined;
 
     // If we have a previewUrl AND code AND it succeeded, show artifact card
     if (sPreviewUrl && sCode && sExitCode === 0) {
@@ -625,6 +631,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             snapshotId: sSnapshotId,
             runCommand: sRunCommand,
             exposePort: sExposePort,
+            artifactId: sArtifactId,
           })}
           className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
         >
@@ -654,6 +661,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             description: sExitCode === 0 ? `${sFiles.length} files` : `Exit code: ${sExitCode}`,
             files: sFiles,
             previewUrl: sPreviewUrl ?? undefined,
+            artifactId: sArtifactId,
           })}
           className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
         >
@@ -1263,6 +1271,7 @@ interface ChatInterfaceInnerProps {
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
   const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
   const [showContextBar, setShowContextBar] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [visualLevel, setVisualLevel] = useState<string>(() => {
     if (typeof window !== "undefined") return localStorage.getItem("granger-visual-level") ?? "medium";
     return "medium";
@@ -2270,6 +2279,18 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           )}
                         </button>
                       )}
+                      {activeArtifact.artifactId && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={cn("h-7 w-7", showVersionHistory && "bg-primary/10 text-primary")}
+                          onClick={() => setShowVersionHistory(v => !v)}
+                          aria-label="Version history"
+                          title="Version history"
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
                         <X className="h-4 w-4" />
                       </Button>
@@ -2280,7 +2301,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
                     </div>
                   )}
-                  <div className="flex-1 overflow-auto">
+                  <div className="flex flex-1 overflow-hidden">
+                    {/* Version history sidebar — slides in from right */}
+                    {showVersionHistory && activeArtifact.artifactId && (
+                      <div className="w-56 shrink-0 border-r overflow-y-auto p-2 bg-muted/10">
+                        <ArtifactVersionHistory
+                          artifactId={activeArtifact.artifactId}
+                          currentVersion={activeArtifact.currentVersion ?? 1}
+                          onRestore={() => {
+                            // TODO: reload artifact content after restore
+                            setShowVersionHistory(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 overflow-auto">
                     {activeArtifact.type === "document" ? (
                       <DocumentArtifactEditor
                         content={displayCode}
@@ -2346,6 +2381,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         )}
                       </>
                     )}
+                  </div>
                   </div>
                 </div>
               </>
