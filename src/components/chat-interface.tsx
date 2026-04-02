@@ -396,28 +396,12 @@ function InlineHtmlBlock({ html }: { html: string }) {
     // Set the HTML content
     container.innerHTML = htmlWithoutScripts;
 
-    // Execute scripts in a sandboxed scope — block access to sensitive APIs
+    // Execute scripts — allow full DOM access for interactivity
+    // Scripts need to find elements, attach handlers, call fetch, use GSAP etc.
     for (const code of scripts) {
       try {
-        // Sandbox: shadow dangerous globals so scripts can't access them
-        const sandboxedCode = `
-          "use strict";
-          const document = { getElementById: (id) => window.__inlineContainer?.querySelector('#'+id), querySelector: (s) => window.__inlineContainer?.querySelector(s), querySelectorAll: (s) => window.__inlineContainer?.querySelectorAll(s), createElement: window.document.createElement.bind(window.document) };
-          const cookie = undefined;
-          const localStorage = undefined;
-          const sessionStorage = undefined;
-          const XMLHttpRequest = undefined;
-          const WebSocket = undefined;
-          const eval = undefined;
-          const Function = undefined;
-          ${code}
-        `;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).__inlineContainer = container;
-        const fn = new (Object.getPrototypeOf(function(){}).constructor)(sandboxedCode);
+        const fn = new Function(code);
         fn();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (window as any).__inlineContainer;
       } catch (err) {
         console.warn("[inline-html] Script error:", err);
       }
