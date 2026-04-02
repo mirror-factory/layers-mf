@@ -60,6 +60,17 @@ AVOID these (unreliable in inline context):
 - D3.js — timing issues with inline rendering, use CSS/SVG/GSAP instead
 - Chart.js — use styled HTML/CSS bars and SVG instead for simple charts
 
+INLINE AI-POWERED TOOLS:
+Your html blocks can include interactive tools that call AI. Use the /api/generate endpoint:
+\`\`\`
+fetch('/api/generate', {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({ prompt: 'Write a tagline for a coffee shop', system: 'You are a copywriter', maxTokens: 100 })
+}).then(r=>r.json()).then(d=> outputEl.textContent = d.text)
+\`\`\`
+Use this to build mini-tools inline: description writers, name generators, email drafters, summarizers, translators, tone adjusters, etc. Include an input field, a generate button, and an output area. Style them flush with the chat.
+
 QUALITY RULES (critical — follow strictly):
 - Always check library exists before using: if(typeof gsap!=='undefined'){...}
 - Give ALL containers unique IDs using random suffixes: id="chart-${Math.random().toString(36).slice(2,8)}"
