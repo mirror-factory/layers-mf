@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { searchContext, searchContextChunks } from "@/lib/db/search";
+import { createArtifact, createVersion } from "@/lib/artifacts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { calculateNextCron } from "@/lib/cron";
 import type { GranolaClient } from "@/lib/api";
@@ -729,21 +730,22 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             snapshotId,
           });
 
-          // Save the main file to context library
-          const mainFile = input.files[0];
-          if (mainFile) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any).from("context_items").insert({
-              org_id: orgId,
-              source_type: "code",
-              source_id: `project-${Date.now()}`,
-              content_type: "file",
-              title: input.description ?? `Project: ${input.files.length} files`,
-              raw_content: allFiles.map(f => `// === ${f.path} ===\n${f.content}`).join("\n\n"),
-              description_short: `${allFiles.length} files: ${allFiles.map(f => f.path).join(", ")}`,
-              status: "ready",
-            });
-          }
+          // Save to artifacts table with all files persisted
+          const artifactResult = await createArtifact(supabase as never, {
+            orgId,
+            userId,
+            type: "sandbox",
+            title: input.description ?? `Project: ${allFiles.length} files`,
+            description: `${allFiles.length} files: ${allFiles.map(f => f.path).join(", ")}`,
+            files: allFiles,
+            primaryFilePath: allFiles.find(f => f.path.match(/App\.(jsx?|tsx?)$/))?.path ?? allFiles[0]?.path,
+            language: "javascript",
+            framework: input.template !== "none" ? input.template : "vite",
+            snapshotId: result.snapshotId ?? undefined,
+            previewUrl: result.previewUrl ?? undefined,
+            runCommand: input.run_command,
+            exposePort: input.expose_port,
+          });
 
           return {
             stdout: result.stdout.slice(0, 4000),
@@ -752,6 +754,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             previewUrl: result.previewUrl ?? null,
             sandboxId: result.sandboxId,
             snapshotId: result.snapshotId ?? null,
+            artifactId: "artifactId" in artifactResult ? artifactResult.artifactId : null,
             restoredFromSnapshot: !!snapshotId,
             outputFiles: result.outputFiles,
             fileCount: allFiles.length,
@@ -1131,29 +1134,25 @@ Be strict but fair. Return a check for every single rule listed above.`,
         description: z.string().optional().describe("Brief description of what this code does"),
       }),
       execute: async (input) => {
-        // Store as a context_item so it's searchable
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (supabase as any)
-          .from("context_items")
-          .insert({
-            org_id: orgId,
-            source_type: "code",
-            source_id: `code-${Date.now()}`,
-            content_type: "file",
-            title: input.filename,
-            raw_content: input.code,
-            description_short: input.description ?? `${input.language} file: ${input.filename}`,
-            status: "ready",
-          })
-          .select("id")
-          .single();
+        // Save to artifacts table with version 1
+        const result = await createArtifact(supabase as never, {
+          orgId,
+          userId,
+          type: "code",
+          title: input.filename,
+          content: input.code,
+          language: input.language,
+          description: input.description ?? `${input.language} file: ${input.filename}`,
+        });
+
+        const artifactId = "artifactId" in result ? result.artifactId : undefined;
 
         return {
           filename: input.filename,
           language: input.language,
           code: input.code,
-          context_id: data?.id,
-          message: `Created ${input.filename}. You can find it in the Context Library.`,
+          artifactId,
+          message: `Created ${input.filename}. Saved as artifact with version history.`,
         };
       },
     }),
@@ -1311,40 +1310,35 @@ Be strict but fair. Return a check for every single rule listed above.`,
           .describe("Brief description of the document"),
       }),
       execute: async (input) => {
-        // Save to context_items
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (supabase as any)
-          .from("context_items")
-          .insert({
-            org_id: orgId,
-            source_type: "document",
-            source_id: `doc-${Date.now()}`,
-            content_type: "document",
-            title: input.title,
-            raw_content: input.content,
-            description_short:
-              input.description ?? `Document: ${input.title}`,
-            status: "ready",
-          })
-          .select("id")
-          .single();
+        // Save to artifacts table with version 1
+        const result = await createArtifact(supabase as never, {
+          orgId,
+          userId,
+          type: "document",
+          title: input.title,
+          content: input.content,
+          description: input.description ?? `Document: ${input.title}`,
+        });
+
+        const artifactId = "artifactId" in result ? result.artifactId : undefined;
 
         return {
-          documentId: data?.id,
+          documentId: artifactId,
           title: input.title,
           content: input.content,
           description: input.description,
           type: "document" as const,
-          message: `Created document "${input.title}". It is now in your Context Library.`,
+          artifactId,
+          message: `Created document "${input.title}". Saved as artifact with version history.`,
         };
       },
     }),
 
     edit_document: tool({
       description:
-        "Edit a specific section of an existing document. Finds the section matching the target text and replaces it. Use when the user asks to modify, update, or rewrite part of a document.",
+        "Edit a specific section of an existing document. Finds the section matching the target text and replaces it. Creates a new version in the artifact system.",
       inputSchema: z.object({
-        documentId: z.string().describe("The document ID to edit"),
+        documentId: z.string().describe("The document/artifact ID to edit"),
         targetText: z
           .string()
           .describe(
@@ -1357,61 +1351,71 @@ Be strict but fair. Return a check for every single rule listed above.`,
           .describe("Brief description of the edit"),
       }),
       execute: async (input) => {
-        // Fetch the document
+        // Try artifacts table first, fall back to context_items
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: doc, error: fetchErr } = await (supabase as any)
-          .from("context_items")
-          .select("id, title, raw_content")
+        const sb = supabase as any;
+        let doc: { id: string; title: string; content: string } | null = null;
+        let isArtifact = false;
+
+        // Check artifacts table
+        const { data: artifactDoc } = await sb
+          .from("artifacts")
+          .select("id, title, content")
           .eq("id", input.documentId)
-          .eq("org_id", orgId)
           .single();
 
-        if (fetchErr || !doc) {
-          return { error: "Document not found" };
-        }
-
-        const currentContent = (doc.raw_content as string) ?? "";
-
-        // Try exact match first, then fuzzy
-        let newContent: string;
-        if (currentContent.includes(input.targetText)) {
-          newContent = currentContent.replace(
-            input.targetText,
-            input.replacement,
-          );
+        if (artifactDoc) {
+          doc = { id: artifactDoc.id, title: artifactDoc.title, content: artifactDoc.content ?? "" };
+          isArtifact = true;
         } else {
-          // Fuzzy: find the closest substring match
-          const targetLower = input.targetText.toLowerCase();
-          const contentLower = currentContent.toLowerCase();
-          const idx = contentLower.indexOf(
-            targetLower.slice(0, Math.min(50, targetLower.length)),
-          );
-          if (idx >= 0) {
-            // Find the end of the closest matching region
-            const endIdx = idx + input.targetText.length;
-            newContent =
-              currentContent.slice(0, idx) +
-              input.replacement +
-              currentContent.slice(Math.min(endIdx, currentContent.length));
-          } else {
-            // Append as a fallback
-            newContent = currentContent + "\n\n" + input.replacement;
+          // Fall back to context_items (for legacy documents)
+          const { data: contextDoc } = await sb
+            .from("context_items")
+            .select("id, title, raw_content")
+            .eq("id", input.documentId)
+            .eq("org_id", orgId)
+            .single();
+          if (contextDoc) {
+            doc = { id: contextDoc.id, title: contextDoc.title, content: contextDoc.raw_content ?? "" };
           }
         }
 
-        // Update the document
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
-          .from("context_items")
-          .update({
-            raw_content: newContent,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", input.documentId)
-          .eq("org_id", orgId);
+        if (!doc) return { error: "Document not found" };
+
+        // Fuzzy match and replace
+        let newContent: string;
+        if (doc.content.includes(input.targetText)) {
+          newContent = doc.content.replace(input.targetText, input.replacement);
+        } else {
+          const targetLower = input.targetText.toLowerCase();
+          const contentLower = doc.content.toLowerCase();
+          const idx = contentLower.indexOf(targetLower.slice(0, Math.min(50, targetLower.length)));
+          if (idx >= 0) {
+            const endIdx = idx + input.targetText.length;
+            newContent = doc.content.slice(0, idx) + input.replacement + doc.content.slice(Math.min(endIdx, doc.content.length));
+          } else {
+            newContent = doc.content + "\n\n" + input.replacement;
+          }
+        }
+
+        if (isArtifact) {
+          // Update artifact and create new version
+          await sb.from("artifacts").update({ content: newContent }).eq("id", doc.id);
+          await createVersion(sb, {
+            artifactId: doc.id,
+            content: newContent,
+            changeSummary: input.editDescription ?? "Edited document",
+            changeType: "ai_edit",
+            createdBy: userId,
+            createdByAi: true,
+          });
+        } else {
+          // Legacy: update context_items
+          await sb.from("context_items").update({ raw_content: newContent }).eq("id", doc.id).eq("org_id", orgId);
+        }
 
         return {
-          documentId: input.documentId,
+          documentId: doc.id,
           title: doc.title,
           content: newContent,
           type: "document" as const,
