@@ -49,6 +49,7 @@ import {
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
 import { ContextWindowBar } from "@/components/chat/context-window-bar";
 import { ArtifactVersionHistory } from "@/components/artifact-version-history";
+import { Entropy } from "@/components/ui/entropy";
 
 const MODELS = [
   // Flagship
@@ -1857,11 +1858,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {isLoading && (
-            <div className="flex gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <div className="flex items-center gap-2 py-1">
+              <div className="relative h-5 w-5 rounded-full overflow-hidden shrink-0">
+                <Entropy size={20} />
               </div>
-              <div className="rounded-xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">Researching…</div>
+              <span className="text-xs text-muted-foreground">Thinking…</span>
             </div>
           )}
 
