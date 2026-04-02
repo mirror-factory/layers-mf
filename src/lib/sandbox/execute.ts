@@ -516,27 +516,26 @@ export async function executeProject(options: {
 
     // If exposing a port, run in background and return preview URL
     if (options.exposePort) {
-      // Run dev server in background — capture output for debugging
-      const devCmd = sandbox.runCommand(parts[0], parts.slice(1));
-
-      // Log dev server output asynchronously for debugging
-      void (async () => {
-        try {
-          const cmd = await devCmd;
-          // Read initial output after a delay
-          setTimeout(async () => {
-            try {
-              const out = await cmd.output("both", { signal: AbortSignal.timeout(3000) });
-              if (out) console.log(`[sandbox-dev] ${out.slice(0, 500)}`);
-            } catch { /* still running, expected */ }
-          }, 8000);
-        } catch { /* ignore */ }
-      })();
-
-      // Also list files to verify they were written correctly
-      const lsResult = await sandbox.runCommand("find", [".", "-name", "*.html", "-o", "-name", "*.jsx", "-o", "-name", "*.js", "-o", "-name", "vite.config*", "-o", "-name", "package.json"]);
+      // List files to verify they were written correctly
+      const lsResult = await sandbox.runCommand("find", [".", "-maxdepth", "3", "-name", "*.html", "-o", "-name", "*.jsx", "-o", "-name", "*.js", "-o", "-name", "vite.config*", "-o", "-name", "package.json"]);
       const fileList = await lsResult.stdout();
       console.log(`[sandbox-files] ${fileList.slice(0, 500)}`);
+
+      // Verify index.html exists — this is required for Vite to serve the app
+      const indexCheck = await sandbox.runCommand("cat", ["index.html"]);
+      const indexContent = await indexCheck.stdout();
+      if (!indexContent || indexCheck.exitCode !== 0) {
+        console.error(`[sandbox] CRITICAL: index.html missing or empty! Exit code: ${indexCheck.exitCode}`);
+        // Try to find it elsewhere
+        const findIndex = await sandbox.runCommand("find", [".", "-name", "index.html"]);
+        const foundPaths = await findIndex.stdout();
+        console.error(`[sandbox] index.html found at: ${foundPaths || "NOWHERE"}`);
+      } else {
+        console.log(`[sandbox] index.html OK (${indexContent.length} bytes)`);
+      }
+
+      // Run dev server in background
+      sandbox.runCommand(parts[0], parts.slice(1));
 
       const previewUrl = sandbox.domain(options.exposePort);
 
