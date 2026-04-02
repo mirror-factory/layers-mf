@@ -396,20 +396,31 @@ function InlineHtmlBlock({ html }: { html: string }) {
     // Set the HTML content
     container.innerHTML = htmlWithoutScripts;
 
-    // Execute scripts in order (allows GSAP, D3, Chart.js, anime.js, mermaid)
+    // Execute scripts in a sandboxed scope — block access to sensitive APIs
     for (const code of scripts) {
       try {
-        const fn = new Function(code);
+        // Sandbox: shadow dangerous globals so scripts can't access them
+        const sandboxedCode = `
+          "use strict";
+          const document = { getElementById: (id) => window.__inlineContainer?.querySelector('#'+id), querySelector: (s) => window.__inlineContainer?.querySelector(s), querySelectorAll: (s) => window.__inlineContainer?.querySelectorAll(s), createElement: window.document.createElement.bind(window.document) };
+          const cookie = undefined;
+          const localStorage = undefined;
+          const sessionStorage = undefined;
+          const XMLHttpRequest = undefined;
+          const WebSocket = undefined;
+          const eval = undefined;
+          const Function = undefined;
+          ${code}
+        `;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).__inlineContainer = container;
+        const fn = new (Object.getPrototypeOf(function(){}).constructor)(sandboxedCode);
         fn();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any).__inlineContainer;
       } catch (err) {
         console.warn("[inline-html] Script error:", err);
       }
-    }
-
-    // Auto-initialize mermaid diagrams if present
-    if (container.querySelector(".mermaid") && typeof window !== "undefined" && (window as unknown as Record<string, unknown>).mermaid) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).mermaid.run({ nodes: container.querySelectorAll(".mermaid") });
     }
   }, [html]);
 

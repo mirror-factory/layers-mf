@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
   const maxTokens = Math.min(body.maxTokens ?? 500, 2000);
 
   if (!prompt) return NextResponse.json({ error: "prompt required" }, { status: 400 });
+  if (prompt.length > 5000) return NextResponse.json({ error: "prompt too long (max 5000 chars)" }, { status: 400 });
+  if (system && system.length > 2000) return NextResponse.json({ error: "system too long (max 2000 chars)" }, { status: 400 });
 
   try {
     const { text } = await generateText({
