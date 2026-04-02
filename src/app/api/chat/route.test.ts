@@ -151,7 +151,7 @@ describe("POST /api/chat", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(gateway).toHaveBeenCalledWith("anthropic/claude-haiku-4-5-20251001");
+    expect(gateway).toHaveBeenCalledWith("google/gemini-3.1-flash-lite-preview");
   });
 
   it("uses the requested model when it is in the allowlist", async () => {

@@ -11,7 +11,7 @@ import { generateText } from "ai";
 import { gateway } from "@/lib/ai/config";
 import { estimateTokens } from "@/lib/ai/token-counter";
 
-const COMPACTION_MODEL = "anthropic/claude-haiku-4-5-20251001";
+const COMPACTION_MODEL = "google/gemini-3.1-flash-lite-preview";
 const KEEP_RECENT_TURNS = 4;
 
 /** Estimate total tokens in a prompt array */

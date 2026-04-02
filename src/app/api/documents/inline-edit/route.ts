@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await generateText({
-      model: gateway("anthropic/claude-haiku-4-5-20251001"),
+      model: gateway("google/gemini-3.1-flash-lite-preview"),
       system: `You are an inline text editor. The user will give you a text selection and an editing instruction.
 Return ONLY the replacement text — no explanation, no markdown fences, no quotes, no preamble.
 Match the original formatting style (e.g., if it was a list, return a list).

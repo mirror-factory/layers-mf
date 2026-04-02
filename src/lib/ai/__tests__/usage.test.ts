@@ -23,7 +23,7 @@ describe("logUsage", () => {
       orgId: "org-123",
       userId: "user-456",
       operation: "chat",
-      model: "anthropic/claude-haiku-4-5-20251001",
+      model: "google/gemini-3.1-flash-lite-preview",
       inputTokens: 100,
       outputTokens: 50,
       costUsd: 0.001,
@@ -36,7 +36,7 @@ describe("logUsage", () => {
       org_id: "org-123",
       user_id: "user-456",
       operation: "chat",
-      model: "anthropic/claude-haiku-4-5-20251001",
+      model: "google/gemini-3.1-flash-lite-preview",
       input_tokens: 100,
       output_tokens: 50,
       cost_usd: 0.001,
@@ -74,7 +74,7 @@ describe("logUsage", () => {
       logUsage({
         orgId: "org-123",
         operation: "extraction",
-        model: "anthropic/claude-haiku-4-5-20251001",
+        model: "google/gemini-3.1-flash-lite-preview",
       });
     }).not.toThrow();
   });
@@ -88,7 +88,7 @@ describe("logUsage", () => {
       logUsage({
         orgId: "org-123",
         operation: "query_expansion",
-        model: "anthropic/claude-haiku-4-5-20251001",
+        model: "google/gemini-3.1-flash-lite-preview",
       });
     }).not.toThrow();
   });

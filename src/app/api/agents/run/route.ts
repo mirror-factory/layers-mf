@@ -10,7 +10,7 @@ import { logUsage } from "@/lib/ai/usage";
 
 export const maxDuration = 60;
 
-const DEFAULT_MODEL = "anthropic/claude-haiku-4-5-20251001";
+const DEFAULT_MODEL = "google/gemini-3.1-flash-lite-preview";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();

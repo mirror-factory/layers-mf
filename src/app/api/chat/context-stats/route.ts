@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const modelId = searchParams.get("modelId") ?? "anthropic/claude-haiku-4-5-20251001";
+  const modelId = searchParams.get("modelId") ?? "google/gemini-3.1-flash-lite-preview";
 
   // Load org rules
   const orgRules = await loadRules(supabase, member.org_id);

@@ -10,7 +10,7 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   // Anthropic
   "anthropic/claude-opus-4.6": 200_000,
   "anthropic/claude-sonnet-4.6": 200_000,
-  "anthropic/claude-haiku-4-5-20251001": 200_000,
+  "google/gemini-3.1-flash-lite-preview": 200_000,
   "anthropic/claude-haiku-4.5": 200_000,
   // OpenAI
   "openai/gpt-4o": 128_000,
@@ -30,7 +30,7 @@ export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "anthropic/claude-opus-4.6": { input: 15, output: 75 },
   "anthropic/claude-sonnet-4.6": { input: 3, output: 15 },
-  "anthropic/claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
+  "google/gemini-3.1-flash-lite-preview": { input: 0.8, output: 4 },
   "anthropic/claude-haiku-4.5": { input: 0.8, output: 4 },
   "openai/gpt-4o": { input: 2.5, output: 10 },
   "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },

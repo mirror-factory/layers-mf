@@ -1029,7 +1029,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         ).join("\n");
 
         const { object: results } = await generateObject({
-          model: gateway("anthropic/claude-haiku-4-5-20251001"),
+          model: gateway("google/gemini-3.1-flash-lite-preview"),
           schema: z.object({
             checks: z.array(z.object({
               index: z.number(),

@@ -287,7 +287,7 @@ describe("generateInboxItemsAI", () => {
     expect(result[4].priority).toBe("low");
 
     // Verify AI gateway is used (not direct provider SDK)
-    expect(gateway).toHaveBeenCalledWith("anthropic/claude-haiku-4-5-20251001");
+    expect(gateway).toHaveBeenCalledWith("google/gemini-3.1-flash-lite-preview");
     expect(generateText).toHaveBeenCalledTimes(1);
   });
 

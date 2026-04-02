@@ -132,7 +132,7 @@ Based on these patterns, determine:
     orgId,
     userId,
     operation: "ditto_profile_generation",
-    model: "anthropic/claude-haiku-4-5-20251001",
+    model: "google/gemini-3.1-flash-lite-preview",
     inputTokens: result.usage?.inputTokens,
     outputTokens: result.usage?.outputTokens,
   });

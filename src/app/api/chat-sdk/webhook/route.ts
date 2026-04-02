@@ -8,7 +8,7 @@ import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
 
-const DEFAULT_MODEL = "anthropic/claude-haiku-4-5-20251001";
+const DEFAULT_MODEL = "google/gemini-3.1-flash-lite-preview";
 
 const WEBHOOK_INSTRUCTIONS = `You are Granger, Mirror Factory's AI chief of staff. You are responding via an external platform webhook (Discord, Slack, or custom integration).
 

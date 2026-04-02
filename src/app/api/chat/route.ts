@@ -25,7 +25,7 @@ const ALLOWED_MODELS = new Set([
   "google/gemini-3-flash",
   // Fast
   "anthropic/claude-haiku-4.5",
-  "anthropic/claude-haiku-4-5-20251001", // legacy ID
+  "google/gemini-3.1-flash-lite-preview", // legacy ID
   "openai/gpt-5-nano",
   "google/gemini-3.1-flash-lite-preview",
   // Legacy (in case old conversations reference these)
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
   const requestedModel = body.model as string;
   const modelId = ALLOWED_MODELS.has(requestedModel)
     ? requestedModel
-    : "anthropic/claude-haiku-4-5-20251001";
+    : "google/gemini-3.1-flash-lite-preview";
   if (requestedModel !== modelId) {
     console.warn(`[chat] Model "${requestedModel}" not in ALLOWED_MODELS, falling back to ${modelId}`);
   }
@@ -541,7 +541,7 @@ export async function POST(request: NextRequest) {
             const { generateText } = await import("ai");
             const { gateway } = await import("@ai-sdk/gateway");
             const { text: generatedTitle } = await generateText({
-              model: gateway("anthropic/claude-haiku-4-5-20251001"),
+              model: gateway("google/gemini-3.1-flash-lite-preview"),
               prompt: `Generate a 3-6 word title for this conversation. No quotes, no punctuation at end. Just the title.\n\nUser: ${lastUserText.slice(0, 200)}`,
               maxOutputTokens: 20,
             });

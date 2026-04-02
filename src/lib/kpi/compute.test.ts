@@ -103,7 +103,7 @@ function makeAgentMetrics(overrides: Partial<AgentMetricsData> = {}): AgentMetri
       duration_ms: 8500,
     },
     by_model: [
-      { model: "anthropic/claude-haiku-4-5-20251001", runs: 60, avg_steps: 2.2, avg_duration_ms: 6000, errors: 1 },
+      { model: "google/gemini-3.1-flash-lite-preview", runs: 60, avg_steps: 2.2, avg_duration_ms: 6000, errors: 1 },
       { model: "openai/gpt-4o-mini", runs: 40, avg_steps: 2.8, avg_duration_ms: 12000, errors: 2 },
     ],
     daily_trend: [],

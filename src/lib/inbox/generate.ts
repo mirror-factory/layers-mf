@@ -143,7 +143,7 @@ Boost priority for items matching these preferences.\n`
       : "";
 
   const { output } = await generateText({
-    model: gateway("anthropic/claude-haiku-4-5-20251001"),
+    model: gateway("google/gemini-3.1-flash-lite-preview"),
     output: Output.array({ element: InboxItemSchema }),
     prompt: `You are generating prioritized inbox items for a knowledge worker.
 ${personalizationBlock}

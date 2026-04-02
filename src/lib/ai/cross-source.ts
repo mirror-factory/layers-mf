@@ -196,7 +196,7 @@ Use the actual item IDs provided above (item_a_id = new item, item_b_id = candid
     logUsage({
       orgId,
       operation: "cross_source_analysis",
-      model: "anthropic/claude-haiku-4-5-20251001",
+      model: "google/gemini-3.1-flash-lite-preview",
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
       metadata: { newItemId: newItem.id, candidateCount: candidates.length },
