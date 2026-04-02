@@ -516,8 +516,27 @@ export async function executeProject(options: {
 
     // If exposing a port, run in background and return preview URL
     if (options.exposePort) {
-      // Run dev server in background
-      sandbox.runCommand(parts[0], parts.slice(1));
+      // Run dev server in background — capture output for debugging
+      const devCmd = sandbox.runCommand(parts[0], parts.slice(1));
+
+      // Log dev server output asynchronously for debugging
+      void (async () => {
+        try {
+          const cmd = await devCmd;
+          // Read initial output after a delay
+          setTimeout(async () => {
+            try {
+              const out = await cmd.output("both", { signal: AbortSignal.timeout(3000) });
+              if (out) console.log(`[sandbox-dev] ${out.slice(0, 500)}`);
+            } catch { /* still running, expected */ }
+          }, 8000);
+        } catch { /* ignore */ }
+      })();
+
+      // Also list files to verify they were written correctly
+      const lsResult = await sandbox.runCommand("find", [".", "-name", "*.html", "-o", "-name", "*.jsx", "-o", "-name", "*.js", "-o", "-name", "vite.config*", "-o", "-name", "package.json"]);
+      const fileList = await lsResult.stdout();
+      console.log(`[sandbox-files] ${fileList.slice(0, 500)}`);
 
       const previewUrl = sandbox.domain(options.exposePort);
 
@@ -532,10 +551,17 @@ export async function executeProject(options: {
             signal: AbortSignal.timeout(5000),
             headers: { "User-Agent": "Granger-Health-Check" },
           });
-          // Any response (even 404) means the server is listening
+          // Check for real content — not just an empty 200
           if (res.status !== 502) {
-            ready = true;
-            break;
+            const contentLength = res.headers.get("content-length");
+            const body = await res.text();
+            if (body.length > 0) {
+              ready = true;
+              console.log(`[sandbox-health] Ready after ${attempt + 1} attempts, ${body.length} bytes`);
+              break;
+            } else {
+              console.log(`[sandbox-health] Attempt ${attempt + 1}: HTTP ${res.status} but empty body (content-length: ${contentLength})`);
+            }
           }
         } catch {
           // Server not ready yet, keep polling
