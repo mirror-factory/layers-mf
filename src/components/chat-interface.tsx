@@ -1832,70 +1832,23 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     <SourceCitation sources={sources} />
                   )}
 
-                  {/* Copy + Branch actions — visible on hover */}
-                  {text && !isStreaming && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                      <button
-                        onClick={() => navigator.clipboard.writeText(text)}
-                        className="p-1 rounded hover:bg-muted"
-                        aria-label="Copy message"
-                        title="Copy message"
-                      >
-                        <Copy className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                      {m.role === "assistant" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded hover:bg-muted" aria-label="Copy options" title="Copy options">
-                              <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}>
-                              <Copy className="h-3 w-3 mr-2" /> Copy as text
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}>
-                              <FileText className="h-3 w-3 mr-2" /> Copy as Markdown
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                      {conversationId && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const res = await fetch("/api/chat/branch", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ conversationId, messageIndex: idx }),
-                              });
-                              if (!res.ok) return;
-                              const { conversationId: newId } = await res.json();
-                              window.location.href = `/chat?id=${newId}`;
-                            } catch {
-                              // silently fail
-                            }
-                          }}
-                          className="p-1 rounded hover:bg-muted"
-                          aria-label="Branch from here"
-                          title="Branch from here"
-                        >
-                          <GitBranch className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Feedback + cost — assistant messages only, not while streaming */}
+                  {/* Actions row — copy, options, branch, feedback, cost — all on one line */}
                   {m.role === "assistant" && !isStreaming && text && (
-                    <div className="flex items-center gap-2">
-                      <MessageFeedback
-                        messageId={m.id}
-                        conversationId={conversationId}
-                      />
-                      <span className="text-[10px] text-muted-foreground/50" title="Estimated cost">
-                        ~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}
-                      </span>
+                    <div className="flex items-center gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity">
+                      <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted" title="Copy"><Copy className="h-3 w-3 text-muted-foreground" /></button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded hover:bg-muted" title="More"><MoreHorizontal className="h-3 w-3 text-muted-foreground" /></button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(text)}><Copy className="h-3 w-3 mr-2" /> Copy text</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {conversationId && (
+                        <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted" title="Branch"><GitBranch className="h-3 w-3 text-muted-foreground" /></button>
+                      )}
+                      <MessageFeedback messageId={m.id} conversationId={conversationId} />
+                      <span className="text-[10px] text-muted-foreground/40 ml-1">~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}</span>
                     </div>
                   )}
                 </Message>
