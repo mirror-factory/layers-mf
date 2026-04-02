@@ -387,7 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(200);
+  const [height, setHeight] = useState(300);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -401,7 +401,7 @@ function InlineHtmlBlock({ html }: { html: string }) {
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #e5e7eb; background: transparent; line-height: 1.6;
-    overflow: hidden; padding: 4px 0;
+    overflow: visible; padding: 4px 0;
   }
   a { color: #34d399; }
 </style>
@@ -410,12 +410,13 @@ ${libScripts}
 <script>
 // Auto-resize: tell parent the content height
 function reportHeight() {
-  const h = Math.min(document.body.scrollHeight, 600);
+  const h = Math.max(document.body.scrollHeight, document.body.offsetHeight, 100);
   window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
 }
 // Report after render + after any animations settle
-requestAnimationFrame(() => { reportHeight(); setTimeout(reportHeight, 500); setTimeout(reportHeight, 2000); });
+requestAnimationFrame(() => { reportHeight(); setTimeout(reportHeight, 300); setTimeout(reportHeight, 1000); setTimeout(reportHeight, 2000); setTimeout(reportHeight, 4000); });
 new ResizeObserver(reportHeight).observe(document.body);
+new MutationObserver(reportHeight).observe(document.body, { childList: true, subtree: true });
 // Register Mermaid if present
 if (document.querySelector('.mermaid') && typeof mermaid !== 'undefined') {
   mermaid.initialize({ theme: 'dark', themeVariables: { primaryColor: '#34d399' } });
@@ -439,9 +440,11 @@ if (document.querySelector('.mermaid') && typeof mermaid !== 'undefined') {
     <iframe
       ref={iframeRef}
       srcDoc={iframeSrc}
-      className="my-2 w-full border-0 inline-html-render"
-      style={{ height: `${height}px`, background: "transparent", colorScheme: "dark" }}
+      className="my-2 w-full border-0"
+      style={{ height: `${height}px`, background: "transparent", colorScheme: "dark", border: "none" }}
       sandbox="allow-scripts"
+      // eslint-disable-next-line react/no-unknown-property
+      {...{ allowtransparency: "true" } as Record<string, string>}
       title="Inline visual"
     />
   );
