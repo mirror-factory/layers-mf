@@ -1,14 +1,21 @@
 # Universal Artifact System — Architecture Document
 
-> Status: Phase 3 In Progress (DB + Tools done, Panel next)
+> Status: Core Complete (Phases 1-5 done, polish remaining)
 > Owner: Mirror Factory (Alfonso, Kyle, Bobby)
 > Last updated: 2026-04-02
 >
 > **Completed:**
-> - Phase 1: DB migration (artifacts, artifact_versions, artifact_files tables)
-> - Phase 2: Tool updates (write_code, create_document, edit_document, run_project)
-> **In Progress:**
-> - Phase 3: Panel upgrades (version history, inline editing, API endpoints)
+> - Phase 1: DB migration — artifacts, artifact_versions, artifact_files tables with RLS + indexes
+> - Phase 2: Tool updates — write_code, create_document, edit_document, run_project save to artifacts table
+> - Phase 3: API endpoints (6 routes) + version history panel component
+> - Phase 4: Artifacts page rewritten — queries artifacts table, type filters, search, tags, cost badges
+> - Phase 5: AI tools — artifact_list, artifact_get, artifact_version
+>
+> **Remaining polish:**
+> - Inline code editing in artifact panel (Monaco-style)
+> - Diff view between versions
+> - Pop-out artifact to separate browser window
+> - Auto-generate multi-level descriptions (oneliner, short, long)
 
 ---
 
