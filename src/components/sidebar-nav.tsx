@@ -79,7 +79,7 @@ function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { p
       {...(collapsed ? { title: label } : {})}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {!collapsed && label}
+      {!collapsed && <span className="whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>}
     </Link>
   );
   return link;
@@ -107,13 +107,13 @@ export function SidebarNav({
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // Collapsed by default, but expand on hover
+  // Expanded by default, restore user preference
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
-    if (stored === "false") setCollapsed(false);
+    if (stored === "true") setCollapsed(true);
   }, []);
 
   // When hovered and collapsed, visually expand
@@ -190,7 +190,7 @@ export function SidebarNav({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        {/* Logo */}
+        {/* Logo + collapse toggle */}
         <div className={cn("flex items-center border-b", isVisuallyCollapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
             {!isVisuallyCollapsed ? (
@@ -199,13 +199,24 @@ export function SidebarNav({
               <span className="font-serif text-lg font-bold text-primary">G</span>
             )}
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
-            aria-label="Close navigation"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Collapse toggle (desktop only) */}
+            <button
+              onClick={toggleCollapsed}
+              className="hidden md:inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Org name */}
@@ -251,18 +262,6 @@ export function SidebarNav({
           )}
           {(moreOpen || isVisuallyCollapsed) && renderItems(MORE_ITEMS)}
         </nav>
-
-        {/* Collapse toggle (desktop only) */}
-        <div className="hidden md:flex justify-center border-t py-1">
-          <button
-            onClick={toggleCollapsed}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
 
         {/* User */}
         <div className={cn("border-t space-y-1", isVisuallyCollapsed ? "p-1" : "p-3")}>

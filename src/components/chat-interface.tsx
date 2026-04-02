@@ -1979,26 +1979,28 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             )}
 
-            {/* Slash command autocomplete menu */}
+            {/* Slash command autocomplete menu — positioned above input */}
             {slashMenuFiltered.length > 0 && (
-              <div className="max-w-5xl mx-auto mb-1">
-                <div className="border rounded-lg bg-background shadow-lg overflow-hidden">
-                  {slashMenuFiltered.map((item, i) => (
-                    <button
-                      key={item.cmd}
-                      type="button"
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors",
-                        i === slashMenuIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted"
-                      )}
-                      onMouseEnter={() => setSlashMenuIndex(i)}
-                      onClick={() => selectSlashCommand(item.cmd)}
-                    >
-                      <span className="text-base w-6 text-center">{item.icon}</span>
-                      <span className="font-mono text-xs font-medium text-primary">{item.cmd}</span>
-                      <span className="text-xs text-muted-foreground">{item.description}</span>
-                    </button>
-                  ))}
+              <div className="absolute bottom-full left-0 right-0 mb-1 z-20 px-3 sm:px-4">
+                <div className="max-w-5xl mx-auto">
+                  <div className="border rounded-lg bg-background shadow-lg max-h-[calc(8*2.5rem)] overflow-y-auto">
+                    {slashMenuFiltered.map((item, i) => (
+                      <button
+                        key={item.cmd}
+                        type="button"
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors",
+                          i === slashMenuIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                        )}
+                        onMouseEnter={() => setSlashMenuIndex(i)}
+                        onClick={() => selectSlashCommand(item.cmd)}
+                      >
+                        <span className="text-base w-6 text-center">{item.icon}</span>
+                        <span className="font-mono text-xs font-medium text-primary">{item.cmd}</span>
+                        <span className="text-xs text-muted-foreground">{item.description}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
