@@ -769,12 +769,12 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     // === Code execution tool ===
     run_code: tool({
       description:
-        "Write and execute code in a sandboxed Vercel VM. Use for: running scripts, data processing, calculations, API testing, or serving HTML/CSS/React for live preview. For HTML: auto-serves with a static server and returns a live preview URL. For JS/Python: executes and returns stdout.",
+        "Execute a script in a sandboxed VM. ONLY for: running computations, data processing, API testing, Python scripts. Do NOT use for charts, diagrams, visuals, or HTML — use inline ```html blocks instead. Returns stdout/stderr.",
       inputSchema: z.object({
         code: z.string().describe("The code to execute or serve"),
         language: z
-          .enum(["javascript", "typescript", "python", "html"])
-          .describe("Programming language. Use 'html' for web pages that need a live preview URL."),
+          .enum(["javascript", "typescript", "python"])
+          .describe("Programming language for script execution."),
         filename: z
           .string()
           .optional()
@@ -1123,7 +1123,7 @@ Be strict but fair. Return a check for every single rule listed above.`,
 
     // === Code artifact tool ===
     write_code: tool({
-      description: "Write a code artifact with inline preview.",
+      description: "Save a code file as an artifact. NOT for charts/visuals — use inline ```html blocks for those.",
       inputSchema: z.object({
         filename: z.string().describe("Filename with extension, e.g. 'setup.sh', 'config.json'"),
         language: z.string().describe("Programming language: typescript, python, bash, html, css, json, yaml, markdown, sql, go, rust, ruby, jsx, tsx"),
