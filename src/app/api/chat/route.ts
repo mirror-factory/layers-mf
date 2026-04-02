@@ -298,9 +298,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const modelId = ALLOWED_MODELS.has(body.model as string)
-    ? (body.model as string)
+  const requestedModel = body.model as string;
+  const modelId = ALLOWED_MODELS.has(requestedModel)
+    ? requestedModel
     : "anthropic/claude-haiku-4-5-20251001";
+  if (requestedModel !== modelId) {
+    console.warn(`[chat] Model "${requestedModel}" not in ALLOWED_MODELS, falling back to ${modelId}`);
+  }
+  console.log(`[chat] Using model: ${modelId} (requested: ${requestedModel})`);
 
   const conversationId: string | null = (body.conversationId as string) ?? null;
   const visualLevel: string = (body.visualLevel as string) ?? "medium";
