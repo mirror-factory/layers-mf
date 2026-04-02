@@ -1837,15 +1837,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     <SourceCitation sources={sources} />
                   )}
 
-                  {/* Actions row — copy, branch, feedback, cost */}
-                  {m.role === "assistant" && !isStreaming && text && (
-                    <div className="flex items-center gap-1 mt-1">
+                  {/* Actions row — copy, branch (both roles), feedback + cost (assistant only) */}
+                  {!isStreaming && text && (
+                    <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted transition-colors" title="Copy"><Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" /></button>
                       {conversationId && (
                         <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted transition-colors" title="Branch"><GitBranch className="h-3 w-3 text-primary/60 hover:text-primary" /></button>
                       )}
-                      <MessageFeedback messageId={m.id} conversationId={conversationId} />
-                      <span className="text-[10px] text-muted-foreground/40 ml-1">~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}</span>
+                      {m.role === "assistant" && (
+                        <>
+                          <MessageFeedback messageId={m.id} conversationId={conversationId} />
+                          <span className="text-[10px] text-muted-foreground/40 ml-1">~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}</span>
+                        </>
+                      )}
                     </div>
                   )}
                 </Message>
@@ -1854,14 +1858,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {isLoading && (
-            <div className="flex items-center gap-3">
-              <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                <NeuralDots size={40} dotCount={12} active={true} />
-              </div>
-              <div>
-                <p className="text-sm text-foreground">Thinking…</p>
-                <p className="text-[10px] text-muted-foreground">Processing your request</p>
-              </div>
+            <div className="flex items-center gap-1.5 ml-12 py-1">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">Thinking…</span>
             </div>
           )}
 
