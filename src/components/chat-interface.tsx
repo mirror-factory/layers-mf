@@ -387,7 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(300);
+  const [height, setHeight] = useState(0);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -398,30 +398,34 @@ function InlineHtmlBlock({ html }: { html: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent !important; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #e5e7eb; background: transparent; line-height: 1.6;
-    overflow: visible; padding: 4px 0;
+    color: #e5e7eb; line-height: 1.6; padding: 0;
   }
+  canvas { background: transparent !important; }
   a { color: #34d399; }
 </style>
 ${libScripts}
 </head><body>${html}
 <script>
-// Auto-resize: tell parent the content height
-function reportHeight() {
-  const h = Math.max(document.body.scrollHeight, document.body.offsetHeight, 100);
+// Set Chart.js dark defaults if loaded
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#9ca3af';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.backgroundColor = 'transparent';
+  Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
+}
+// Auto-resize
+function rh() {
+  var h = document.body.scrollHeight || document.body.offsetHeight || 200;
   window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
 }
-// Report after render + after any animations settle
-requestAnimationFrame(() => { reportHeight(); setTimeout(reportHeight, 300); setTimeout(reportHeight, 1000); setTimeout(reportHeight, 2000); setTimeout(reportHeight, 4000); });
-new ResizeObserver(reportHeight).observe(document.body);
-new MutationObserver(reportHeight).observe(document.body, { childList: true, subtree: true });
-// Register Mermaid if present
-if (document.querySelector('.mermaid') && typeof mermaid !== 'undefined') {
-  mermaid.initialize({ theme: 'dark', themeVariables: { primaryColor: '#34d399' } });
-  mermaid.run();
-}
+setTimeout(rh, 50);
+setTimeout(rh, 300);
+setTimeout(rh, 1000);
+setTimeout(rh, 3000);
+new ResizeObserver(rh).observe(document.body);
 <\/script></body></html>`;
   }, [html]);
 
@@ -441,7 +445,7 @@ if (document.querySelector('.mermaid') && typeof mermaid !== 'undefined') {
       ref={iframeRef}
       srcDoc={iframeSrc}
       className="my-2 w-full border-0"
-      style={{ height: `${height}px`, background: "transparent", colorScheme: "dark", border: "none" }}
+      style={{ height: height > 0 ? `${height}px` : "auto", minHeight: height > 0 ? undefined : "100px", background: "transparent", colorScheme: "dark", border: "none" }}
       sandbox="allow-scripts"
       // eslint-disable-next-line react/no-unknown-property
       {...{ allowtransparency: "true" } as Record<string, string>}
