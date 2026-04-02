@@ -387,7 +387,15 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(0);
+  // Estimate height from content — canvas/chart needs ~350px, SVG/HTML varies
+  const estimatedHeight = useMemo(() => {
+    if (html.includes("<canvas")) return 350;
+    if (html.includes("<svg")) return 300;
+    // Count rough lines of visible content
+    const lines = html.replace(/<[^>]+>/g, "").split("\n").filter(l => l.trim()).length;
+    return Math.max(120, Math.min(lines * 28, 500));
+  }, [html]);
+  const [height, setHeight] = useState(estimatedHeight);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -398,7 +406,7 @@ function InlineHtmlBlock({ html }: { html: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: transparent !important; margin: 0; padding: 0; }
+  html, body { background: hsl(160,15%,5%) !important; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #e5e7eb; line-height: 1.6;
@@ -456,7 +464,7 @@ setTimeout(rh, 1500);
       ref={iframeRef}
       srcDoc={iframeSrc}
       className="my-2 w-full border-0"
-      style={{ height: height > 0 ? `${height}px` : "200px", background: "transparent", colorScheme: "dark", border: "none", transition: "height 0.2s ease" }}
+      style={{ height: `${height}px`, background: "hsl(160,15%,5%)", colorScheme: "dark", border: "none", borderRadius: "8px", transition: "height 0.2s ease" }}
       sandbox="allow-scripts"
       // eslint-disable-next-line react/no-unknown-property
       {...{ allowtransparency: "true" } as Record<string, string>}
