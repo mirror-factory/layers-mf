@@ -1780,16 +1780,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     <User className="h-4 w-4" />
                   </div>
                 ) : (
-                  <div
-                    className={cn(
-                      "rounded-full overflow-hidden shrink-0 transition-shadow duration-500",
-                      isLastAssistant && isLoading
-                        ? "shadow-[0_0_12px_rgba(52,211,153,0.4)] animate-pulse"
-                        : "shadow-[0_0_6px_rgba(52,211,153,0.15)]"
-                    )}
-                    style={{ width: 36, height: 36 }}
-                  >
-                    <NeuralDots size={40} dotCount={12} />
+                  <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                    <NeuralDots size={40} dotCount={12} active={isLastAssistant && isLoading} />
                   </div>
                 )}
 
@@ -1863,8 +1855,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
           {isLoading && (
             <div className="flex items-center gap-3">
-              <div className="rounded-full overflow-hidden shrink-0 shadow-[0_0_14px_rgba(52,211,153,0.4)] animate-pulse" style={{ width: 36, height: 36 }}>
-                <NeuralDots size={40} dotCount={12} />
+              <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                <NeuralDots size={40} dotCount={12} active={true} />
               </div>
               <div>
                 <p className="text-sm text-foreground">Thinking…</p>
