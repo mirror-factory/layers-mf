@@ -1858,9 +1858,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {isLoading && (
-            <div className="flex items-center gap-1.5 ml-12 py-1">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground">Thinking…</span>
+            <div className="flex gap-3 max-w-4xl">
+              <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                <NeuralDots size={40} dotCount={12} active={true} />
+              </div>
+              <div className="flex items-center gap-1.5 pt-2">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground">Thinking…</span>
+              </div>
             </div>
           )}
 
