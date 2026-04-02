@@ -387,7 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(500);
+  const [height, setHeight] = useState(400);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -451,11 +451,11 @@ setTimeout(rh, 4000);
     <iframe
       ref={iframeRef}
       srcDoc={iframeSrc}
-      className="my-2 w-full border-0"
-      style={{ height: `${height}px`, background: "hsl(160,15%,5%)", colorScheme: "dark", border: "none", borderRadius: "8px", transition: "height 0.2s ease" }}
+      width="100%"
+      height={height}
+      className="my-2 border-0 block"
+      style={{ background: "hsl(160,15%,5%)", colorScheme: "dark", borderRadius: "8px" }}
       sandbox="allow-scripts"
-      // eslint-disable-next-line react/no-unknown-property
-      {...{ allowtransparency: "true" } as Record<string, string>}
       title="Inline visual"
     />
   );
