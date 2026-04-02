@@ -1781,7 +1781,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : (
                   <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                    <NeuralDots size={40} dotCount={12} active={isLastAssistant && isLoading} />
+                    {isStreaming ? (
+                      /* Currently generating — fast, bright, energized */
+                      <NeuralDots size={40} dotCount={12} active={true} />
+                    ) : isLastAssistant ? (
+                      /* Most recent completed — normal idle animation */
+                      <NeuralDots size={40} dotCount={12} active={false} />
+                    ) : (
+                      /* Older messages — very subtle, almost static */
+                      <NeuralDots size={40} dotCount={8} active={false} />
+                    )}
                   </div>
                 )}
 
