@@ -159,7 +159,7 @@ const getHighlighter = (
 const createRawTokens = (code: string): TokenizedCode => ({
   bg: "transparent",
   fg: "inherit",
-  tokens: code.split("\n").map((line) =>
+  tokens: (code ?? "").split("\n").map((line) =>
     line === ""
       ? []
       : [
@@ -386,7 +386,7 @@ export const CodeBlockContent = ({
   showLineNumbers?: boolean;
 }) => {
   // Memoized raw tokens for immediate display
-  const rawTokens = useMemo(() => createRawTokens(code), [code]);
+  const rawTokens = useMemo(() => createRawTokens(code ?? ""), [code]);
 
   // Try to get cached result synchronously, otherwise use raw tokens
   const [tokenized, setTokenized] = useState<TokenizedCode>(
