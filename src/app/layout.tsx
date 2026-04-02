@@ -42,7 +42,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        {/* Libraries for inline visual rendering in chat — loaded once, available to all sandboxed iframes */}
+      </head>
       <body className={`${inter.className} ${playfair.variable} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider>
           {children}

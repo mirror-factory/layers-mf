@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, Bot, User, Square,
   FileText, Mic, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
@@ -369,27 +369,82 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** Inline HTML block — renders HTML+CSS only, no JavaScript (safe from injection) */
+/** CDN libraries injected into every sandboxed iframe for inline HTML */
+const INLINE_LIBS = [
+  "https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js",
+  "https://cdn.jsdelivr.net/npm/gsap@3/dist/MotionPathPlugin.min.js",
+  "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
+  "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/roughjs@4/bundled/rough.js",
+  "https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js",
+  "https://cdn.jsdelivr.net/npm/canvas-confetti@1/dist/confetti.browser.js",
+];
+
+/**
+ * Inline HTML block — renders in a sandboxed iframe for full JS execution
+ * with ZERO injection risk (iframe cannot access parent page, cookies, or DOM).
+ * Libraries (GSAP, Chart.js, anime.js, Rough.js, Zdog, confetti) are injected.
+ */
 function InlineHtmlBlock({ html }: { html: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(200);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-
-    // Strip ALL scripts, event handlers, and dangerous patterns
-    const cleaned = html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
-      .replace(/javascript:/gi, "")
-      .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
-      .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
-
-    // Set the sanitized HTML content (CSS animations still work via @keyframes in <style>)
-    container.innerHTML = cleaned;
+  // Build the full HTML document for the iframe
+  const iframeSrc = useMemo(() => {
+    const libScripts = INLINE_LIBS.map(url => `<script src="${url}"><\/script>`).join("\n");
+    return `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e5e7eb; background: transparent; line-height: 1.6;
+    overflow: hidden; padding: 4px 0;
+  }
+  a { color: #34d399; }
+</style>
+${libScripts}
+</head><body>${html}
+<script>
+// Auto-resize: tell parent the content height
+function reportHeight() {
+  const h = Math.min(document.body.scrollHeight, 600);
+  window.parent.postMessage({ type: 'inline-html-height', height: h }, '*');
+}
+// Report after render + after any animations settle
+requestAnimationFrame(() => { reportHeight(); setTimeout(reportHeight, 500); setTimeout(reportHeight, 2000); });
+new ResizeObserver(reportHeight).observe(document.body);
+// Register Mermaid if present
+if (document.querySelector('.mermaid') && typeof mermaid !== 'undefined') {
+  mermaid.initialize({ theme: 'dark', themeVariables: { primaryColor: '#34d399' } });
+  mermaid.run();
+}
+<\/script></body></html>`;
   }, [html]);
 
-  return <div ref={containerRef} className="my-2 inline-html-render" />;
+  // Listen for height messages from the iframe
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.data?.type === "inline-html-height" && typeof e.data.height === "number") {
+        setHeight(Math.max(40, e.data.height + 8));
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={iframeSrc}
+      className="my-2 w-full border-0 inline-html-render"
+      style={{ height: `${height}px`, background: "transparent", colorScheme: "dark" }}
+      sandbox="allow-scripts"
+      title="Inline visual"
+    />
+  );
 }
 
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
