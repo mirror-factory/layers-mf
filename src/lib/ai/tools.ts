@@ -650,9 +650,59 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             const mainContent = `${mainImports}\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);`;
 
             // Replace template main.jsx with custom one
-            const patchedTemplateFiles = templateFiles.map(f =>
+            let patchedTemplateFiles = templateFiles.map(f =>
               f.path === "src/main.jsx" ? { ...f, content: mainContent } : f
             );
+
+            // Auto-detect npm dependencies from user code imports
+            const importRegex = /(?:import\s+.*?from\s+['"])([^./][^'"]*?)(?:['"])|(?:require\s*\(\s*['"])([^./][^'"]*?)(?:['"])/g;
+            const builtins = new Set(["react", "react-dom", "react-dom/client", "react/jsx-runtime"]);
+            const detectedDeps = new Set<string>();
+            for (const f of input.files) {
+              let match;
+              while ((match = importRegex.exec(f.content)) !== null) {
+                const pkg = (match[1] ?? match[2]).split("/")[0]; // get base package name
+                if (!builtins.has(pkg) && !pkg.startsWith("@vitejs")) {
+                  detectedDeps.add(pkg);
+                }
+              }
+            }
+            // Also detect from config files
+            const hasTailwind = input.files.some(f => f.path.includes("tailwind.config"));
+            const hasPostcss = input.files.some(f => f.path.includes("postcss.config"));
+            if (hasTailwind) { detectedDeps.add("tailwindcss"); detectedDeps.add("@tailwindcss/vite"); }
+            if (hasPostcss) { detectedDeps.add("postcss"); detectedDeps.add("autoprefixer"); }
+
+            // Patch package.json to include detected dependencies
+            if (detectedDeps.size > 0) {
+              const depsObj: Record<string, string> = {};
+              for (const dep of detectedDeps) depsObj[dep] = "latest";
+
+              patchedTemplateFiles = patchedTemplateFiles.map(f => {
+                if (f.path === "package.json") {
+                  try {
+                    const pkg = JSON.parse(f.content);
+                    pkg.dependencies = { ...pkg.dependencies, ...depsObj };
+                    return { ...f, content: JSON.stringify(pkg, null, 2) };
+                  } catch { return f; }
+                }
+                return f;
+              });
+              console.log(`[sandbox] Auto-detected deps: ${[...detectedDeps].join(", ")}`);
+            }
+
+            // Also patch vite.config if tailwind detected — add tailwind plugin
+            if (hasTailwind) {
+              patchedTemplateFiles = patchedTemplateFiles.map(f => {
+                if (f.path === "vite.config.js" && !f.content.includes("tailwindcss")) {
+                  return {
+                    ...f,
+                    content: `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nimport tailwindcss from '@tailwindcss/vite';\nexport default defineConfig({ plugins: [react(), tailwindcss()], server: { host: '0.0.0.0', port: 5173, allowedHosts: true } });`,
+                  };
+                }
+                return f;
+              });
+            }
 
             const scaffoldFiles = patchedTemplateFiles.filter(f => !userPaths.has(f.path));
             allFiles = [...scaffoldFiles, ...input.files];
@@ -664,9 +714,13 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             allFiles = [...allFiles.filter(f => !addPaths.has(f.path)), ...input.add_files];
           }
 
+          // Ensure npm install runs when template provides package.json
+          const hasPackageJson = allFiles.some(f => f.path === "package.json");
+          const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
+
           const result = await executeProject({
             files: allFiles,
-            installCommand: input.install_command,
+            installCommand,
             runCommand: input.run_command,
             readOutputFiles: input.read_output_files,
             exposePort: input.expose_port,
