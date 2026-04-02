@@ -452,7 +452,14 @@ setTimeout(rh, 1500);
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.data?.type === "inline-html-height" && typeof e.data.height === "number") {
-        setHeight(Math.max(40, e.data.height + 8));
+        // Only shrink from estimate or grow slightly — never add huge empty space
+        const reported = e.data.height;
+        setHeight(prev => {
+          if (reported < 40) return prev; // ignore tiny values
+          if (reported < prev) return reported; // shrink to fit
+          if (reported > prev && reported < prev * 1.5) return reported; // modest growth OK
+          return prev; // reject huge jumps
+        });
       }
     }
     window.addEventListener("message", onMessage);
