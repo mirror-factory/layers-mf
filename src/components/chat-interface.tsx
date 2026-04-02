@@ -387,7 +387,7 @@ const INLINE_LIBS = [
  */
 function InlineHtmlBlock({ html }: { html: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(400);
+  const [height, setHeight] = useState(420);
 
   // Build the full HTML document for the iframe
   const iframeSrc = useMemo(() => {
@@ -403,7 +403,7 @@ function InlineHtmlBlock({ html }: { html: string }) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #e5e7eb; line-height: 1.6;
   }
-  canvas { background: transparent !important; display: block; min-height: 280px; }
+  canvas { background: transparent !important; display: block; min-height: 380px; }
   a { color: #34d399; }
 </style>
 ${libScripts}
@@ -444,7 +444,7 @@ setTimeout(rh, 1500);
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.data?.type === "inline-html-height" && typeof e.data.height === "number") {
-        const h = Math.max(150, Math.min(e.data.height, 600));
+        const h = Math.max(200, Math.min(e.data.height, 800));
         setHeight(h);
       }
     }
