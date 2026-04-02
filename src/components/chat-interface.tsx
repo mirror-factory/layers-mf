@@ -9,9 +9,8 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap, Sparkles,
+  Paperclip, Image as ImageIcon, FileType, Zap,
 } from "lucide-react";
-import { JsonRenderInline } from "@/components/json-render-inline";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
@@ -333,29 +332,24 @@ function DocumentArtifactEditor({ content, documentId }: { content: string; docu
  * Works with ANY model. HTML blocks render progressively as they stream in.
  */
 function RichMessageResponse({ text }: { text: string }) {
-  // Match ```html, ```svg, ```jsonui, ```json-render blocks
-  const blockRegex = /```(?:html|svg|jsonui|json-render|json_render)\s*\n([\s\S]*?)(?:\n```|$)/g;
-  const parts: { type: "text" | "html" | "jsonui"; content: string }[] = [];
+  // Match ```html and ```svg blocks
+  const blockRegex = /```(?:html|svg)\s*\n([\s\S]*?)(?:\n```|$)/g;
+  const parts: { type: "text" | "html"; content: string }[] = [];
   let lastIndex = 0;
   let match;
 
   while ((match = blockRegex.exec(text)) !== null) {
-    const lang = text.slice(match.index + 3, text.indexOf("\n", match.index)).trim();
     if (match.index > lastIndex) {
       parts.push({ type: "text", content: text.slice(lastIndex, match.index) });
     }
-    if (lang === "html" || lang === "svg") {
-      parts.push({ type: "html", content: match[1] });
-    } else {
-      parts.push({ type: "jsonui", content: match[1] });
-    }
+    parts.push({ type: "html", content: match[1] });
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {
     parts.push({ type: "text", content: text.slice(lastIndex) });
   }
 
-  // No special blocks — render normally
+  // No html blocks — render normally
   if (parts.length <= 1 && parts[0]?.type === "text") {
     return <MessageResponse>{text}</MessageResponse>;
   }
@@ -370,24 +364,10 @@ function RichMessageResponse({ text }: { text: string }) {
           return (
             <div
               key={i}
-              className="my-3 inline-html-render"
+              className="my-2 inline-html-render"
               dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(part.content) }}
             />
           );
-        }
-        if (part.type === "jsonui") {
-          try {
-            const spec = JSON.parse(part.content);
-            if (spec.root && spec.elements) {
-              return (
-                <div key={i} className="my-3">
-                  <JsonRenderInline spec={spec} />
-                </div>
-              );
-            }
-          } catch {
-            return <MessageResponse key={i}>{`\`\`\`json\n${part.content}\n\`\`\``}</MessageResponse>;
-          }
         }
         return null;
       })}
@@ -395,17 +375,15 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** Sanitize HTML for inline rendering — allow SVG, styles, strip unsafe/ugly stuff */
+/** Sanitize HTML for inline rendering — strip scripts and gradients, allow subtle fills */
 function sanitizeInlineHtml(html: string): string {
   return html
-    // Remove script tags and event handlers
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
     .replace(/javascript:/gi, "")
-    // Strip background colors/gradients from inline styles (AI often ignores the rule)
-    .replace(/background\s*:\s*(?:linear-gradient|radial-gradient|#[0-9a-f]{3,8}|rgb[a]?\([^)]+\)|[a-z]+)\s*;?/gi, "")
-    .replace(/background-color\s*:\s*[^;]+;?/gi, "")
-    .replace(/background-image\s*:\s*[^;]+;?/gi, "");
+    // Strip gradients only — allow solid/rgba backgrounds
+    .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
+    .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
 }
 
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
@@ -413,20 +391,6 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
-
-  // render_ui tool: completely invisible as a tool call — just render the UI inline
-  if (part.type === "tool-render_ui") {
-    if (!isDone) return null; // Hide loading state entirely — it's instant
-    if (isDone && output && typeof output === "object" && (output as Record<string, unknown>).type === "json-render") {
-      const jr = output as { spec: Record<string, unknown> };
-      return (
-        <div className="my-3">
-          <JsonRenderInline spec={jr.spec} />
-        </div>
-      );
-    }
-    return null; // Hide errors too — fall through to text
-  }
 
   // review_compliance tool: render checklist inline
   if (part.type === "tool-review_compliance") {
@@ -480,7 +444,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
   const approvalOutput = isApproval ? output as Record<string, unknown> : null;
 
-  // json-render is handled above at the tool-type level (completely invisible)
+  // Inline visuals are handled via ```html blocks in RichMessageResponse
 
   // Check if this is a compliance review result
   const isComplianceReview = isDone && output && typeof output === "object"
@@ -1471,7 +1435,6 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
     { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
     { cmd: "/review", label: "Review", description: "Check content against rules & guidelines", icon: "📋" },
-    { cmd: "/ui", label: "Render UI", description: "Generate interactive UI inline", icon: "✨" },
     { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
     { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "🌐" },
     { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
@@ -1520,9 +1483,6 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     "/review": (args) => args
       ? `Use the review_compliance tool to check the following content against all our org rules and priority documents: ${args}`
       : "Use the review_compliance tool. What content would you like me to review against our rules and guidelines? You can paste text, a URL, or reference a document.",
-    "/ui": (args) => args
-      ? `Use the render_ui tool to create an interactive inline UI for: ${args}. Use shadcn/ui components (Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs). Output a json-render spec with root + elements.`
-      : "Use the render_ui tool to create interactive UI inline. What would you like me to visualize?",
     "/web": (args) => args ? `Use the web_browse tool to fetch and read this URL: ${args}` : "Use the web_browse tool. What URL would you like me to read?",
     "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
     "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /skill create, /pm, /email, /meeting, /code, /weekly, /brand",

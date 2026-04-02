@@ -1090,29 +1090,6 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
-    // === Inline UI rendering tool (json-render) ===
-    render_ui: tool({
-      description: "Render interactive UI inline in chat. Use for dashboards, org charts, data displays, status cards, tables. Outputs a json-render spec with shadcn/ui components: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Accordion, Image, Separator.",
-      inputSchema: z.object({
-        title: z.string().describe("Brief title for this UI"),
-        spec: z.object({
-          root: z.string().describe("ID of the root element"),
-          elements: z.record(z.string(), z.object({
-            type: z.string().describe("Component name: Card, Stack, Grid, Table, Heading, Text, Badge, Avatar, Button, Progress, Alert, Tabs, Separator, Image, Link"),
-            props: z.record(z.string(), z.unknown()).describe("Component props"),
-            children: z.array(z.string()).optional().describe("Child element IDs"),
-          })).describe("Map of element ID → component definition"),
-        }).describe("json-render spec"),
-      }),
-      execute: async (input) => {
-        return {
-          type: "json-render" as const,
-          title: input.title,
-          spec: input.spec,
-        };
-      },
-    }),
-
     // === Web tools ===
     web_browse: tool({
       description: "Fetch a URL and extract text content. Use to read web pages, docs, articles.",

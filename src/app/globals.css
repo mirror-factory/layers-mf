@@ -81,9 +81,9 @@
 .inline-html-render * {
   max-width: 100%;
 }
-/* Force no backgrounds on child divs — the AI sometimes ignores the instruction */
+/* Strip solid backgrounds — allow subtle rgba fills */
 .inline-html-render > div {
-  background: transparent !important;
+  background-image: none !important;
 }
 /* Fade-in animation for inline rendered content */
 .inline-html-render {
