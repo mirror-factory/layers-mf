@@ -395,13 +395,17 @@ function RichMessageResponse({ text }: { text: string }) {
   );
 }
 
-/** Sanitize HTML for inline rendering — allow SVG, styles, common elements */
+/** Sanitize HTML for inline rendering — allow SVG, styles, strip unsafe/ugly stuff */
 function sanitizeInlineHtml(html: string): string {
-  // Remove script tags and event handlers for safety
   return html
+    // Remove script tags and event handlers
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/javascript:/gi, "")
+    // Strip background colors/gradients from inline styles (AI often ignores the rule)
+    .replace(/background\s*:\s*(?:linear-gradient|radial-gradient|#[0-9a-f]{3,8}|rgb[a]?\([^)]+\)|[a-z]+)\s*;?/gi, "")
+    .replace(/background-color\s*:\s*[^;]+;?/gi, "")
+    .replace(/background-image\s*:\s*[^;]+;?/gi, "");
 }
 
 function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {

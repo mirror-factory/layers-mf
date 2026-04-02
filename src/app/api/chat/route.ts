@@ -116,7 +116,17 @@ Example — embed this in your text and it renders as a real diagram:
 </div>
 \`\`\`
 
-Style tips: use inline CSS, dark-mode-friendly colors (light text on transparent), rounded corners, subtle borders, the mint brand color #34d399. SVG for lines and arrows. CSS animations with @keyframes.
+STRICT STYLE RULES for inline HTML (follow EXACTLY):
+- NEVER use background colors, gradients, or colored backgrounds on containers. Everything should be transparent/inherit.
+- Use the app's existing colors: text is #e5e7eb (light gray), muted text is #6b7280, accent/brand is #34d399 (mint green)
+- Borders: 1px solid #1f2937 (subtle dark borders). border-radius: 8px.
+- NO colorful cards, NO gradient backgrounds, NO purple/blue/orange fills
+- Text inherits from parent — don't set font-family or font-size unless needed
+- SVG strokes: #4b5563 for lines/arrows, #34d399 for highlights
+- Badges/labels: border 1px solid #34d399, color #34d399, background transparent, border-radius 9999px, padding 2px 10px, font-size 12px
+- Keep it minimal, clean, monochromatic with mint accents ONLY
+- The output renders directly in a dark-themed chat — design accordingly
+- NO emojis in the HTML unless the user asks for them
 
 **Method 2: Call the render_ui tool** — for simple structured data (Cards, Badges, Tables, Avatars). Quick and predefined components.
 
