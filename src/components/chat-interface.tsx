@@ -332,6 +332,33 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
 
+  // render_ui tool: completely invisible as a tool call — just render the UI inline
+  if (part.type === "tool-render_ui") {
+    if (!isDone) return null; // Hide loading state entirely — it's instant
+    if (isDone && output && typeof output === "object" && (output as Record<string, unknown>).type === "json-render") {
+      const jr = output as { spec: Record<string, unknown> };
+      return (
+        <div className="my-3">
+          <JsonRenderInline spec={jr.spec} />
+        </div>
+      );
+    }
+    return null; // Hide errors too — fall through to text
+  }
+
+  // review_compliance tool: render checklist inline
+  if (part.type === "tool-review_compliance") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Reviewing against rules and guidelines...</span>
+        </div>
+      );
+    }
+    // Fall through to the compliance review renderer below
+  }
+
   // ask_user tool: show compact summary once answered, hide while pending (InterviewUI handles it)
   if (part.type === "tool-ask_user") {
     if (part.state === "input-available") return null; // InterviewUI renders above prompt
@@ -371,18 +398,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
   const approvalOutput = isApproval ? output as Record<string, unknown> : null;
 
-  // Check if this is a json-render inline UI result
-  const isJsonRender = isDone && output && typeof output === "object"
-    && (output as Record<string, unknown>).type === "json-render"
-    && (output as Record<string, unknown>).spec;
-  if (isJsonRender) {
-    const jr = output as { title: string; spec: Record<string, unknown> };
-    return (
-      <div className="my-2">
-        <JsonRenderInline spec={jr.spec} />
-      </div>
-    );
-  }
+  // json-render is handled above at the tool-type level (completely invisible)
 
   // Check if this is a compliance review result
   const isComplianceReview = isDone && output && typeof output === "object"
