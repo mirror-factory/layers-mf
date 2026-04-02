@@ -952,7 +952,7 @@ function MessageFeedback({
 
   return (
     <div className="flex items-center gap-1 mt-1">
-      <div className={cn("flex items-center gap-0.5", !selected && "md:opacity-0 md:group-hover:opacity-100 transition-opacity")}>
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
           onClick={handleThumbsUp}
@@ -1834,7 +1834,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                   {/* Actions row — copy, options, branch, feedback, cost — all on one line */}
                   {m.role === "assistant" && !isStreaming && text && (
-                    <div className="flex items-center gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 mt-1">
                       <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted" title="Copy"><Copy className="h-3 w-3 text-muted-foreground" /></button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
