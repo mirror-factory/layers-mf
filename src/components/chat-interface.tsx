@@ -1924,7 +1924,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
-          <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
+          <div className="flex flex-col gap-2 max-w-5xl mx-auto sm:flex-row sm:gap-3">
             <Select value={model} onValueChange={setModel}>
               <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">
                 <SelectValue />
@@ -1975,7 +1975,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
             {/* Slash command autocomplete menu */}
             {slashMenuFiltered.length > 0 && (
-              <div className="max-w-3xl mx-auto mb-1">
+              <div className="max-w-5xl mx-auto mb-1">
                 <div className="border rounded-lg bg-background shadow-lg overflow-hidden">
                   {slashMenuFiltered.map((item, i) => (
                     <button

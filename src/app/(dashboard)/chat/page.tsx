@@ -100,7 +100,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
@@ -181,29 +181,27 @@ export default function ChatPage() {
 
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="border-b px-4 sm:px-8 py-4 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="border-b px-4 sm:px-6 py-2 shrink-0">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
+              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
               aria-label="Open conversations"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
             <button
               onClick={togglePanel}
-              className="hidden md:inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="hidden md:inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               aria-label={panelVisible ? "Hide conversation list" : "Show conversation list"}
               title={panelVisible ? "Hide conversation list" : "Show conversation list"}
             >
               {panelVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
-            <div>
-              <h1 className="text-lg font-semibold">Chat with Granger</h1>
-              <p className="text-xs text-muted-foreground">
-                Ask questions across all your team&apos;s context.
-              </p>
-            </div>
+            <h1 className="text-sm font-semibold">Chat with Granger</h1>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Ask across all your team&apos;s context
+            </span>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
