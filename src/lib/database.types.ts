@@ -206,6 +206,210 @@ export type Database = {
           },
         ]
       }
+      artifact_files: {
+        Row: {
+          artifact_id: string
+          content: string
+          created_at: string
+          file_path: string
+          id: string
+          language: string | null
+          size_bytes: number | null
+          version_number: number
+        }
+        Insert: {
+          artifact_id: string
+          content: string
+          created_at?: string
+          file_path: string
+          id?: string
+          language?: string | null
+          size_bytes?: number | null
+          version_number: number
+        }
+        Update: {
+          artifact_id?: string
+          content?: string
+          created_at?: string
+          file_path?: string
+          id?: string
+          language?: string | null
+          size_bytes?: number | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artifact_files_artifact_id_fkey"
+            columns: ["artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      artifact_versions: {
+        Row: {
+          artifact_id: string
+          change_summary: string | null
+          change_type: string | null
+          content: string | null
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          created_by_ai: boolean | null
+          id: string
+          input_tokens: number | null
+          model_used: string | null
+          output_tokens: number | null
+          snapshot_id: string | null
+          version_number: number
+        }
+        Insert: {
+          artifact_id: string
+          change_summary?: string | null
+          change_type?: string | null
+          content?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_ai?: boolean | null
+          id?: string
+          input_tokens?: number | null
+          model_used?: string | null
+          output_tokens?: number | null
+          snapshot_id?: string | null
+          version_number: number
+        }
+        Update: {
+          artifact_id?: string
+          change_summary?: string | null
+          change_type?: string | null
+          content?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_ai?: boolean | null
+          id?: string
+          input_tokens?: number | null
+          model_used?: string | null
+          output_tokens?: number | null
+          snapshot_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artifact_versions_artifact_id_fkey"
+            columns: ["artifact_id"]
+            isOneToOne: false
+            referencedRelation: "artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      artifacts: {
+        Row: {
+          categories: string[] | null
+          content: string | null
+          conversation_id: string | null
+          created_at: string
+          current_version: number
+          description_long: string | null
+          description_oneliner: string | null
+          description_short: string | null
+          expose_port: number | null
+          framework: string | null
+          id: string
+          is_pinned: boolean | null
+          language: string | null
+          last_opened_at: string | null
+          org_id: string
+          preview_url: string | null
+          primary_file_path: string | null
+          run_command: string | null
+          slug: string | null
+          snapshot_id: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          total_cost_usd: number | null
+          total_input_tokens: number | null
+          total_output_tokens: number | null
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          categories?: string[] | null
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          current_version?: number
+          description_long?: string | null
+          description_oneliner?: string | null
+          description_short?: string | null
+          expose_port?: number | null
+          framework?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          language?: string | null
+          last_opened_at?: string | null
+          org_id: string
+          preview_url?: string | null
+          primary_file_path?: string | null
+          run_command?: string | null
+          slug?: string | null
+          snapshot_id?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          total_cost_usd?: number | null
+          total_input_tokens?: number | null
+          total_output_tokens?: number | null
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          categories?: string[] | null
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          current_version?: number
+          description_long?: string | null
+          description_oneliner?: string | null
+          description_short?: string | null
+          expose_port?: number | null
+          framework?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          language?: string | null
+          last_opened_at?: string | null
+          org_id?: string
+          preview_url?: string | null
+          primary_file_path?: string | null
+          run_command?: string | null
+          slug?: string | null
+          snapshot_id?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          total_cost_usd?: number | null
+          total_input_tokens?: number | null
+          total_output_tokens?: number | null
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artifacts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
