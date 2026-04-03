@@ -36,6 +36,13 @@ const shareSchema = z.object({
   accessLevel: z.enum(["view", "edit"]).default("view"),
 });
 
+const contentShareSchema = z.object({
+  contentId: z.string().uuid(),
+  contentType: z.enum(["context_item", "artifact"]),
+  sharedWith: z.string().uuid(),
+  permission: z.enum(["viewer", "editor", "owner"]).default("viewer"),
+});
+
 const deleteSchema = z.object({
   type: z.enum(["conversation", "context", "skill"]),
   itemId: z.string().uuid(),
@@ -50,6 +57,15 @@ export async function GET(request: NextRequest) {
   const { user, orgId } = auth;
   const adminDb = createAdminClient() as unknown as AnyDb;
   const typeFilter = request.nextUrl.searchParams.get("type");
+  const contentId = request.nextUrl.searchParams.get("content_id");
+  const mine = request.nextUrl.searchParams.get("mine");
+
+  // --- Content shares (new content_shares table) ---
+  if (contentId || mine === "true") {
+    return handleContentSharesGet({ user, adminDb, contentId, mine });
+  }
+
+  // --- Legacy org-wide sharing ---
 
   // Shared conversations: where user shared or was shared with
   const fetchConversations = async () => {
@@ -158,6 +174,149 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ conversations, context, skills });
 }
 
+// --- Content shares GET handler ---
+
+async function handleContentSharesGet({
+  user,
+  adminDb,
+  contentId,
+  mine,
+}: {
+  user: { id: string };
+  adminDb: AnyDb;
+  contentId: string | null;
+  mine: string | null;
+}) {
+  // If content_id provided, list shares for that specific content
+  if (contentId) {
+    const { data: shares, error } = await adminDb
+      .from("content_shares")
+      .select("id, content_id, content_type, shared_by, shared_with, permission, created_at")
+      .eq("content_id", contentId)
+      .or(`shared_by.eq.${user.id},shared_with.eq.${user.id}`);
+
+    if (error) {
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 });
+    }
+
+    // Enrich with profile data
+    const userIds = [
+      ...new Set([
+        ...(shares ?? []).map((s: { shared_by: string }) => s.shared_by),
+        ...(shares ?? []).map((s: { shared_with: string }) => s.shared_with),
+      ]),
+    ];
+
+    const { data: profiles } = await adminDb
+      .from("profiles")
+      .select("id, display_name, email, avatar_url")
+      .in("id", userIds);
+
+    type Profile = { id: string; display_name: string | null; email: string | null; avatar_url: string | null };
+    const profileMap = new Map<string, Profile>(
+      (profiles ?? []).map((p: Profile) => [p.id, p] as [string, Profile])
+    );
+
+    const enriched = (shares ?? []).map((s: { id: string; content_id: string; content_type: string; shared_by: string; shared_with: string; permission: string; created_at: string }) => ({
+      ...s,
+      sharedByProfile: profileMap.get(s.shared_by) ?? null,
+      sharedWithProfile: profileMap.get(s.shared_with) ?? null,
+    }));
+
+    return NextResponse.json({ shares: enriched });
+  }
+
+  // If mine=true, list all items shared with current user
+  if (mine === "true") {
+    const { data: shares, error } = await adminDb
+      .from("content_shares")
+      .select("id, content_id, content_type, shared_by, shared_with, permission, created_at")
+      .eq("shared_with", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 });
+    }
+
+    if (!shares?.length) {
+      return NextResponse.json({ shares: [], items: [] });
+    }
+
+    // Separate by content_type
+    const contextItemIds = shares
+      .filter((s: { content_type: string }) => s.content_type === "context_item")
+      .map((s: { content_id: string }) => s.content_id);
+    const artifactIds = shares
+      .filter((s: { content_type: string }) => s.content_type === "artifact")
+      .map((s: { content_id: string }) => s.content_id);
+
+    // Fetch context items
+    const { data: contextItems } = contextItemIds.length
+      ? await adminDb
+          .from("context_items")
+          .select("id, title, source_type, content_type, ingested_at, status, description_short")
+          .in("id", contextItemIds)
+      : { data: [] };
+
+    // Fetch artifacts (if table exists)
+    let artifacts: { id: string; title: string }[] = [];
+    if (artifactIds.length) {
+      const { data } = await adminDb
+        .from("artifacts")
+        .select("id, title")
+        .in("id", artifactIds);
+      artifacts = data ?? [];
+    }
+
+    // Fetch sharer profiles
+    const sharerIds = [...new Set(shares.map((s: { shared_by: string }) => s.shared_by))];
+    const { data: profiles } = await adminDb
+      .from("profiles")
+      .select("id, display_name, email, avatar_url")
+      .in("id", sharerIds);
+
+    type Profile = { id: string; display_name: string | null; email: string | null; avatar_url: string | null };
+    const profileMap = new Map<string, Profile>(
+      (profiles ?? []).map((p: Profile) => [p.id, p] as [string, Profile])
+    );
+
+    type ContextItemRow = { id: string; title: string; source_type: string; content_type: string; ingested_at: string; status: string; description_short: string | null };
+    const contextMap = new Map<string, ContextItemRow>(
+      (contextItems ?? []).map((c: ContextItemRow) => [c.id, c] as [string, ContextItemRow])
+    );
+    const artifactMap = new Map<string, { id: string; title: string }>(
+      artifacts.map((a) => [a.id, a])
+    );
+
+    const enriched = shares.map((s: { id: string; content_id: string; content_type: string; shared_by: string; permission: string; created_at: string }) => {
+      const sharer = profileMap.get(s.shared_by);
+      const contextItem = contextMap.get(s.content_id);
+      const artifact = artifactMap.get(s.content_id);
+
+      return {
+        shareId: s.id,
+        contentId: s.content_id,
+        contentType: s.content_type,
+        permission: s.permission,
+        sharedBy: sharer?.display_name ?? sharer?.email ?? "Unknown",
+        sharedByAvatar: sharer?.avatar_url ?? null,
+        sharedDate: s.created_at,
+        // Inline the item data
+        title: contextItem?.title ?? artifact?.title ?? "Untitled",
+        sourceType: contextItem?.source_type ?? null,
+        itemContentType: contextItem?.content_type ?? null,
+        status: contextItem?.status ?? null,
+        descriptionShort: contextItem?.description_short ?? null,
+        ingestedAt: contextItem?.ingested_at ?? null,
+      };
+    });
+
+    return NextResponse.json({ shares: enriched });
+  }
+
+  return NextResponse.json({ shares: [] });
+}
+
 // --- POST: share an item ---
 
 export async function POST(request: NextRequest) {
@@ -165,8 +324,42 @@ export async function POST(request: NextRequest) {
   if (!auth) return new Response("Unauthorized", { status: 401 });
 
   const { user } = auth;
-
   const body = await request.json();
+
+  // Try content_shares schema first (new system)
+  const contentParsed = contentShareSchema.safeParse(body);
+  if (contentParsed.success) {
+    const { contentId, contentType, sharedWith, permission } = contentParsed.data;
+
+    if (sharedWith === user.id) {
+      return NextResponse.json({ error: "Cannot share with yourself" }, { status: 400 });
+    }
+
+    const adminDb = createAdminClient() as unknown as AnyDb;
+
+    const { data, error } = await adminDb
+      .from("content_shares")
+      .upsert(
+        {
+          content_id: contentId,
+          content_type: contentType,
+          shared_by: user.id,
+          shared_with: sharedWith,
+          permission,
+        },
+        { onConflict: "content_id,content_type,shared_with" }
+      )
+      .select("id, content_id, content_type, shared_by, shared_with, permission, created_at")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 });
+    }
+
+    return NextResponse.json({ share: data }, { status: 201 });
+  }
+
+  // Fall back to legacy share schema
   const parsed = shareSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
