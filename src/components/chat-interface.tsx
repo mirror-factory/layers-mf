@@ -51,6 +51,8 @@ import { SourceCitation, type CitationSource } from "@/components/chat/source-ci
 import { ContextWindowBar } from "@/components/chat/context-window-bar";
 import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
+import { NeuralMorph } from "@/components/ui/neural-morph";
+import { getActiveFormation, getDoneFormation, getOldFormation } from "@/lib/avatar-state";
 
 const MODELS = [
   // Flagship
@@ -1729,7 +1731,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <div className="mb-3 opacity-60">
-                <NeuralDots size={48} dotCount={14} />
+                <NeuralMorph size={48} dotCount={14} formation="bloom" />
               </div>
               <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
               <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
@@ -1781,16 +1783,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : (
                   <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                    {isStreaming ? (
-                      /* Currently generating — fast, bright, energized */
-                      <NeuralDots size={40} dotCount={12} active={true} />
-                    ) : isLastAssistant ? (
-                      /* Most recent completed — normal idle animation */
-                      <NeuralDots size={40} dotCount={12} active={false} />
-                    ) : (
-                      /* Older messages — very subtle, almost static */
-                      <NeuralDots size={40} dotCount={8} active={false} />
-                    )}
+                    {(() => {
+                      // Extract tool names from this message for avatar state
+                      const msgToolNames = toolParts.map(p => {
+                        const type = (p as { type: string }).type;
+                        return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
+                      }).filter(Boolean);
+
+                      const formation = isStreaming
+                        ? getActiveFormation(msgToolNames)
+                        : isLastAssistant
+                        ? getDoneFormation(msgToolNames)
+                        : getOldFormation();
+
+                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : isLastAssistant ? 14 : 10} formation={formation} />;
+                    })()}
                   </div>
                 )}
 
@@ -1869,7 +1876,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           {isLoading && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                <NeuralDots size={40} dotCount={12} active={true} />
+                <NeuralMorph size={40} dotCount={16} formation="active" />
               </div>
               <div className="flex items-center gap-1.5 pt-2">
                 <Loader2 className="h-3 w-3 animate-spin text-primary" />
