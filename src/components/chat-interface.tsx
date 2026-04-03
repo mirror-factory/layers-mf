@@ -53,6 +53,7 @@ import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
 import { NeuralMorph } from "@/components/ui/neural-morph";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
+import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
 
 const MODELS = [
   // Flagship
@@ -1363,11 +1364,23 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     }),
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      endLiveActivity();
     },
   });
 
   const isLoading = status === "streaming" || status === "submitted";
   const promptSentRef = useRef(false);
+  const liveActivityStartedRef = useRef(false);
+
+  // Start/end Dynamic Island Live Activity based on streaming state
+  useEffect(() => {
+    if (isLoading && !liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = true;
+      startLiveActivity(conversationId ?? "new", model);
+    } else if (!isLoading && liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = false;
+    }
+  }, [isLoading, conversationId, model]);
 
   // Detect pending ask_user tool calls that need user interaction
   const pendingInterview = (() => {
@@ -1855,6 +1868,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         const type = (p as { type: string }).type;
                         return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
                       }).filter(Boolean);
+
+                      // Update Dynamic Island with current tool (fire-and-forget)
+                      if (isStreaming && msgToolNames.length > 0) {
+                        updateLiveActivity("generating", msgToolNames[msgToolNames.length - 1], 0.5);
+                      }
 
                       // Check for emotion in text
                       const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };

@@ -31,6 +31,7 @@
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
+    "@capacitor/push-notifications": "^8.0.3",
     "@chat-adapter/discord": "^4.23.0",
     "@chat-adapter/state-pg": "^4.23.0",
     "@json-render/core": "^0.16.0",
