@@ -1892,15 +1892,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             );
           })}
 
-          {isLoading && (
+          {/* Only show thinking indicator when loading AND no streaming message exists yet */}
+          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && getTextContent(m.parts as { type: string; text?: string }[])) && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                 <NeuralMorph size={40} dotCount={16} formation="active" />
               </div>
-              <div className="flex items-center gap-1.5 pt-2">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">Thinking…</span>
-              </div>
+              <span className="text-xs text-muted-foreground pt-3">Thinking…</span>
             </div>
           )}
 
