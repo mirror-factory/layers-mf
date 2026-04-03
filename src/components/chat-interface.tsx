@@ -52,7 +52,7 @@ import { ContextWindowBar } from "@/components/chat/context-window-bar";
 import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
 import { NeuralMorph } from "@/components/ui/neural-morph";
-import { getActiveFormation, getDoneFormation, getOldFormation } from "@/lib/avatar-state";
+import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 
 const MODELS = [
   // Flagship
@@ -1803,13 +1803,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 ) : (
                   <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                     {(() => {
-                      // Extract tool names from this message for avatar state
                       const msgToolNames = toolParts.map(p => {
                         const type = (p as { type: string }).type;
                         return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
                       }).filter(Boolean);
 
-                      const formation = isStreaming
+                      // Check for emotion in text
+                      const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };
+
+                      const formation = emotionFormation
+                        ? emotionFormation
+                        : isStreaming
                         ? getActiveFormation(msgToolNames)
                         : isLastAssistant
                         ? getDoneFormation(msgToolNames)
@@ -1862,7 +1866,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       {m.role === "user" ? (
                         text
                       ) : (
-                        <RichMessageResponse text={text} />
+                        <RichMessageResponse text={text.replace(/\[(?:emotion|mood|feeling):\w+(?::\d+)?\]/g, "")} />
                       )}
                     </MessageContent>
                   )}

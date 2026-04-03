@@ -116,3 +116,44 @@ export function getOldFormation(): Formation {
 export function getErrorFormation(): Formation {
   return "error";
 }
+
+// Emotion formations — used for temporary avatar reactions
+const EMOTION_FORMATIONS: Record<string, Formation> = {
+  happy: "bloom",
+  joy: "bloom",
+  excited: "pulse",
+  celebration: "disperse",
+  success: "star",
+  thinking: "spiral",
+  curious: "orbit",
+  love: "heart",
+  concern: "converge",
+  sorry: "converge",
+  confident: "hexagon",
+  creative: "galaxy",
+  focused: "vortex",
+  calm: "breathe",
+  greeting: "wave",
+  ready: "ring",
+  analyzing: "helix",
+  surprise: "disperse",
+};
+
+/**
+ * Parse emotion markers from AI text.
+ * Returns the emotion and cleaned text.
+ * Format: [emotion:happy] or [mood:excited]
+ */
+export function parseEmotion(text: string): { emotion: string | null; formation: Formation | null; cleanText: string; duration: number } {
+  const match = text.match(/\[(?:emotion|mood|feeling):(\w+)(?::(\d+))?\]/);
+  if (!match) return { emotion: null, formation: null, cleanText: text, duration: 3000 };
+
+  const emotion = match[1].toLowerCase();
+  const duration = match[2] ? parseInt(match[2]) * 1000 : 3000;
+  const formation = EMOTION_FORMATIONS[emotion] ?? null;
+  const cleanText = text.replace(match[0], "").trim();
+
+  return { emotion, formation, cleanText, duration };
+}
+
+export { EMOTION_FORMATIONS };
