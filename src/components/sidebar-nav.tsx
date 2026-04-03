@@ -38,17 +38,20 @@ type NavItem = { href: string; label: string; icon: React.ComponentType<{ classN
 const MAIN_ITEMS: NavItem[] = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/approvals", label: "Approvals", icon: CheckSquare },
-  { href: "/context", label: "Context Library", icon: Library },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/schedules", label: "Schedules", icon: Clock },
-  { href: "/skills", label: "Skills", icon: Puzzle },
-  { href: "/sharing", label: "Sharing", icon: Share2 },
+  { href: "/context", label: "Library", icon: Library },
   { href: "/priority", label: "Priority & Rules", icon: FileText },
   { href: "/artifacts", label: "Artifacts", icon: FileCode2 },
+  { href: "/skills", label: "Skills", icon: Puzzle },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
-  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
   { href: "/how-it-works", label: "How It Works", icon: BookOpen },
+];
+
+const COMING_SOON_ITEMS: NavItem[] = [
+  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
+  { href: "/sharing", label: "Sharing", icon: Share2 },
+  { href: "/schedules", label: "Schedules", icon: Clock },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/approvals", label: "Approvals", icon: CheckSquare },
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
@@ -241,14 +244,14 @@ export function SidebarNav({
           <SectionLabel collapsed={isVisuallyCollapsed}>Settings</SectionLabel>
           {renderItems(SETTINGS_ITEMS)}
 
-          {/* More (collapsible) */}
+          {/* Coming Soon (collapsible) */}
           {!isVisuallyCollapsed ? (
             <SectionLabel collapsed={isVisuallyCollapsed}>
               <button
                 onClick={() => setMoreOpen((prev) => !prev)}
                 className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
               >
-                More
+                Coming Soon
                 <ChevronDown
                   className={cn(
                     "h-3 w-3 transition-transform duration-200",
@@ -260,7 +263,7 @@ export function SidebarNav({
           ) : (
             <div className="my-2 border-t" />
           )}
-          {(moreOpen || isVisuallyCollapsed) && renderItems(MORE_ITEMS)}
+          {(moreOpen || isVisuallyCollapsed) && renderItems(COMING_SOON_ITEMS)}
         </nav>
 
         {/* User */}
