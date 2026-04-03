@@ -33,16 +33,27 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    // Use the live server URL for redirects — works in both web and Capacitor
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://layers.hustletogether.com";
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://layers.hustletogether.com"}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
+        // In Capacitor, don't auto-redirect — we'll handle manually
+        skipBrowserRedirect: typeof window !== "undefined" && "Capacitor" in window,
       },
     });
 
     if (error) {
       setError(error.message);
       setGoogleLoading(false);
+      return;
+    }
+
+    // In Capacitor: navigate in the WebView itself (not external browser)
+    if (data?.url) {
+      window.location.href = data.url;
     }
   }
 
