@@ -624,5 +624,84 @@ Facets: [Source ▾] [Type ▾] [Date ▾] [Person ▾] [Status ▾]
 
 ---
 
-*Context Engineering Architecture v1.0 — Layers / Mirror Factory*
-*Generated from 4-agent parallel research: Content Taxonomy, Embedding Strategies, Versioning Architecture, UX Patterns*
+## 13. Runtime Context Engineering
+
+This section documents how Layers manages LLM context at runtime — conversation compaction, system prompt caching, priority doc injection, and context window tracking.
+
+### Conversation Compaction
+
+**File:** `src/lib/ai/compaction-middleware.ts`
+
+Compaction is a `LanguageModelMiddleware` applied via `wrapLanguageModel()` in the chat route. It runs on every LLM call via `transformParams` before the request reaches the provider.
+
+**How it works:**
+
+1. Estimate total tokens in the current prompt (system + messages)
+2. Compare against threshold (80% of the model's context window)
+3. If under threshold: pass through unchanged
+4. If over threshold:
+   - Separate system messages from conversation messages
+   - Keep the last 4 turns intact (KEEP_RECENT_TURNS)
+   - Serialize older turns into a plaintext transcript
+   - Summarize the transcript using a fast model (Gemini Flash Lite)
+   - Replace older turns with a single `[Conversation summary]` user message
+   - Log the token reduction
+
+**Key design decisions:**
+- Uses `transformParams` (not `wrapGenerate`) so it works with both `generateText` and `streamText`
+- Summarization model is separate from the chat model — always fast/cheap
+- Fails gracefully: if summarization errors, returns original params unchanged
+- Tool calls in old messages are serialized as `[Called tool: name]` with truncated results
+
+### System Prompt Caching
+
+**File:** `src/app/api/chat/route.ts` (module-level cache)
+
+The system prompt consists of visual instructions + agent instructions + org rules. These are stable across requests for the same org and visual level, so they are cached in-memory.
+
+**How it works:**
+
+1. Load org rules from Supabase
+2. Compute cache key: `orgId + MD5(rulesSection + visualLevel)`
+3. Check in-memory `Map` for a cached prompt
+4. If hit and not expired (5-min TTL): use cached prompt
+5. If miss: assemble prompt, store in cache
+6. Date/time context is appended after caching (changes every request)
+
+**Cache properties:**
+- TTL: 5 minutes
+- Eviction: lazy on read + periodic sweep when cache exceeds 100 entries
+- Scope: per-process (each serverless instance has its own cache)
+- No Redis needed — the cache is a simple optimization for warm instances
+
+### Priority Docs Flow
+
+**File:** `src/lib/ai/priority-docs.ts`
+
+Priority docs and rules flow into the system prompt through two paths:
+
+1. **File-based priority docs:** Loaded from `docs/priority/*.md` on disk, sorted alphabetically, concatenated with section headers. Used for static team-level docs.
+2. **Database rules:** Loaded from the `rules` table filtered by `org_id` and `is_active = true`, ordered by `priority`. Formatted as a bulleted list under "User Rules" heading.
+
+The rules section is injected at the end of the system prompt, after agent instructions. The LLM is told these are mandatory ("you MUST follow them").
+
+### Context Window Tracking
+
+**File:** `src/lib/ai/token-counter.ts`
+
+Token estimation uses a character-based heuristic (~4 chars per token). This is intentionally imprecise — it's used for UI display and threshold checks, not billing (which uses provider-reported counts).
+
+**Key functions:**
+- `estimateTokens(text)` — core heuristic (text.length / 4)
+- `getContextWindow(modelId)` — lookup model's input token limit
+- `buildContextBreakdown()` — decompose context usage into system/rules/tools/history segments with utilization percentage
+- `estimateMessageTokens(message)` — estimate a single UIMessage including tool call parts
+
+**Context window sizes:** Defined per model in `MODEL_CONTEXT_WINDOWS`. Ranges from 128K (OpenAI) to 2M (Gemini Pro). Default fallback is 128K for unknown models.
+
+The `ContextWindowBar` component (`src/components/chat/context-window-bar.tsx`) uses these estimates to show users a real-time visualization of their context usage in the chat UI.
+
+---
+
+*Context Engineering Architecture v1.1 — Layers / Mirror Factory*
+*Updated with runtime context engineering: compaction, caching, priority docs, token tracking*
