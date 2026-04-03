@@ -299,6 +299,42 @@
 
 ---
 
+### J. Artifact Lookup & Auto-Open (CRITICAL FIX)
+
+34. **Artifacts must be in vector search**
+    - When artifacts are created, they ARE saved to context_items (we do this already)
+    - But: the search results don't indicate "this is an artifact — click to open in viewer"
+    - Need: search results that are artifacts should have an "Open in Viewer" action
+    - Need: different UI treatment for artifact results vs regular context items
+
+35. **AI should auto-open artifacts in the viewer**
+    - When AI calls `artifact_get`, the tool output should include artifact data
+    - The ToolCallCard should detect artifact data and auto-open the artifact panel
+    - User sees the document/code/sandbox in the right panel immediately
+    - No need to click — it just opens
+
+36. **artifact_get should return openable data**
+    - Current: returns content as text to the AI
+    - Needed: returns a structured object that the client renders as an openable artifact card
+    - The card should be clickable → opens artifact panel
+    - OR: auto-opens on completion (like how sandbox artifacts auto-open)
+
+37. **search_context should flag artifacts**
+    - When search results include items with source_id starting with "artifact-"
+    - Those results should render differently: artifact card with "Open" button
+    - Clicking "Open" loads the artifact into the panel
+    - AI can also say "I found this artifact" and the user can click to open it
+
+38. **Unified viewer for all content types**
+    - Documents → TipTap editor in artifact panel
+    - Code → syntax highlighted editor in artifact panel
+    - Sandbox → file tree + code + live preview in artifact panel
+    - Meeting transcripts → formatted viewer
+    - Everything opens in the same panel system
+    - The panel already exists — we just need to route more content types to it
+
+---
+
 ## Implementation Priority Order
 
 1. **Fix connector persistence** (connections dropping) — highest pain point
