@@ -1205,6 +1205,50 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
+    // === Expression tool — AI generates dot art inline ===
+    express: tool({
+      description: "Express an emotion, concept, or visual idea as an animated dot pattern inline in the chat. Use this to visually communicate feelings, reactions, or illustrate concepts with animated dots. The dots will morph and animate to form the described image. Use sparingly for impactful moments — celebrations, greetings, expressing understanding, showing a concept visually.",
+      inputSchema: z.object({
+        concept: z.string().describe("What to express: 'celebration', 'thinking deeply', 'lightbulb moment', 'heart', 'wave hello', 'thumbs up', 'stars', 'growth', 'connection', 'success', etc."),
+        size: z.number().optional().describe("Size in pixels, default 80. Use 60-120."),
+        dotCount: z.number().optional().describe("Number of dots, default 24. Use 16-40."),
+      }),
+      execute: async ({ concept, size: dotSize, dotCount: dots }) => {
+        // Use Flash Lite to generate normalized dot coordinates
+        try {
+          const { generateObject } = await import("ai");
+          const { gateway } = await import("@ai-sdk/gateway");
+          const { object } = await generateObject({
+            model: gateway("google/gemini-3.1-flash-lite-preview"),
+            schema: z.object({
+              points: z.array(z.object({
+                x: z.number().min(0).max(1).describe("X position 0-1"),
+                y: z.number().min(0).max(1).describe("Y position 0-1"),
+              })).describe("Dot positions forming the image"),
+            }),
+            prompt: `Generate ${dots ?? 24} dot positions (x,y from 0 to 1) that visually represent "${concept}" when rendered as dots on a canvas. The dots should form a recognizable shape or pattern. Center the image around (0.5, 0.5). Use the full 0-1 range.`,
+            maxOutputTokens: 500,
+          });
+          return {
+            type: "dot-expression" as const,
+            concept,
+            points: object.points,
+            size: dotSize ?? 80,
+            dotCount: object.points.length,
+          };
+        } catch {
+          return {
+            type: "dot-expression" as const,
+            concept,
+            points: [],
+            size: dotSize ?? 80,
+            dotCount: 0,
+            error: "Could not generate expression",
+          };
+        }
+      },
+    }),
+
     // === Web tools ===
     web_browse: tool({
       description: "Fetch a URL and extract text content. Use to read web pages, docs, articles.",

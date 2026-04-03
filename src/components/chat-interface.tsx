@@ -469,6 +469,25 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
 
+  // express tool: render dot art inline — completely invisible as a tool call
+  if (part.type === "tool-express") {
+    if (!isDone) return null; // Hide while generating
+    if (isDone && output && typeof output === "object" && (output as Record<string, unknown>).type === "dot-expression") {
+      const expr = output as { points: { x: number; y: number }[]; size: number; concept: string };
+      if (expr.points.length === 0) return null;
+      return (
+        <div className="my-2 flex justify-center">
+          <NeuralMorph
+            size={expr.size}
+            dotCount={expr.points.length}
+            customPoints={expr.points}
+          />
+        </div>
+      );
+    }
+    return null;
+  }
+
   // review_compliance tool: render checklist inline
   if (part.type === "tool-review_compliance") {
     if (!isDone) {

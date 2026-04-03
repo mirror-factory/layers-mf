@@ -323,12 +323,15 @@ export function NeuralMorph({
   size = 120,
   dotCount = 16,
   formation: externalFormation,
+  customPoints,
   className = "",
   onFormationChange,
 }: {
   size?: number;
   dotCount?: number;
   formation?: Formation;
+  /** Custom dot positions (0-1 normalized coordinates). Overrides formation. */
+  customPoints?: { x: number; y: number }[];
   className?: string;
   onFormationChange?: (f: Formation) => void;
 }) {
@@ -376,6 +379,31 @@ export function NeuralMorph({
       morphTo(externalFormation);
     }
   }, [externalFormation, currentFormation, morphTo]);
+
+  // Custom points override — morph dots to arbitrary positions
+  useEffect(() => {
+    if (!customPoints || customPoints.length === 0) return;
+    const dots = dotsRef.current;
+    // Map normalized 0-1 coordinates to canvas space
+    customPoints.forEach((p, i) => {
+      if (dots[i]) {
+        dots[i].targetX = p.x * size;
+        dots[i].targetY = p.y * size;
+        dots[i].targetOpacity = 0.6 + Math.random() * 0.3;
+      }
+    });
+    // If more custom points than dots, add new dots
+    for (let i = dots.length; i < customPoints.length && i < 100; i++) {
+      dots.push({
+        x: cx, y: cy,
+        targetX: customPoints[i].x * size,
+        targetY: customPoints[i].y * size,
+        size: 1.2,
+        opacity: 0,
+        targetOpacity: 0.5,
+      });
+    }
+  }, [customPoints, size, cx, cy]);
 
   // Animation loop
   useEffect(() => {
