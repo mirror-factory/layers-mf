@@ -2111,7 +2111,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   }}
                   placeholder="Ask about your documents, meetings, or team… (type / for commands)"
                   rows={1}
-                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-sm focus:outline-none placeholder:text-muted-foreground"
+                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:text-muted-foreground"
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
                     // Slash menu navigation

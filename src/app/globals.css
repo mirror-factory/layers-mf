@@ -13,14 +13,40 @@
 }
 
 /* Lock viewport for Capacitor — prevent body scroll */
-html, body {
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+  width: 100%;
+  /* Fill safe area behind notch/home indicator with dark background */
+  background-color: hsl(160, 15%, 5%);
+}
+
+body {
   overflow: hidden;
   overscroll-behavior: none;
   height: 100%;
   width: 100%;
   position: fixed;
-  /* Fill safe area behind notch/home indicator with dark background */
-  background-color: hsl(160 15% 5%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Ensure no white gaps around safe areas */
+  background-color: hsl(160, 15%, 5%);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent iOS input zoom — ensure all inputs are at least 16px */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  @media (min-width: 768px) {
+    input, textarea, select {
+      font-size: inherit !important;
+    }
+  }
 }
 
 @layer base {

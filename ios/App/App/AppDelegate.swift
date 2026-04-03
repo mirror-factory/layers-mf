@@ -7,7 +7,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Set dark background to prevent white flash and fill safe areas
+        let darkBg = UIColor(red: 13/255, green: 21/255, blue: 18/255, alpha: 1) // #0d1512
+        window?.backgroundColor = darkBg
+        window?.rootViewController?.view.backgroundColor = darkBg
+
+        // Make WebView background transparent so our dark color shows through
+        if let webView = window?.rootViewController?.view.subviews.first(where: { String(describing: type(of: $0)).contains("WKWebView") }) {
+            webView.isOpaque = false
+            webView.backgroundColor = .clear
+            webView.scrollView.backgroundColor = .clear
+        }
+
         return true
     }
 
