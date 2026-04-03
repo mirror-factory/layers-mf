@@ -15,6 +15,10 @@ const config: CapacitorConfig = {
     preferredContentMode: "mobile",
     scheme: "Granger",
   },
+  plugins: {},
+  // Custom native plugins registered via CAPBridgedPlugin:
+  // - PushNotificationsPlugin (jsName: "PushNotifications")
+  // - LiveActivityPlugin (jsName: "LiveActivity")
 };
 
 export default config;

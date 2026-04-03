@@ -1420,23 +1420,25 @@ Be strict but fair. Return a check for every single rule listed above.`,
           }
         }
 
-        // Fuzzy match and replace
+        // Find and replace — exact match first, then case-insensitive full match
         let newContent: string;
-        if (targetContent.includes(input.targetText)) {
-          newContent = targetContent.replace(input.targetText, input.replacement);
+        const exactIdx = targetContent.indexOf(input.targetText);
+        if (exactIdx >= 0) {
+          // Exact match — replace first occurrence
+          newContent = targetContent.slice(0, exactIdx) + input.replacement + targetContent.slice(exactIdx + input.targetText.length);
         } else {
+          // Case-insensitive full match
           const targetLower = input.targetText.toLowerCase();
           const contentLower = targetContent.toLowerCase();
-          const idx = contentLower.indexOf(targetLower.slice(0, Math.min(50, targetLower.length)));
-          if (idx >= 0) {
-            const endIdx = idx + input.targetText.length;
-            newContent = targetContent.slice(0, idx) + input.replacement + targetContent.slice(Math.min(endIdx, targetContent.length));
+          const fuzzyIdx = contentLower.indexOf(targetLower);
+          if (fuzzyIdx >= 0) {
+            newContent = targetContent.slice(0, fuzzyIdx) + input.replacement + targetContent.slice(fuzzyIdx + input.targetText.length);
           } else {
             return { error: "Could not find the target text in the artifact. Please provide a more accurate snippet." };
           }
         }
 
-        // Update artifact content
+        // Update artifact content for single-file artifacts
         if (!editingFile) {
           await sb.from("artifacts").update({ content: newContent }).eq("id", artifact.id);
         }
