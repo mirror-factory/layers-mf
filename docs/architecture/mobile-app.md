@@ -1,6 +1,8 @@
 # Mobile App Architecture
 
-Granger runs as a PWA and can be wrapped as a native app via Capacitor. All three platforms (web, Android, iOS) share a single Next.js codebase.
+> Strategy: **Capacitor** for native iOS + Android apps wrapping the Next.js web app.
+> All three platforms (web, Android, iOS) share a single codebase with zero UI rewrite.
+> Produces real .ipa and .apk files for App Store / Play Store distribution.
 
 ## PWA Setup
 
