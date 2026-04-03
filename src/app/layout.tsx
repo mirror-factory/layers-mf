@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -52,7 +53,9 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} ${spaceGrotesk.variable} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider>
-          {children}
+          <SplashScreen>
+            {children}
+          </SplashScreen>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>
