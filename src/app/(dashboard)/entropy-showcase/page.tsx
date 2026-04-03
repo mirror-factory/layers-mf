@@ -35,9 +35,11 @@ export default function EntropyShowcasePage() {
           {/* Formation buttons by category */}
           {[
             { label: "Shapes", items: ["scatter", "ring", "triangle", "square", "hexagon", "star", "heart", "infinity"] },
-            { label: "Motion", items: ["spiral", "tornado", "wave", "dna", "galaxy", "orbit"] },
-            { label: "States", items: ["explode", "implode", "pulse", "breathe", "rain"] },
-            { label: "Expressions", items: ["smile", "thinking", "check", "cross", "grid"] },
+            { label: "Motion", items: ["spiral", "tornado", "wave", "dna", "galaxy", "orbit", "loading"] },
+            { label: "States", items: ["explode", "implode", "pulse", "breathe", "rain", "grid"] },
+            { label: "Faces", items: ["smile", "wink", "happy", "sad", "surprised", "cool", "sleep", "thinking"] },
+            { label: "Symbols", items: ["check", "cross"] },
+            { label: "Tools", items: ["searching", "writing", "coding", "reading", "sending"] },
           ].map((group) => (
             <div key={group.label} className="flex flex-wrap items-center gap-2 justify-center">
               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider w-16 text-right shrink-0">{group.label}</span>

@@ -3,9 +3,18 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 
 type Formation =
-  | "scatter" | "ring" | "breathe" | "triangle" | "square" | "hexagon" | "spiral" | "grid"
-  | "tornado" | "wave" | "explode" | "implode" | "dna" | "infinity" | "heart" | "star"
-  | "smile" | "thinking" | "check" | "cross" | "pulse" | "orbit" | "galaxy" | "rain";
+  // Shapes
+  | "scatter" | "ring" | "triangle" | "square" | "hexagon" | "star" | "heart" | "infinity"
+  // Motion (animated)
+  | "spiral" | "tornado" | "wave" | "dna" | "galaxy" | "orbit"
+  // States
+  | "explode" | "implode" | "pulse" | "breathe" | "rain" | "grid"
+  // Expressions
+  | "smile" | "thinking" | "check" | "cross"
+  // Faces
+  | "wink" | "surprised" | "sleep" | "happy" | "sad" | "cool"
+  // Tool animations (animated continuously)
+  | "searching" | "writing" | "coding" | "reading" | "sending" | "loading";
 
 interface Dot {
   x: number;
@@ -17,7 +26,10 @@ interface Dot {
   targetOpacity: number;
 }
 
-function getFormationPositions(formation: Formation, count: number, cx: number, cy: number, r: number): { x: number; y: number }[] {
+// Formations that animate continuously (targets update every frame)
+const ANIMATED_FORMATIONS = new Set<Formation>(["tornado", "orbit", "galaxy", "wave", "dna", "breathe", "rain", "pulse", "searching", "writing", "coding", "reading", "sending", "loading"]);
+
+function getFormationPositions(formation: Formation, count: number, cx: number, cy: number, r: number, time = 0): { x: number; y: number }[] {
   const positions: { x: number; y: number }[] = [];
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
@@ -286,14 +298,14 @@ function getFormationPositions(formation: Formation, count: number, cx: number, 
       break;
     }
     case "orbit": {
-      // 3 concentric rings rotating
       const rings = [0.25, 0.5, 0.75];
+      const speeds = [1, -0.7, 0.4]; // Different rotation speeds per ring
       for (let i = 0; i < count; i++) {
         const ringIdx = i % 3;
         const ringR = rings[ringIdx] * r;
         const dotsInRing = Math.ceil(count / 3);
         const posInRing = Math.floor(i / 3);
-        const angle = (posInRing / dotsInRing) * Math.PI * 2 + ringIdx * 0.5;
+        const angle = (posInRing / dotsInRing) * Math.PI * 2 + ringIdx * 0.5 + time * speeds[ringIdx];
         positions.push({ x: cx + Math.cos(angle) * ringR, y: cy + Math.sin(angle) * ringR });
       }
       break;
@@ -316,9 +328,272 @@ function getFormationPositions(formation: Formation, count: number, cx: number, 
       for (let i = 0; i < count; i++) {
         const col = i % Math.ceil(Math.sqrt(count));
         const colSpacing = (r * 1.6) / Math.ceil(Math.sqrt(count));
+        const yOffset = (time * 30 + i * 20) % (r * 2);
         positions.push({
-          x: cx - r * 0.8 + col * colSpacing + Math.random() * 4,
-          y: cy - r + (i / count) * r * 2,
+          x: cx - r * 0.8 + col * colSpacing,
+          y: cy - r + yOffset,
+        });
+      }
+      break;
+    }
+    // === FACES ===
+    case "wink": {
+      const parts = { leftEye: Math.floor(count * 0.1), rightEye: Math.floor(count * 0.15), mouth: 0 };
+      parts.mouth = count - parts.leftEye - parts.rightEye;
+      let idx = 0;
+      // Left eye (closed — horizontal line)
+      for (let i = 0; i < parts.leftEye; i++) {
+        const t = i / (parts.leftEye - 1);
+        positions.push({ x: cx - r * 0.4 + t * r * 0.15, y: cy - r * 0.2 });
+        idx++;
+      }
+      // Right eye (open — circle)
+      for (let i = 0; i < parts.rightEye; i++) {
+        const a = (i / parts.rightEye) * Math.PI * 2;
+        positions.push({ x: cx + r * 0.3 + Math.cos(a) * r * 0.1, y: cy - r * 0.2 + Math.sin(a) * r * 0.1 });
+        idx++;
+      }
+      // Smile
+      for (let i = 0; i < parts.mouth; i++) {
+        const t = i / (parts.mouth - 1);
+        const angle = Math.PI * 0.15 + t * Math.PI * 0.7;
+        positions.push({ x: cx + Math.cos(angle) * r * 0.45, y: cy + Math.sin(angle) * r * 0.3 });
+      }
+      break;
+    }
+    case "surprised": {
+      const eyeCount = Math.floor(count * 0.15);
+      const mouthCount = count - eyeCount * 2;
+      // Left eye (circle)
+      for (let i = 0; i < eyeCount; i++) {
+        const a = (i / eyeCount) * Math.PI * 2;
+        positions.push({ x: cx - r * 0.3 + Math.cos(a) * r * 0.1, y: cy - r * 0.25 + Math.sin(a) * r * 0.1 });
+      }
+      // Right eye (circle)
+      for (let i = 0; i < eyeCount; i++) {
+        const a = (i / eyeCount) * Math.PI * 2;
+        positions.push({ x: cx + r * 0.3 + Math.cos(a) * r * 0.1, y: cy - r * 0.25 + Math.sin(a) * r * 0.1 });
+      }
+      // O mouth (circle)
+      for (let i = 0; i < mouthCount; i++) {
+        const a = (i / mouthCount) * Math.PI * 2;
+        positions.push({ x: cx + Math.cos(a) * r * 0.15, y: cy + r * 0.25 + Math.sin(a) * r * 0.15 });
+      }
+      break;
+    }
+    case "sleep": {
+      const eyeCount = Math.floor(count * 0.15);
+      const zCount = count - eyeCount * 2;
+      // Left eye (closed line)
+      for (let i = 0; i < eyeCount; i++) {
+        const t = i / (eyeCount - 1);
+        positions.push({ x: cx - r * 0.4 + t * r * 0.2, y: cy - r * 0.15 });
+      }
+      // Right eye (closed line)
+      for (let i = 0; i < eyeCount; i++) {
+        const t = i / (eyeCount - 1);
+        positions.push({ x: cx + r * 0.2 + t * r * 0.2, y: cy - r * 0.15 });
+      }
+      // Z z z (floating up and right)
+      for (let i = 0; i < zCount; i++) {
+        const t = i / zCount;
+        positions.push({ x: cx + r * 0.3 + t * r * 0.4, y: cy - r * 0.3 - t * r * 0.5 + Math.sin(time * 2 + i) * 3 });
+      }
+      break;
+    }
+    case "happy": {
+      const eyeCount = Math.floor(count * 0.12);
+      const mouth = count - eyeCount * 2;
+      // Left eye (^)
+      for (let i = 0; i < eyeCount; i++) {
+        const t = i / (eyeCount - 1);
+        const y = cy - r * 0.25 - Math.sin(t * Math.PI) * r * 0.12;
+        positions.push({ x: cx - r * 0.4 + t * r * 0.2, y });
+      }
+      // Right eye (^)
+      for (let i = 0; i < eyeCount; i++) {
+        const t = i / (eyeCount - 1);
+        const y = cy - r * 0.25 - Math.sin(t * Math.PI) * r * 0.12;
+        positions.push({ x: cx + r * 0.2 + t * r * 0.2, y });
+      }
+      // Big smile
+      for (let i = 0; i < mouth; i++) {
+        const t = i / (mouth - 1);
+        const angle = Math.PI * 0.1 + t * Math.PI * 0.8;
+        positions.push({ x: cx + Math.cos(angle) * r * 0.5, y: cy + r * 0.05 + Math.sin(angle) * r * 0.35 });
+      }
+      break;
+    }
+    case "sad": {
+      const eyeCount = Math.floor(count * 0.12);
+      const mouth = count - eyeCount * 2;
+      // Eyes (dots)
+      for (let i = 0; i < eyeCount; i++) {
+        const a = (i / eyeCount) * Math.PI * 2;
+        positions.push({ x: cx - r * 0.3 + Math.cos(a) * r * 0.05, y: cy - r * 0.15 + Math.sin(a) * r * 0.05 });
+      }
+      for (let i = 0; i < eyeCount; i++) {
+        const a = (i / eyeCount) * Math.PI * 2;
+        positions.push({ x: cx + r * 0.3 + Math.cos(a) * r * 0.05, y: cy - r * 0.15 + Math.sin(a) * r * 0.05 });
+      }
+      // Frown (inverted arc)
+      for (let i = 0; i < mouth; i++) {
+        const t = i / (mouth - 1);
+        const angle = -Math.PI * 0.1 - t * Math.PI * 0.8;
+        positions.push({ x: cx + Math.cos(angle) * r * 0.4, y: cy + r * 0.35 - Math.sin(angle) * r * 0.2 });
+      }
+      break;
+    }
+    case "cool": {
+      const glassCount = Math.floor(count * 0.4);
+      const mouth = count - glassCount;
+      // Sunglasses (two connected rectangles-ish)
+      for (let i = 0; i < glassCount; i++) {
+        const t = i / (glassCount - 1);
+        const x = cx - r * 0.55 + t * r * 1.1;
+        const y = cy - r * 0.2 + (Math.abs(x - cx) < r * 0.08 ? 0 : Math.sin(t * Math.PI * 2) * r * 0.08);
+        positions.push({ x, y });
+      }
+      // Slight smirk
+      for (let i = 0; i < mouth; i++) {
+        const t = i / (mouth - 1);
+        positions.push({ x: cx - r * 0.2 + t * r * 0.5, y: cy + r * 0.3 + t * r * 0.05 });
+      }
+      break;
+    }
+    // === TOOL ANIMATIONS (use time for continuous motion) ===
+    case "searching": {
+      // Magnifying glass that sweeps
+      const handleCount = Math.floor(count * 0.3);
+      const lensCount = count - handleCount;
+      const sweepAngle = Math.sin(time * 1.5) * 0.3;
+      // Lens circle
+      for (let i = 0; i < lensCount; i++) {
+        const a = (i / lensCount) * Math.PI * 2;
+        positions.push({
+          x: cx - r * 0.1 + Math.cos(a + sweepAngle) * r * 0.35,
+          y: cy - r * 0.1 + Math.sin(a + sweepAngle) * r * 0.35,
+        });
+      }
+      // Handle
+      for (let i = 0; i < handleCount; i++) {
+        const t = i / (handleCount - 1);
+        positions.push({
+          x: cx + r * 0.2 + t * r * 0.4,
+          y: cy + r * 0.2 + t * r * 0.4,
+        });
+      }
+      break;
+    }
+    case "writing": {
+      // Pen writing lines
+      const penTip = Math.floor(count * 0.15);
+      const lines = count - penTip;
+      const writeProgress = (Math.sin(time * 2) + 1) / 2;
+      // Lines (appearing)
+      for (let i = 0; i < lines; i++) {
+        const lineIdx = Math.floor(i / Math.ceil(lines / 3));
+        const linePos = (i % Math.ceil(lines / 3)) / Math.ceil(lines / 3);
+        const visible = linePos < writeProgress || lineIdx < Math.floor(writeProgress * 3);
+        positions.push({
+          x: cx - r * 0.6 + linePos * r * 1.2,
+          y: cy - r * 0.3 + lineIdx * r * 0.3,
+        });
+      }
+      // Pen tip
+      for (let i = 0; i < penTip; i++) {
+        const a = (i / penTip) * Math.PI * 2;
+        positions.push({
+          x: cx - r * 0.6 + writeProgress * r * 1.2 + Math.cos(a) * 2,
+          y: cy - r * 0.3 + Math.floor(writeProgress * 3) * r * 0.3 + Math.sin(a) * 2,
+        });
+      }
+      break;
+    }
+    case "coding": {
+      // Code brackets < > with cursor blinking
+      const bracketCount = Math.floor(count * 0.3);
+      const codeLines = count - bracketCount;
+      const cursorBlink = Math.sin(time * 4) > 0;
+      // Left bracket <
+      for (let i = 0; i < Math.floor(bracketCount / 2); i++) {
+        const t = i / (Math.floor(bracketCount / 2) - 1);
+        const x = t < 0.5 ? cx - r * 0.6 + t * r * 0.3 : cx - r * 0.45 - (t - 0.5) * r * 0.3;
+        const y = cy - r * 0.4 + t * r * 0.8;
+        positions.push({ x, y: y - r * 0.1 });
+      }
+      // Right bracket >
+      for (let i = 0; i < Math.ceil(bracketCount / 2); i++) {
+        const t = i / (Math.ceil(bracketCount / 2) - 1);
+        const x = t < 0.5 ? cx + r * 0.3 + t * r * 0.3 : cx + r * 0.45 + (t - 0.5) * r * 0.3;
+        const y = cy - r * 0.4 + t * r * 0.8;
+        positions.push({ x, y: y - r * 0.1 });
+      }
+      // Code lines inside
+      for (let i = 0; i < codeLines; i++) {
+        const lineIdx = Math.floor(i / 4);
+        const charIdx = i % 4;
+        positions.push({
+          x: cx - r * 0.2 + charIdx * r * 0.12,
+          y: cy - r * 0.2 + lineIdx * r * 0.15,
+        });
+      }
+      break;
+    }
+    case "reading": {
+      // Open book shape with scanning line
+      const scanY = cy + Math.sin(time * 1.5) * r * 0.3;
+      const bookDots = Math.floor(count * 0.7);
+      const scanDots = count - bookDots;
+      // Book pages (two rectangles)
+      for (let i = 0; i < bookDots; i++) {
+        const page = i < bookDots / 2 ? -1 : 1;
+        const idx = i < bookDots / 2 ? i : i - Math.floor(bookDots / 2);
+        const perPage = Math.floor(bookDots / 2);
+        const row = Math.floor(idx / 3);
+        const col = idx % 3;
+        positions.push({
+          x: cx + page * r * 0.15 + page * col * r * 0.15,
+          y: cy - r * 0.4 + row * r * 0.15,
+        });
+      }
+      // Scanning highlight line
+      for (let i = 0; i < scanDots; i++) {
+        const t = i / (scanDots - 1);
+        positions.push({ x: cx - r * 0.4 + t * r * 0.8, y: scanY });
+      }
+      break;
+    }
+    case "sending": {
+      // Paper plane flying
+      const planeTime = time * 2;
+      const flyX = Math.sin(planeTime) * r * 0.3;
+      const flyY = Math.cos(planeTime * 0.7) * r * 0.2;
+      for (let i = 0; i < count; i++) {
+        const t = i / (count - 1);
+        if (t < 0.4) {
+          // Leading edge
+          const lt = t / 0.4;
+          positions.push({ x: cx + flyX + lt * r * 0.5, y: cy + flyY - lt * r * 0.15 });
+        } else if (t < 0.7) {
+          // Top wing
+          const lt = (t - 0.4) / 0.3;
+          positions.push({ x: cx + flyX + r * 0.5 - lt * r * 0.6, y: cy + flyY - r * 0.15 - lt * r * 0.2 });
+        } else {
+          // Bottom wing
+          const lt = (t - 0.7) / 0.3;
+          positions.push({ x: cx + flyX + r * 0.5 - lt * r * 0.6, y: cy + flyY - r * 0.15 + lt * r * 0.2 });
+        }
+      }
+      break;
+    }
+    case "loading": {
+      // Rotating dots in a circle (classic spinner)
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + time * 3;
+        positions.push({
+          x: cx + Math.cos(angle) * r * 0.5,
+          y: cy + Math.sin(angle) * r * 0.5,
         });
       }
       break;
@@ -345,6 +620,7 @@ export function NeuralMorph({
   const dotsRef = useRef<Dot[]>([]);
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
+  const currentFormationRef = useRef<Formation>(externalFormation ?? "scatter");
   const [currentFormation, setCurrentFormation] = useState<Formation>(externalFormation ?? "scatter");
 
   const cx = size / 2;
@@ -373,6 +649,7 @@ export function NeuralMorph({
         dot.targetOpacity = formation === "scatter" ? 0.3 + Math.random() * 0.3 : 0.5 + Math.random() * 0.3;
       }
     });
+    currentFormationRef.current = formation;
     setCurrentFormation(formation);
     onFormationChange?.(formation);
   }, [dotCount, cx, cy, r, onFormationChange]);
@@ -402,7 +679,18 @@ export function NeuralMorph({
       ctx.clearRect(0, 0, size, size);
       timeRef.current += 0.016;
       const dots = dotsRef.current;
-      const easing = 0.04; // Smooth easing — lower = slower morph
+      const easing = 0.06; // Smooth easing
+
+      // For animated formations, continuously update targets
+      if (ANIMATED_FORMATIONS.has(currentFormationRef.current)) {
+        const positions = getFormationPositions(currentFormationRef.current, dotCount, cx, cy, r, timeRef.current);
+        dots.forEach((dot, i) => {
+          if (positions[i]) {
+            dot.targetX = positions[i].x;
+            dot.targetY = positions[i].y;
+          }
+        });
+      }
 
       // Update positions with easing
       dots.forEach((dot) => {
@@ -493,12 +781,14 @@ export function NeuralMorph({
 export const FORMATIONS: Formation[] = [
   // Shapes
   "scatter", "ring", "triangle", "square", "hexagon", "star", "heart", "infinity",
-  // Motion
-  "spiral", "tornado", "wave", "dna", "galaxy", "orbit",
+  // Motion (animated)
+  "spiral", "tornado", "wave", "dna", "galaxy", "orbit", "loading",
   // States
-  "explode", "implode", "pulse", "breathe", "rain",
-  // Expressions
-  "smile", "thinking", "check", "cross",
-  // Grid
-  "grid",
+  "explode", "implode", "pulse", "breathe", "rain", "grid",
+  // Faces
+  "smile", "wink", "happy", "sad", "surprised", "cool", "sleep", "thinking",
+  // Symbols
+  "check", "cross",
+  // Tool animations
+  "searching", "writing", "coding", "reading", "sending",
 ];
