@@ -32,22 +32,30 @@ export default function EntropyShowcasePage() {
             <NeuralMorph size={160} dotCount={20} formation={morphFormation} />
           </div>
 
-          {/* Formation buttons */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            {FORMATIONS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setMorphFormation(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  morphFormation === f
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-primary/20 text-muted-foreground hover:text-primary hover:border-primary/40"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          {/* Formation buttons by category */}
+          {[
+            { label: "Shapes", items: ["scatter", "ring", "triangle", "square", "hexagon", "star", "heart", "infinity"] },
+            { label: "Motion", items: ["spiral", "tornado", "wave", "dna", "galaxy", "orbit"] },
+            { label: "States", items: ["explode", "implode", "pulse", "breathe", "rain"] },
+            { label: "Expressions", items: ["smile", "thinking", "check", "cross", "grid"] },
+          ].map((group) => (
+            <div key={group.label} className="flex flex-wrap items-center gap-2 justify-center">
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider w-16 text-right shrink-0">{group.label}</span>
+              {group.items.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setMorphFormation(f as typeof morphFormation)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    morphFormation === f
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-primary/20 text-muted-foreground hover:text-primary hover:border-primary/40"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          ))}
 
           {/* Multiple sizes morphing together */}
           <div className="flex items-center gap-6">
