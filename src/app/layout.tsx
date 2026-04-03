@@ -24,7 +24,10 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Mirror Factory" }],
   manifest: "/manifest.json",
-  themeColor: "#34d399",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0d1512" },
+    { media: "(prefers-color-scheme: light)", color: "#34d399" },
+  ],
   openGraph: {
     title: "Granger — Your AI Chief of Staff",
     description:
@@ -48,7 +51,7 @@ export default function RootLayout({
       <head>
         {/* Libraries for inline visual rendering in chat — loaded once, available to all sandboxed iframes */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <meta name="apple-mobile-web-app-title" content="Granger" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
       </head>

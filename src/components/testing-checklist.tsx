@@ -559,7 +559,7 @@ export function TestingChecklist() {
         onClick={() => setOpen(true)}
         variant="outline"
         size="sm"
-        className="fixed bottom-4 left-4 z-50 gap-2 shadow-lg"
+        className="fixed bottom-4 left-4 z-50 gap-2 shadow-lg hidden md:inline-flex"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

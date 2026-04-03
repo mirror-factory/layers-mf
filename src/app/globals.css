@@ -19,6 +19,8 @@ html, body {
   height: 100%;
   width: 100%;
   position: fixed;
+  /* Fill safe area behind notch/home indicator with dark background */
+  background-color: hsl(160 15% 5%);
 }
 
 @layer base {
