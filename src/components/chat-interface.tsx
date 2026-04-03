@@ -613,6 +613,52 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     );
   }
 
+  // Check if this is an artifact_get result — auto-open artifact panel
+  if (part.type === "tool-artifact_get" && isDone && output && typeof output === "object") {
+    const artOut = output as Record<string, unknown>;
+    if (artOut.error) {
+      // Fall through to default rendering for errors
+    } else if (artOut.artifactId && artOut.code !== undefined) {
+      const artType = artOut.type as string | undefined;
+      const isDoc = artType === "document";
+      const artFiles = Array.isArray(artOut.files)
+        ? (artOut.files as { path: string; content: string }[])
+        : undefined;
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: String(artOut.filename ?? "Untitled"),
+            language: String(artOut.language ?? "text"),
+            code: String(artOut.code ?? ""),
+            type: isDoc ? "document" : "code",
+            artifactId: String(artOut.artifactId),
+            currentVersion: typeof artOut.currentVersion === "number" ? artOut.currentVersion : undefined,
+            description: typeof artOut.description === "string" ? artOut.description : undefined,
+            files: artFiles,
+            previewUrl: typeof artOut.previewUrl === "string" ? artOut.previewUrl : undefined,
+            snapshotId: typeof artOut.snapshotId === "string" ? artOut.snapshotId : undefined,
+            runCommand: typeof artOut.runCommand === "string" ? artOut.runCommand : undefined,
+            exposePort: typeof artOut.exposePort === "number" ? artOut.exposePort : undefined,
+          })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className={cn("flex h-8 w-8 items-center justify-center rounded-md shrink-0", isDoc ? "bg-blue-500/10 text-blue-500" : "bg-primary/10 text-primary")}>
+            {isDoc ? <FileText className="h-4 w-4" /> : <FileCode2 className="h-4 w-4" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{String(artOut.filename ?? "Untitled")}</p>
+            <p className="text-xs text-muted-foreground">
+              {isDoc ? "Document" : String(artOut.language ?? "code")}
+              {artFiles && artFiles.length > 1 ? ` — ${artFiles.length} files` : ""}
+              {" — Click to open"}
+            </p>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
+      );
+    }
+  }
+
   // Check if this is a sandbox execution result (has exitCode + stdout)
   const isSandboxResult = isDone && output && typeof output === "object"
     && "exitCode" in (output as Record<string, unknown>)

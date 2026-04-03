@@ -131,6 +131,29 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
       description: "Search knowledge base for documents, meetings, notes. Call first before answering.",
       inputSchema: searchContextSchema,
       execute: async ({ query, limit, filters }: z.infer<typeof searchContextSchema>) => {
+        // Helper: look up source_ids for result IDs and flag artifacts
+        const flagArtifacts = async <T extends { id: string }>(results: T[]): Promise<(T & { isArtifact?: boolean; artifactId?: string })[]> => {
+          if (results.length === 0) return results;
+          const ids = results.map((r) => r.id);
+          const { data: items } = await (supabase as any)
+            .from("context_items")
+            .select("id, source_id")
+            .in("id", ids);
+          const sourceIdMap = new Map<string, string>();
+          if (items) {
+            for (const item of items as { id: string; source_id: string | null }[]) {
+              if (item.source_id) sourceIdMap.set(item.id, item.source_id);
+            }
+          }
+          return results.map((r) => {
+            const sourceId = sourceIdMap.get(r.id);
+            if (sourceId && sourceId.startsWith("artifact-")) {
+              return { ...r, isArtifact: true, artifactId: sourceId.replace("artifact-", "") };
+            }
+            return r;
+          });
+        };
+
         // Try chunk-based search first (richer context), fall back to item-level
         const chunkResults = await searchContextChunks(
           supabase as Parameters<typeof searchContextChunks>[0],
@@ -142,7 +165,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         );
 
         if (chunkResults.length > 0) {
-          return chunkResults.map((r) => ({
+          const mapped = chunkResults.map((r) => ({
             id: r.context_item_id,
             title: r.title,
             source_type: r.source_type,
@@ -155,6 +178,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             source_url: r.source_url,
             source_created_at: r.source_created_at,
           }));
+          return flagArtifacts(mapped);
         }
 
         // Fallback to original item-level search
@@ -166,7 +190,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           filters,
           true // enable multi-query expansion
         );
-        return results.map((r) => ({
+        const mapped = results.map((r) => ({
           id: r.id,
           title: r.title,
           source_type: r.source_type,
@@ -178,6 +202,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           source_url: r.source_url,
           source_created_at: r.source_created_at,
         }));
+        return flagArtifacts(mapped);
       },
     }),
 
@@ -1120,7 +1145,7 @@ Be strict but fair. Return a check for every single rule listed above.`,
     }),
 
     artifact_get: tool({
-      description: "Get artifact content and version history.",
+      description: "Get artifact content and open it in the artifact viewer. Returns data in the same format as run_project/write_code so the UI auto-opens the artifact panel.",
       inputSchema: z.object({
         artifactId: z.string().describe("The artifact ID"),
       }),
@@ -1150,10 +1175,40 @@ Be strict but fair. Return a check for every single rule listed above.`,
           .select("id", { count: "exact", head: true })
           .eq("artifact_id", artifactId);
 
+        const artifactFiles = (files ?? []) as { file_path: string; content: string; language: string | null; size_bytes: number | null }[];
+
+        // Determine primary file content and language
+        const primaryFile = artifactFiles[0];
+        const primaryContent = primaryFile?.content ?? artifact.content ?? "";
+        const primaryLanguage = primaryFile?.language ?? artifact.language ?? "text";
+
+        // Build openable response matching run_project/write_code output shape
+        const isDocument = artifact.type === "document";
+        const isSandbox = artifact.type === "sandbox";
+
         return {
-          artifact,
-          files: files ?? [],
+          // Core fields for artifact panel opening
+          filename: artifact.title ?? "Untitled",
+          language: isDocument ? "html" : primaryLanguage,
+          code: primaryContent,
+          type: isDocument ? "document" : "code",
+          artifactId: artifact.id,
+
+          // Multi-file support
+          files: artifactFiles.length > 0
+            ? artifactFiles.map((f) => ({ path: f.file_path, content: f.content }))
+            : undefined,
+
+          // Sandbox-specific fields
+          previewUrl: isSandbox ? (artifact.preview_url ?? undefined) : undefined,
+          snapshotId: isSandbox ? (artifact.snapshot_id ?? undefined) : undefined,
+          runCommand: isSandbox ? (artifact.run_command ?? undefined) : undefined,
+          exposePort: isSandbox ? (artifact.expose_port ?? undefined) : undefined,
+
+          // Metadata
+          currentVersion: artifact.current_version,
           versionCount: versionCount ?? 0,
+          description: artifact.description_oneliner ?? undefined,
         };
       },
     }),
