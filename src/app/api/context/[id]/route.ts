@@ -29,7 +29,7 @@ export async function GET(
   const { data: item, error } = await supabase
     .from("context_items")
     .select(
-      "id, title, description_short, description_long, source_type, source_id, content_type, raw_content, entities, status, ingested_at, processed_at",
+      "id, title, description_short, description_long, source_type, source_id, content_type, raw_content, entities, status, ingested_at, processed_at, user_tags",
     )
     .eq("id", id)
     .eq("org_id", member.org_id)
@@ -111,6 +111,7 @@ export async function PATCH(
   if (typeof body.title === "string") updates.title = body.title;
   if (typeof body.raw_content === "string") updates.raw_content = body.raw_content;
   if (typeof body.user_title === "string") updates.user_title = body.user_title;
+  if (Array.isArray(body.user_tags)) updates.user_tags = body.user_tags;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
@@ -152,7 +153,7 @@ export async function PATCH(
     .update(updates)
     .eq("id", id)
     .eq("org_id", member.org_id)
-    .select("id, title, raw_content, user_title")
+    .select("id, title, raw_content, user_title, user_tags")
     .single();
 
   if (error) {

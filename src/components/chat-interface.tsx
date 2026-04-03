@@ -1792,7 +1792,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             )}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-5xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <div className="mb-3 opacity-60">
@@ -1848,7 +1849,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : (
                   <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                    {(() => {
+                    {isLastAssistant ? (() => {
                       const msgToolNames = toolParts.map(p => {
                         const type = (p as { type: string }).type;
                         return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
@@ -1861,12 +1862,18 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         ? emotionFormation
                         : isStreaming
                         ? getActiveFormation(msgToolNames)
-                        : isLastAssistant
-                        ? getDoneFormation(msgToolNames)
-                        : getOldFormation();
+                        : getDoneFormation(msgToolNames);
 
-                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : isLastAssistant ? 14 : 10} formation={formation} />;
-                    })()}
+                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
+                    })() : (
+                      /* Older messages: lightweight pulsating dot to save CPU */
+                      <div className="flex items-center justify-center w-full h-full">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30" />
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60" />
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1943,7 +1950,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {/* Only show thinking indicator when loading AND no streaming message exists yet */}
-          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && getTextContent(m.parts as { type: string; text?: string }[])) && (
+          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && (getTextContent(m.parts as { type: string; text?: string }[]) || getToolParts(m.parts as { type: string }[]).length > 0)) && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                 <NeuralMorph size={40} dotCount={16} formation="active" />
@@ -1959,6 +1966,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
 
           <div ref={bottomRef} />
+          </div>
         </div>
 
         <div

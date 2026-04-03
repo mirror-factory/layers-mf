@@ -228,7 +228,8 @@ Use emotions naturally — they make conversations feel alive. Don't overuse the
 - Cite sources by name and date: [Source: title (date)]
 - All write actions MUST go through the approval queue — never execute directly
 - If a tool returns "not configured", tell the user to add their API key in Settings → API Keys
-- Use review_compliance when asked to review/check/audit content against rules`;
+- Use review_compliance when asked to review/check/audit content against rules
+- When the ask_user tool returns \`{_skipped: true}\`, the user dismissed the interview. Acknowledge briefly that they skipped and continue without that information. Do NOT re-ask the same questions.`;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
