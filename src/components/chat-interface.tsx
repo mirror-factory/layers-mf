@@ -1747,8 +1747,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0">
+        {/* Chat actions bar — hidden on mobile (actions move to prompt bar), visible on desktop */}
         {messages.length > 0 && (
-          <div className="flex justify-end px-4 py-1 border-b relative">
+          <div className="hidden md:flex justify-end px-4 py-1 border-b relative">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -2113,6 +2114,42 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
+                  {/* Mobile-only chat actions (three-dot) — replaces top bar on mobile */}
+                  {messages.length > 0 && (
+                    <div className="md:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat actions">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={copyDebugJSON}>
+                            <Copy className="h-3.5 w-3.5 mr-2" />
+                            Copy JSON
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={exportMarkdown}>
+                            <Download className="h-3.5 w-3.5 mr-2" />
+                            Export Markdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={exportJSON}>
+                            <FileJson className="h-3.5 w-3.5 mr-2" />
+                            Export JSON file
+                          </DropdownMenuItem>
+                          {conversationId && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                                <Share2 className="h-3.5 w-3.5 mr-2" />
+                                Share...
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     size="icon"
