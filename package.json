@@ -28,6 +28,8 @@
     "@ai-sdk/gateway": "^3.0.66",
     "@ai-sdk/mcp": "^1.0.30",
     "@ai-sdk/react": "^3.0.118",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
