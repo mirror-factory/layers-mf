@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05C8F3F02F806D00001A2ECD /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05C8F3EF2F806D00001A2ECD /* ActivityKit.framework */; };
 		05F668F42F7F9ECD00D2F6E1 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05F668F32F7F9ECC00D2F6E1 /* WidgetKit.framework */; };
 		05F668F62F7F9ECD00D2F6E1 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05F668F52F7F9ECD00D2F6E1 /* SwiftUI.framework */; };
 		05F669072F7F9ED400D2F6E1 /* GrangerLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 05F668F12F7F9ECC00D2F6E1 /* GrangerLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -45,6 +46,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		05C8F3EF2F806D00001A2ECD /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		05F668F12F7F9ECC00D2F6E1 /* GrangerLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GrangerLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		05F668F32F7F9ECC00D2F6E1 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		05F668F52F7F9ECD00D2F6E1 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -79,6 +81,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05C8F3F02F806D00001A2ECD /* ActivityKit.framework in Frameworks */,
 				05F668F62F7F9ECD00D2F6E1 /* SwiftUI.framework in Frameworks */,
 				05F668F42F7F9ECD00D2F6E1 /* WidgetKit.framework in Frameworks */,
 			);
@@ -98,6 +101,7 @@
 		05F668F22F7F9ECC00D2F6E1 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				05C8F3EF2F806D00001A2ECD /* ActivityKit.framework */,
 				05F668F32F7F9ECC00D2F6E1 /* WidgetKit.framework */,
 				05F668F52F7F9ECD00D2F6E1 /* SwiftUI.framework */,
 			);
