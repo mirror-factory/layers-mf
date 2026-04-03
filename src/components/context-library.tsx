@@ -33,6 +33,7 @@ import {
   ArrowUpFromLine,
   Download,
   MoreVertical,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,12 +238,14 @@ function SourcePills({
   totalCount,
   selected,
   onSelect,
+  sharedCount,
 }: {
   sources: string[];
   groups: Record<string, ContextItem[]>;
   totalCount: number;
   selected: string;
   onSelect: (s: string) => void;
+  sharedCount?: number;
 }) {
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none" data-testid="source-pills">
@@ -259,6 +262,21 @@ function SourcePills({
         <LayoutGrid className="h-3.5 w-3.5" />
         All
         <span className="opacity-70">{totalCount}</span>
+      </button>
+      {/* Shared with me pill */}
+      <button
+        data-testid="source-filter-shared"
+        onClick={() => onSelect("shared-with-me")}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+          selected === "shared-with-me"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        <Users className={cn("h-3.5 w-3.5", selected === "shared-with-me" ? "" : "text-violet-500")} />
+        Shared with me
+        {sharedCount !== undefined && <span className="opacity-70">{sharedCount}</span>}
       </button>
       {sources.map((key) => {
         const meta = SOURCE_META[key] ?? { label: key, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
@@ -459,6 +477,16 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onIn
           </p>
         )}
 
+        {/* Shared by badge */}
+        {"sharedBy" in item && (item as ContextItem & { sharedBy?: string }).sharedBy && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <Badge variant="outline" className="text-[10px] font-normal border-violet-200 bg-violet-500/10 text-violet-700">
+              <Users className="h-3 w-3 mr-1" />
+              Shared by {(item as ContextItem & { sharedBy?: string }).sharedBy}
+            </Badge>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-2 border-t border-dashed">
           <div className="flex items-center gap-1.5">
@@ -647,6 +675,35 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [infoPanelItem, setInfoPanelItem] = useState<typeof items[0] | null>(null);
   const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+  const [sharedItems, setSharedItems] = useState<(ContextItem & { sharedBy?: string })[]>([]);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const sharedFetched = useRef(false);
+
+  // Fetch "shared with me" items when that filter is selected
+  useEffect(() => {
+    if (selected !== "shared-with-me" || sharedFetched.current) return;
+    setSharedLoading(true);
+    fetch("/api/sharing?mine=true")
+      .then((res) => res.json())
+      .then((data) => {
+        const mapped = (data.shares ?? [])
+          .filter((s: { contentType: string }) => s.contentType === "context_item")
+          .map((s: { contentId: string; title: string; sourceType: string | null; itemContentType: string | null; status: string | null; ingestedAt: string | null; descriptionShort: string | null; sharedBy: string }) => ({
+            id: s.contentId,
+            title: s.title,
+            source_type: s.sourceType ?? "shared",
+            content_type: s.itemContentType ?? "document",
+            status: s.status ?? "ready",
+            ingested_at: s.ingestedAt ?? new Date().toISOString(),
+            description_short: s.descriptionShort,
+            sharedBy: s.sharedBy,
+          }));
+        setSharedItems(mapped);
+        sharedFetched.current = true;
+      })
+      .catch(() => setSharedItems([]))
+      .finally(() => setSharedLoading(false));
+  }, [selected]);
 
   // Debounced search tracking
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -688,7 +745,11 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
 
   // Filter -> search -> sort -> paginate
   const processed = useMemo(() => {
-    let result = selected === "all" ? items : (groups[selected] ?? []);
+    let result: ContextItem[] = selected === "shared-with-me"
+      ? sharedItems
+      : selected === "all"
+        ? items
+        : (groups[selected] ?? []);
 
     if (contentTypeFilter !== "all") {
       result = result.filter((i) => i.content_type === contentTypeFilter);
@@ -719,7 +780,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
     }
 
     return sorted;
-  }, [items, groups, selected, contentTypeFilter, searchQuery, sort]);
+  }, [items, groups, selected, contentTypeFilter, searchQuery, sort, sharedItems]);
 
   const visible = processed.slice(0, visibleCount);
   const hasMore = visibleCount < processed.length;
@@ -817,6 +878,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
           totalCount={items.length}
           selected={selected}
           onSelect={handleSourceChange}
+          sharedCount={sharedFetched.current ? sharedItems.length : undefined}
         />
       </div>
 

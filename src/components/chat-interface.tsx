@@ -53,6 +53,7 @@ import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
 import { NeuralMorph } from "@/components/ui/neural-morph";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
+import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
 
 const MODELS = [
   // Flagship
@@ -885,9 +886,22 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const artCode = codeOutput.code as string;
     const artDescription = codeOutput.message as string | undefined;
     const artContextId = codeOutput.context_id as string | undefined;
+    const artArtifactId = codeOutput.artifactId as string | undefined;
+    const artFiles = Array.isArray(codeOutput.files)
+      ? (codeOutput.files as { path: string; content: string }[])
+      : undefined;
+    const isEdit = !!codeOutput.editDescription;
     return (
       <button
-        onClick={() => onOpenArtifact?.({ filename: artFilename, language: artLanguage, code: artCode, description: artDescription, contextId: artContextId })}
+        onClick={() => onOpenArtifact?.({
+          filename: artFilename,
+          language: artLanguage,
+          code: artCode,
+          description: artDescription,
+          contextId: artContextId,
+          artifactId: artArtifactId,
+          files: artFiles,
+        })}
         className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
@@ -896,7 +910,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{artFilename}</p>
           <p className="text-xs text-muted-foreground">
-            {artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
+            {isEdit ? "Edited" : artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
           </p>
         </div>
         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
@@ -1363,11 +1377,23 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     }),
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      endLiveActivity();
     },
   });
 
   const isLoading = status === "streaming" || status === "submitted";
   const promptSentRef = useRef(false);
+  const liveActivityStartedRef = useRef(false);
+
+  // Start/end Dynamic Island Live Activity based on streaming state
+  useEffect(() => {
+    if (isLoading && !liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = true;
+      startLiveActivity(conversationId ?? "new", model);
+    } else if (!isLoading && liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = false;
+    }
+  }, [isLoading, conversationId, model]);
 
   // Detect pending ask_user tool calls that need user interaction
   const pendingInterview = (() => {
@@ -1747,8 +1773,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0">
+        {/* Chat actions bar — hidden on mobile (actions move to prompt bar), visible on desktop */}
         {messages.length > 0 && (
-          <div className="flex justify-end px-4 py-1 border-b relative">
+          <div className="hidden md:flex justify-end px-4 py-1 border-b relative">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -1792,7 +1819,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             )}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-5xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <div className="mb-3 opacity-60">
@@ -1848,11 +1876,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : (
                   <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                    {(() => {
+                    {isLastAssistant ? (() => {
                       const msgToolNames = toolParts.map(p => {
                         const type = (p as { type: string }).type;
                         return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
                       }).filter(Boolean);
+
+                      // Update Dynamic Island with current tool (fire-and-forget)
+                      if (isStreaming && msgToolNames.length > 0) {
+                        updateLiveActivity("generating", msgToolNames[msgToolNames.length - 1], 0.5);
+                      }
 
                       // Check for emotion in text
                       const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };
@@ -1861,12 +1894,18 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         ? emotionFormation
                         : isStreaming
                         ? getActiveFormation(msgToolNames)
-                        : isLastAssistant
-                        ? getDoneFormation(msgToolNames)
-                        : getOldFormation();
+                        : getDoneFormation(msgToolNames);
 
-                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : isLastAssistant ? 14 : 10} formation={formation} />;
-                    })()}
+                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
+                    })() : (
+                      /* Older messages: lightweight pulsating dot to save CPU */
+                      <div className="flex items-center justify-center w-full h-full">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30" />
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60" />
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1943,7 +1982,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           })}
 
           {/* Only show thinking indicator when loading AND no streaming message exists yet */}
-          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && getTextContent(m.parts as { type: string; text?: string }[])) && (
+          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && (getTextContent(m.parts as { type: string; text?: string }[]) || getToolParts(m.parts as { type: string }[]).length > 0)) && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                 <NeuralMorph size={40} dotCount={16} formation="active" />
@@ -1959,6 +1998,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
 
           <div ref={bottomRef} />
+          </div>
         </div>
 
         <div
@@ -2105,6 +2145,42 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
+                  {/* Mobile-only chat actions (three-dot) — replaces top bar on mobile */}
+                  {messages.length > 0 && (
+                    <div className="md:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat actions">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={copyDebugJSON}>
+                            <Copy className="h-3.5 w-3.5 mr-2" />
+                            Copy JSON
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={exportMarkdown}>
+                            <Download className="h-3.5 w-3.5 mr-2" />
+                            Export Markdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={exportJSON}>
+                            <FileJson className="h-3.5 w-3.5 mr-2" />
+                            Export JSON file
+                          </DropdownMenuItem>
+                          {conversationId && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                                <Share2 className="h-3.5 w-3.5 mr-2" />
+                                Share...
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     size="icon"

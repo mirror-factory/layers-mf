@@ -6,7 +6,7 @@ import { SkillCreator } from "@/components/skill-creator";
 import { BUILTIN_SKILLS } from "@/lib/skills/types";
 import { SKILLS_REGISTRY, SKILL_CATEGORIES, searchSkills, searchSkillsMarketplace, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ExternalLink, Loader2, Puzzle, Search, Code2 } from "lucide-react";
+import { ChevronDown, ExternalLink, Loader2, Puzzle, Search, Code2, Upload } from "lucide-react";
 import { SkillsEditor } from "@/components/skills-editor";
 
 type SkillRow = {
@@ -117,6 +117,42 @@ export default function SkillsPage() {
   >(null);
   const [installingLive, setInstallingLive] = useState<string | null>(null);
   const [installedLive, setInstalledLive] = useState<Set<string>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadMessage(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed.name || !parsed.description) {
+        setUploadMessage("File must contain 'name' and 'description' fields.");
+        return;
+      }
+      const res = await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
+      if (res.ok) {
+        setUploadMessage("Skill uploaded successfully!");
+        fetchSkills();
+        setTab("installed");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setUploadMessage(data.error ?? "Upload failed.");
+      }
+    } catch {
+      setUploadMessage("Invalid JSON file.");
+    } finally {
+      setUploading(false);
+      // Reset file input
+      e.target.value = "";
+    }
+  };
 
   const handleInstallLive = async (skill: { name: string; source: string; id: string }) => {
     setInstallingLive(skill.id);
@@ -205,6 +241,11 @@ export default function SkillsPage() {
         <p className="text-muted-foreground text-sm">
           Extend Granger&apos;s capabilities with specialized skills.
         </p>
+        {uploadMessage && (
+          <p className={cn("text-xs mt-1", uploadMessage.includes("success") ? "text-green-500" : "text-destructive")}>
+            {uploadMessage}
+          </p>
+        )}
       </div>
 
       {/* Guide */}
@@ -291,8 +332,8 @@ export default function SkillsPage() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b">
+      {/* Tabs + Upload */}
+      <div className="flex gap-1 mb-6 border-b items-center">
         {TABS.map((t) => (
           <button
             key={t.value}
@@ -307,6 +348,23 @@ export default function SkillsPage() {
             {t.label}
           </button>
         ))}
+        <div className="ml-auto -mb-px pb-1">
+          <input
+            type="file"
+            id="skill-upload"
+            accept=".skill,.json"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            onClick={() => document.getElementById("skill-upload")?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+            Upload
+          </button>
+        </div>
       </div>
 
       {/* Content */}

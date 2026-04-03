@@ -10,9 +10,35 @@ import { logUsage } from "@/lib/ai/usage";
 import { loadRules, formatRulesForPrompt } from "@/lib/ai/priority-docs";
 import { createCompactionMiddleware } from "@/lib/ai/compaction-middleware";
 import { getContextWindow } from "@/lib/ai/token-counter";
+import { createHash } from "crypto";
 import type { Json } from "@/lib/database.types";
 
 export const maxDuration = 60;
+
+// ── System prompt cache (in-memory, 5-min TTL) ──
+const systemPromptCache = new Map<string, { prompt: string; expiresAt: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCachedSystemPrompt(key: string): string | null {
+  const entry = systemPromptCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    systemPromptCache.delete(key);
+    return null;
+  }
+  return entry.prompt;
+}
+
+function setCachedSystemPrompt(key: string, prompt: string): void {
+  // Evict expired entries periodically (keep cache bounded)
+  if (systemPromptCache.size > 100) {
+    const now = Date.now();
+    for (const [k, v] of systemPromptCache) {
+      if (now > v.expiresAt) systemPromptCache.delete(k);
+    }
+  }
+  systemPromptCache.set(key, { prompt, expiresAt: Date.now() + CACHE_TTL_MS });
+}
 
 const ALLOWED_MODELS = new Set([
   // Flagship
@@ -410,37 +436,71 @@ export async function POST(request: NextRequest) {
         .join(" ")
     : "";
 
-  // Load active MCP servers for this org and merge their tools
+  // Load active MCP servers for this org and merge their tools via ConnectionManager
   let mcpTools: Record<string, unknown> = {};
-  let mcpToolsList = ""; // For injecting into system prompt
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: mcpServers } = await (adminDb as any)
       .from("mcp_servers")
-      .select("name, url, api_key_encrypted, transport_type, discovered_tools")
+      .select("id, name, url, api_key_encrypted, transport_type, auth_type, oauth_refresh_token, oauth_expires_at, token_url, client_id, client_secret, discovered_tools")
       .eq("org_id", orgId)
       .eq("is_active", true);
 
     if (mcpServers?.length) {
-      const { connectMCPServer } = await import("@/lib/mcp/connect");
+      const { getConnection, ensureAuth } = await import("@/lib/mcp/connection-manager");
+
       const results = await Promise.allSettled(
-        mcpServers.map((server: { url: string; api_key_encrypted: string | null; transport_type: "http" | "sse" }) =>
-          connectMCPServer({
-            url: server.url,
+        mcpServers.map(async (server: {
+          id: string;
+          url: string;
+          api_key_encrypted: string | null;
+          transport_type: "http" | "sse";
+          auth_type?: string;
+          oauth_refresh_token?: string;
+          oauth_expires_at?: string;
+          token_url?: string;
+          client_id?: string;
+          client_secret?: string;
+        }) => {
+          // Refresh expired OAuth tokens before connecting
+          const authResult = await ensureAuth({
+            authType: (server.auth_type as "bearer" | "oauth" | "none") ?? "none",
             apiKey: server.api_key_encrypted ?? undefined,
+            oauthRefreshToken: server.oauth_refresh_token,
+            oauthExpiresAt: server.oauth_expires_at,
+            tokenUrl: server.token_url,
+            clientId: server.client_id,
+            clientSecret: server.client_secret,
+          });
+
+          // Persist refreshed tokens back to DB
+          if (authResult.refreshed && authResult.newTokens) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (adminDb as any)
+              .from("mcp_servers")
+              .update({
+                api_key_encrypted: authResult.newTokens.accessToken,
+                oauth_refresh_token: authResult.newTokens.refreshToken,
+                oauth_expires_at: authResult.newTokens.expiresAt,
+              })
+              .eq("id", server.id);
+          }
+
+          return getConnection({
+            serverId: server.id,
+            url: server.url,
+            apiKey: authResult.apiKey,
             transportType: server.transport_type,
-          })
-        )
+            authType: (server.auth_type as "bearer" | "oauth" | "none") ?? undefined,
+          });
+        })
       );
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
+
+      for (const result of results) {
         if (result.status === "fulfilled") {
           Object.assign(mcpTools, result.value.tools);
         }
       }
-
-      // Note: MCP tool definitions are already sent via the tools parameter.
-      // We don't inject tool names into the system prompt to save tokens.
     }
   } catch (err) {
     console.error("[chat] MCP server loading failed:", err);
@@ -449,13 +509,25 @@ export async function POST(request: NextRequest) {
   const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
   const allTools = { ...baseTools, ...mcpTools };
 
-  // Load org-level rules for system prompt injection
+  // Build system prompt with caching — rules + visual instructions are stable per org
   const orgRules = await loadRules(supabase, orgId);
   const rulesSection = formatRulesForPrompt(orgRules);
+  const rulesHash = createHash("md5").update(rulesSection + visualLevel).digest("hex");
+  const cacheKey = `${orgId}:${rulesHash}`;
 
-  // Inject real-time date/time into instructions
+  let instructions = getCachedSystemPrompt(cacheKey);
+  if (!instructions) {
+    instructions = getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + rulesSection;
+    setCachedSystemPrompt(cacheKey, instructions);
+    console.log("[chat] System prompt cache MISS — assembled and cached");
+  } else {
+    console.log("[chat] System prompt cache HIT");
+  }
+
+  // Inject real-time date/time (changes every request, not cached)
   const now = new Date();
   const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
+  const fullInstructions = instructions + dateTimeContext;
 
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
@@ -469,7 +541,7 @@ export async function POST(request: NextRequest) {
 
   const agent = new ToolLoopAgent({
     model: compactedModel,
-    instructions: getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + dateTimeContext + rulesSection,
+    instructions: fullInstructions,
     tools: allTools,
     stopWhen: stepCountIs(20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.

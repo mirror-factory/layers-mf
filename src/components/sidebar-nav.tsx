@@ -55,8 +55,7 @@ const COMING_SOON_ITEMS: NavItem[] = [
 ];
 
 const CONNECT_ITEMS: NavItem[] = [
-  { href: "/integrations", label: "Integrations", icon: Plug },
-  { href: "/mcp", label: "MCP Servers", icon: Plug },
+  { href: "/connectors", label: "Connectors", icon: Plug },
 ];
 
 const SETTINGS_ITEMS: NavItem[] = [

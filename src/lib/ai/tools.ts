@@ -1368,6 +1368,122 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
+    edit_code: tool({
+      description:
+        "Edit an existing code artifact. Finds the target text and replaces it, creating a new version. " +
+        "Use this to modify code that was previously created with write_code or run_project. " +
+        "Returns the updated code so the artifact panel auto-refreshes.",
+      inputSchema: z.object({
+        artifactId: z.string().describe("The artifact ID to edit"),
+        targetText: z
+          .string()
+          .describe("The existing code to find and replace (closest match will be used)"),
+        replacement: z.string().describe("The new code to replace it with"),
+        editDescription: z
+          .string()
+          .optional()
+          .describe("Brief description of the edit (e.g. 'fix bug in sort function')"),
+        filePath: z
+          .string()
+          .optional()
+          .describe("For multi-file artifacts, which file to edit. Defaults to primary file."),
+      }),
+      execute: async (input) => {
+        const sb = supabase as any;
+
+        // Fetch the artifact
+        const { data: artifact, error: artErr } = await sb
+          .from("artifacts")
+          .select("id, title, content, language, current_version, type")
+          .eq("id", input.artifactId)
+          .eq("org_id", orgId)
+          .single();
+
+        if (artErr || !artifact) return { error: artErr?.message ?? "Artifact not found" };
+
+        // For multi-file artifacts, fetch the specific file
+        let targetContent = artifact.content ?? "";
+        let editingFile: string | null = null;
+
+        if (input.filePath) {
+          const { data: fileData } = await sb
+            .from("artifact_files")
+            .select("file_path, content")
+            .eq("artifact_id", input.artifactId)
+            .eq("version_number", artifact.current_version)
+            .eq("file_path", input.filePath)
+            .single();
+
+          if (fileData) {
+            targetContent = fileData.content;
+            editingFile = fileData.file_path;
+          }
+        }
+
+        // Find and replace — exact match first, then case-insensitive full match
+        let newContent: string;
+        const exactIdx = targetContent.indexOf(input.targetText);
+        if (exactIdx >= 0) {
+          // Exact match — replace first occurrence
+          newContent = targetContent.slice(0, exactIdx) + input.replacement + targetContent.slice(exactIdx + input.targetText.length);
+        } else {
+          // Case-insensitive full match
+          const targetLower = input.targetText.toLowerCase();
+          const contentLower = targetContent.toLowerCase();
+          const fuzzyIdx = contentLower.indexOf(targetLower);
+          if (fuzzyIdx >= 0) {
+            newContent = targetContent.slice(0, fuzzyIdx) + input.replacement + targetContent.slice(fuzzyIdx + input.targetText.length);
+          } else {
+            return { error: "Could not find the target text in the artifact. Please provide a more accurate snippet." };
+          }
+        }
+
+        // Update artifact content for single-file artifacts
+        if (!editingFile) {
+          await sb.from("artifacts").update({ content: newContent }).eq("id", artifact.id);
+        }
+
+        // Build files array for version (include all files, with edited one updated)
+        let versionFiles: { path: string; content: string }[] | undefined;
+        if (editingFile) {
+          const { data: allFiles } = await sb
+            .from("artifact_files")
+            .select("file_path, content")
+            .eq("artifact_id", input.artifactId)
+            .eq("version_number", artifact.current_version);
+
+          versionFiles = (allFiles ?? []).map((f: { file_path: string; content: string }) => ({
+            path: f.file_path,
+            content: f.file_path === editingFile ? newContent : f.content,
+          }));
+        }
+
+        // Create new version
+        await createVersion(sb, {
+          artifactId: artifact.id,
+          content: editingFile ? undefined : newContent,
+          files: versionFiles,
+          changeSummary: input.editDescription ?? "Edited code",
+          changeType: "ai_edit",
+          createdBy: userId,
+          createdByAi: true,
+        });
+
+        // Return in the same shape as write_code so the panel auto-opens/refreshes
+        // Always include `code` so the artifact card renders (even for multi-file, use the edited file content)
+        return {
+          filename: artifact.title,
+          language: artifact.language ?? "text",
+          code: newContent,
+          artifactId: artifact.id,
+          type: artifact.type as string,
+          files: versionFiles,
+          editDescription: input.editDescription,
+          message: `Updated "${artifact.title}"${editingFile ? ` (${editingFile})` : ""}.${input.editDescription ? ` Change: ${input.editDescription}` : ""} New version saved.`,
+        };
+      },
+    }),
+
     // === Approval query tool ===
     list_approvals: tool({
       description: "List pending approvals. For /approve command.",
