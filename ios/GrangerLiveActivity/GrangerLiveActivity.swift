@@ -2,7 +2,7 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-// MARK: - Activity Attributes
+// MARK: - Activity Attributes (shared definition — must match App/GrangerActivityAttributes.swift)
 
 struct GrangerActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {

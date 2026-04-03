@@ -886,9 +886,22 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const artCode = codeOutput.code as string;
     const artDescription = codeOutput.message as string | undefined;
     const artContextId = codeOutput.context_id as string | undefined;
+    const artArtifactId = codeOutput.artifactId as string | undefined;
+    const artFiles = Array.isArray(codeOutput.files)
+      ? (codeOutput.files as { path: string; content: string }[])
+      : undefined;
+    const isEdit = !!codeOutput.editDescription;
     return (
       <button
-        onClick={() => onOpenArtifact?.({ filename: artFilename, language: artLanguage, code: artCode, description: artDescription, contextId: artContextId })}
+        onClick={() => onOpenArtifact?.({
+          filename: artFilename,
+          language: artLanguage,
+          code: artCode,
+          description: artDescription,
+          contextId: artContextId,
+          artifactId: artArtifactId,
+          files: artFiles,
+        })}
         className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
@@ -897,7 +910,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{artFilename}</p>
           <p className="text-xs text-muted-foreground">
-            {artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
+            {isEdit ? "Edited" : artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
           </p>
         </div>
         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
