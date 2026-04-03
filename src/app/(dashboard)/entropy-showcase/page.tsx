@@ -1,12 +1,12 @@
 "use client";
 
 import { NeuralDots } from "@/components/ui/neural-dots";
+import { NeuralMorph, FORMATIONS } from "@/components/ui/neural-morph";
 import { useState } from "react";
-
-const STATES = ["idle", "active"] as const;
 
 export default function EntropyShowcasePage() {
   const [globalActive, setGlobalActive] = useState(false);
+  const [morphFormation, setMorphFormation] = useState<typeof FORMATIONS[number]>("scatter");
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-16">
@@ -20,6 +20,48 @@ export default function EntropyShowcasePage() {
           {globalActive ? "● Active (generating)" : "○ Idle (done)"}
         </button>
       </div>
+
+      {/* Interactive Morph Demo */}
+      <section className="space-y-6">
+        <h2 className="text-lg font-semibold">Interactive Morph — Click to Transform</h2>
+        <p className="text-xs text-muted-foreground">Same dots smoothly morph between formations. Click any button to see the transition.</p>
+
+        <div className="flex flex-col items-center gap-6">
+          {/* Large morph canvas */}
+          <div className="rounded-full overflow-hidden ring-1 ring-primary/10" style={{ width: 160, height: 160 }}>
+            <NeuralMorph size={160} dotCount={20} formation={morphFormation} />
+          </div>
+
+          {/* Formation buttons */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {FORMATIONS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setMorphFormation(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  morphFormation === f
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-primary/20 text-muted-foreground hover:text-primary hover:border-primary/40"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Multiple sizes morphing together */}
+          <div className="flex items-center gap-6">
+            {[36, 48, 64, 80].map((s) => (
+              <div key={s} className="text-center space-y-1">
+                <div className="rounded-full overflow-hidden ring-1 ring-primary/10 mx-auto" style={{ width: s, height: s }}>
+                  <NeuralMorph size={s} dotCount={Math.max(8, Math.floor(s / 5))} formation={morphFormation} />
+                </div>
+                <p className="text-[9px] text-muted-foreground">{s}px</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Idea 1: Speed-based (current) — dots pulse faster/slower */}
       <section className="space-y-4">
