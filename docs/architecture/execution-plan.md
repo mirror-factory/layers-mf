@@ -336,6 +336,84 @@
 
 ---
 
+## Epic 11: Chat UI Polish (Quick Wins)
+
+### Task 11.1: Fix double avatar on thinking + tool call
+**File:** `src/components/chat-interface.tsx`
+**What:** When AI is thinking AND a tool call happens simultaneously, two NeuralMorph avatars show. The thinking indicator (line ~1946) should be hidden when ANY assistant message with tool parts is already streaming. Also, within a single response, only show ONE avatar — the first one.
+**Acceptance:**
+- [ ] Only one avatar visible per AI response at any time
+- [ ] Thinking indicator hidden as soon as tool call or text appears
+- [ ] No visual duplication
+**Test (Expect):** Trigger a tool call → verify only 1 avatar in DOM for that response
+
+### Task 11.2: Old avatars revert to pulsating circle
+**File:** `src/components/chat-interface.tsx`, `src/components/ui/neural-morph.tsx`
+**What:** Only the most recent assistant message gets a lively animated NeuralMorph. All older assistant messages should show a simple pulsating circle of dots (e.g., formation="idle" with minimal animation or a static SVG circle).
+**Acceptance:**
+- [ ] Most recent assistant message: animated NeuralMorph (active/done formation)
+- [ ] All older messages: simple pulsating circle (low CPU)
+- [ ] Transition is smooth when new message arrives
+**Test (Expect):** Send 3 messages → verify only last avatar is animated, older ones are static circles
+
+### Task 11.3: Chat max-width constraint
+**File:** `src/components/chat-interface.tsx`
+**What:** Chat messages currently use `max-w-4xl` for assistant and `max-w-3xl` for user. The outer container should also have a max-width so on ultra-wide screens the chat stays centered and readable. Add `max-w-4xl mx-auto` to the messages scroll container.
+**Acceptance:**
+- [ ] Chat messages don't stretch beyond ~900px
+- [ ] Centered on large screens
+- [ ] No change on mobile/tablet
+**Test (Expect):** Resize browser to 2560px wide → verify chat content stays centered
+
+### Task 11.4: Skipped interview sends acknowledgment
+**File:** `src/components/chat-interface.tsx`
+**What:** When user dismisses the InterviewUI (skips questions), the current code sends `{ _skipped: true }` as tool output. The AI system prompt should instruct the AI to acknowledge skipped questions gracefully (e.g., "No problem, I'll continue without that information"). Update the system prompt in `src/app/api/chat/route.ts`.
+**Acceptance:**
+- [ ] AI acknowledges skipped questions instead of ignoring them
+- [ ] Response is contextual ("I'll proceed without X" not just "OK")
+- [ ] Doesn't re-ask the same questions
+**Test:** Trigger ask_user → skip → verify AI responds acknowledging the skip
+
+---
+
+## Epic 12: Skill File Upload
+
+### Task 12.1: .skill file upload in Skills section
+**File:** `src/app/(dashboard)/skills/page.tsx`, `src/app/api/skills/upload/route.ts` (new)
+**What:** Add file upload button in Skills page that accepts .skill files, parses them, and saves to DB
+**Acceptance:**
+- [ ] Upload button in Skills page header
+- [ ] Accepts .skill files
+- [ ] Parses file content and creates skill record
+- [ ] Shows success/error feedback
+**Test (Expect):** Navigate to /skills → upload .skill file → verify skill appears in list
+
+---
+
+## Epic 13: Mobile App (PWA + Capacitor)
+
+### Task 13.1: Progressive Web App setup
+**Files:** `public/manifest.json` (new), `src/app/layout.tsx`
+**What:** Add PWA manifest, service worker registration, iOS/Android meta tags. Make the app installable on mobile devices.
+**Acceptance:**
+- [ ] manifest.json with app name, icons, theme color
+- [ ] Meta tags for iOS (apple-mobile-web-app-capable, status-bar-style)
+- [ ] App installable via "Add to Home Screen" on iOS and Android
+- [ ] Splash screen on launch
+**Test:** Open on mobile → "Add to Home Screen" → verify app launches as standalone
+
+### Task 13.2: Capacitor wrapper for native builds
+**What:** Add Capacitor config for Android + iOS native builds that wrap the web app
+**Acceptance:**
+- [ ] `capacitor.config.ts` configured
+- [ ] Android project generated
+- [ ] iOS project generated
+- [ ] Same web app runs in native shell
+- [ ] All 3 platforms (web, Android, iOS) work identically
+**Test:** Build Android APK → install on device → verify chat works
+
+---
+
 ## Epic 10: Context Engineering
 
 ### Task 10.1: Implement context caching
@@ -389,8 +467,12 @@ Each epic can be assigned to a Claude Code agent in a worktree:
 claude "Implement Epic 1 from docs/architecture/execution-plan.md. Read the file first, then implement all 3 tasks. Run tsc after each change."
 ```
 
-Epics 1-3 can run in parallel (no dependencies).
+Epics 1-3 can run in parallel (no dependencies). ✅ DONE
 Epic 4 depends on Epic 3 (needs new embeddings).
 Epic 5 can start independently.
 Epics 6-9 can run in parallel after Epic 5.
+Epic 9 is done. ✅ DONE
 Epic 10 is independent.
+Epic 11 (Chat UI Polish) can start immediately — no dependencies.
+Epic 12 (Skill Upload) can start immediately — no dependencies.
+Epic 13 (Mobile App) can start after Epic 11 (needs polished UI first).
