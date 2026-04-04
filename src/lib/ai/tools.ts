@@ -623,14 +623,17 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         description: z.string().optional(),
       }),
       execute: async (input) => {
+        const _t0 = Date.now();
+        const _log = (msg: string) => console.log(`[run_project +${((Date.now()-_t0)/1000).toFixed(1)}s] ${msg}`);
         try {
+          _log("Starting...");
           const { executeProject, getLatestSnapshot } = await import("@/lib/sandbox/execute");
 
           // Check for existing snapshot to restore from (skips fresh npm install)
           const existingSnapshot = await getLatestSnapshot(orgId);
           const snapshotId = existingSnapshot?.snapshotId;
-          console.log(`[run_project] Snapshot lookup: ${snapshotId ? `FOUND ${snapshotId}` : "NONE — cold build"}`);
-          console.log(`[run_project] Template: ${input.template ?? "auto-detect"}, files from model: ${input.files.map(f => f.path).join(", ")}`);
+          _log(`Snapshot: ${snapshotId ? `FOUND ${snapshotId}` : "NONE"}`);
+          _log(`Template: ${input.template ?? "auto"}, files: ${input.files.map(f => f.path).join(", ")}`);
 
           // Template scaffolding — generate boilerplate files so the model only sends custom code
           let allFiles = [...input.files];
@@ -747,7 +750,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
 
           // Run sandbox (fast with snapshots: ~5s restore, ~20s cold)
-          console.log(`[run_project] Starting executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}`);
+          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}`);
           const result = await executeProject({
             files: allFiles,
             installCommand,
@@ -758,10 +761,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             userId,
             snapshotId,
           });
-          console.log(`[run_project] executeProject done: exit=${result.exitCode}, preview=${result.previewUrl ?? "none"}, health=${result.healthCheckPassed ?? "unknown"}`);
-
-          // Save artifact with sandbox results
-          console.log("[run_project] Saving artifact...");
+          _log(`executeProject done: exit=${result.exitCode}, preview=${result.previewUrl ?? "none"}`);
+          _log("Saving artifact...");
           const artifactResult = await createArtifact(supabase as never, {
             orgId,
             userId,
@@ -778,7 +779,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             exposePort: input.expose_port,
           });
           const savedArtifactId = "artifactId" in artifactResult ? artifactResult.artifactId : null;
-          console.log(`[run_project] Artifact saved: ${savedArtifactId}`);
+          _log(`Artifact saved: ${savedArtifactId}`);
 
           return {
             stdout: result.stdout.slice(0, 4000),
