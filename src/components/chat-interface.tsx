@@ -1820,7 +1820,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-5xl mx-auto w-full space-y-6">
+          <div className="max-w-4xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <div className="mb-3 opacity-60">
@@ -1981,8 +1981,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             );
           })}
 
-          {/* Only show thinking indicator when loading AND no streaming message exists yet */}
-          {isLoading && !messages.some(m => m.role === "assistant" && m === messages.filter(msg => msg.role === "assistant").at(-1) && (getTextContent(m.parts as { type: string; text?: string }[]) || getToolParts(m.parts as { type: string }[]).length > 0)) && (
+          {/* Only show thinking indicator when loading AND the last assistant message has no content yet */}
+          {isLoading && (() => {
+            const lastAssistant = messages.filter(msg => msg.role === "assistant").at(-1);
+            if (!lastAssistant) return true; // No assistant message yet — show thinking
+            const hasText = !!getTextContent(lastAssistant.parts as { type: string; text?: string }[]);
+            const hasTools = getToolParts(lastAssistant.parts as { type: string }[]).length > 0;
+            return !hasText && !hasTools; // Hide thinking once any content streams in
+          })() && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                 <NeuralMorph size={40} dotCount={16} formation="active" />
