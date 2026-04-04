@@ -21,6 +21,7 @@ import { ExportDropdown } from "@/components/export-dropdown";
 import { DwellTracker } from "@/components/dwell-tracker";
 import { DocumentEditor } from "@/components/document-editor";
 import { ContentViewer } from "@/components/content-viewer";
+import { ArtifactDetailView } from "@/components/artifact-detail-view";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -77,7 +78,28 @@ export default async function ContextDetailPage({
   ]);
   const versionCount = docVersionCount ?? 0;
 
-  if (!item) notFound();
+  // If not found in context_items, try the artifacts table
+  if (!item) {
+    const { data: artifact } = await sb
+      .from("artifacts")
+      .select(
+        "id, title, type, language, framework, content, description_short, description_oneliner, tags, current_version, status, conversation_id, preview_url, created_at, updated_at",
+      )
+      .eq("id", id)
+      .eq("org_id", member.org_id)
+      .single();
+
+    if (!artifact) notFound();
+
+    return (
+      <ArtifactDetailView
+        artifact={{
+          ...artifact,
+          tags: artifact.tags ?? [],
+        }}
+      />
+    );
+  }
 
   const source = SOURCE_META[item.source_type] ?? {
     label: item.source_type,
