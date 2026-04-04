@@ -1519,7 +1519,7 @@ Be strict but fair. Return a check for every single rule listed above.`,
 
     // === Approval tool ===
     propose_action: tool({
-      description: "Propose write action for approval. Use for ALL writes.",
+      description: "Propose write action to EXTERNAL services (Linear, Slack, Gmail, etc.) for approval. Do NOT use this for editing artifacts or documents — use edit_code or edit_document instead.",
       inputSchema: z.object({
         action_type: z.enum(["create_task", "send_message", "draft_email", "update_task", "send_slack", "update_issue"]),
         target_service: z.enum(["linear", "slack", "gmail", "discord", "notion"]),
@@ -1663,15 +1663,17 @@ Be strict but fair. Return a check for every single rule listed above.`,
 
     edit_document: tool({
       description:
-        "Edit a specific section of an existing document. Finds the section matching the target text and replaces it. Creates a new version in the artifact system.",
+        "Edit an existing document or artifact. Can change the title, replace content sections, or both. Use this for ALL document/artifact modifications — never use propose_action for artifact edits.",
       inputSchema: z.object({
         documentId: z.string().describe("The document/artifact ID to edit"),
+        newTitle: z.string().optional().describe("New title for the document (if changing title)"),
         targetText: z
           .string()
+          .optional()
           .describe(
             "The existing text to find and replace (does not need to be exact, closest match will be used)",
           ),
-        replacement: z.string().describe("The new text to replace it with"),
+        replacement: z.string().optional().describe("The new text to replace it with"),
         editDescription: z
           .string()
           .optional()
@@ -1709,45 +1711,64 @@ Be strict but fair. Return a check for every single rule listed above.`,
 
         if (!doc) return { error: "Document not found" };
 
-        // Fuzzy match and replace
-        let newContent: string;
-        if (doc.content.includes(input.targetText)) {
-          newContent = doc.content.replace(input.targetText, input.replacement);
-        } else {
-          const targetLower = input.targetText.toLowerCase();
-          const contentLower = doc.content.toLowerCase();
-          const idx = contentLower.indexOf(targetLower.slice(0, Math.min(50, targetLower.length)));
-          if (idx >= 0) {
-            const endIdx = idx + input.targetText.length;
-            newContent = doc.content.slice(0, idx) + input.replacement + doc.content.slice(Math.min(endIdx, doc.content.length));
+        // Handle title change
+        const newTitle = input.newTitle ?? doc.title;
+        if (input.newTitle) {
+          if (isArtifact) {
+            await sb.from("artifacts").update({ title: input.newTitle }).eq("id", doc.id);
           } else {
-            newContent = doc.content + "\n\n" + input.replacement;
+            await sb.from("context_items").update({ title: input.newTitle }).eq("id", doc.id).eq("org_id", orgId);
           }
         }
 
-        if (isArtifact) {
-          // Update artifact and create new version
-          await sb.from("artifacts").update({ content: newContent }).eq("id", doc.id);
-          await createVersion(sb, {
-            artifactId: doc.id,
-            content: newContent,
-            changeSummary: input.editDescription ?? "Edited document",
-            changeType: "ai_edit",
-            createdBy: userId,
-            createdByAi: true,
-          });
-        } else {
-          // Legacy: update context_items
-          await sb.from("context_items").update({ raw_content: newContent }).eq("id", doc.id).eq("org_id", orgId);
+        // Handle content replacement (if provided)
+        let newContent = doc.content;
+        if (input.targetText && input.replacement !== undefined) {
+          if (doc.content.includes(input.targetText)) {
+            newContent = doc.content.replace(input.targetText, input.replacement);
+          } else {
+            const targetLower = input.targetText.toLowerCase();
+            const contentLower = doc.content.toLowerCase();
+            const idx = contentLower.indexOf(targetLower.slice(0, Math.min(50, targetLower.length)));
+            if (idx >= 0) {
+              const endIdx = idx + input.targetText.length;
+              newContent = doc.content.slice(0, idx) + input.replacement + doc.content.slice(Math.min(endIdx, doc.content.length));
+            } else {
+              newContent = doc.content + "\n\n" + input.replacement;
+            }
+          }
+        }
+
+        // Save content changes + create version
+        if (newContent !== doc.content || input.newTitle) {
+          if (isArtifact) {
+            if (newContent !== doc.content) {
+              await sb.from("artifacts").update({ content: newContent }).eq("id", doc.id);
+            }
+            await createVersion(sb, {
+              artifactId: doc.id,
+              content: newContent,
+              changeSummary: input.editDescription ?? (input.newTitle ? `Renamed to "${input.newTitle}"` : "Edited document"),
+              changeType: "ai_edit",
+              createdBy: userId,
+              createdByAi: true,
+            });
+          } else if (newContent !== doc.content) {
+            await sb.from("context_items").update({ raw_content: newContent }).eq("id", doc.id).eq("org_id", orgId);
+          }
         }
 
         return {
           documentId: doc.id,
-          title: doc.title,
+          title: newTitle,
           content: newContent,
           type: "document" as const,
           editDescription: input.editDescription,
-          message: `Updated document "${doc.title}".${input.editDescription ? ` Change: ${input.editDescription}` : ""}`,
+          message: input.newTitle && input.targetText
+            ? `Renamed to "${newTitle}" and edited content.`
+            : input.newTitle
+              ? `Renamed document to "${newTitle}".`
+              : `Updated document "${newTitle}".${input.editDescription ? ` Change: ${input.editDescription}` : ""}`,
         };
       },
     }),

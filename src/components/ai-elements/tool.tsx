@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { isValidElement } from "react";
+import { isValidElement, useState, useEffect } from "react";
 
 import { CodeBlock } from "./code-block";
 
@@ -97,6 +97,21 @@ export const getStatusBadge = (status: ToolPart["state"]) => {
   );
 };
 
+// Tools that have long-running build phases
+const buildProgressSteps: Record<string, { threshold: number; label: string }[]> = {
+  run_project: [
+    { threshold: 0, label: "Preparing files..." },
+    { threshold: 5, label: "Installing dependencies..." },
+    { threshold: 20, label: "Compiling project..." },
+    { threshold: 45, label: "Starting dev server..." },
+    { threshold: 75, label: "Waiting for server..." },
+  ],
+  run_code: [
+    { threshold: 0, label: "Setting up environment..." },
+    { threshold: 5, label: "Executing script..." },
+  ],
+};
+
 export const ToolHeader = ({
   className,
   title,
@@ -110,6 +125,21 @@ export const ToolHeader = ({
   const friendlyName = toolLabels[derivedName] ?? title ?? derivedName;
   const config = statusConfig[state];
 
+  // Elapsed timer for running build tools
+  const [elapsed, setElapsed] = useState(0);
+  const isRunning = state === "input-available";
+  const steps = buildProgressSteps[derivedName];
+
+  useEffect(() => {
+    if (!isRunning || !steps) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [isRunning, !!steps]);
+
+  const progressLabel = isRunning && steps
+    ? [...steps].reverse().find(s => elapsed >= s.threshold)?.label
+    : null;
+
   return (
     <CollapsibleTrigger
       className={cn(
@@ -121,6 +151,11 @@ export const ToolHeader = ({
     >
       {config.icon}
       <span className="text-muted-foreground">{friendlyName}</span>
+      {progressLabel && (
+        <span className="text-muted-foreground/70 text-[10px]">
+          — {progressLabel} {elapsed}s
+        </span>
+      )}
       {state === "output-available" && (
         <span className="text-primary text-[10px]">&#10003;</span>
       )}

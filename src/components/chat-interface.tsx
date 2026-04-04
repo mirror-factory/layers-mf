@@ -1569,6 +1569,55 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     if (previewTimerRef.current) clearInterval(previewTimerRef.current);
   }, [activeArtifact?.previewUrl, previewError]);
 
+  // Auto-open artifact panel when a tool completes with artifact output
+  const lastAutoOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    for (const part of lastMsg.parts ?? []) {
+      if (!("type" in part) || !("state" in part)) continue;
+      if (part.state !== "output-available" || !("output" in part)) continue;
+      const output = (part as { output: unknown }).output;
+      if (!output || typeof output !== "object") continue;
+      const out = output as Record<string, unknown>;
+      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
+      if (partId === lastAutoOpenedRef.current) continue;
+
+      // Auto-open for write_code / edit_code results (has code + language, no exitCode)
+      if (out.code && out.language && !("exitCode" in out)) {
+        lastAutoOpenedRef.current = partId;
+        setActiveArtifact({
+          filename: String(out.filename ?? "Untitled"),
+          language: String(out.language ?? "text"),
+          code: String(out.code ?? ""),
+          artifactId: typeof out.artifactId === "string" ? out.artifactId : undefined,
+          files: Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined,
+          type: out.type === "document" ? "document" : "code",
+        });
+        setArtifactViewMode("code");
+        break;
+      }
+      // Auto-open for sandbox results with previewUrl
+      if (out.previewUrl && out.exitCode === 0 && out.files) {
+        lastAutoOpenedRef.current = partId;
+        const files = Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined;
+        setActiveArtifact({
+          filename: String(out.filename ?? "App"),
+          language: String(out.language ?? "typescript"),
+          code: files?.[0]?.content ?? String(out.stdout ?? ""),
+          artifactId: typeof out.artifactId === "string" ? out.artifactId : undefined,
+          previewUrl: String(out.previewUrl),
+          snapshotId: typeof out.snapshotId === "string" ? out.snapshotId : undefined,
+          files,
+        });
+        setArtifactViewMode("preview");
+        setSelectedFilePath(files?.[0]?.path ?? null);
+        break;
+      }
+    }
+  }, [messages]);
+
   // Load context panel preference from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("chat-context-panel");
