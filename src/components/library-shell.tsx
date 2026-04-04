@@ -23,6 +23,7 @@ import {
   Brain,
   FolderOpen,
   ChevronRight,
+  ChevronLeft,
   Search,
   X,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { LibraryFilters } from "@/components/library-filters";
 import { LibraryContextMenu } from "@/components/library-context-menu";
 import { ContextInfoPanel } from "@/components/context-info-panel";
@@ -211,6 +213,9 @@ function deriveFolders(
     .sort((a, b) => b.count - a.count);
 }
 
+/* ========== Mobile Column State ========== */
+type MobileColumn = "sources" | "folders" | "files";
+
 /* ========== Main Component ========== */
 export function LibraryShell({
   items,
@@ -232,6 +237,11 @@ export function LibraryShell({
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [infoPanelItem, setInfoPanelItem] = useState<ContextItem | null>(null);
   const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+
+  // Mobile column navigation
+  const [mobileColumn, setMobileColumn] = useState<MobileColumn>(
+    initialFolder ? "files" : initialSource ? "folders" : "sources",
+  );
 
   // Filter state
   const [typeFilter, setTypeFilter] = useState(initialType);
@@ -261,6 +271,7 @@ export function LibraryShell({
     (source: string) => {
       setSelectedSource(source);
       setSelectedFolder("");
+      setMobileColumn("folders");
       updateUrl({ source, folder: "" });
     },
     [updateUrl],
@@ -269,10 +280,22 @@ export function LibraryShell({
   const handleFolderSelect = useCallback(
     (folder: string) => {
       setSelectedFolder(folder);
+      setMobileColumn("files");
       updateUrl({ folder });
     },
     [updateUrl],
   );
+
+  const handleMobileBack = useCallback(() => {
+    if (mobileColumn === "files") {
+      setMobileColumn("folders");
+    } else if (mobileColumn === "folders") {
+      setSelectedSource("");
+      setSelectedFolder("");
+      setMobileColumn("sources");
+      updateUrl({ source: "", folder: "" });
+    }
+  }, [mobileColumn, updateUrl]);
 
   // Derive sources from items
   const sourceGroups = useMemo(() => {
@@ -402,6 +425,18 @@ export function LibraryShell({
   }, [updateUrl]);
 
   const handleOpenInfo = useCallback((item: ContextItem) => {
+    setInfoPanelItem(item);
+    setInfoPanelOpen(true);
+  }, []);
+
+  // Context menu: open info panel to add tags
+  const handleAddTags = useCallback((item: ContextItem) => {
+    setInfoPanelItem(item);
+    setInfoPanelOpen(true);
+  }, []);
+
+  // Context menu: open info panel to show version history
+  const handleViewHistory = useCallback((item: ContextItem) => {
     setInfoPanelItem(item);
     setInfoPanelOpen(true);
   }, []);
@@ -545,119 +580,166 @@ export function LibraryShell({
         </div>
       </div>
 
-      {/* Three-column Finder layout */}
+      {/* Mobile back navigation */}
+      <div className="flex items-center gap-2 px-4 sm:px-6 pt-2 sm:hidden">
+        {mobileColumn !== "sources" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs h-7"
+            onClick={handleMobileBack}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Back
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground">
+          {mobileColumn === "sources" && "Sources"}
+          {mobileColumn === "folders" &&
+            ((SOURCE_META[selectedSource]?.label ?? selectedSource) || "Content Types")}
+          {mobileColumn === "files" && `${filteredItems.length} files`}
+        </span>
+      </div>
+
+      {/* Three-column Finder layout - Desktop: side by side, Mobile: stacked */}
       <div className="flex-1 flex min-h-0 p-4 sm:p-6 pt-3 gap-0">
         {/* Column 1: Sources */}
-        <div className="w-48 shrink-0 border rounded-l-lg overflow-y-auto bg-card">
-          <div className="p-2 border-b">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Sources
-            </span>
-          </div>
-          <button
-            onClick={() => handleSourceSelect("")}
-            className={cn(
-              "flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors",
-              selectedSource === ""
-                ? "bg-primary/10 text-primary font-medium"
-                : "hover:bg-accent text-foreground",
-            )}
-          >
-            <FolderOpen className="h-4 w-4 shrink-0" />
-            <span className="truncate">All Sources</span>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {items.length}
-            </span>
-          </button>
-          {sourceGroups.map(({ key, count }) => {
-            const meta = SOURCE_META[key] ?? {
-              label: key,
-              icon: FileText,
-              color: "text-muted-foreground",
-              bg: "bg-muted",
-            };
-            const Icon = meta.icon;
-            return (
-              <button
-                key={key}
-                onClick={() => handleSourceSelect(key)}
-                className={cn(
-                  "flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors",
-                  selectedSource === key
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-accent text-foreground",
-                )}
-              >
-                <Icon
+        <div
+          className={cn(
+            "sm:w-48 sm:shrink-0 sm:block border sm:rounded-l-lg bg-card overflow-hidden",
+            mobileColumn === "sources" ? "flex-1 rounded-lg sm:rounded-none sm:flex-none" : "hidden",
+          )}
+        >
+          <ScrollArea className="h-full">
+            <div className="p-2 border-b">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Sources
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                handleSourceSelect("");
+                setMobileColumn("folders");
+              }}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2.5 sm:py-2 text-sm transition-colors",
+                selectedSource === ""
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "hover:bg-accent text-foreground",
+              )}
+            >
+              <FolderOpen className="h-4 w-4 shrink-0" />
+              <span className="truncate">All Sources</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {items.length}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 sm:hidden" />
+            </button>
+            {sourceGroups.map(({ key, count }) => {
+              const meta = SOURCE_META[key] ?? {
+                label: key,
+                icon: FileText,
+                color: "text-muted-foreground",
+                bg: "bg-muted",
+              };
+              const Icon = meta.icon;
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleSourceSelect(key)}
                   className={cn(
-                    "h-4 w-4 shrink-0",
-                    selectedSource === key ? "text-primary" : meta.color,
+                    "flex items-center gap-2 w-full px-3 py-2.5 sm:py-2 text-sm transition-colors",
+                    selectedSource === key
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "hover:bg-accent text-foreground",
                   )}
-                />
-                <span className="truncate">{meta.label}</span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                >
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      selectedSource === key ? "text-primary" : meta.color,
+                    )}
+                  />
+                  <span className="truncate">{meta.label}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {count}
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 sm:hidden" />
+                </button>
+              );
+            })}
+          </ScrollArea>
         </div>
 
         {/* Column 2: Folders / Content Types */}
-        <div className="w-48 shrink-0 border-y border-r overflow-y-auto bg-card">
-          <div className="p-2 border-b">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              {selectedSource
-                ? `${SOURCE_META[selectedSource]?.label ?? selectedSource} Types`
-                : "Content Types"}
-            </span>
-          </div>
-          <button
-            onClick={() => handleFolderSelect("")}
-            className={cn(
-              "flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors",
-              selectedFolder === ""
-                ? "bg-primary/10 text-primary font-medium"
-                : "hover:bg-accent text-foreground",
-            )}
-          >
-            <FolderOpen className="h-4 w-4 shrink-0" />
-            <span className="truncate">All</span>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {selectedSource
-                ? items.filter(
-                    (i) => normalizeSource(i.source_type) === selectedSource,
-                  ).length
-                : items.length}
-            </span>
-          </button>
-          {folders.map(({ folder, count }) => {
-            const Icon = CONTENT_TYPE_ICON[folder] ?? FileText;
-            return (
-              <button
-                key={folder}
-                onClick={() => handleFolderSelect(folder)}
-                className={cn(
-                  "flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors",
-                  selectedFolder === folder
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-accent text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate capitalize">
-                  {folder.replace(/_/g, " ")}
-                </span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+        <div
+          className={cn(
+            "sm:w-48 sm:shrink-0 sm:block border-y border-r sm:border-l-0 bg-card overflow-hidden",
+            mobileColumn === "folders" ? "flex-1 rounded-lg sm:rounded-none sm:flex-none border sm:border-l-0" : "hidden",
+          )}
+        >
+          <ScrollArea className="h-full">
+            <div className="p-2 border-b">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                {selectedSource
+                  ? `${SOURCE_META[selectedSource]?.label ?? selectedSource} Types`
+                  : "Content Types"}
+              </span>
+            </div>
+            <button
+              onClick={() => handleFolderSelect("")}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2.5 sm:py-2 text-sm transition-colors",
+                selectedFolder === ""
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "hover:bg-accent text-foreground",
+              )}
+            >
+              <FolderOpen className="h-4 w-4 shrink-0" />
+              <span className="truncate">All</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {selectedSource
+                  ? items.filter(
+                      (i) => normalizeSource(i.source_type) === selectedSource,
+                    ).length
+                  : items.length}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 sm:hidden" />
+            </button>
+            {folders.map(({ folder, count }) => {
+              const Icon = CONTENT_TYPE_ICON[folder] ?? FileText;
+              return (
+                <button
+                  key={folder}
+                  onClick={() => handleFolderSelect(folder)}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-3 py-2.5 sm:py-2 text-sm transition-colors",
+                    selectedFolder === folder
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "hover:bg-accent text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate capitalize">
+                    {folder.replace(/_/g, " ")}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {count}
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 sm:hidden" />
+                </button>
+              );
+            })}
+          </ScrollArea>
         </div>
 
         {/* Column 3: Files */}
-        <div className="flex-1 border-y border-r rounded-r-lg overflow-y-auto bg-card">
+        <div
+          className={cn(
+            "sm:flex-1 sm:block border-y border-r sm:rounded-r-lg bg-card overflow-hidden",
+            mobileColumn === "files" ? "flex-1 rounded-lg sm:rounded-none sm:rounded-r-lg border sm:border-l-0" : "hidden",
+          )}
+        >
           <div className="p-2 border-b flex items-center justify-between">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Files
@@ -667,37 +749,41 @@ export function LibraryShell({
             </span>
           </div>
 
-          {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <FolderOpen className="h-10 w-10 mb-3 opacity-20" />
-              <p className="text-sm font-medium text-foreground">
-                No items found
-              </p>
-              <p className="text-xs mt-1 text-center max-w-xs">
-                Try adjusting your filters or navigate to a different source.
-              </p>
-              {activeFilterCount > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={clearAllFilters}
-                >
-                  Clear all filters
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {filteredItems.map((item) => (
-                <FileRow
-                  key={item.id}
-                  item={item}
-                  onSelect={handleOpenInfo}
-                />
-              ))}
-            </div>
-          )}
+          <ScrollArea className="h-[calc(100%-2.5rem)]">
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <FolderOpen className="h-10 w-10 mb-3 opacity-20" />
+                <p className="text-sm font-medium text-foreground">
+                  No items found
+                </p>
+                <p className="text-xs mt-1 text-center max-w-xs">
+                  Try adjusting your filters or navigate to a different source.
+                </p>
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={clearAllFilters}
+                  >
+                    Clear all filters
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {filteredItems.map((item) => (
+                  <FileRow
+                    key={item.id}
+                    item={item}
+                    onSelect={handleOpenInfo}
+                    onAddTags={handleAddTags}
+                    onViewHistory={handleViewHistory}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </div>
 
@@ -715,9 +801,13 @@ export function LibraryShell({
 function FileRow({
   item,
   onSelect,
+  onAddTags,
+  onViewHistory,
 }: {
   item: ContextItem;
   onSelect: (item: ContextItem) => void;
+  onAddTags?: (item: ContextItem) => void;
+  onViewHistory?: (item: ContextItem) => void;
 }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? {
     label: item.source_type,
@@ -733,7 +823,11 @@ function FileRow({
   const StatusIcon = status.icon;
 
   return (
-    <LibraryContextMenu item={item}>
+    <LibraryContextMenu
+      item={item}
+      onAddTags={onAddTags}
+      onViewHistory={onViewHistory}
+    >
       <div
         className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors group"
         onClick={() => onSelect(item)}
