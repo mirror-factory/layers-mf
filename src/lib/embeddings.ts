@@ -5,11 +5,11 @@ import { logUsage } from "@/lib/ai/usage";
 /**
  * Embedding configuration.
  *
- * - Primary: Google text-embedding-004 (768 dims, cheaper, good quality)
+ * - Primary: Google text-embedding-005 (768 dims, improved quality over 004)
  * - Fallback: OpenAI text-embedding-3-small (1536 dims)
  *
  * Max input lengths (characters, ~4 chars/token):
- *   Google text-embedding-004: 2048 tokens => ~8000 chars
+ *   Google text-embedding-005: 2048 tokens => ~8000 chars
  *   OpenAI text-embedding-3-small: 8191 tokens => ~32000 chars
  */
 
@@ -32,7 +32,7 @@ type EmbeddingOpts = {
 /**
  * Generate an embedding vector for a single text string.
  *
- * Uses Gemini text-embedding-004 by default. Falls back to OpenAI
+ * Uses Gemini text-embedding-005 by default. Falls back to OpenAI
  * text-embedding-3-small if the primary model fails.
  */
 export async function generateEmbedding(
@@ -72,7 +72,7 @@ export async function generateEmbedding(
 /**
  * Generate embedding vectors for multiple texts in batches.
  *
- * Uses Gemini text-embedding-004 by default with automatic fallback
+ * Uses Gemini text-embedding-005 by default with automatic fallback
  * to OpenAI text-embedding-3-small on failure.
  */
 export async function generateEmbeddings(
