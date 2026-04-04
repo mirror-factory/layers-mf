@@ -561,6 +561,9 @@ export async function executeProject(options: {
   userId?: string;
   snapshotId?: string;
 }): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
+  const isRestoringSnapshot = !!options.snapshotId;
+  console.log(`[sandbox] Creating VM: snapshot=${options.snapshotId ?? "none"}, port=${options.exposePort ?? "none"}`);
+
   const sandbox = await Sandbox.create(createParams({
     runtime: options.runtime ?? "node24",
     ports: options.exposePort ? [options.exposePort] : [],
@@ -571,16 +574,13 @@ export async function executeProject(options: {
       ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
     },
   }));
+  console.log(`[sandbox] VM created: ${sandbox.sandboxId} (${isRestoringSnapshot ? "from snapshot" : "fresh"})`);
 
   try {
-    // Patch Vite configs: ensure allowedHosts: true and host: 0.0.0.0 so sandbox domains work
+    // Patch Vite configs for sandbox compatibility
     const patchedFiles = options.files.map(f => {
       if (f.path.endsWith("vite.config.js") || f.path.endsWith("vite.config.ts")) {
-        const patched = patchViteConfig(f.content);
-        if (patched !== f.content) {
-          console.log(`[sandbox] Patched ${f.path} for sandbox compatibility`);
-        }
-        return { ...f, content: patched };
+        return { ...f, content: patchViteConfig(f.content) };
       }
       return f;
     });
@@ -589,13 +589,15 @@ export async function executeProject(options: {
     await sandbox.writeFiles(
       patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
     );
+    console.log(`[sandbox] Wrote ${patchedFiles.length} files`);
 
-    // Install dependencies if specified (skip if restored from snapshot with same packages)
-    if (options.installCommand) {
-      const parts = options.installCommand.split(" ");
-      const installResult = await sandbox.runCommand(parts[0], parts.slice(1));
-      const installStderr = await installResult.stderr();
+    // Install dependencies (skip if restored from snapshot — deps already installed)
+    if (options.installCommand && !isRestoringSnapshot) {
+      console.log(`[sandbox] Installing: ${options.installCommand}`);
+      const installParts = options.installCommand.split(" ");
+      const installResult = await sandbox.runCommand(installParts[0], installParts.slice(1));
       if (installResult.exitCode !== 0) {
+        const installStderr = await installResult.stderr();
         return {
           stdout: "",
           stderr: `Install failed: ${installStderr}`,
@@ -603,108 +605,141 @@ export async function executeProject(options: {
           sandboxId: sandbox.sandboxId,
         };
       }
-    }
+      console.log("[sandbox] Install complete");
 
-    // Run the main command
-    const parts = options.runCommand.split(" ");
-
-    // If exposing a port, run in background and return preview URL
-    if (options.exposePort) {
-      // List files to verify they were written correctly
-      const lsResult = await sandbox.runCommand("find", [".", "-maxdepth", "3", "-name", "*.html", "-o", "-name", "*.jsx", "-o", "-name", "*.js", "-o", "-name", "vite.config*", "-o", "-name", "package.json"]);
-      const fileList = await lsResult.stdout();
-      console.log(`[sandbox-files] ${fileList.slice(0, 500)}`);
-
-      // Verify index.html exists — this is required for Vite to serve the app
-      const indexCheck = await sandbox.runCommand("cat", ["index.html"]);
-      const indexContent = await indexCheck.stdout();
-      if (!indexContent || indexCheck.exitCode !== 0) {
-        console.error(`[sandbox] CRITICAL: index.html missing or empty! Exit code: ${indexCheck.exitCode}`);
-        // Try to find it elsewhere
-        const findIndex = await sandbox.runCommand("find", [".", "-name", "index.html"]);
-        const foundPaths = await findIndex.stdout();
-        console.error(`[sandbox] index.html found at: ${foundPaths || "NOWHERE"}`);
-      } else {
-        console.log(`[sandbox] index.html OK (${indexContent.length} bytes)`);
-      }
-
-      // Run dev server in background
-      sandbox.runCommand(parts[0], parts.slice(1));
-
-      const previewUrl = sandbox.domain(options.exposePort);
-
-      // Poll health check — wait up to ~120s for npm install + Vite compilation + server start
-      // Snapshot restores are much faster (~10-15s), fresh builds take 60-90s
-      const ready = await waitForServer(previewUrl, {
-        initialDelayMs: 3000,
-        pollIntervalMs: 2000,
-        maxAttempts: 55,
-        timeoutPerRequestMs: 4000,
-      });
-
-      return {
-        stdout: ready
-          ? `Project running at ${previewUrl}`
-          : `Dev server started but health check timed out. Preview may still load: ${previewUrl}`,
-        stderr: ready ? "" : "Health check timed out — server may not be reachable yet.",
-        exitCode: ready ? 0 : 2, // 2 = health check timeout (not a hard failure)
-        previewUrl,
-        sandboxId: sandbox.sandboxId,
-        healthCheckPassed: ready,
-      };
-    }
-
-    // Otherwise run and capture output
-    const result = await sandbox.runCommand(parts[0], parts.slice(1));
-    const stdout = await result.stdout();
-    const stderr = await result.stderr();
-
-    // Read output files if requested (one at a time — readFile is singular)
-    let outputFiles: { path: string; content: string }[] | undefined;
-    if (options.readOutputFiles?.length) {
-      outputFiles = [];
-      for (const filePath of options.readOutputFiles) {
+      // Snapshot after install so next run is instant (~2s vs ~60s)
+      // Note: snapshot() stops the sandbox, so we need to create a new one
+      if (options.orgId) {
         try {
-          const stream = await sandbox.readFile({ path: filePath });
-          if (stream) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of stream) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-            outputFiles.push({ path: filePath, content: Buffer.concat(chunks).toString() });
-          }
-        } catch {
-          // File may not exist — skip
+          console.log("[sandbox] Taking snapshot after install...");
+          const snap = await sandbox.snapshot({ expiration: 0 }); // never expire
+          console.log(`[sandbox] Snapshot saved: ${snap.snapshotId}`);
+
+          // Save to DB for future lookups
+          await saveSnapshot(
+            options.orgId,
+            snap.snapshotId,
+            "post-install",
+            { files: patchedFiles.map(f => f.path), installCommand: options.installCommand },
+            0, 0, 0
+          );
+
+          // Create new sandbox FROM the snapshot (instant boot, deps pre-installed)
+          const newSandbox = await Sandbox.create(createParams({
+            runtime: options.runtime ?? "node24",
+            ports: options.exposePort ? [options.exposePort] : [],
+            timeout: options.timeout ?? 600_000,
+            snapshotId: snap.snapshotId,
+            env: {
+              HOST: "0.0.0.0",
+              ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
+            },
+          }));
+
+          // Write files again (snapshot has the deps, files may differ)
+          await newSandbox.writeFiles(
+            patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
+          );
+
+          // Continue with the new sandbox
+          return executeFromSandbox(newSandbox, options, snap.snapshotId);
+        } catch (snapErr) {
+          console.warn("[sandbox] Snapshot failed, continuing without:", snapErr instanceof Error ? snapErr.message : snapErr);
+          // Snapshot failed but original sandbox is now stopped.
+          // Create a fresh one and re-install (fallback)
+          const fallback = await Sandbox.create(createParams({
+            runtime: options.runtime ?? "node24",
+            ports: options.exposePort ? [options.exposePort] : [],
+            timeout: options.timeout ?? 600_000,
+          }));
+          await fallback.writeFiles(patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) })));
+          const reinstall = options.installCommand.split(" ");
+          await fallback.runCommand(reinstall[0], reinstall.slice(1));
+          return executeFromSandbox(fallback, options, undefined);
         }
       }
     }
 
-    // Snapshot and persist if we have an orgId (also stops the sandbox)
-    let snapshotId: string | undefined;
-    if (options.orgId) {
-      snapshotId = await snapshotAndPersist(sandbox, options.orgId, `project-${Date.now()}`, {
-        files: options.files.map(f => f.path),
-        installCommand: options.installCommand,
-        runCommand: options.runCommand,
-        runtime: options.runtime ?? "node24",
-      }, options.userId);
-    }
+    return executeFromSandbox(sandbox, options, options.snapshotId);
+  } catch (err) {
+    try { await sandbox.stop(); } catch { /* ignore */ }
+    throw err;
+  }
+}
+
+/** Run the dev server / command on an already-prepared sandbox */
+async function executeFromSandbox(
+  sandbox: Sandbox,
+  options: {
+    runCommand: string;
+    readOutputFiles?: string[];
+    exposePort?: number;
+    orgId?: string;
+    userId?: string;
+  },
+  snapshotId: string | undefined,
+): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
+  const parts = options.runCommand.split(" ");
+
+  if (options.exposePort) {
+    // Run dev server detached so it doesn't block
+    await sandbox.runCommand({ cmd: parts[0], args: parts.slice(1), detached: true });
+    const previewUrl = sandbox.domain(options.exposePort);
+    console.log(`[sandbox] Dev server started (detached), preview: ${previewUrl}`);
+
+    // Poll health check
+    const ready = await waitForServer(previewUrl, {
+      initialDelayMs: 2000,
+      pollIntervalMs: 1500,
+      maxAttempts: 40,
+      timeoutPerRequestMs: 4000,
+    });
+    console.log(`[sandbox] Health check: ${ready ? "PASSED" : "TIMED OUT"}`);
 
     return {
-      stdout,
-      stderr,
-      exitCode: result.exitCode,
+      stdout: ready
+        ? `Project running at ${previewUrl}`
+        : `Dev server started but health check timed out. Preview may still load: ${previewUrl}`,
+      stderr: ready ? "" : "Health check timed out — server may not be reachable yet.",
+      exitCode: ready ? 0 : 2,
+      previewUrl,
       sandboxId: sandbox.sandboxId,
       snapshotId,
-      outputFiles,
+      healthCheckPassed: ready,
     };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { stdout: "", stderr: msg, exitCode: 1 };
-  } finally {
-    // If we didn't snapshot (no orgId) and not exposing a port, stop the sandbox
-    if (!options.exposePort && !options.orgId) {
-      await sandbox.stop();
+  }
+
+  // Otherwise run and capture output
+  const result = await sandbox.runCommand(parts[0], parts.slice(1));
+  const stdout = await result.stdout();
+  const stderr = await result.stderr();
+
+  // Read output files if requested
+  let outputFiles: { path: string; content: string }[] | undefined;
+  if (options.readOutputFiles?.length) {
+    outputFiles = [];
+    for (const filePath of options.readOutputFiles) {
+      try {
+        const stream = await sandbox.readFile({ path: filePath });
+        if (stream) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          outputFiles.push({ path: filePath, content: Buffer.concat(chunks).toString() });
+        }
+      } catch {
+        // File may not exist — skip
+      }
     }
   }
+
+  return {
+    stdout,
+    stderr,
+    exitCode: result.exitCode,
+    sandboxId: sandbox.sandboxId,
+    snapshotId,
+    outputFiles,
+  };
 }
