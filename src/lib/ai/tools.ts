@@ -619,7 +619,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         install_command: z.string().optional().describe("Install command, e.g. 'npm install recharts' for additional packages"),
         run_command: z.string().describe("Command to run, e.g. 'npm run dev' for React/Vite, 'python main.py' for Python. Do NOT use 'npm start' — use 'npm run dev' for web apps."),
         read_output_files: z.array(z.string()).optional().describe("Paths of output files to read back after execution"),
-        expose_port: z.number().optional().describe("Port to expose for live preview. Use 5173 for React/Vite apps, 3000 for Next.js, 8000 for Python."),
+        expose_port: z.number().optional().default(5173).describe("Port to expose for live preview. Defaults to 5173 (Vite). Use 3000 for Next.js, 8000 for Python."),
         description: z.string().optional(),
       }),
       execute: async (input) => {
@@ -749,14 +749,19 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const hasPackageJson = allFiles.some(f => f.path === "package.json");
           const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
 
+          // Auto-detect port if not specified — prevents blocking hang on long-running dev servers
+          const exposePort = input.expose_port
+            ?? (input.run_command.includes("dev") ? 5173 : undefined)
+            ?? (input.run_command.includes("start") ? 3000 : undefined);
+
           // Run sandbox (fast with snapshots: ~5s restore, ~20s cold)
-          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}`);
+          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}, port=${exposePort ?? "none"}`);
           const result = await executeProject({
             files: allFiles,
             installCommand,
             runCommand: input.run_command,
             readOutputFiles: input.read_output_files,
-            exposePort: input.expose_port,
+            exposePort,
             orgId,
             userId,
             snapshotId,
