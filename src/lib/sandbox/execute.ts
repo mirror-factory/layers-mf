@@ -251,6 +251,99 @@ function isHtmlContent(code: string, filename: string): boolean {
 }
 
 /**
+ * Poll a URL until it returns a non-502 response with a non-empty body.
+ * Returns true if the URL became reachable, false if it timed out.
+ */
+async function waitForServer(
+  url: string,
+  options: { initialDelayMs?: number; pollIntervalMs?: number; maxAttempts?: number; timeoutPerRequestMs?: number } = {},
+): Promise<boolean> {
+  const {
+    initialDelayMs = 3000,
+    pollIntervalMs = 2000,
+    maxAttempts = 40,
+    timeoutPerRequestMs = 5000,
+  } = options;
+
+  // Initial wait for the process to start
+  await new Promise(resolve => setTimeout(resolve, initialDelayMs));
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutPerRequestMs),
+        headers: { "User-Agent": "Granger-Health-Check" },
+      });
+
+      // 502 means the proxy is up but the upstream server is not ready yet
+      if (res.status === 502) {
+        console.log(`[sandbox-health] Attempt ${attempt + 1}/${maxAttempts}: 502 Bad Gateway — server starting`);
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        continue;
+      }
+
+      // Read the body to verify it has real content
+      const body = await res.text();
+      if (body.length > 0) {
+        console.log(`[sandbox-health] Ready after ${attempt + 1} attempts, HTTP ${res.status}, ${body.length} bytes`);
+        return true;
+      }
+
+      console.log(`[sandbox-health] Attempt ${attempt + 1}/${maxAttempts}: HTTP ${res.status} but empty body`);
+    } catch {
+      // Connection refused, timeout, etc. — server not ready yet
+      if (attempt % 5 === 0) {
+        console.log(`[sandbox-health] Attempt ${attempt + 1}/${maxAttempts}: connection failed — retrying`);
+      }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  }
+
+  console.warn(`[sandbox-health] URL ${url} not ready after ${maxAttempts} attempts`);
+  return false;
+}
+
+/**
+ * Patch a Vite config string to ensure allowedHosts: true and host: '0.0.0.0'.
+ * Handles multiple config formats: defineConfig(), object export, etc.
+ */
+function patchViteConfig(content: string): string {
+  let patched = content;
+
+  // Replace existing allowedHosts values (string, array, or false)
+  patched = patched.replace(/allowedHosts:\s*(?:['"][^'"]*['"]|\[[^\]]*\]|false|true)/g, "allowedHosts: true");
+
+  if (!patched.includes("allowedHosts")) {
+    // Try to inject into existing server block
+    if (patched.match(/server\s*:\s*\{/)) {
+      patched = patched.replace(/server\s*:\s*\{/, "server: { allowedHosts: true,");
+    }
+    // If no server block, inject one into defineConfig or the export object
+    else if (patched.includes("defineConfig")) {
+      patched = patched.replace(
+        /defineConfig\s*\(\s*\{/,
+        "defineConfig({ server: { host: '0.0.0.0', allowedHosts: true },",
+      );
+    }
+    // Plain object export: export default { ... }
+    else if (patched.match(/export\s+default\s+\{/)) {
+      patched = patched.replace(
+        /export\s+default\s+\{/,
+        "export default { server: { host: '0.0.0.0', allowedHosts: true },",
+      );
+    }
+  }
+
+  // Ensure host is set to 0.0.0.0 for sandbox accessibility
+  if (!patched.includes("host:") && patched.match(/server\s*:\s*\{/)) {
+    patched = patched.replace(/server\s*:\s*\{/, "server: { host: '0.0.0.0',");
+  }
+
+  return patched;
+}
+
+/**
  * Execute code in a Vercel Sandbox microVM.
  * Supports Node.js and Python runtimes.
  * Auto-detects HTML and serves it with a static server for live preview.
@@ -317,30 +410,20 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       // Start the server (don't await — it runs in background)
       sandbox.runCommand("node", ["server.js"]);
 
-      // Wait for server to be ready (2s initial wait)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       const previewUrl = sandbox.domain(port);
 
-      // Health check: verify the preview URL responds before returning
-      try {
-        const check = await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
-        if (!check.ok) {
-          // Retry after another second
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } catch {
-        // URL not ready yet — retry once after a delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        try {
-          await fetch(previewUrl, { signal: AbortSignal.timeout(5000) });
-        } catch {
-          // Still not responding, return URL anyway — it may work by the time user clicks
-        }
-      }
+      // Poll until the static server is actually serving content
+      const ready = await waitForServer(previewUrl, {
+        initialDelayMs: 1500,
+        pollIntervalMs: 1000,
+        maxAttempts: 15,
+        timeoutPerRequestMs: 3000,
+      });
 
       return {
-        stdout: `Serving HTML at ${previewUrl}`,
+        stdout: ready
+          ? `Serving HTML at ${previewUrl}`
+          : `Server started but health check timed out. Preview may still load: ${previewUrl}`,
         stderr: "",
         exitCode: 0,
         previewUrl,
@@ -473,18 +556,12 @@ export async function executeProject(options: {
   }));
 
   try {
-    // Patch Vite configs: ensure allowedHosts: true so sandbox domains work
+    // Patch Vite configs: ensure allowedHosts: true and host: 0.0.0.0 so sandbox domains work
     const patchedFiles = options.files.map(f => {
-      if ((f.path.endsWith("vite.config.js") || f.path.endsWith("vite.config.ts")) &&
-          !f.content.includes("allowedHosts: true")) {
-        // Replace any existing allowedHosts value, or inject into server config
-        let patched = f.content.replace(/allowedHosts:\s*['"][^'"]*['"]/g, "allowedHosts: true");
-        if (!patched.includes("allowedHosts")) {
-          // If no allowedHosts at all, try to add it to server config
-          patched = patched.replace(
-            /server:\s*\{/,
-            "server: { allowedHosts: true,",
-          );
+      if (f.path.endsWith("vite.config.js") || f.path.endsWith("vite.config.ts")) {
+        const patched = patchViteConfig(f.content);
+        if (patched !== f.content) {
+          console.log(`[sandbox] Patched ${f.path} for sandbox compatibility`);
         }
         return { ...f, content: patched };
       }
@@ -539,39 +616,18 @@ export async function executeProject(options: {
 
       const previewUrl = sandbox.domain(options.exposePort);
 
-      // Poll health check — wait up to 90s for the server to compile and start
-      let ready = false;
-      // Initial wait — npm install + Vite compilation needs time
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      for (let attempt = 0; attempt < 28; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        try {
-          const res = await fetch(previewUrl, {
-            signal: AbortSignal.timeout(5000),
-            headers: { "User-Agent": "Granger-Health-Check" },
-          });
-          // Check for real content — not just an empty 200
-          if (res.status !== 502) {
-            const contentLength = res.headers.get("content-length");
-            const body = await res.text();
-            if (body.length > 0) {
-              ready = true;
-              console.log(`[sandbox-health] Ready after ${attempt + 1} attempts, ${body.length} bytes`);
-              break;
-            } else {
-              console.log(`[sandbox-health] Attempt ${attempt + 1}: HTTP ${res.status} but empty body (content-length: ${contentLength})`);
-            }
-          }
-        } catch {
-          // Server not ready yet, keep polling
-        }
-      }
-      if (!ready) {
-        console.warn(`[sandbox] Preview at ${previewUrl} not ready after 90s — returning URL anyway`);
-      }
+      // Poll health check — wait up to ~90s for npm install + Vite compilation + server start
+      const ready = await waitForServer(previewUrl, {
+        initialDelayMs: 5000,
+        pollIntervalMs: 2500,
+        maxAttempts: 35,
+        timeoutPerRequestMs: 5000,
+      });
 
       return {
-        stdout: `Project running at ${previewUrl}`,
+        stdout: ready
+          ? `Project running at ${previewUrl}`
+          : `Dev server started but health check timed out. Preview may still load: ${previewUrl}`,
         stderr: "",
         exitCode: 0,
         previewUrl,
