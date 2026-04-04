@@ -635,9 +635,21 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           _log(`Snapshot: ${snapshotId ? `FOUND ${snapshotId}` : "NONE"}`);
           _log(`Template: ${input.template ?? "auto"}, files: ${input.files.map(f => f.path).join(", ")}`);
 
+          // Auto-fix .js → .jsx for files containing JSX (Vite requires .jsx extension)
+          const fixedFiles = input.files.map(f => {
+            if (f.path.endsWith(".js") && !f.path.endsWith(".config.js") &&
+                (f.content.includes("<div") || f.content.includes("<button") || f.content.includes("<h1") ||
+                 f.content.includes("<span") || f.content.includes("<input") || f.content.includes("<App") ||
+                 f.content.match(/<[A-Z]/))) {
+              _log(`Renamed ${f.path} → ${f.path.replace(/\.js$/, ".jsx")} (contains JSX)`);
+              return { ...f, path: f.path.replace(/\.js$/, ".jsx") };
+            }
+            return f;
+          });
+
           // Template scaffolding — generate boilerplate files so the model only sends custom code
-          let allFiles = [...input.files];
-          const userPaths = new Set(input.files.map(f => f.path));
+          let allFiles = [...fixedFiles];
+          const userPaths = new Set(fixedFiles.map(f => f.path));
 
           // Auto-detect template if not specified
           let template = input.template ?? "none";
