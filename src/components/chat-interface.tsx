@@ -10,6 +10,7 @@ import {
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
   Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2,
+  RefreshCw, AlertCircle,
 } from "lucide-react";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
@@ -1509,6 +1510,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
   const [sandboxRestarting, setSandboxRestarting] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewRetryCount, setPreviewRetryCount] = useState(0);
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Reset preview error state when artifact or view mode changes
+  useEffect(() => {
+    setPreviewError(null);
+    setPreviewRetryCount(0);
+  }, [activeArtifact?.previewUrl, artifactViewMode]);
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -2492,20 +2502,88 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                   <p className="text-xs text-muted-foreground mt-3">This may take 15-30 seconds</p>
                                 </div>
                               )}
-                              <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-                                <p className="text-sm font-medium text-foreground">Loading preview...</p>
-                                <p className="text-xs text-muted-foreground mt-1">Waiting for sandbox to respond</p>
-                              </div>
+                              {/* Error overlay with retry */}
+                              {previewError && !sandboxRestarting && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-20">
+                                  <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+                                  <p className="text-base font-semibold text-foreground">Preview failed to load</p>
+                                  <p className="text-sm text-muted-foreground mt-1 max-w-xs text-center">{previewError}</p>
+                                  <button
+                                    onClick={() => {
+                                      setPreviewError(null);
+                                      setPreviewRetryCount(c => c + 1);
+                                    }}
+                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Retry
+                                  </button>
+                                  {previewRetryCount > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-2">Retry attempt {previewRetryCount}</p>
+                                  )}
+                                </div>
+                              )}
+                              {/* Loading overlay */}
+                              {!previewError && (
+                                <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
+                                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                                  <p className="text-sm font-medium text-foreground">Loading preview...</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Waiting for sandbox to respond</p>
+                                </div>
+                              )}
                               <iframe
-                                src={activeArtifact.previewUrl}
+                                ref={previewIframeRef}
+                                key={`preview-${previewRetryCount}`}
+                                src={activeArtifact.previewUrl + (previewRetryCount > 0 ? `${activeArtifact.previewUrl.includes("?") ? "&" : "?"}retry=${previewRetryCount}` : "")}
                                 className="w-full h-full bg-white"
                                 title={`Preview of ${activeArtifact.filename}`}
                                 onLoad={(e) => {
-                                  // Hide loader when iframe content loads
-                                  const loader = (e.target as HTMLIFrameElement).parentElement?.querySelector("#preview-loader");
-                                  if (loader) (loader as HTMLElement).style.opacity = "0";
-                                  setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                  const iframe = e.target as HTMLIFrameElement;
+                                  const loader = iframe.parentElement?.querySelector("#preview-loader");
+
+                                  // Check if the iframe loaded an error page (502, blank, etc.)
+                                  // We can detect this by checking if the iframe has a very small content size
+                                  try {
+                                    // Cross-origin iframes will throw on contentDocument access
+                                    // But we can use a fetch probe to check the actual status
+                                    const url = iframe.src;
+                                    fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) })
+                                      .then(res => {
+                                        if (res.status === 502 || res.status === 503) {
+                                          // Server not ready — auto-retry after a delay (up to 3 auto-retries)
+                                          if (previewRetryCount < 3) {
+                                            setTimeout(() => {
+                                              setPreviewRetryCount(c => c + 1);
+                                            }, 3000);
+                                          } else {
+                                            setPreviewError(`Server returned ${res.status}. The sandbox may still be starting up.`);
+                                          }
+                                          return;
+                                        }
+                                        // Success — hide loader
+                                        if (loader) {
+                                          (loader as HTMLElement).style.opacity = "0";
+                                          setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                        }
+                                        setPreviewError(null);
+                                      })
+                                      .catch(() => {
+                                        // Fetch failed but iframe loaded something — trust it
+                                        if (loader) {
+                                          (loader as HTMLElement).style.opacity = "0";
+                                          setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                        }
+                                      });
+                                  } catch {
+                                    // Cross-origin — just hide loader on any load event
+                                    if (loader) {
+                                      (loader as HTMLElement).style.opacity = "0";
+                                      setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                    }
+                                  }
+                                }}
+                                onError={() => {
+                                  setPreviewError("Failed to connect to sandbox. The server may have stopped.");
                                 }}
                               />
                             </div>
