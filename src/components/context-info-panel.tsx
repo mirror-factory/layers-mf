@@ -383,6 +383,17 @@ export function ContextInfoPanel({
           </div>
         </div>
 
+        {/* Description long from fullItem */}
+        {fullItem && typeof fullItem.description_long === "string" && (
+          <div>
+            <h3 className="text-sm font-medium mb-1.5">Summary</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {String(fullItem.description_long).slice(0, 500)}
+              {String(fullItem.description_long).length > 500 && "..."}
+            </p>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="mt-6 flex items-center gap-2 flex-wrap">
           <Button asChild className="flex-1 min-w-[120px]">
