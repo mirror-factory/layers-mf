@@ -99,7 +99,9 @@ export function ArtifactVersionHistory({
 
       <div className="space-y-0.5 max-h-[400px] overflow-y-auto">
         {versions.map((v) => {
-          const isCurrent = v.version_number === currentVersion;
+          // "current" = highest version number (not the prop, which may be stale)
+          const latestVersion = versions.length > 0 ? Math.max(...versions.map(ver => ver.version_number)) : 1;
+          const isCurrent = v.version_number === latestVersion;
           const isSelected = v.version_number === selectedVersion;
 
           return (
@@ -136,8 +138,14 @@ export function ArtifactVersionHistory({
 
               <div className="flex items-center gap-2 mt-0.5 ml-7">
                 <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-                  {v.created_by_ai ? (
+                  {v.change_type === "create" ? (
+                    <><span className="text-primary">Created</span></>
+                  ) : v.change_type === "ai_edit" ? (
                     <><Bot className="h-2.5 w-2.5" /> {v.model_used?.split("/")[1] ?? "AI"}</>
+                  ) : v.change_type === "restore" ? (
+                    <><RotateCcw className="h-2.5 w-2.5" /> Restored</>
+                  ) : v.created_by_ai ? (
+                    <><Bot className="h-2.5 w-2.5" /> AI</>
                   ) : (
                     <><User className="h-2.5 w-2.5" /> Manual</>
                   )}

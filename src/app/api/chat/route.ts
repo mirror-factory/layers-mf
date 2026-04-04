@@ -375,6 +375,8 @@ export async function POST(request: NextRequest) {
 
   const conversationId: string | null = (body.conversationId as string) ?? null;
   const visualLevel: string = (body.visualLevel as string) ?? "medium";
+  const activeArtifactId: string | null = (body.activeArtifactId as string) ?? null;
+  const activeFilePath: string | null = (body.activeFilePath as string) ?? null;
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
@@ -553,7 +555,44 @@ export async function POST(request: NextRequest) {
   // Inject real-time date/time (changes every request, not cached)
   const now = new Date();
   const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
-  const fullInstructions = instructions + dateTimeContext;
+
+  // Inject active artifact context so the AI knows what's open in the side panel
+  let artifactContext = "";
+  if (activeArtifactId) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any;
+      const { data: artifact } = await sb
+        .from("artifacts")
+        .select("id, title, type, language, current_version, content, framework, run_command, expose_port")
+        .eq("id", activeArtifactId)
+        .single();
+
+      if (artifact) {
+        // Fetch files for the current version
+        const { data: artFiles } = await sb
+          .from("artifact_files")
+          .select("file_path, language")
+          .eq("artifact_id", activeArtifactId)
+          .eq("version_number", artifact.current_version);
+
+        const fileList = artFiles?.map((f: { file_path: string }) => f.file_path) ?? [];
+        artifactContext = `\n\n## Active Artifact (currently open in side panel)\n` +
+          `- ID: ${artifact.id}\n` +
+          `- Title: ${artifact.title}\n` +
+          `- Type: ${artifact.type} | Language: ${artifact.language ?? "unknown"} | Version: v${artifact.current_version}\n` +
+          (fileList.length > 0 ? `- Files: ${fileList.join(", ")}\n` : "") +
+          (activeFilePath ? `- Currently viewing: ${activeFilePath}\n` : "") +
+          `\nWhen the user asks to edit, change, or modify this artifact, use edit_code with artifactId="${artifact.id}"` +
+          (activeFilePath ? ` and filePath="${activeFilePath}"` : "") +
+          `. Do NOT create a new artifact.\n`;
+      }
+    } catch {
+      // Artifact lookup failed — continue without context
+    }
+  }
+
+  const fullInstructions = instructions + dateTimeContext + artifactContext;
 
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";

@@ -915,7 +915,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>) && !("exitCode" in (output as Record<string, unknown>));
   const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
 
-  // Render code artifact as a compact card that opens the artifact panel
+  // Render code artifact — compact notification for edits, full card for new artifacts
   if (codeOutput) {
     const artFilename = codeOutput.filename as string;
     const artLanguage = codeOutput.language as string;
@@ -927,6 +927,31 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
       ? (codeOutput.files as { path: string; content: string }[])
       : undefined;
     const isEdit = !!codeOutput.editDescription;
+    const editFilePath = codeOutput.filePath as string | undefined;
+    const editDesc = codeOutput.editDescription as string | undefined;
+
+    // Edits: compact inline notification (not a full card)
+    if (isEdit) {
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: artFilename,
+            language: artLanguage,
+            code: artCode,
+            artifactId: artArtifactId,
+            files: artFiles,
+            currentVersion: typeof codeOutput.currentVersion === "number" ? codeOutput.currentVersion : undefined,
+          })}
+          className="flex items-center gap-2 w-fit rounded-md border bg-card/50 px-3 py-1.5 text-left hover:bg-accent/50 transition-colors text-xs text-muted-foreground"
+        >
+          <FileCode2 className="h-3 w-3 text-primary shrink-0" />
+          <span className="font-medium text-foreground">{artFilename}</span>
+          <span>Edited{editFilePath ? ` — ${editFilePath}` : ""}{editDesc ? `. ${editDesc}` : ""}. New version saved.</span>
+        </button>
+      );
+    }
+
+    // New artifacts: full card
     return (
       <button
         onClick={() => onOpenArtifact?.({
@@ -946,7 +971,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{artFilename}</p>
           <p className="text-xs text-muted-foreground">
-            {isEdit ? "Edited" : artLanguage}{artDescription ? ` — ${artDescription}` : " — Click to open"}
+            {artLanguage}{artFiles && artFiles.length > 1 ? ` — ${artFiles.length} files` : ""}{artDescription ? ` — ${artDescription}` : " — Click to open"}
           </p>
         </div>
         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
@@ -1397,6 +1422,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Ref for active artifact context (read by transport body, updated by state)
+  const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -1409,7 +1436,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model, conversationId, visualLevel },
+      body: () => ({
+        model,
+        conversationId,
+        visualLevel,
+        activeArtifactId: activeArtifactRef.current.id,
+        activeFilePath: activeArtifactRef.current.filePath,
+      }),
     }),
     // Auto-continue after client-side tool results (ask_user, artifact_panel, etc.)
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
@@ -1566,6 +1599,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [codeSaving, setCodeSaving] = useState(false);
   const [previewElapsed, setPreviewElapsed] = useState(0);
   const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Sync active artifact state to ref (for transport body to read)
+  useEffect(() => {
+    activeArtifactRef.current = {
+      id: activeArtifact?.artifactId ?? null,
+      filePath: selectedFilePath,
+    };
+  }, [activeArtifact?.artifactId, selectedFilePath]);
 
   // Reset preview error state when artifact or view mode changes
   useEffect(() => {
