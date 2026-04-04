@@ -744,18 +744,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const hasPackageJson = allFiles.some(f => f.path === "package.json");
           const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
 
-          const result = await executeProject({
-            files: allFiles,
-            installCommand,
-            runCommand: input.run_command,
-            readOutputFiles: input.read_output_files,
-            exposePort: input.expose_port,
-            orgId,
-            userId,
-            snapshotId,
-          });
-
-          // Save to artifacts table with all files persisted
+          // Save artifact FIRST (before sandbox) so the user sees results immediately
+          console.log("[run_project] Saving artifact first...");
           const artifactResult = await createArtifact(supabase as never, {
             orgId,
             userId,
@@ -766,11 +756,34 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             primaryFilePath: allFiles.find(f => f.path.match(/App\.(jsx?|tsx?)$/))?.path ?? allFiles[0]?.path,
             language: "javascript",
             framework: input.template !== "none" ? input.template : "vite",
-            snapshotId: result.snapshotId ?? undefined,
-            previewUrl: result.previewUrl ?? undefined,
             runCommand: input.run_command,
             exposePort: input.expose_port,
           });
+          const savedArtifactId = "artifactId" in artifactResult ? artifactResult.artifactId : null;
+          console.log(`[run_project] Artifact saved: ${savedArtifactId}`);
+
+          // Now run sandbox (this can take 60-120s)
+          console.log(`[run_project] Starting executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}`);
+          const result = await executeProject({
+            files: allFiles,
+            installCommand,
+            runCommand: input.run_command,
+            readOutputFiles: input.read_output_files,
+            exposePort: input.expose_port,
+            orgId,
+            userId,
+            snapshotId,
+          });
+          console.log(`[run_project] executeProject done: exit=${result.exitCode}, preview=${result.previewUrl ?? "none"}, health=${result.healthCheckPassed ?? "unknown"}`);
+
+          // Update artifact with sandbox results (previewUrl, snapshotId)
+          if (result.previewUrl || result.snapshotId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any).from("artifacts").update({
+              preview_url: result.previewUrl ?? null,
+              snapshot_id: result.snapshotId ?? null,
+            }).eq("id", savedArtifactId);
+          }
 
           return {
             stdout: result.stdout.slice(0, 4000),
@@ -779,7 +792,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             previewUrl: result.previewUrl ?? null,
             sandboxId: result.sandboxId,
             snapshotId: result.snapshotId ?? null,
-            artifactId: "artifactId" in artifactResult ? artifactResult.artifactId : null,
+            artifactId: savedArtifactId,
             restoredFromSnapshot: !!snapshotId,
             outputFiles: result.outputFiles,
             fileCount: allFiles.length,
