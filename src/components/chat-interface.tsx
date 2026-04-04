@@ -1569,7 +1569,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     if (previewTimerRef.current) clearInterval(previewTimerRef.current);
   }, [activeArtifact?.previewUrl, previewError]);
 
-  // Auto-open artifact panel when a tool completes with artifact output
+  // Auto-open/close artifact panel when tools complete
   const lastAutoOpenedRef = useRef<string | null>(null);
   useEffect(() => {
     if (messages.length === 0) return;
@@ -1577,12 +1577,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     if (lastMsg.role !== "assistant") return;
     for (const part of lastMsg.parts ?? []) {
       if (!("type" in part) || !("state" in part)) continue;
-      if (part.state !== "output-available" || !("output" in part)) continue;
+      const partType = (part as { type: string }).type;
+      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
+      if (partId === lastAutoOpenedRef.current) continue;
+
+      // Handle artifact_panel tool (client-side: open/close panel)
+      if (partType === "tool-artifact_panel" && (part as { state: string }).state === "input-available") {
+        const input = (part as { input?: Record<string, unknown> }).input;
+        if (input?.action === "close") {
+          lastAutoOpenedRef.current = partId;
+          setActiveArtifact(null);
+          break;
+        }
+        // "open" with artifactId — delegate to artifact_get via the button
+        continue;
+      }
+
+      if ((part as { state: string }).state !== "output-available") continue;
       const output = (part as { output: unknown }).output;
       if (!output || typeof output !== "object") continue;
       const out = output as Record<string, unknown>;
-      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
-      if (partId === lastAutoOpenedRef.current) continue;
 
       // Auto-open for write_code / edit_code results (has code + language, no exitCode)
       if (out.code && out.language && !("exitCode" in out)) {
@@ -1598,8 +1612,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         setArtifactViewMode("code");
         break;
       }
-      // Auto-open for sandbox results with previewUrl
-      if (out.previewUrl && out.exitCode === 0 && out.files) {
+      // Auto-open for sandbox results with previewUrl (even if health check timed out)
+      if (out.previewUrl && out.files) {
         lastAutoOpenedRef.current = partId;
         const files = Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined;
         setActiveArtifact({

@@ -1260,6 +1260,34 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
+    // === Artifact panel control (client-side — no execute) ===
+    artifact_panel: tool({
+      description: "Open or close the artifact side panel. Use when the user asks to open, close, show, or hide an artifact or the artifact panel.",
+      inputSchema: z.object({
+        action: z.enum(["open", "close"]).describe("Whether to open or close the panel"),
+        artifactId: z.string().optional().describe("Artifact ID to open (required for 'open' action)"),
+      }),
+    }),
+
+    // === Artifact delete tool ===
+    artifact_delete: tool({
+      description: "Delete an artifact. Use when the user asks to remove or delete an artifact.",
+      inputSchema: z.object({
+        artifactId: z.string().describe("The artifact ID to delete"),
+      }),
+      execute: async ({ artifactId }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sb = supabase as any;
+        const { error } = await sb
+          .from("artifacts")
+          .update({ status: "deleted" })
+          .eq("id", artifactId)
+          .eq("org_id", orgId);
+        if (error) return { error: "Failed to delete artifact" };
+        return { deleted: true, artifactId, message: "Artifact deleted." };
+      },
+    }),
+
     // === Expression tool — AI generates dot art inline ===
     express: tool({
       description: "Express an emotion, concept, or visual idea as an animated dot pattern inline in the chat. Use this to visually communicate feelings, reactions, or illustrate concepts with animated dots. The dots will morph and animate to form the described image. Use sparingly for impactful moments — celebrations, greetings, expressing understanding, showing a concept visually.",

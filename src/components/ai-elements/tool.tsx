@@ -84,6 +84,8 @@ const toolLabels: Record<string, string> = {
   list_approvals: "Checking approvals",
   artifact_list: "Listing artifacts",
   artifact_get: "Loading artifact",
+  artifact_delete: "Deleting artifact",
+  artifact_panel: "Artifact panel",
   artifact_version: "Checking versions",
   ingest_github_repo: "Importing repo",
 };

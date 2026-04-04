@@ -8,6 +8,7 @@ export interface SandboxResult {
   previewUrl?: string;
   sandboxId?: string;
   snapshotId?: string;
+  healthCheckPassed?: boolean;
 }
 
 // ─── Cost constants ──────────────────────────────────────────────────
@@ -628,10 +629,11 @@ export async function executeProject(options: {
         stdout: ready
           ? `Project running at ${previewUrl}`
           : `Dev server started but health check timed out. Preview may still load: ${previewUrl}`,
-        stderr: "",
-        exitCode: 0,
+        stderr: ready ? "" : "Health check timed out — server may not be reachable yet.",
+        exitCode: ready ? 0 : 2, // 2 = health check timeout (not a hard failure)
         previewUrl,
         sandboxId: sandbox.sandboxId,
+        healthCheckPassed: ready,
       };
     }
 
