@@ -2002,7 +2002,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="p-3 sm:p-4 pb-6 relative"
+          className="p-3 sm:p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}

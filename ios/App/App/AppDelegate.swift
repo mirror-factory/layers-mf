@@ -7,8 +7,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Set dark background to prevent white flash and fill safe areas
-        let darkBg = UIColor(red: 13/255, green: 21/255, blue: 18/255, alpha: 1) // #0d1512
+        // Match dark theme --background: 160 15% 5% → hsl(160,15%,5%) ≈ rgb(11,15,13)
+        let darkBg = UIColor(red: 11/255.0, green: 15/255.0, blue: 13/255.0, alpha: 1)
         window?.backgroundColor = darkBg
         window?.rootViewController?.view.backgroundColor = darkBg
         return true

@@ -12,29 +12,11 @@
   }
 }
 
-/* Lock viewport for Capacitor — prevent body scroll */
-html {
+/* Mobile viewport fix for Capacitor */
+html, body {
+  height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  height: 100%;
-  width: 100%;
-  /* Fill safe area behind notch/home indicator with dark background */
-  background-color: hsl(160, 15%, 5%);
-}
-
-body {
-  overflow: hidden;
-  overscroll-behavior: none;
-  height: 100%;
-  width: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Ensure no white gaps around safe areas */
-  background-color: hsl(160, 15%, 5%);
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Prevent iOS input zoom — ensure all inputs are at least 16px */
