@@ -600,18 +600,19 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
     run_project: tool({
       description:
         "Create and run a multi-file project in a sandboxed VM. Use for full apps, npm projects, React apps, APIs, data pipelines. " +
-        "Supports templates for quick scaffolding — set `template` to 'react', 'nextjs', or 'vite' and only provide your custom files (App.js, etc). " +
-        "For large projects, call this tool multiple times: first to scaffold, then to add/edit individual files with `add_files`. " +
-        "Sandbox state persists via snapshots — subsequent runs restore instantly without re-installing.",
+        "Supports templates for quick scaffolding — set `template` to 'react' and only provide your custom files. " +
+        "IMPORTANT: Use .jsx extension (NOT .js) for any file containing JSX/React components. " +
+        "IMPORTANT: If your code imports a CSS file (e.g. import './App.css'), you MUST include that CSS file in the files array. " +
+        "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it.",
       inputSchema: z.object({
         template: z.enum(["none", "react", "nextjs", "vite", "python"]).optional().describe(
-          "Project template to scaffold. 'react' = create-react-app, 'vite' = Vite+React, 'nextjs' = Next.js, 'python' = Python with venv. " +
-          "When using a template, only provide your custom files (e.g. src/App.js) — boilerplate is auto-generated."
+          "Project template. 'react' = Vite+React (recommended for most apps). " +
+          "When using a template, only provide your custom files (e.g. src/App.jsx, src/App.css) — boilerplate is auto-generated."
         ),
         files: z.array(z.object({
-          path: z.string().describe("File path, e.g. 'src/App.js', 'src/components/Dashboard.jsx'"),
+          path: z.string().describe("File path. ALWAYS use .jsx for React components (e.g. 'src/App.jsx', NOT 'src/App.js')"),
           content: z.string().describe("File content"),
-        })).describe("Project files to write. With a template, only include custom/modified files."),
+        })).describe("Project files. With a template, only include custom files. MUST include any CSS/asset files you import."),
         add_files: z.array(z.object({
           path: z.string().describe("File path to add or overwrite"),
           content: z.string().describe("File content"),

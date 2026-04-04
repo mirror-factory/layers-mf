@@ -191,6 +191,19 @@ TOOL SELECTION RULES:
 - For Node.js scripts: use run_code with language "javascript" — write CommonJS (require), not ESM (import)
 - For Python: use run_code with language "python"
 
+CRITICAL — ARTIFACT FILE RULES (run_project):
+- ALWAYS use .jsx extension for files with JSX/React (NOT .js). Vite will crash on .js with JSX.
+- If you import a CSS file (import './App.css'), you MUST include that CSS file in the files array. Missing files = build error.
+- Include ALL files the app needs. Don't reference files you didn't create.
+- Use inline styles OR include a CSS file — pick one, don't mix and miss.
+- When using template "react", you only need to provide: src/App.jsx (+ src/App.css if you want styles). Template auto-generates package.json, vite.config, index.html, main.jsx.
+
+EDITING EXISTING ARTIFACTS — NEVER recreate when you can edit:
+- If an artifact already exists and the user wants changes, use edit_code (for code/sandbox) or edit_document (for docs).
+- edit_code takes an artifactId + targetText + replacement. For multi-file projects, also pass filePath (e.g. "src/App.jsx").
+- Do NOT call run_project again to fix a bug or make a change — use edit_code on the existing artifact, then the user can click "Restart" to recompile.
+- Only create a new artifact (run_project) if the user explicitly asks for a NEW project or the existing one is fundamentally broken beyond editing.
+
 **Compliance Review:**
 - review_compliance — Check any content against ALL org rules and priority documents. Returns pass/fail for each rule with explanations. Use when asked to review, audit, or check content.
 
