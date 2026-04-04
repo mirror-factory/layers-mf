@@ -617,12 +617,13 @@ export async function executeProject(options: {
 
       const previewUrl = sandbox.domain(options.exposePort);
 
-      // Poll health check — wait up to ~90s for npm install + Vite compilation + server start
+      // Poll health check — wait up to ~120s for npm install + Vite compilation + server start
+      // Snapshot restores are much faster (~10-15s), fresh builds take 60-90s
       const ready = await waitForServer(previewUrl, {
-        initialDelayMs: 5000,
-        pollIntervalMs: 2500,
-        maxAttempts: 35,
-        timeoutPerRequestMs: 5000,
+        initialDelayMs: 3000,
+        pollIntervalMs: 2000,
+        maxAttempts: 55,
+        timeoutPerRequestMs: 4000,
       });
 
       return {
