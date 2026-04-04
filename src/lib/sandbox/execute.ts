@@ -177,6 +177,22 @@ async function getOrCreateSandbox(options: {
   // Remove stale entry
   if (cached) activeSandboxes.delete(key);
 
+  // Check OIDC token validity before attempting sandbox creation (local dev only)
+  const oidcToken = process.env.VERCEL_OIDC_TOKEN;
+  if (oidcToken && !process.env.VERCEL) {
+    try {
+      const payload = JSON.parse(Buffer.from(oidcToken.split(".")[1], "base64url").toString());
+      if (payload.exp && Date.now() > payload.exp * 1000) {
+        throw new Error(
+          "Vercel OIDC token expired. Run `npx vercel env pull` to refresh it, then restart the dev server."
+        );
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("expired")) throw e;
+      // Malformed token — let Sandbox.create handle the auth error
+    }
+  }
+
   // Retry up to 3 times on create failure
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
