@@ -334,7 +334,7 @@ export function ConnectorsView({
 
   const totalConnectors = integrations.length + mcpServers.length;
   const connectedCount =
-    integrations.filter((i) => i.status === "connected").length +
+    integrations.filter((i) => i.status === "active" || i.status === "connected").length +
     mcpServers.filter((s) => s.is_active && !s.error_message).length;
 
   return (
@@ -388,7 +388,7 @@ export function ConnectorsView({
           {integrations.map((integration) => {
             const meta = PROVIDER_META[integration.provider];
             const integrationStatus: ConnectorStatus =
-              integration.status === "connected"
+              integration.status === "active" || integration.status === "connected"
                 ? "connected"
                 : integration.status === "error"
                   ? "error"

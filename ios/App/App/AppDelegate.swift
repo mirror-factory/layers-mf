@@ -7,8 +7,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Match dark theme --background: 160 15% 5% → hsl(160,15%,5%) ≈ rgb(11,15,13)
-        let darkBg = UIColor(red: 11/255.0, green: 15/255.0, blue: 13/255.0, alpha: 1)
+        // Match dark theme --background: 168 14% 5% → hsl(168,14%,5%) ≈ rgb(11,15,14)
+        let darkBg = UIColor(red: 11/255.0, green: 15/255.0, blue: 14/255.0, alpha: 1)
         window?.backgroundColor = darkBg
         window?.rootViewController?.view.backgroundColor = darkBg
         return true
