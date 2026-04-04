@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, UIMessage } from "ai";
+import { DefaultChatTransport, UIMessage, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, User, Square,
@@ -1411,6 +1411,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       api: "/api/chat",
       body: { model, conversationId, visualLevel },
     }),
+    // Auto-continue after client-side tool results (ask_user, artifact_panel, etc.)
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       endLiveActivity();
