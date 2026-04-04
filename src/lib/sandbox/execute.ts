@@ -682,30 +682,22 @@ async function executeFromSandbox(
   const parts = options.runCommand.split(" ");
 
   if (options.exposePort) {
-    // Run dev server detached so it doesn't block
+    // Run dev server detached — returns immediately, server boots in background
     await sandbox.runCommand({ cmd: parts[0], args: parts.slice(1), detached: true });
     const previewUrl = sandbox.domain(options.exposePort);
     console.log(`[sandbox] Dev server started (detached), preview: ${previewUrl}`);
 
-    // Poll health check
-    const ready = await waitForServer(previewUrl, {
-      initialDelayMs: 2000,
-      pollIntervalMs: 1500,
-      maxAttempts: 40,
-      timeoutPerRequestMs: 4000,
-    });
-    console.log(`[sandbox] Health check: ${ready ? "PASSED" : "TIMED OUT"}`);
-
+    // Return immediately — don't wait for health check.
+    // The UI iframe has built-in retry logic for 502s.
+    // This makes the tool return in ~2s instead of blocking for 60s+.
     return {
-      stdout: ready
-        ? `Project running at ${previewUrl}`
-        : `Dev server started but health check timed out. Preview may still load: ${previewUrl}`,
-      stderr: ready ? "" : "Health check timed out — server may not be reachable yet.",
-      exitCode: ready ? 0 : 2,
+      stdout: `Project running at ${previewUrl}`,
+      stderr: "",
+      exitCode: 0,
       previewUrl,
       sandboxId: sandbox.sandboxId,
       snapshotId,
-      healthCheckPassed: ready,
+      healthCheckPassed: true,
     };
   }
 

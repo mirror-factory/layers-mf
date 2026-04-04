@@ -629,6 +629,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           // Check for existing snapshot to restore from (skips fresh npm install)
           const existingSnapshot = await getLatestSnapshot(orgId);
           const snapshotId = existingSnapshot?.snapshotId;
+          console.log(`[run_project] Snapshot lookup: ${snapshotId ? `FOUND ${snapshotId}` : "NONE — cold build"}`);
+          console.log(`[run_project] Template: ${input.template ?? "auto-detect"}, files from model: ${input.files.map(f => f.path).join(", ")}`);
 
           // Template scaffolding — generate boilerplate files so the model only sends custom code
           let allFiles = [...input.files];
