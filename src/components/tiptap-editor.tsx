@@ -33,6 +33,8 @@ interface TiptapEditorProps {
   onChange?: (html: string) => void;
   editable?: boolean;
   documentId?: string;
+  /** Called after debounced auto-save completes (for artifact versioning) */
+  onAutoSave?: (html: string) => void;
   placeholder?: string;
   className?: string;
 }
@@ -42,6 +44,7 @@ export function TiptapEditor({
   onChange,
   editable = true,
   documentId,
+  onAutoSave,
   placeholder = "Start writing...",
   className,
 }: TiptapEditorProps) {
@@ -127,10 +130,11 @@ export function TiptapEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: html }),
       });
+      onAutoSave?.(html);
     } catch {
       // silent — auto-save should not interrupt the user
     }
-  }, []);
+  }, [onAutoSave]);
 
   const handleAiEdit = useCallback(async () => {
     if (!editor || !aiPrompt.trim()) return;

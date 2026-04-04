@@ -9,7 +9,7 @@ import {
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
-  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2,
+  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2, Save,
   RefreshCw, AlertCircle,
 } from "lucide-react";
 import { NeuralDots } from "@/components/ui/neural-dots";
@@ -316,7 +316,17 @@ function getHostname(url: string): string {
 }
 
 /** Inline TipTap editor for document artifacts in the artifact panel */
-function DocumentArtifactEditor({ content, documentId }: { content: string; documentId?: string }) {
+function DocumentArtifactEditor({
+  content,
+  documentId,
+  artifactId,
+  onVersionCreated,
+}: {
+  content: string;
+  documentId?: string;
+  artifactId?: string;
+  onVersionCreated?: (newVersion: number) => void;
+}) {
   const [editorContent, setEditorContent] = useState(content);
 
   // Sync when content changes externally (e.g. new artifact selected)
@@ -324,12 +334,37 @@ function DocumentArtifactEditor({ content, documentId }: { content: string; docu
     setEditorContent(content);
   }, [content]);
 
+  const handleAutoSave = useCallback(async (html: string) => {
+    if (!artifactId) return;
+    try {
+      // 1. Update artifact content
+      await fetch(`/api/artifacts/${artifactId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: html }),
+      });
+      // 2. Create a new version
+      const res = await fetch(`/api/artifacts/${artifactId}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: html, change_type: "manual_edit", change_summary: "Auto-saved edit" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.new_version) onVersionCreated?.(data.new_version);
+      }
+    } catch {
+      // silent — auto-save should not interrupt the user
+    }
+  }, [artifactId, onVersionCreated]);
+
   return (
     <TiptapEditor
       content={editorContent}
       onChange={setEditorContent}
       editable={true}
       documentId={documentId}
+      onAutoSave={handleAutoSave}
       placeholder="Document content..."
       className="min-h-full"
     />
@@ -1513,6 +1548,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewRetryCount, setPreviewRetryCount] = useState(0);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const [codeSaving, setCodeSaving] = useState(false);
 
   // Reset preview error state when artifact or view mode changes
   useEffect(() => {
@@ -2373,6 +2409,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
                       )}
                       <span className="text-sm font-medium truncate">{displayName}</span>
+                      {activeArtifact.currentVersion != null && (
+                        <span className="text-[9px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                          v{activeArtifact.currentVersion}
+                        </span>
+                      )}
                       {activeArtifact.type !== "document" && (
                         <span className="text-[10px] text-muted-foreground shrink-0">{displayLang}</span>
                       )}
@@ -2393,6 +2434,46 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             {activeArtifact.previewUrl ? "▶ Live" : "Preview"}
                           </button>
                         </div>
+                      )}
+                      {activeArtifact.type !== "document" && activeArtifact.artifactId && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-2 mr-1"
+                          disabled={codeSaving}
+                          onClick={async () => {
+                            if (!activeArtifact.artifactId) return;
+                            setCodeSaving(true);
+                            try {
+                              await fetch(`/api/artifacts/${activeArtifact.artifactId}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ content: displayCode }),
+                              });
+                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ content: displayCode, change_type: "manual_edit", change_summary: "Manual save" }),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data.new_version) {
+                                  setActiveArtifact((prev) => prev ? { ...prev, currentVersion: data.new_version } : prev);
+                                }
+                              }
+                            } catch {
+                              // silent
+                            } finally {
+                              setCodeSaving(false);
+                            }
+                          }}
+                        >
+                          {codeSaving ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <><Save className="h-3.5 w-3.5 mr-1" /> Save</>
+                          )}
+                        </Button>
                       )}
                       {activeArtifact.previewUrl && (
                         <a
@@ -2476,9 +2557,38 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         <ArtifactVersionHistory
                           artifactId={activeArtifact.artifactId}
                           currentVersion={activeArtifact.currentVersion ?? 1}
-                          onRestore={() => {
-                            // TODO: reload artifact content after restore
-                            setShowVersionHistory(false);
+                          onRestore={async (newVersion) => {
+                            // Reload artifact content after restore
+                            try {
+                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}`);
+                              if (res.ok) {
+                                const data = await res.json();
+                                setActiveArtifact((prev) => prev ? {
+                                  ...prev,
+                                  code: data.content ?? prev.code,
+                                  currentVersion: data.current_version ?? newVersion,
+                                  files: data.files?.length > 0
+                                    ? data.files.map((f: { file_path: string; content: string }) => ({ path: f.file_path, content: f.content }))
+                                    : prev.files,
+                                } : prev);
+                              }
+                            } catch {
+                              // silent
+                            }
+                          }}
+                          onSelect={async (versionNumber) => {
+                            // Preview a specific version's content
+                            try {
+                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data.content) {
+                                  setActiveArtifact((prev) => prev ? { ...prev, code: data.content } : prev);
+                                }
+                              }
+                            } catch {
+                              // silent — just keep current content
+                            }
                           }}
                         />
                       </div>
@@ -2488,6 +2598,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       <DocumentArtifactEditor
                         content={displayCode}
                         documentId={activeArtifact.contextId}
+                        artifactId={activeArtifact.artifactId}
+                        onVersionCreated={(v) => setActiveArtifact((prev) => prev ? { ...prev, currentVersion: v } : prev)}
                       />
                     ) : (
                       <>

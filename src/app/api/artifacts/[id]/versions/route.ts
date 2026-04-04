@@ -28,8 +28,11 @@ export async function GET(
 }
 
 /**
- * POST /api/artifacts/[id]/versions — Restore a specific version
- * Body: { version_number: number }
+ * POST /api/artifacts/[id]/versions
+ *
+ * Two modes:
+ * 1. Restore: { version_number: number } — restores a previous version
+ * 2. Create:  { content: string, change_type?: string, change_summary?: string } — creates a new version
  */
 export async function POST(
   request: NextRequest,
@@ -41,28 +44,9 @@ export async function POST(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const targetVersion = body.version_number as number;
-  if (!targetVersion) return NextResponse.json({ error: "version_number required" }, { status: 400 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
-
-  // Get the target version's content
-  const { data: version } = await sb
-    .from("artifact_versions")
-    .select("content, snapshot_id")
-    .eq("artifact_id", id)
-    .eq("version_number", targetVersion)
-    .single();
-
-  if (!version) return NextResponse.json({ error: "Version not found" }, { status: 404 });
-
-  // Get the target version's files
-  const { data: files } = await sb
-    .from("artifact_files")
-    .select("file_path, content, language, size_bytes")
-    .eq("artifact_id", id)
-    .eq("version_number", targetVersion);
 
   // Get current version number
   const { data: artifact } = await sb
@@ -71,44 +55,90 @@ export async function POST(
     .eq("id", id)
     .single();
 
-  const newVersion = (artifact?.current_version ?? 0) + 1;
+  if (!artifact) return NextResponse.json({ error: "Artifact not found" }, { status: 404 });
 
-  // Create a new version that's a restore
+  const newVersion = (artifact.current_version ?? 0) + 1;
+
+  // --- Mode 1: Restore a previous version ---
+  if (body.version_number) {
+    const targetVersion = body.version_number as number;
+
+    const { data: version } = await sb
+      .from("artifact_versions")
+      .select("content, snapshot_id")
+      .eq("artifact_id", id)
+      .eq("version_number", targetVersion)
+      .single();
+
+    if (!version) return NextResponse.json({ error: "Version not found" }, { status: 404 });
+
+    const { data: files } = await sb
+      .from("artifact_files")
+      .select("file_path, content, language, size_bytes")
+      .eq("artifact_id", id)
+      .eq("version_number", targetVersion);
+
+    await sb.from("artifact_versions").insert({
+      artifact_id: id,
+      version_number: newVersion,
+      content: version.content,
+      snapshot_id: version.snapshot_id,
+      change_summary: `Restored to version ${targetVersion}`,
+      change_type: "restore",
+      created_by: user.id,
+      created_by_ai: false,
+    });
+
+    if (files && files.length > 0) {
+      await sb.from("artifact_files").insert(
+        files.map((f: { file_path: string; content: string; language: string; size_bytes: number }) => ({
+          artifact_id: id,
+          version_number: newVersion,
+          file_path: f.file_path,
+          content: f.content,
+          language: f.language,
+          size_bytes: f.size_bytes,
+        })),
+      );
+    }
+
+    await sb.from("artifacts").update({
+      current_version: newVersion,
+      content: version.content,
+      snapshot_id: version.snapshot_id,
+    }).eq("id", id);
+
+    return NextResponse.json({
+      restored: true,
+      from_version: targetVersion,
+      new_version: newVersion,
+    });
+  }
+
+  // --- Mode 2: Create a new version from provided content ---
+  const content = body.content as string | undefined;
+  if (!content) return NextResponse.json({ error: "content or version_number required" }, { status: 400 });
+
+  const changeType = (body.change_type as string) ?? "manual_edit";
+  const changeSummary = (body.change_summary as string) ?? null;
+
   await sb.from("artifact_versions").insert({
     artifact_id: id,
     version_number: newVersion,
-    content: version.content,
-    snapshot_id: version.snapshot_id,
-    change_summary: `Restored to version ${targetVersion}`,
-    change_type: "restore",
+    content,
+    change_summary: changeSummary,
+    change_type: changeType,
     created_by: user.id,
     created_by_ai: false,
   });
 
-  // Copy files from target version to new version
-  if (files && files.length > 0) {
-    await sb.from("artifact_files").insert(
-      files.map((f: { file_path: string; content: string; language: string; size_bytes: number }) => ({
-        artifact_id: id,
-        version_number: newVersion,
-        file_path: f.file_path,
-        content: f.content,
-        language: f.language,
-        size_bytes: f.size_bytes,
-      })),
-    );
-  }
-
-  // Update artifact
   await sb.from("artifacts").update({
     current_version: newVersion,
-    content: version.content,
-    snapshot_id: version.snapshot_id,
+    content,
   }).eq("id", id);
 
   return NextResponse.json({
-    restored: true,
-    from_version: targetVersion,
+    created: true,
     new_version: newVersion,
   });
 }
