@@ -1545,6 +1545,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
   const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+
+  // Pick the best default file to show (App > main > index, prefer .jsx/.tsx/.js)
+  const pickDefaultFile = (files?: { path: string }[]) => {
+    if (!files || files.length === 0) return null;
+    const priorities = ["App.jsx", "App.tsx", "App.js", "App.ts", "main.jsx", "main.tsx", "main.js", "index.jsx", "index.tsx", "index.js", "index.html"];
+    for (const name of priorities) {
+      const match = files.find(f => f.path.endsWith(name));
+      if (match) return match.path;
+    }
+    // Fall back to first source file (not config/json)
+    const src = files.find(f => /\.(jsx?|tsx?|html|css|py)$/.test(f.path));
+    return src?.path ?? files[0].path;
+  };
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
   const [sandboxRestarting, setSandboxRestarting] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -1628,7 +1641,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           files,
         });
         setArtifactViewMode("preview");
-        setSelectedFilePath(files?.[0]?.path ?? null);
+        setSelectedFilePath(pickDefaultFile(files));
         break;
       }
     }
@@ -2038,7 +2051,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(artifact.files?.[0]?.path ?? null); }} />
+                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(pickDefaultFile(artifact.files)); }} />
                       ))}
                     </div>
                   )}
