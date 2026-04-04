@@ -191,6 +191,10 @@ TOOL SELECTION RULES:
 - For Node.js scripts: use run_code with language "javascript" — write CommonJS (require), not ESM (import)
 - For Python: use run_code with language "python"
 
+**AI SDK Reference:**
+- ai_sdk_reference — Look up Vercel AI SDK patterns BEFORE writing any AI-powered code. Use topic "sandbox-ai-app" for Vite sandbox apps (no server), "chat-client"/"chat-server" for Next.js apps.
+- IMPORTANT: Sandbox apps (run_project with Vite) do NOT have a Next.js server. You CANNOT use useChat or streamText. Call ai_sdk_reference with topic "sandbox-ai-app" to get the correct fetch-based pattern.
+
 CRITICAL — ARTIFACT FILE RULES (run_project):
 - ALWAYS use .jsx extension for files with JSX/React (NOT .js). Vite will crash on .js with JSX.
 - If you import a CSS file (import './App.css'), you MUST include that CSS file in the files array. Missing files = build error.

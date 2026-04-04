@@ -83,6 +83,7 @@ const toolLabels: Record<string, string> = {
   schedule_action: "Creating schedule",
   list_approvals: "Checking approvals",
   artifact_list: "Listing artifacts",
+  ai_sdk_reference: "Looking up AI SDK docs",
   artifact_get: "Loading artifact",
   artifact_delete: "Deleting artifact",
   artifact_panel: "Artifact panel",

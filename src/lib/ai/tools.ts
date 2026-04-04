@@ -1287,6 +1287,196 @@ Be strict but fair. Return a check for every single rule listed above.`,
       },
     }),
 
+    // === AI SDK Reference Tool — gives the AI patterns for building AI apps ===
+    ai_sdk_reference: tool({
+      description:
+        "Look up Vercel AI SDK and AI Elements patterns for building AI-powered apps. " +
+        "Use this BEFORE writing any AI-related code to get the correct patterns. " +
+        "Returns code examples and API references for the requested topic.",
+      inputSchema: z.object({
+        topic: z.enum([
+          "chat-client",       // useChat hook, client-side chat UI
+          "chat-server",       // streamText, API route for chat
+          "generate-text",     // generateText for one-shot generation
+          "generate-object",   // generateObject for structured data
+          "tools",             // Tool calling patterns
+          "streaming",         // Streaming patterns
+          "sandbox-ai-app",   // How to build AI apps in sandbox (no server)
+          "embeddings",        // Embedding generation
+          "gateway",           // AI Gateway configuration
+        ]).describe("The AI SDK topic to look up"),
+      }),
+      execute: async ({ topic }) => {
+        const patterns: Record<string, { description: string; code: string; notes: string }> = {
+          "sandbox-ai-app": {
+            description: "Building AI apps in a Vite sandbox (no Next.js server available)",
+            code: `// In sandbox, you can't use useChat (requires server route).
+// Instead, call the AI Gateway directly from the client:
+
+const API_KEY = import.meta.env.VITE_AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_API_KEY;
+
+async function chat(messages) {
+  const res = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": \`Bearer \${API_KEY}\`,
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3.1-flash-lite-preview",
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      stream: false,
+    }),
+  });
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+// For streaming:
+async function* chatStream(messages) {
+  const res = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": \`Bearer \${API_KEY}\`,
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3.1-flash-lite-preview",
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      stream: true,
+    }),
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    for (const line of chunk.split("\\n")) {
+      if (line.startsWith("data: ") && line !== "data: [DONE]") {
+        const json = JSON.parse(line.slice(6));
+        yield json.choices[0]?.delta?.content ?? "";
+      }
+    }
+  }
+}`,
+            notes: "The sandbox has AI_GATEWAY_API_KEY as env var. Use the OpenAI-compatible endpoint at ai-gateway.vercel.sh. Supports streaming via SSE. Available models: google/gemini-3.1-flash-lite-preview, anthropic/claude-sonnet-4.6, openai/gpt-5.4-mini.",
+          },
+          "chat-client": {
+            description: "useChat hook for Next.js client-side chat",
+            code: `import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+
+const { messages, sendMessage, status } = useChat({
+  transport: new DefaultChatTransport({ api: "/api/chat" }),
+});`,
+            notes: "Requires a Next.js API route at /api/chat. NOT available in Vite sandbox — use 'sandbox-ai-app' pattern instead.",
+          },
+          "chat-server": {
+            description: "Next.js API route for chat",
+            code: `import { streamText } from "ai";
+import { gateway } from "@ai-sdk/gateway";
+
+export async function POST(req) {
+  const { messages } = await req.json();
+  const result = streamText({
+    model: gateway("google/gemini-3.1-flash-lite-preview"),
+    messages,
+  });
+  return result.toUIMessageStreamResponse();
+}`,
+            notes: "Only works in Next.js, not in Vite sandbox.",
+          },
+          "generate-text": {
+            description: "One-shot text generation",
+            code: `import { generateText } from "ai";
+import { gateway } from "@ai-sdk/gateway";
+
+const { text } = await generateText({
+  model: gateway("google/gemini-3.1-flash-lite-preview"),
+  prompt: "Explain quantum computing",
+});`,
+            notes: "Server-side only. For sandbox apps, use the fetch-based pattern from 'sandbox-ai-app'.",
+          },
+          "generate-object": {
+            description: "Structured data generation with schema",
+            code: `import { generateObject } from "ai";
+import { gateway } from "@ai-sdk/gateway";
+import { z } from "zod";
+
+const { object } = await generateObject({
+  model: gateway("google/gemini-3.1-flash-lite-preview"),
+  schema: z.object({
+    name: z.string(),
+    age: z.number(),
+    hobbies: z.array(z.string()),
+  }),
+  prompt: "Generate a fictional character",
+});`,
+            notes: "Returns typed object matching the Zod schema.",
+          },
+          "tools": {
+            description: "Tool calling with AI SDK",
+            code: `import { generateText, tool } from "ai";
+import { z } from "zod";
+
+const result = await generateText({
+  model: gateway("google/gemini-3.1-flash-lite-preview"),
+  tools: {
+    weather: tool({
+      description: "Get the weather",
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) => ({ temp: 72, condition: "sunny" }),
+    }),
+  },
+  prompt: "What's the weather in SF?",
+});`,
+            notes: "AI SDK v6 uses inputSchema (not parameters). Tool execute runs server-side.",
+          },
+          "streaming": {
+            description: "Streaming text generation",
+            code: `import { streamText } from "ai";
+
+const result = streamText({
+  model: gateway("google/gemini-3.1-flash-lite-preview"),
+  prompt: "Write a story",
+});
+
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}`,
+            notes: "Use streamText for streaming, generateText for one-shot.",
+          },
+          "embeddings": {
+            description: "Generate embeddings",
+            code: `import { embed } from "ai";
+
+const { embedding } = await embed({
+  model: gateway.textEmbeddingModel("openai/text-embedding-3-small"),
+  value: "Hello world",
+});`,
+            notes: "Returns 1536-dim vector. Must match DB schema vector(1536).",
+          },
+          "gateway": {
+            description: "AI Gateway configuration",
+            code: `import { createGateway } from "@ai-sdk/gateway";
+
+const gateway = createGateway({
+  apiKey: process.env.AI_GATEWAY_API_KEY,
+});
+
+// Use with any model:
+const model = gateway("google/gemini-3.1-flash-lite-preview");
+const model2 = gateway("anthropic/claude-sonnet-4.6");
+const model3 = gateway("openai/gpt-5.4-mini");`,
+            notes: "Single API key routes to any provider. Available models listed in CLAUDE.md.",
+          },
+        };
+
+        return patterns[topic] ?? { description: "Unknown topic", code: "", notes: "Use one of: " + Object.keys(patterns).join(", ") };
+      },
+    }),
+
     // === Artifact panel control (client-side — no execute) ===
     artifact_panel: tool({
       description: "Open or close the artifact side panel. Use when the user asks to open, close, show, or hide an artifact or the artifact panel.",
