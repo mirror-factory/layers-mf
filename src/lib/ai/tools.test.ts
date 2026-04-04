@@ -40,6 +40,7 @@ function createMockSupabase() {
             }),
           }),
         }),
+        in: vi.fn().mockResolvedValue({ data: [{ id: "doc-1", source_id: null }] }),
       }),
     }),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

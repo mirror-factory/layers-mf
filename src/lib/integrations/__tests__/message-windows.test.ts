@@ -9,38 +9,39 @@ import {
 describe("getISOWeekNumber", () => {
   it("returns correct week for a mid-year date", () => {
     // 2026-03-17 is a Tuesday in ISO week 12
-    const result = getISOWeekNumber(new Date("2026-03-17"));
+    const result = getISOWeekNumber(new Date(Date.UTC(2026, 2, 17, 12)));
     expect(result).toEqual({ year: 2026, week: 12 });
   });
 
-  it("returns week 1 for early January", () => {
+  it("returns week 2 for early January", () => {
     // 2026-01-05 is a Monday — ISO week 2
-    const result = getISOWeekNumber(new Date("2026-01-05"));
+    // Use noon UTC to avoid timezone shift changing the local date
+    const result = getISOWeekNumber(new Date(Date.UTC(2026, 0, 5, 12)));
     expect(result).toEqual({ year: 2026, week: 2 });
   });
 
   it("handles year boundary — Dec 31 that falls in week 1 of next year", () => {
     // 2025-12-31 is a Wednesday — ISO week 1 of 2026
-    const result = getISOWeekNumber(new Date("2025-12-31"));
+    const result = getISOWeekNumber(new Date(Date.UTC(2025, 11, 31, 12)));
     expect(result).toEqual({ year: 2026, week: 1 });
   });
 
   it("handles year boundary — Dec 31 that stays in last week of current year", () => {
     // 2026-12-31 is a Thursday — ISO week 53 of 2026
-    const result = getISOWeekNumber(new Date("2026-12-31"));
+    const result = getISOWeekNumber(new Date(Date.UTC(2026, 11, 31, 12)));
     expect(result).toEqual({ year: 2026, week: 53 });
   });
 
   it("returns week 1 for Jan 1 that is a Thursday", () => {
     // 2026-01-01 is a Thursday — ISO week 1 of 2026
-    const result = getISOWeekNumber(new Date("2026-01-01"));
+    const result = getISOWeekNumber(new Date(Date.UTC(2026, 0, 1, 12)));
     expect(result).toEqual({ year: 2026, week: 1 });
   });
 });
 
 describe("windowedSourceId", () => {
   it("generates correct format with explicit date", () => {
-    const date = new Date("2026-03-17"); // Week 12
+    const date = new Date(Date.UTC(2026, 2, 17, 12)); // Week 12
     const result = windowedSourceId("slack", "C123ABC", date);
     expect(result).toBe("slack-C123ABC-2026-W12");
   });
@@ -53,26 +54,26 @@ describe("windowedSourceId", () => {
 
   it("zero-pads single-digit week numbers", () => {
     // 2026-01-01 is ISO week 1
-    const date = new Date("2026-01-01");
+    const date = new Date(Date.UTC(2026, 0, 1, 12));
     const result = windowedSourceId("slack", "C999", date);
     expect(result).toBe("slack-C999-2026-W01");
   });
 
   it("works with discord-channel provider prefix", () => {
-    const date = new Date("2026-03-17");
+    const date = new Date(Date.UTC(2026, 2, 17, 12));
     const result = windowedSourceId("discord-channel", "12345", date);
     expect(result).toBe("discord-channel-12345-2026-W12");
   });
 
   it("handles channel IDs with hyphens", () => {
-    const date = new Date("2026-03-17");
+    const date = new Date(Date.UTC(2026, 2, 17, 12));
     const result = windowedSourceId("slack", "C-123-ABC", date);
     expect(result).toBe("slack-C-123-ABC-2026-W12");
   });
 
   it("handles double-digit week numbers without extra padding", () => {
     // 2026-06-15 should be around week 25
-    const date = new Date("2026-06-15");
+    const date = new Date(Date.UTC(2026, 5, 15, 12));
     const result = windowedSourceId("slack", "C1", date);
     expect(result).toMatch(/^slack-C1-2026-W\d{2}$/);
     // Week number should be 25
@@ -83,12 +84,12 @@ describe("windowedSourceId", () => {
 
 describe("currentWeekLabel", () => {
   it("returns formatted week label", () => {
-    const label = currentWeekLabel(new Date("2026-03-17"));
+    const label = currentWeekLabel(new Date(Date.UTC(2026, 2, 17, 12)));
     expect(label).toBe("W12");
   });
 
   it("zero-pads single-digit weeks", () => {
-    const label = currentWeekLabel(new Date("2026-01-01"));
+    const label = currentWeekLabel(new Date(Date.UTC(2026, 0, 1, 12)));
     expect(label).toBe("W01");
   });
 

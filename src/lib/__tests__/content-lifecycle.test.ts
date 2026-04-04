@@ -5,9 +5,10 @@ import {
   STALENESS_THRESHOLDS,
 } from "../content-lifecycle";
 
-/** Helper: create a date N days ago from a fixed "now" */
+/** Helper: create a date N days ago — reset to midnight for deterministic day counts */
 function daysAgo(days: number): Date {
   const d = new Date();
+  d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - days);
   return d;
 }
