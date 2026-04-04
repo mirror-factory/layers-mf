@@ -32,17 +32,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
-  const results = await searchContext(supabase, member.org_id, query.trim(), limit, filters);
+  try {
+    const results = await searchContext(supabase, member.org_id, query.trim(), limit, filters);
 
-  return NextResponse.json({
-    results: results.map((r) => ({
-      id: r.id,
-      title: r.title,
-      descriptionShort: r.description_short,
-      sourceType: r.source_type,
-      contentType: r.content_type,
-      relevanceScore: r.rrf_score,
-      sourceUrl: r.source_url,
-    })),
-  });
+    return NextResponse.json({
+      results: results.map((r) => ({
+        id: r.id,
+        title: r.title,
+        descriptionShort: r.description_short,
+        sourceType: r.source_type,
+        contentType: r.content_type,
+        relevanceScore: r.rrf_score,
+        sourceUrl: r.source_url,
+      })),
+    });
+  } catch (err) {
+    console.error("[context/search] Search failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { error: "Search failed", detail: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
 }

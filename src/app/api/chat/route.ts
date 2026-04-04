@@ -13,7 +13,9 @@ import { getContextWindow } from "@/lib/ai/token-counter";
 import { createHash } from "crypto";
 import type { Json } from "@/lib/database.types";
 
-export const maxDuration = 60;
+// Sandbox builds (npm install + Vite compilation + health check) can take 90+ seconds.
+// 60s was too short and caused silent timeouts. 180s covers the worst case.
+export const maxDuration = 180;
 
 // ── System prompt cache (in-memory, 5-min TTL) ──
 const systemPromptCache = new Map<string, { prompt: string; expiresAt: number }>();

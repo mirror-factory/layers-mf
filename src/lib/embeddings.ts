@@ -5,12 +5,16 @@ import { logUsage } from "@/lib/ai/usage";
 /**
  * Embedding configuration.
  *
- * - Primary: Google text-embedding-005 (768 dims, improved quality over 004)
- * - Fallback: OpenAI text-embedding-3-small (1536 dims)
+ * - Primary: OpenAI text-embedding-3-small (1536 dims) — matches DB vector(1536) columns
+ * - Fallback: Google text-embedding-005 (768 dims) — NOT compatible with current DB schema
+ *
+ * IMPORTANT: DB schema uses vector(1536) in context_items and context_chunks.
+ * Changing the primary model to a different dimension requires a DB migration
+ * to ALTER COLUMN + rebuild HNSW indexes + re-embed all existing items.
  *
  * Max input lengths (characters, ~4 chars/token):
- *   Google text-embedding-005: 2048 tokens => ~8000 chars
  *   OpenAI text-embedding-3-small: 8191 tokens => ~32000 chars
+ *   Google text-embedding-005: 2048 tokens => ~8000 chars
  */
 
 const PRIMARY_MODEL_ID = TASK_MODELS.embedding;
@@ -51,21 +55,14 @@ export async function generateEmbedding(
     trackUsage(opts, modelId, truncated.length);
     return embedding;
   } catch (primaryError) {
-    // If caller specified a model explicitly, don't fallback
-    if (opts?.modelId) throw primaryError;
-
-    console.warn(
-      `Embedding failed with ${modelId}, falling back to ${FALLBACK_MODEL_ID}:`,
+    // Do NOT fall back to a model with different dimensions — it would produce
+    // vectors incompatible with the DB's vector(1536) columns and HNSW indexes.
+    // Log the error and re-throw so callers can handle gracefully.
+    console.error(
+      `[embedding] Failed with ${modelId}:`,
       primaryError instanceof Error ? primaryError.message : primaryError
     );
-
-    const { embedding } = await embed({
-      model: gateway.textEmbeddingModel(FALLBACK_MODEL_ID),
-      value: truncated,
-    });
-
-    trackUsage(opts, FALLBACK_MODEL_ID, truncated.length);
-    return embedding;
+    throw primaryError;
   }
 }
 
@@ -101,31 +98,12 @@ export async function generateEmbeddings(
     trackUsage(opts, modelId, totalChars, texts.length);
     return allEmbeddings;
   } catch (primaryError) {
-    if (opts?.modelId) throw primaryError;
-
-    console.warn(
-      `Batch embedding failed with ${modelId}, falling back to ${FALLBACK_MODEL_ID}:`,
+    // Do NOT fall back to a model with different dimensions — see generateEmbedding comment.
+    console.error(
+      `[embedding] Batch failed with ${modelId}:`,
       primaryError instanceof Error ? primaryError.message : primaryError
     );
-
-    // Reset and retry with fallback
-    allEmbeddings.length = 0;
-    totalChars = 0;
-
-    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-      const batch = texts.slice(i, i + BATCH_SIZE);
-      const truncated = batch.map((t) => t.slice(0, MAX_INPUT_CHARS));
-      totalChars += truncated.reduce((sum, t) => sum + t.length, 0);
-
-      const { embeddings } = await embedMany({
-        model: gateway.textEmbeddingModel(FALLBACK_MODEL_ID),
-        values: truncated,
-      });
-      allEmbeddings.push(...embeddings);
-    }
-
-    trackUsage(opts, FALLBACK_MODEL_ID, totalChars, texts.length);
-    return allEmbeddings;
+    throw primaryError;
   }
 }
 

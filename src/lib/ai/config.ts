@@ -40,8 +40,8 @@ export const TASK_MODELS = {
   synthesis: MODEL_MATRIX.flagship.claude,    // Nightly 30-day review
   taskSync: MODEL_MATRIX.fast.claude,         // Linear/task sync
   subagent: MODEL_MATRIX.balanced.claude,     // Sub-agent delegation
-  embedding: "google/text-embedding-005",     // 768-dim, Gemini (default)
-  embeddingFallback: "openai/text-embedding-3-small", // 1536-dim fallback
+  embedding: "openai/text-embedding-3-small",  // 1536-dim — must match DB vector(1536) column
+  embeddingFallback: "google/text-embedding-005", // 768-dim — NOT compatible with DB, only for future migration
 } as const;
 
 // Pre-built model instances for common use

@@ -1549,12 +1549,25 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [previewRetryCount, setPreviewRetryCount] = useState(0);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
   const [codeSaving, setCodeSaving] = useState(false);
+  const [previewElapsed, setPreviewElapsed] = useState(0);
+  const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Reset preview error state when artifact or view mode changes
   useEffect(() => {
     setPreviewError(null);
     setPreviewRetryCount(0);
+    setPreviewElapsed(0);
   }, [activeArtifact?.previewUrl, artifactViewMode]);
+
+  // Timer for sandbox preview loading elapsed time
+  useEffect(() => {
+    if (activeArtifact?.previewUrl && !previewError) {
+      setPreviewElapsed(0);
+      previewTimerRef.current = setInterval(() => setPreviewElapsed(s => s + 1), 1000);
+      return () => { if (previewTimerRef.current) clearInterval(previewTimerRef.current); };
+    }
+    if (previewTimerRef.current) clearInterval(previewTimerRef.current);
+  }, [activeArtifact?.previewUrl, previewError]);
 
   // Load context panel preference from localStorage
   useEffect(() => {
@@ -2641,12 +2654,30 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                   )}
                                 </div>
                               )}
-                              {/* Loading overlay */}
+                              {/* Loading overlay with elapsed timer */}
                               {!previewError && (
                                 <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
                                   <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-                                  <p className="text-sm font-medium text-foreground">Loading preview...</p>
-                                  <p className="text-xs text-muted-foreground mt-1">Waiting for sandbox to respond</p>
+                                  <p className="text-sm font-medium text-foreground">
+                                    {previewElapsed < 15 ? "Loading preview..." : previewElapsed < 60 ? "Building project..." : "Still working..."}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {previewElapsed < 10
+                                      ? "Waiting for sandbox to respond"
+                                      : previewElapsed < 30
+                                        ? `Installing dependencies... (${previewElapsed}s)`
+                                        : previewElapsed < 90
+                                          ? `Compiling and starting server... (${previewElapsed}s)`
+                                          : `This is taking longer than usual (${previewElapsed}s)`}
+                                  </p>
+                                  {previewElapsed >= 90 && (
+                                    <button
+                                      onClick={() => setPreviewError("Preview timed out. The sandbox may need to be restarted.")}
+                                      className="mt-3 text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+                                    >
+                                      Cancel and retry
+                                    </button>
+                                  )}
                                 </div>
                               )}
                               <iframe
@@ -2678,7 +2709,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                           }
                                           return;
                                         }
-                                        // Success — hide loader
+                                        // Success — hide loader and stop timer
+                                        if (previewTimerRef.current) clearInterval(previewTimerRef.current);
                                         if (loader) {
                                           (loader as HTMLElement).style.opacity = "0";
                                           setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
@@ -2687,6 +2719,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                       })
                                       .catch(() => {
                                         // Fetch failed but iframe loaded something — trust it
+                                        if (previewTimerRef.current) clearInterval(previewTimerRef.current);
                                         if (loader) {
                                           (loader as HTMLElement).style.opacity = "0";
                                           setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
