@@ -66,15 +66,29 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
 
   if (!artifact) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Get current version number to fetch the right files
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: fileRows } = await (auth.supabase as any)
-    .from("artifact_files")
-    .select("path, content")
-    .eq("artifact_id", artifactId)
-    .order("path");
+  const { data: artFull } = await (auth.supabase as any)
+    .from("artifacts")
+    .select("current_version")
+    .eq("id", artifactId)
+    .single();
 
-  const files = (fileRows ?? []).map((f: { path: string; content: string }) => ({
-    path: f.path,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (auth.supabase as any)
+    .from("artifact_files")
+    .select("file_path, content")
+    .eq("artifact_id", artifactId)
+    .order("file_path");
+
+  if (artFull?.current_version) {
+    query = query.eq("version_number", artFull.current_version);
+  }
+
+  const { data: fileRows } = await query;
+
+  const files = (fileRows ?? []).map((f: { file_path: string; content: string }) => ({
+    path: f.file_path,
     content: f.content,
   }));
 
