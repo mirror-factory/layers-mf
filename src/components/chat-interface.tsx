@@ -1674,7 +1674,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           runCommand: typeof out.runCommand === "string" ? out.runCommand : undefined,
           exposePort: typeof out.exposePort === "number" ? out.exposePort : undefined,
         });
-        setArtifactViewMode("code");
+        // Show Live preview for sandbox edits, Code for new/non-sandbox artifacts
+        setArtifactViewMode(hasPreview && out.editDescription ? "preview" : "code");
         setSelectedFilePath(typeof out.filePath === "string" ? out.filePath : pickDefaultFile(Array.isArray(out.files) ? out.files as { path: string }[] : undefined));
         break;
       }
