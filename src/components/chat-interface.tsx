@@ -1485,7 +1485,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { conversationId, visualLevel },
+      body: { model, conversationId, visualLevel },
       headers: () => ({
         "x-model": modelRef.current,
         "x-artifact-id": activeArtifactRef.current.id ?? "",
