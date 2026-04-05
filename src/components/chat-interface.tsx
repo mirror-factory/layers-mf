@@ -1492,8 +1492,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         "x-artifact-file": activeArtifactRef.current.filePath ?? "",
       }),
     }),
-    // Note: sendAutomaticallyWhen removed — was causing chat to hang on some responses.
-    // Client-side tool results (ask_user) are handled by addToolOutput which triggers re-send.
+    // Auto-continue after client-side tool results (ask_user, artifact_panel)
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       endLiveActivity();
@@ -1689,13 +1689,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       // Handle artifact_panel tool (client-side: open/close panel)
       if (partType === "tool-artifact_panel" && (part as { state: string }).state === "input-available") {
         const input = (part as { input?: Record<string, unknown> }).input;
+        lastAutoOpenedRef.current = partId;
         if (input?.action === "close") {
-          lastAutoOpenedRef.current = partId;
           setActiveArtifact(null);
-          break;
         }
-        // "open" with artifactId — delegate to artifact_get via the button
-        continue;
+        // Send tool result so the AI can continue
+        addToolOutput({
+          tool: "artifact_panel" as never,
+          toolCallId: partId,
+          output: JSON.stringify({ success: true, action: input?.action ?? "open" }),
+        });
+        break;
       }
 
       if ((part as { state: string }).state !== "output-available") continue;
