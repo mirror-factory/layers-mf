@@ -28,23 +28,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.snapshotId && (!body.files || body.files.length === 0)) {
-    return NextResponse.json({ error: "Either snapshotId or files are required" }, { status: 400 });
+  if (!body.files || body.files.length === 0) {
+    return NextResponse.json({ error: "Files are required" }, { status: 400 });
   }
+
+  // Get org for persistent sandbox
+  const { data: member } = await supabase
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", user.id)
+    .single();
 
   try {
     const { executeProject } = await import("@/lib/sandbox/execute");
 
-    // Determine if we need npm install (when no snapshot and files include package.json)
-    const hasPackageJson = body.files?.some(f => f.path === "package.json" || f.path.endsWith("/package.json"));
-    const installCommand = !body.snapshotId && hasPackageJson ? "npm install" : undefined;
-
     const result = await executeProject({
-      files: body.files ?? [],
-      installCommand,
+      files: body.files,
+      installCommand: "npm install",
       runCommand: body.runCommand ?? "npm run dev",
       exposePort: body.exposePort ?? 5173,
-      snapshotId: body.snapshotId,
+      orgId: member?.org_id,
+      userId: user.id,
     });
 
     return NextResponse.json({
