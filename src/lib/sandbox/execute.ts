@@ -299,14 +299,9 @@ async function waitForServer(
         continue;
       }
 
-      // Read the body to verify it has real content
-      const body = await res.text();
-      if (body.length > 0) {
-        console.log(`[sandbox-health] Ready after ${attempt + 1} attempts, HTTP ${res.status}, ${body.length} bytes`);
-        return true;
-      }
-
-      console.log(`[sandbox-health] Attempt ${attempt + 1}/${maxAttempts}: HTTP ${res.status} but empty body`);
+      // Any non-502 response means the server is up (Vite returns 200 with empty body initially)
+      console.log(`[sandbox-health] Ready after ${attempt + 1} attempts, HTTP ${res.status}`);
+      return true;
     } catch {
       // Connection refused, timeout, etc. — server not ready yet
       if (attempt % 5 === 0) {
