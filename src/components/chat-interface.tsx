@@ -2736,9 +2736,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                   setActiveArtifact((prev) => {
                                     if (!prev) return prev;
                                     const updated = { ...prev, code: data.content };
-                                    // Update files if the version has them
+                                    // Update files if the version has them (map file_path → path)
                                     if (data.files && Array.isArray(data.files)) {
-                                      updated.files = data.files;
+                                      updated.files = data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
+                                        path: f.path ?? f.file_path ?? "",
+                                        content: f.content,
+                                      }));
                                     }
                                     return updated;
                                   });

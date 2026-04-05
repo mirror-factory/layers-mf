@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, RotateCcw, Bot, User, Loader2, DollarSign } from "lucide-react";
+import { Clock, RotateCcw, Bot, User, Loader2, DollarSign, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +71,14 @@ export function ArtifactVersionHistory({
       }
     } catch { /* silent */ }
     setRestoring(null);
+  }
+
+  async function handleDeleteVersion(versionNumber: number) {
+    if (!confirm(`Delete version ${versionNumber}? This cannot be undone.`)) return;
+    try {
+      await fetch(`/api/artifacts/${artifactId}/versions/${versionNumber}`, { method: "DELETE" });
+      setVersions(prev => prev.filter(v => v.version_number !== versionNumber));
+    } catch { /* silent */ }
   }
 
   if (loading) {
@@ -156,22 +164,35 @@ export function ArtifactVersionHistory({
                   </span>
                 )}
                 {!isCurrent && isSelected && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-5 text-[9px] px-1.5 ml-auto text-primary hover:bg-primary/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRestore(v.version_number);
-                    }}
-                    disabled={restoring !== null}
-                  >
-                    {restoring === v.version_number ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    ) : (
-                      <><RotateCcw className="h-2.5 w-2.5 mr-0.5" /> Restore</>
-                    )}
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 text-[9px] px-1.5 ml-auto text-primary hover:bg-primary/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRestore(v.version_number);
+                      }}
+                      disabled={restoring !== null}
+                    >
+                      {restoring === v.version_number ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      ) : (
+                        <><RotateCcw className="h-2.5 w-2.5 mr-0.5" /> Restore</>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 text-[9px] px-1.5 text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteVersion(v.version_number);
+                      }}
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </Button>
+                  </>
                 )}
               </div>
             </button>

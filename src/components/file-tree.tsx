@@ -24,6 +24,7 @@ export function buildFileTree(files: { path: string; content: string }[]): FileN
   const root: FileNode[] = [];
 
   for (const file of files) {
+    if (!file.path) continue; // skip files with undefined path
     const parts = file.path.split('/');
     let current = root;
 
