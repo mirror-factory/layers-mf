@@ -2012,7 +2012,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   return (
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
         {/* Chat actions bar — hidden on mobile (actions move to prompt bar), visible on desktop */}
         {messages.length > 0 && (
           <div className="hidden md:flex justify-end px-4 py-1 border-b relative">
@@ -2248,7 +2248,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="p-3 sm:p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative"
+          className="shrink-0 sticky bottom-0 z-10 bg-background border-t p-3 sm:p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -2355,9 +2355,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     el.style.height = "auto";
                     el.style.height = Math.min(el.scrollHeight, 200) + "px";
                   }}
-                  placeholder="Ask about your documents, meetings, or team… (type / for commands)"
+                  placeholder="Ask anything… (type / for commands)"
                   rows={1}
-                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:text-muted-foreground"
+                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:text-muted-foreground placeholder:truncate"
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
                     // Slash menu navigation

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
 import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -32,11 +32,22 @@ interface Conversation {
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const templateParam = searchParams.get("template");
   const promptParam = searchParams.get("prompt");
   const idParam = searchParams.get("id");
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(idParam);
+  const [activeId, setActiveIdRaw] = useState<string | null>(idParam);
+
+  // Update URL when conversation changes
+  const setActiveId = useCallback((id: string | null) => {
+    setActiveIdRaw(id);
+    if (id) {
+      router.replace(`/chat?id=${id}`, { scroll: false });
+    } else {
+      router.replace("/chat", { scroll: false });
+    }
+  }, [router]);
   const [loading, setLoading] = useState(true);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(promptParam);
 

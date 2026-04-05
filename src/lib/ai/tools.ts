@@ -1816,7 +1816,8 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
         if (artifact.type === "sandbox" && versionFiles) {
           try {
             const { Sandbox } = await import("@vercel/sandbox");
-            const sandboxName = `layers-${orgId.slice(0, 8)}`;
+            // Use the artifact's stored sandbox name, or fall back to org-level
+            const sandboxName = artifact.snapshot_id ?? `layers-${orgId.slice(0, 8)}`;
             console.log(`[edit_code] Restarting sandbox ${sandboxName} with edited files...`);
             const sandbox = await Sandbox.get({ name: sandboxName });
             await sandbox.writeFiles(
