@@ -859,9 +859,17 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
                   className="group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs hover:bg-accent transition-colors relative"
                   title={c.url}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(c.url)}&sz=32`}
+                    alt=""
+                    className="h-4 w-4 rounded-sm shrink-0"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
                   <span className="font-medium text-primary">[{i + 1}]</span>
                   <span className="text-muted-foreground truncate max-w-[180px]">{c.title}</span>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </a>
               ))}
             </div>
@@ -1641,6 +1649,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   };
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
   const [sandboxRestarting, setSandboxRestarting] = useState(false);
+  const [sandboxStopped, setSandboxStopped] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewRetryCount, setPreviewRetryCount] = useState(0);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
@@ -2238,9 +2247,36 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-destructive text-center">
-              {error.message ?? "Something went wrong."}
-            </p>
+            <div role="alert" className="flex flex-col items-center gap-2 py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 max-w-md">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-sm text-destructive">
+                  {error.message?.includes("fetch") || error.message?.includes("network")
+                    ? "Connection lost. Check your internet and try again."
+                    : error.message?.includes("429") || error.message?.includes("rate")
+                      ? "Rate limit reached. Please wait a moment."
+                      : error.message?.includes("401") || error.message?.includes("auth")
+                        ? "Session expired. Please refresh the page."
+                        : error.message ?? "Something went wrong."}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => {
+                  // Find the last user message and resend it
+                  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+                  if (lastUserMsg) {
+                    const text = getTextContent(lastUserMsg.parts as { type: string; text?: string }[]);
+                    if (text) sendMessage({ text });
+                  }
+                }}
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </Button>
+            </div>
           )}
 
           <div ref={bottomRef} />
@@ -2729,6 +2765,53 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           )}
                         </button>
                       )}
+                      {activeArtifact.previewUrl && (
+                        <button
+                          onClick={() => {
+                            if (sandboxStopped) {
+                              // Turn on — restart sandbox
+                              setSandboxStopped(false);
+                              setSandboxRestarting(true);
+                              setPreviewError(null);
+                              setPreviewRetryCount(0);
+                              fetch("/api/sandbox/restart", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  snapshotId: activeArtifact.snapshotId ?? undefined,
+                                  runCommand: activeArtifact.runCommand ?? "npm start",
+                                  exposePort: activeArtifact.exposePort ?? 5173,
+                                  files: activeArtifact.files,
+                                }),
+                              })
+                                .then(res => res.ok ? res.json() : null)
+                                .then(data => {
+                                  if (data?.previewUrl) {
+                                    setActiveArtifact(prev => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                  }
+                                })
+                                .catch(() => {})
+                                .finally(() => setSandboxRestarting(false));
+                            } else {
+                              // Turn off — hide preview
+                              setSandboxStopped(true);
+                            }
+                          }}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors",
+                            sandboxStopped
+                              ? "border-muted bg-muted/50 text-muted-foreground hover:bg-muted"
+                              : "border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900"
+                          )}
+                          title={sandboxStopped ? "Start sandbox" : "Stop sandbox"}
+                        >
+                          {sandboxStopped ? (
+                            <><Square className="h-2.5 w-2.5" /> Start</>
+                          ) : (
+                            <><Square className="h-2.5 w-2.5 fill-current" /> Stop</>
+                          )}
+                        </button>
+                      )}
                       {activeArtifact.artifactId && (
                         <Button
                           size="icon"
@@ -2846,7 +2929,43 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           </CodeBlock>
                         )}
                         {artifactViewMode === "preview" && (
-                          activeArtifact.previewUrl ? (
+                          activeArtifact.previewUrl && sandboxStopped ? (
+                            <div className="relative w-full h-full flex flex-col items-center justify-center bg-background">
+                              <Square className="h-10 w-10 text-muted-foreground/30 mb-4" />
+                              <p className="text-base font-semibold text-foreground">Sandbox stopped</p>
+                              <p className="text-sm text-muted-foreground mt-1">Click &quot;Start&quot; to resume the preview</p>
+                              <button
+                                onClick={() => {
+                                  setSandboxStopped(false);
+                                  setSandboxRestarting(true);
+                                  setPreviewError(null);
+                                  setPreviewRetryCount(0);
+                                  fetch("/api/sandbox/restart", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      snapshotId: activeArtifact.snapshotId ?? undefined,
+                                      runCommand: activeArtifact.runCommand ?? "npm start",
+                                      exposePort: activeArtifact.exposePort ?? 5173,
+                                      files: activeArtifact.files,
+                                    }),
+                                  })
+                                    .then(res => res.ok ? res.json() : null)
+                                    .then(data => {
+                                      if (data?.previewUrl) {
+                                        setActiveArtifact(prev => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                      }
+                                    })
+                                    .catch(() => {})
+                                    .finally(() => setSandboxRestarting(false));
+                                }}
+                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                              >
+                                <Zap className="h-4 w-4" />
+                                Start sandbox
+                              </button>
+                            </div>
+                          ) : activeArtifact.previewUrl ? (
                             <div className="relative w-full h-full">
                               {/* Loading overlay — shows during restart or initial load */}
                               {sandboxRestarting && (

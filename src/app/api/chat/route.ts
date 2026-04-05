@@ -850,29 +850,42 @@ export async function POST(request: NextRequest) {
       // Persist the full conversation as UIMessage[] (complete with tool parts)
       // Delete existing messages for this conversation and re-save all
       if (conversationId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (adminDb as any)
-          .from("chat_messages")
-          .delete()
-          .eq("conversation_id", conversationId)
-          .eq("org_id", orgId);
-
-        const rows = finalMessages.map((msg: UIMessage) => ({
-          org_id: orgId,
-          user_id: userId,
-          session_id: null,
-          conversation_id: conversationId,
-          role: msg.role,
-          content: (msg.parts ?? []) as unknown as Json,
-          model: msg.role === "assistant" ? modelId : null,
-        }));
-
-        if (rows.length > 0) {
+        try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          void (adminDb as any)
+          const { error: deleteError } = await (adminDb as any)
             .from("chat_messages")
-            .insert(rows)
-            .then();
+            .delete()
+            .eq("conversation_id", conversationId)
+            .eq("org_id", orgId);
+
+          if (deleteError) {
+            console.error("[chat] Failed to delete old messages:", deleteError.message);
+          }
+
+          const rows = finalMessages.map((msg: UIMessage) => ({
+            org_id: orgId,
+            user_id: userId,
+            session_id: null,
+            conversation_id: conversationId,
+            role: msg.role,
+            content: (msg.parts ?? []) as unknown as Json,
+            model: msg.role === "assistant" ? modelId : null,
+          }));
+
+          if (rows.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: insertError } = await (adminDb as any)
+              .from("chat_messages")
+              .insert(rows);
+
+            if (insertError) {
+              console.error("[chat] Failed to save messages:", insertError.message, `(${rows.length} rows, conv=${conversationId})`);
+            } else {
+              console.log(`[chat] Saved ${rows.length} messages to conv=${conversationId}`);
+            }
+          }
+        } catch (err) {
+          console.error("[chat] Chat persistence error:", err);
         }
       }
     },

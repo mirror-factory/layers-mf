@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
@@ -64,8 +64,30 @@ export default function ChatPage() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // When no conversation is selected and no URL param, show new chat directly
+  const createConversation = useCallback(async () => {
+    const res = await fetch("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    if (res.ok) {
+      const conv: Conversation = await res.json();
+      setConversations((prev) => [conv, ...prev]);
+      setActiveId(conv.id);
+    }
+  }, [setActiveId]);
+
+  // When no conversation is selected and no URL param, auto-create one
+  // This ensures every chat has a conversationId for message persistence
   const showNewChat = !activeId && !idParam;
+  const autoCreatedRef = useRef(false);
+
+  useEffect(() => {
+    if (showNewChat && !loading && !autoCreatedRef.current && !initialPrompt) {
+      autoCreatedRef.current = true;
+      createConversation();
+    }
+  }, [showNewChat, loading, initialPrompt, createConversation]);
 
   // Auto-create a conversation and set the initial prompt when ?prompt= is present
   useEffect(() => {
@@ -88,19 +110,6 @@ export default function ChatPage() {
 
     autoCreateAndSend();
   }, [initialPrompt, loading]);
-
-  async function createConversation() {
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    if (res.ok) {
-      const conv: Conversation = await res.json();
-      setConversations((prev) => [conv, ...prev]);
-      setActiveId(conv.id);
-    }
-  }
 
   async function deleteConversation(id: string) {
     await fetch(`/api/conversations/${id}`, { method: "DELETE" });
@@ -247,8 +256,6 @@ export default function ChatPage() {
         <div className="flex-1 overflow-hidden">
           {activeId ? (
             <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} />
-          ) : showNewChat ? (
-            <ChatInterface key="new" initialTemplateId={templateParam} initialPrompt={initialPrompt} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mb-2" />
