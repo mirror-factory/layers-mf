@@ -611,8 +611,9 @@ export async function executeProject(options: {
     );
     console.log(`[sandbox] Wrote ${patchedFiles.length} files`);
 
-    // Install dependencies (skip if resumed — deps already installed)
-    if (options.installCommand && !isResumed) {
+    // Install dependencies — skip if resumed AND node_modules exists
+    const hasNodeModules = isResumed && (await sandbox.runCommand('test', ['-d', 'node_modules'])).exitCode === 0;
+    if (options.installCommand && !hasNodeModules) {
       console.log(`[sandbox] Installing: ${options.installCommand}`);
       const installParts = options.installCommand.split(" ");
       const installResult = await sandbox.runCommand(installParts[0], installParts.slice(1));
@@ -626,8 +627,8 @@ export async function executeProject(options: {
         };
       }
       console.log("[sandbox] Install complete");
-    } else if (isResumed) {
-      console.log("[sandbox] Skipping install (persistent sandbox — deps cached)");
+    } else if (hasNodeModules) {
+      console.log("[sandbox] Skipping install (persistent sandbox — node_modules present)");
     }
 
     return executeFromSandbox(sandbox, options, sandboxName);
