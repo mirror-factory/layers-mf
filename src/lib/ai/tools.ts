@@ -781,8 +781,11 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             ?? (input.run_command.includes("dev") ? 5173 : undefined)
             ?? (input.run_command.includes("start") ? 3000 : undefined);
 
+          // Generate unique sandbox name for this artifact (persisted for reuse on edits)
+          const sandboxName = `layers-${orgId.slice(0, 8)}-${Date.now().toString(36)}`;
+
           // Run sandbox (fast with snapshots: ~5s restore, ~20s cold)
-          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, port=${exposePort ?? "none"}`);
+          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, port=${exposePort ?? "none"}, sandbox=${sandboxName}`);
           const result = await executeProject({
             files: allFiles,
             installCommand,
@@ -791,6 +794,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             exposePort,
             orgId,
             userId,
+            sandboxName,
           });
           _log(`executeProject done: exit=${result.exitCode}, preview=${result.previewUrl ?? "none"}`);
           _log("Saving artifact...");
@@ -817,7 +821,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             stderr: result.stderr.slice(0, 1000),
             exitCode: result.exitCode,
             previewUrl: result.previewUrl ?? null,
-            sandboxId: result.sandboxId,
+            sandboxId: result.sandboxId ?? sandboxName,
             snapshotId: result.snapshotId ?? null,
             artifactId: savedArtifactId,
             restoredFromSnapshot: false,

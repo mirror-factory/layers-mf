@@ -555,10 +555,11 @@ export async function executeProject(options: {
   orgId?: string;
   userId?: string;
   snapshotId?: string;
+  sandboxName?: string;
 }): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
-  // Use persistent sandboxes — auto-save/resume, no manual snapshot management
-  // Each org gets a named sandbox that persists across sessions
-  const sandboxName = options.orgId ? `layers-${options.orgId.slice(0, 8)}` : undefined;
+  // Use persistent sandboxes — one per artifact, auto-save/resume
+  // If sandboxName is provided, use that; otherwise generate from orgId
+  const sandboxName = options.sandboxName ?? (options.orgId ? `layers-${options.orgId.slice(0, 8)}-${Date.now().toString(36)}` : undefined);
   console.log(`[sandbox] name=${sandboxName ?? "ephemeral"}, port=${options.exposePort ?? "none"}`);
 
   // Try to resume existing persistent sandbox, or create new one
