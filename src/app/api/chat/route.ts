@@ -451,7 +451,7 @@ export async function POST(request: NextRequest) {
   if (requestedModel !== modelId) {
     console.warn(`[chat] Model "${requestedModel}" not in ALLOWED_MODELS, falling back to ${modelId}`);
   }
-  console.log(`[chat] Using model: ${modelId} (requested: ${requestedModel})`);
+  console.log(`[chat] 🚀 START | model=${modelId} | requested=${requestedModel} | conv=${conversationId ?? "new"} | artifact=${activeArtifactId ?? "none"}`);
 
   const conversationId: string | null = (body.conversationId as string) ?? null;
   const visualLevel: string = (body.visualLevel as string) ?? "medium";
@@ -717,6 +717,16 @@ export async function POST(request: NextRequest) {
       }
     },
     onFinish: () => {
+      // === CHAT SUMMARY LOG ===
+      const durationMs = Date.now() - startTime;
+      const toolsUsed = Object.entries(toolCallCounts).map(([t, c]) => `${t}(${c})`).join(", ") || "none";
+      console.log(
+        `[chat] ✅ DONE | model=${modelId} | steps=${runStepCount} | ` +
+        `in=${totalInputTokens} out=${totalOutputTokens} total=${totalInputTokens + totalOutputTokens} | ` +
+        `cost=$${totalGatewayCost.toFixed(4)} | ${(durationMs / 1000).toFixed(1)}s | ` +
+        `tools=[${toolsUsed}] | response=${assistantText.length}chars`
+      );
+
       // Deduct credits on successful completion (skip in demo mode)
       if (!demoMode) {
         void deductCredits(orgId, CREDIT_COSTS.chat, "chat").catch((err) => {
