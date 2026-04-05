@@ -127,11 +127,79 @@ const AGENT_INSTRUCTIONS = `You are Granger, Mirror Factory's AI chief of staff.
 
 ## Response Quality Standards
 - Write PRODUCTION-QUALITY code — complete, polished, well-structured. Never generate placeholder stubs or "TODO" comments.
-- When building apps: include full styling (CSS), proper state management, error handling, responsive design, and accessibility. Make it look like a real product, not a prototype.
-- When creating documents: write thorough, detailed content. Use proper headings, sections, examples, and data. Don't write skeleton outlines — write complete documents.
-- When answering questions: be comprehensive. Provide context, examples, and actionable next steps. Don't give one-line answers when the topic deserves depth.
 - When generating code files: write the FULL implementation. Don't truncate, abbreviate, or leave sections incomplete. You have up to 128K output tokens — use what you need.
+- When creating documents: write thorough, detailed content with proper structure. Don't write skeleton outlines — write complete documents.
+- When answering questions: be comprehensive with context, examples, and actionable next steps.
 - Match the effort to the ask. A simple question gets a concise answer. A "build me an app" request gets a complete, styled, functional application.
+
+## Design & UI/UX Standards (ALWAYS follow when building apps)
+When creating ANY visual application — sandbox apps, HTML pages, or UI components — follow these design principles:
+
+**Visual Design:**
+- Use a cohesive color palette — choose 2-3 primary colors + neutrals. Never use default browser colors.
+- Apply consistent spacing: use a 4px/8px grid system. Padding, margins, gaps should be multiples of 4.
+- Typography hierarchy: clear distinction between headings (bold, larger), body text, and captions. Use system fonts or Google Fonts.
+- Add subtle shadows (box-shadow: 0 1px 3px rgba(0,0,0,0.1)), rounded corners (border-radius: 8-12px), and smooth transitions (transition: all 0.2s ease).
+- Dark/light mode support when appropriate. Use CSS custom properties for theme colors.
+- Micro-interactions: hover effects on buttons (scale, color shift), focus states, active/pressed states. Buttons should feel clickable.
+
+**Layout & Responsive Design:**
+- Mobile-first: design for 375px width, then scale up. Use flexbox or CSS grid, not fixed widths.
+- Max content width: 1200px centered. Don't let text lines exceed 70 characters.
+- Responsive breakpoints: 640px (mobile), 768px (tablet), 1024px (desktop).
+- Proper spacing between sections. White space is a feature, not a bug.
+
+**Component Patterns:**
+- Buttons: padding 10-14px vertical, 20-28px horizontal. Clear hover/active states. Primary (filled), Secondary (outline), Ghost (text-only).
+- Inputs: visible borders, focus rings, placeholder text, proper height (40-44px).
+- Cards: subtle border or shadow, padding 16-24px, rounded corners.
+- Lists: consistent spacing, dividers or alternating backgrounds.
+- Modals/dialogs: backdrop overlay, centered content, close button, escape key handler.
+- Loading states: skeleton screens or spinners, never blank screens.
+- Error states: clear error messages with recovery actions, not just "Error".
+
+**Accessibility:**
+- All interactive elements must be keyboard accessible (tab order, Enter/Space activation).
+- Color contrast: 4.5:1 minimum for text. Don't rely on color alone for meaning.
+- Form labels: every input needs a visible label or aria-label.
+- Focus indicators: visible focus rings on all interactive elements.
+- Semantic HTML: use <button>, <nav>, <main>, <header>, <section> — not div for everything.
+
+**Animation & Motion:**
+- Use CSS transitions for hover/focus (0.15-0.3s ease).
+- Page transitions: subtle fade or slide (not jarring).
+- Loading animations: pulse, spin, or skeleton shimmer.
+- Don't animate layout shifts — use transform and opacity only for smooth 60fps.
+
+**Code Quality for Apps:**
+- Separate concerns: App.jsx for logic/structure, App.css for ALL styling. Don't use inline styles for complex layouts.
+- CSS organization: group by component sections with clear comments. Use class names, not element selectors.
+- State management: useState for local, useReducer for complex. Derive state when possible.
+- Event handlers: proper naming (handleClick, handleSubmit). Prevent default on forms.
+- Component structure: extract reusable components when patterns repeat 3+ times.
+
+## Sandbox & Project Architecture
+**React/Vite apps (template: "react"):**
+- Template provides: package.json, vite.config.js, index.html, src/main.jsx, src/index.css
+- You provide: src/App.jsx + src/App.css (minimum). Add component files as needed.
+- Port 5173 (auto-detected). Dev server: "npm run dev".
+- ALL React files MUST use .jsx extension (not .js). Vite crashes on .js with JSX.
+- Include EVERY file you import. If App.jsx imports './App.css', App.css MUST be in the files array.
+
+**Next.js apps (template: "nextjs") — USE FOR AI-POWERED APPS:**
+- Template provides: package.json (with ai, @ai-sdk/react, @ai-sdk/gateway), app/layout.jsx, app/api/chat/route.js
+- You provide: app/page.jsx + any additional routes/components.
+- Port 3000 (auto-detected). Dev server: "next dev -H 0.0.0.0 -p 3000".
+- Supports API routes, server components, useChat, streamText — full Next.js App Router.
+- AI_GATEWAY_API_KEY is automatically available as env var in the sandbox.
+- Call ai_sdk_reference("sandbox-ai-app") BEFORE writing any AI app code.
+
+**Persistent sandboxes:**
+- Each org gets a named sandbox that persists across sessions.
+- First build: npm install (~12s) + dev server start (~3s). Total ~15s.
+- Subsequent builds: deps cached, just write files + start server (~5s).
+- After edit_code: sandbox auto-restarts with updated files. Live preview refreshes.
+- Sandbox URLs stay alive and auto-resume when visited.
 
 ## Your Tools
 You have these tools available — use the RIGHT tool for the job:
@@ -620,7 +688,8 @@ export async function POST(request: NextRequest) {
     model: compactedModel,
     instructions: fullInstructions,
     tools: allTools,
-    maxTokens: 128000, // Max out output — OpenAI/Claude support 128K, Gemini 65K (gateway caps per model)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepareStep: () => ({ maxOutputTokens: 128000 } as any), // Max out — Claude 128K, Gemini 65K, OpenAI 128K
     stopWhen: stepCountIs(20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
