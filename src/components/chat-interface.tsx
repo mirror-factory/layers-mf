@@ -1237,6 +1237,8 @@ function SharePanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [publicLink, setPublicLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -1304,6 +1306,48 @@ function SharePanel({
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Public share link */}
+      <div className="border rounded-md p-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground">Public link (read-only, no chat)</p>
+        <Button
+          size="sm"
+          variant={publicLink ? "outline" : "default"}
+          className="w-full text-xs h-7"
+          onClick={async () => {
+            if (publicLink) {
+              await navigator.clipboard.writeText(window.location.origin + publicLink);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+              return;
+            }
+            try {
+              const res = await fetch("/api/chat/share-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ conversationId }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setPublicLink(data.shareUrl);
+                await navigator.clipboard.writeText(window.location.origin + data.shareUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }
+            } catch { /* silent */ }
+          }}
+        >
+          {linkCopied ? (
+            <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Copied!</span>
+          ) : publicLink ? (
+            <span className="flex items-center gap-1"><Copy className="h-3 w-3" /> Copy link</span>
+          ) : (
+            <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> Create share link</span>
+          )}
+        </Button>
+      </div>
+
+      <DropdownMenuSeparator />
       {loading ? (
         <div className="flex items-center justify-center py-3">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
