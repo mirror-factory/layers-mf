@@ -612,6 +612,7 @@ export async function POST(request: NextRequest) {
     model: compactedModel,
     instructions: fullInstructions,
     tools: allTools,
+    maxTokens: 16384, // Max out output length for detailed code generation
     stopWhen: stepCountIs(20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
