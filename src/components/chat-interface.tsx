@@ -1470,8 +1470,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
-  // Ref for active artifact context (read by transport body, updated by state)
+  // Refs for dynamic values (read by transport headers, updated by state)
   const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
+  const modelRef = useRef(model);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -1484,8 +1485,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model, conversationId, visualLevel },
+      body: { conversationId, visualLevel },
       headers: () => ({
+        "x-model": modelRef.current,
         "x-artifact-id": activeArtifactRef.current.id ?? "",
         "x-artifact-file": activeArtifactRef.current.filePath ?? "",
       }),
@@ -1646,7 +1648,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [previewElapsed, setPreviewElapsed] = useState(0);
   const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Sync active artifact state to ref (for transport body to read)
+  // Sync dynamic state to refs (transport headers read from refs, not state)
+  useEffect(() => { modelRef.current = model; }, [model]);
   useEffect(() => {
     activeArtifactRef.current = {
       id: activeArtifact?.artifactId ?? null,

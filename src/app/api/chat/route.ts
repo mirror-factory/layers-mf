@@ -444,7 +444,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const requestedModel = body.model as string;
+  // Model comes from header (dynamic ref) with body fallback
+  const requestedModel = request.headers.get("x-model") || (body.model as string) || "google/gemini-3.1-flash-lite-preview";
   const modelId = ALLOWED_MODELS.has(requestedModel)
     ? requestedModel
     : "google/gemini-3.1-flash-lite-preview";
