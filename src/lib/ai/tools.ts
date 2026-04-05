@@ -1685,7 +1685,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
         // Fetch the artifact
         const { data: artifact, error: artErr } = await sb
           .from("artifacts")
-          .select("id, title, content, language, current_version, type")
+          .select("id, title, content, language, current_version, type, preview_url, snapshot_id, run_command, expose_port")
           .eq("id", input.artifactId)
           .eq("org_id", orgId)
           .single();
@@ -1760,8 +1760,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           createdByAi: true,
         });
 
-        // Return in the same shape as write_code so the panel auto-opens/refreshes
-        // Always include `code` so the artifact card renders (even for multi-file, use the edited file content)
+        // Return in the same shape as write_code/run_project so the panel auto-opens with Live button
         return {
           filename: artifact.title,
           language: artifact.language ?? "text",
@@ -1769,7 +1768,14 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           artifactId: artifact.id,
           type: artifact.type as string,
           files: versionFiles,
+          filePath: editingFile ?? undefined,
           editDescription: input.editDescription,
+          currentVersion: artifact.current_version + 1,
+          // Include sandbox metadata so the Live/Restart buttons appear
+          previewUrl: artifact.preview_url ?? undefined,
+          snapshotId: artifact.snapshot_id ?? undefined,
+          runCommand: artifact.run_command ?? undefined,
+          exposePort: artifact.expose_port ?? undefined,
           message: `Updated "${artifact.title}"${editingFile ? ` (${editingFile})` : ""}.${input.editDescription ? ` Change: ${input.editDescription}` : ""} New version saved.`,
         };
       },

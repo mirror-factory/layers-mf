@@ -1001,7 +1001,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
               output={
                 output !== undefined ? (
                   <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                    {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
+                    {typeof output === "string" ? output : (() => { try { return JSON.stringify(output, null, 2); } catch { return "[Complex output]"; } })()}
                   </pre>
                 ) : null
               }
@@ -1196,7 +1196,7 @@ function formatMessagesAsMarkdown(
         lines.push("", "**Input:**", "```json", JSON.stringify(tp.input, null, 2), "```", "");
       }
       if (tp.state === "output-available" && "output" in tp && tp.output) {
-        const out = typeof tp.output === "string" ? tp.output : JSON.stringify(tp.output, null, 2);
+        const out = typeof tp.output === "string" ? tp.output : (() => { try { return JSON.stringify(tp.output, null, 2); } catch { return "[Complex output]"; } })();
         lines.push("**Output:**", "```json", out, "```", "");
       }
     }
@@ -1657,6 +1657,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       // Auto-open for write_code / edit_code results (has code + language, no exitCode)
       if (out.code && out.language && !("exitCode" in out)) {
         lastAutoOpenedRef.current = partId;
+        const hasPreview = typeof out.previewUrl === "string";
         setActiveArtifact({
           filename: String(out.filename ?? "Untitled"),
           language: String(out.language ?? "text"),
@@ -1664,8 +1665,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           artifactId: typeof out.artifactId === "string" ? out.artifactId : undefined,
           files: Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined,
           type: out.type === "document" ? "document" : "code",
+          currentVersion: typeof out.currentVersion === "number" ? out.currentVersion : undefined,
+          // Include sandbox metadata so Live/Restart buttons work after edits
+          previewUrl: hasPreview ? String(out.previewUrl) : undefined,
+          snapshotId: typeof out.snapshotId === "string" ? out.snapshotId : undefined,
+          runCommand: typeof out.runCommand === "string" ? out.runCommand : undefined,
+          exposePort: typeof out.exposePort === "number" ? out.exposePort : undefined,
         });
         setArtifactViewMode("code");
+        setSelectedFilePath(typeof out.filePath === "string" ? out.filePath : pickDefaultFile(Array.isArray(out.files) ? out.files as { path: string }[] : undefined));
         break;
       }
       // Auto-open for sandbox results with previewUrl (even if health check timed out)
