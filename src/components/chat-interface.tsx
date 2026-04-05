@@ -2830,8 +2830,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                               )}
                               <iframe
                                 ref={previewIframeRef}
-                                key={`preview-${previewRetryCount}`}
-                                src={activeArtifact.previewUrl + (previewRetryCount > 0 ? `${activeArtifact.previewUrl.includes("?") ? "&" : "?"}retry=${previewRetryCount}` : "")}
+                                key={`preview-${previewRetryCount}-v${activeArtifact.currentVersion ?? 0}`}
+                                src={activeArtifact.previewUrl + `${activeArtifact.previewUrl.includes("?") ? "&" : "?"}v=${activeArtifact.currentVersion ?? 0}&r=${previewRetryCount}`}
                                 className="w-full h-full bg-white"
                                 title={`Preview of ${activeArtifact.filename}`}
                                 onLoad={(e) => {
