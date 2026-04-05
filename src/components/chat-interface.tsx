@@ -2726,17 +2726,29 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             }
                           }}
                           onSelect={async (versionNumber) => {
-                            // Preview a specific version's content
+                            // Load the selected version's content + files
                             try {
                               const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
                               if (res.ok) {
                                 const data = await res.json();
                                 if (data.content) {
-                                  setActiveArtifact((prev) => prev ? { ...prev, code: data.content } : prev);
+                                  setActiveArtifact((prev) => {
+                                    if (!prev) return prev;
+                                    const updated = { ...prev, code: data.content };
+                                    // Update files if the version has them
+                                    if (data.files && Array.isArray(data.files)) {
+                                      updated.files = data.files;
+                                    }
+                                    return updated;
+                                  });
+                                }
+                                // If this is a sandbox artifact, prompt user that restart is needed
+                                if (activeArtifact.previewUrl && activeArtifact.type !== "document") {
+                                  setPreviewError(`Viewing v${versionNumber}. Click Restart to load this version in the sandbox.`);
                                 }
                               }
                             } catch {
-                              // silent — just keep current content
+                              // silent
                             }
                           }}
                         />

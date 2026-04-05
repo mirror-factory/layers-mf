@@ -43,3 +43,4 @@ yarn-error.log*
 playwright-report/
 test-results/
 e2e/.auth/
+.env*.local

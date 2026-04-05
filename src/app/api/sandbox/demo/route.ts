@@ -217,14 +217,14 @@ export async function POST() {
 
     activeSandbox = {
       sandbox,
-      sandboxId: sandbox.sandboxId,
+      sandboxId: sandbox.name,
       previewUrl,
       status: ready ? "running" : "starting",
       createdAt: Date.now(),
     };
 
     return NextResponse.json({
-      sandboxId: sandbox.sandboxId,
+      sandboxId: sandbox.name,
       previewUrl,
       status: ready ? "running" : "starting",
       files: DEMO_FILES.map((f) => f.path),

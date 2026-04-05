@@ -6,7 +6,7 @@ export interface SandboxResult {
   stderr: string;
   exitCode: number;
   previewUrl?: string;
-  sandboxId?: string;
+  sandboxId?: string;  // sandbox name (persistent) or ID (ephemeral)
   snapshotId?: string;
   healthCheckPassed?: boolean;
 }
@@ -241,7 +241,7 @@ async function snapshotAndPersist(
     await recordSandboxUsage({
       orgId,
       userId,
-      sandboxId: sandbox.sandboxId,
+      sandboxId: sandbox.name,
       cpuMs: cpuUsageMs,
       memoryMbSeconds: 0, // memory not yet exposed by Vercel SDK
       networkIngressBytes: networkIngress,
@@ -514,7 +514,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
       ? sandbox.domain(options.exposePort)
       : undefined;
 
-    return { stdout, stderr, exitCode, previewUrl, sandboxId: sandbox.sandboxId };
+    return { stdout, stderr, exitCode, previewUrl, sandboxId: sandbox.name };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { stdout: "", stderr: msg, exitCode: 1 };
@@ -531,7 +531,7 @@ server.listen(${port}, () => console.log('Serving on port ${port}'));
         await recordSandboxUsage({
           orgId: options.orgId,
           userId: options.userId,
-          sandboxId: sandbox.sandboxId,
+          sandboxId: sandbox.name,
           cpuMs,
           memoryMbSeconds: 0,
           networkIngressBytes: ingress,
@@ -561,20 +561,45 @@ export async function executeProject(options: {
   userId?: string;
   snapshotId?: string;
 }): Promise<SandboxResult & { outputFiles?: { path: string; content: string }[] }> {
-  const isRestoringSnapshot = !!options.snapshotId;
-  console.log(`[sandbox] Creating VM: snapshot=${options.snapshotId ?? "none"}, port=${options.exposePort ?? "none"}`);
+  // Use persistent sandboxes — auto-save/resume, no manual snapshot management
+  // Each org gets a named sandbox that persists across sessions
+  const sandboxName = options.orgId ? `layers-${options.orgId.slice(0, 8)}` : undefined;
+  console.log(`[sandbox] name=${sandboxName ?? "ephemeral"}, port=${options.exposePort ?? "none"}`);
 
-  const sandbox = await Sandbox.create(createParams({
-    runtime: options.runtime ?? "node24",
-    ports: options.exposePort ? [options.exposePort] : [],
-    timeout: options.timeout ?? 600_000,
-    snapshotId: options.snapshotId,
-    env: {
-      HOST: "0.0.0.0",
-      ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
-    },
-  }));
-  console.log(`[sandbox] VM created: ${sandbox.sandboxId} (${isRestoringSnapshot ? "from snapshot" : "fresh"})`);
+  // Try to resume existing persistent sandbox, or create new one
+  let sandbox: Sandbox;
+  let isResumed = false;
+
+  if (sandboxName) {
+    try {
+      sandbox = await Sandbox.get({ name: sandboxName });
+      isResumed = true;
+      console.log(`[sandbox] Resumed persistent sandbox: ${sandboxName}`);
+    } catch {
+      // Doesn't exist yet — create it
+      const gatewayKey = process.env.AI_GATEWAY_API_KEY;
+      sandbox = await Sandbox.create({
+        name: sandboxName,
+        runtime: (options.runtime ?? "node24") as "node24" | "node22" | "python3.13",
+        ports: options.exposePort ? [options.exposePort] : [],
+        timeout: options.timeout ?? 600_000,
+        snapshotExpiration: 0, // never expire snapshots
+        env: {
+          HOST: "0.0.0.0",
+          ...(gatewayKey ? { AI_GATEWAY_API_KEY: gatewayKey } : {}),
+          ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
+        },
+      });
+      console.log(`[sandbox] Created persistent sandbox: ${sandboxName}`);
+    }
+  } else {
+    // Ephemeral fallback (no orgId)
+    sandbox = await Sandbox.create(createParams({
+      runtime: options.runtime ?? "node24",
+      ports: options.exposePort ? [options.exposePort] : [],
+      timeout: options.timeout ?? 600_000,
+    }));
+  }
 
   try {
     // Patch Vite configs for sandbox compatibility
@@ -591,8 +616,8 @@ export async function executeProject(options: {
     );
     console.log(`[sandbox] Wrote ${patchedFiles.length} files`);
 
-    // Install dependencies (skip if restored from snapshot — deps already installed)
-    if (options.installCommand && !isRestoringSnapshot) {
+    // Install dependencies (skip if resumed — deps already installed)
+    if (options.installCommand && !isResumed) {
       console.log(`[sandbox] Installing: ${options.installCommand}`);
       const installParts = options.installCommand.split(" ");
       const installResult = await sandbox.runCommand(installParts[0], installParts.slice(1));
@@ -602,67 +627,20 @@ export async function executeProject(options: {
           stdout: "",
           stderr: `Install failed: ${installStderr}`,
           exitCode: installResult.exitCode,
-          sandboxId: sandbox.sandboxId,
+          sandboxId: sandboxName ?? sandbox.name,
         };
       }
       console.log("[sandbox] Install complete");
-
-      // Snapshot after install so next run is instant (~2s vs ~60s)
-      // Note: snapshot() stops the sandbox, so we need to create a new one
-      if (options.orgId) {
-        try {
-          console.log("[sandbox] Taking snapshot after install...");
-          const snap = await sandbox.snapshot({ expiration: 0 }); // never expire
-          console.log(`[sandbox] Snapshot saved: ${snap.snapshotId}`);
-
-          // Save to DB for future lookups
-          await saveSnapshot(
-            options.orgId,
-            snap.snapshotId,
-            "post-install",
-            { files: patchedFiles.map(f => f.path), installCommand: options.installCommand },
-            0, 0, 0
-          );
-
-          // Create new sandbox FROM the snapshot (instant boot, deps pre-installed)
-          const newSandbox = await Sandbox.create(createParams({
-            runtime: options.runtime ?? "node24",
-            ports: options.exposePort ? [options.exposePort] : [],
-            timeout: options.timeout ?? 600_000,
-            snapshotId: snap.snapshotId,
-            env: {
-              HOST: "0.0.0.0",
-              ...(options.exposePort ? { PORT: String(options.exposePort) } : {}),
-            },
-          }));
-
-          // Write files again (snapshot has the deps, files may differ)
-          await newSandbox.writeFiles(
-            patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) }))
-          );
-
-          // Continue with the new sandbox
-          return executeFromSandbox(newSandbox, options, snap.snapshotId);
-        } catch (snapErr) {
-          console.warn("[sandbox] Snapshot failed, continuing without:", snapErr instanceof Error ? snapErr.message : snapErr);
-          // Snapshot failed but original sandbox is now stopped.
-          // Create a fresh one and re-install (fallback)
-          const fallback = await Sandbox.create(createParams({
-            runtime: options.runtime ?? "node24",
-            ports: options.exposePort ? [options.exposePort] : [],
-            timeout: options.timeout ?? 600_000,
-          }));
-          await fallback.writeFiles(patchedFiles.map(f => ({ path: f.path, content: Buffer.from(f.content) })));
-          const reinstall = options.installCommand.split(" ");
-          await fallback.runCommand(reinstall[0], reinstall.slice(1));
-          return executeFromSandbox(fallback, options, undefined);
-        }
-      }
+    } else if (isResumed) {
+      console.log("[sandbox] Skipping install (persistent sandbox — deps cached)");
     }
 
-    return executeFromSandbox(sandbox, options, options.snapshotId);
+    return executeFromSandbox(sandbox, options, sandboxName);
   } catch (err) {
-    try { await sandbox.stop(); } catch { /* ignore */ }
+    // Don't stop persistent sandboxes on error — they auto-save
+    if (!sandboxName) {
+      try { await sandbox.stop(); } catch { /* ignore */ }
+    }
     throw err;
   }
 }
@@ -695,7 +673,7 @@ async function executeFromSandbox(
       stderr: "",
       exitCode: 0,
       previewUrl,
-      sandboxId: sandbox.sandboxId,
+      sandboxId: sandbox.name,
       snapshotId,
       healthCheckPassed: true,
     };
@@ -730,7 +708,7 @@ async function executeFromSandbox(
     stdout,
     stderr,
     exitCode: result.exitCode,
-    sandboxId: sandbox.sandboxId,
+    sandboxId: sandbox.name,
     snapshotId,
     outputFiles,
   };
