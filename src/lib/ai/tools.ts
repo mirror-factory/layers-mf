@@ -1755,6 +1755,28 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           createdByAi: true,
         });
 
+        // Auto-restart sandbox with new files if this is a sandbox artifact
+        let newPreviewUrl = artifact.preview_url ?? undefined;
+        if (artifact.type === "sandbox" && versionFiles && artifact.run_command) {
+          try {
+            const { Sandbox } = await import("@vercel/sandbox");
+            const sandboxName = `layers-${orgId.slice(0, 8)}`;
+            console.log(`[edit_code] Restarting sandbox ${sandboxName} with edited files...`);
+            const sandbox = await Sandbox.get({ name: sandboxName });
+            // Write ALL files (updated version)
+            await sandbox.writeFiles(
+              versionFiles.map((f: { path: string; content: string }) => ({ path: f.path, content: Buffer.from(f.content) }))
+            );
+            // Restart dev server
+            const runParts = artifact.run_command.split(" ");
+            await sandbox.runCommand({ cmd: runParts[0], args: runParts.slice(1), detached: true });
+            newPreviewUrl = sandbox.domain(artifact.expose_port ?? 5173);
+            console.log(`[edit_code] Sandbox restarted, preview: ${newPreviewUrl}`);
+          } catch (restartErr) {
+            console.warn("[edit_code] Sandbox restart failed:", restartErr instanceof Error ? restartErr.message : restartErr);
+          }
+        }
+
         // Return in the same shape as write_code/run_project so the panel auto-opens with Live button
         return {
           filename: artifact.title,
@@ -1766,8 +1788,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           filePath: editingFile ?? undefined,
           editDescription: input.editDescription,
           currentVersion: artifact.current_version + 1,
-          // Include sandbox metadata so the Live/Restart buttons appear
-          previewUrl: artifact.preview_url ?? undefined,
+          previewUrl: newPreviewUrl,
           snapshotId: artifact.snapshot_id ?? undefined,
           runCommand: artifact.run_command ?? undefined,
           exposePort: artifact.expose_port ?? undefined,
