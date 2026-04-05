@@ -452,12 +452,12 @@ export async function POST(request: NextRequest) {
   if (requestedModel !== modelId) {
     console.warn(`[chat] Model "${requestedModel}" not in ALLOWED_MODELS, falling back to ${modelId}`);
   }
-  console.log(`[chat] 🚀 START | model=${modelId} | requested=${requestedModel} | conv=${conversationId ?? "new"} | artifact=${activeArtifactId ?? "none"}`);
-
   const conversationId: string | null = (body.conversationId as string) ?? null;
   const visualLevel: string = (body.visualLevel as string) ?? "medium";
   const activeArtifactId: string | null = request.headers.get("x-artifact-id") || null;
   const activeFilePath: string | null = request.headers.get("x-artifact-file") || null;
+
+  console.log(`[chat] 🚀 START | model=${modelId} | requested=${requestedModel} | conv=${conversationId ?? "new"} | artifact=${activeArtifactId ?? "none"}`);
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
