@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import type { Metadata } from "next";
@@ -13,9 +14,11 @@ export default async function SharedChatPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = await createClient();
+  // Use admin client to bypass RLS — this is a public endpoint
+  // Security: validated by share_token lookup + is_active check
+  const adminDb = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb = supabase as any;
+  const sb = adminDb as any;
 
   // Look up the share token (no auth required for public shares)
   const { data: share } = await sb
@@ -29,6 +32,7 @@ export default async function SharedChatPage({
 
   // For org-only shares, verify the viewer is in the org
   if (!share.allow_public_view) {
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) notFound();
     const { data: member } = await supabase
