@@ -2274,11 +2274,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
           {/* Only show thinking indicator when loading AND the last assistant message has no content yet */}
           {isLoading && (() => {
-            const lastAssistant = messages.filter(msg => msg.role === "assistant").at(-1);
-            if (!lastAssistant) return true; // No assistant message yet — show thinking
-            const hasText = !!getTextContent(lastAssistant.parts as { type: string; text?: string }[]);
-            const hasTools = getToolParts(lastAssistant.parts as { type: string }[]).length > 0;
-            return !hasText && !hasTools; // Hide thinking once any content streams in
+            // Show thinking indicator until the NEW assistant response starts streaming
+            // Key: check if the very last message is an assistant message with content
+            // If the last message is still "user" (just sent), show thinking
+            const lastMsg = messages.at(-1);
+            if (!lastMsg || lastMsg.role === "user") return true; // Waiting for assistant to start
+            // Last message is assistant — check if it has content yet
+            const hasText = !!getTextContent(lastMsg.parts as { type: string; text?: string }[]);
+            const hasTools = getToolParts(lastMsg.parts as { type: string }[]).length > 0;
+            return !hasText && !hasTools; // Hide thinking once content streams in
           })() && (
             <div className="flex gap-3 max-w-4xl">
               <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
