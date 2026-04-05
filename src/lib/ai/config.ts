@@ -8,19 +8,19 @@ export const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
 // 9 models across 3 providers × 3 tiers
 export const MODEL_MATRIX = {
   flagship: {
-    claude: "anthropic/claude-opus-4.6",       // Deep reasoning, synthesis
-    openai: "openai/gpt-5.4",                  // Complex analysis
-    gemini: "google/gemini-3.1-pro-preview",             // Multimodal, long context
+    claude: "anthropic/claude-opus-4.6",           // Deep reasoning, synthesis — 128K output
+    openai: "openai/gpt-5.4",                      // Complex analysis — 128K output
+    gemini: "google/gemini-3.1-pro-preview",       // Multimodal, long context — 65K output
   },
   balanced: {
-    claude: "anthropic/claude-sonnet-4.6",     // Chat, extraction
-    openai: "openai/gpt-5.4-mini",            // Fast balanced
-    gemini: "google/gemini-3-flash",           // Fast multimodal
+    claude: "anthropic/claude-sonnet-4.6",         // Chat, extraction — 64K output
+    openai: "openai/gpt-5.4-mini",                // Fast balanced — 128K output
+    gemini: "google/gemini-3-flash",               // Fast multimodal — 65K output
   },
   fast: {
-    claude: "anthropic/claude-haiku-4.5",      // Ingestion, classification
-    openai: "openai/gpt-5-nano",              // Ultra-fast, cheap
-    gemini: "google/gemini-2.5-flash-lite",   // Cheapest
+    claude: "anthropic/claude-haiku-4.5",          // Ingestion, classification — 64K output
+    openai: "openai/gpt-5-nano",                  // Ultra-fast, cheap
+    gemini: "google/gemini-3.1-flash-lite-preview", // Cheapest — 65K output
   },
 } as const;
 

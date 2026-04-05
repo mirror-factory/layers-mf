@@ -68,7 +68,7 @@ const MODELS = [
   // Fast
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", tier: "fast" },
   { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "fast" },
-  { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini Flash Lite", tier: "fast" },
+  { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite", tier: "fast" },
 ] as const;
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
