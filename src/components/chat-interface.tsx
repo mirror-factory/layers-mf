@@ -941,6 +941,10 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             artifactId: artArtifactId,
             files: artFiles,
             currentVersion: typeof codeOutput.currentVersion === "number" ? codeOutput.currentVersion : undefined,
+            previewUrl: typeof codeOutput.previewUrl === "string" ? codeOutput.previewUrl : undefined,
+            snapshotId: typeof codeOutput.snapshotId === "string" ? codeOutput.snapshotId : undefined,
+            runCommand: typeof codeOutput.runCommand === "string" ? codeOutput.runCommand : undefined,
+            exposePort: typeof codeOutput.exposePort === "number" ? codeOutput.exposePort : undefined,
           })}
           className="flex items-center gap-2 w-fit rounded-md border bg-card/50 px-3 py-1.5 text-left hover:bg-accent/50 transition-colors text-xs text-muted-foreground"
         >
@@ -2581,6 +2585,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           disabled={codeSaving}
                           onClick={async () => {
                             if (!activeArtifact.artifactId) return;
+                            // Check if code actually changed
+                            if (displayCode === activeArtifact.code) {
+                              // No changes — briefly flash the button to indicate
+                              const btn = document.querySelector("[data-save-btn]") as HTMLElement;
+                              if (btn) { btn.textContent = "No changes"; setTimeout(() => { btn.textContent = ""; }, 1500); }
+                              return;
+                            }
                             setCodeSaving(true);
                             try {
                               await fetch(`/api/artifacts/${activeArtifact.artifactId}`, {
@@ -2596,7 +2607,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                               if (res.ok) {
                                 const data = await res.json();
                                 if (data.new_version) {
-                                  setActiveArtifact((prev) => prev ? { ...prev, currentVersion: data.new_version } : prev);
+                                  setActiveArtifact((prev) => prev ? { ...prev, code: displayCode, currentVersion: data.new_version } : prev);
                                 }
                               }
                             } catch {
