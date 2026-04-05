@@ -1492,8 +1492,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         "x-artifact-file": activeArtifactRef.current.filePath ?? "",
       }),
     }),
-    // Auto-continue after client-side tool results (ask_user, artifact_panel, etc.)
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Note: sendAutomaticallyWhen removed — was causing chat to hang on some responses.
+    // Client-side tool results (ask_user) are handled by addToolOutput which triggers re-send.
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       endLiveActivity();
