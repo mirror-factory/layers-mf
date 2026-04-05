@@ -22,6 +22,35 @@ The design draws from research on Notion, Confluence, Google Drive, Apple Notes,
 
 ---
 
+## Implementation Status (April 2026)
+
+**Phase 1 — Complete:**
+- DB migration: `supabase/migrations/20260405_content_organization.sql`
+  - Tables: `collections`, `collection_items`, `tags`, `item_tags`, `item_pins`
+  - `context_items` additions: `archived_at`, `last_viewed_at`, `view_count`, `ai_category`, `staleness_score`
+  - RLS policies on all tables
+- API Routes (8 total):
+  - `GET/POST /api/collections` — list/create collections
+  - `GET/PATCH/DELETE /api/collections/[id]` — CRUD with 3-level nesting enforcement
+  - `POST/DELETE /api/collections/[id]/items` — add/remove items
+  - `GET/POST /api/tags` — list/create tags (upsert by name)
+  - `PATCH/DELETE/POST(merge) /api/tags/[id]` — update/delete/merge tags
+  - `GET/POST/DELETE /api/context/[id]/tags` — per-item tag management
+  - `POST/DELETE /api/context/[id]/pin` — pin/unpin
+  - `POST/DELETE /api/context/[id]/archive` — archive/unarchive
+- UI Components:
+  - `CollectionsSidebar` (432 lines) — tree nav, system sections, smart collections, tag cloud
+  - Updated `context-library.tsx` — sidebar integration, clickable tag chips, pin/archive buttons
+
+**Pending (Phase 2+):**
+- Smart collection filter engine (JSONB query execution)
+- AI auto-classification pipeline
+- Staleness detection algorithm
+- Related items precomputation
+- DB migration needs to be applied to production Supabase
+
+---
+
 ## Table of Contents
 
 1. [Research Findings](#1-research-findings)

@@ -2,7 +2,7 @@
 
 > Status: Core Complete (Phases 1-5 done, polish remaining)
 > Owner: Mirror Factory (Alfonso, Kyle, Bobby)
-> Last updated: 2026-04-02
+> Last updated: 2026-04-05
 >
 > **Completed:**
 > - Phase 1: DB migration — artifacts, artifact_versions, artifact_files tables with RLS + indexes
@@ -16,6 +16,11 @@
 > - Diff view between versions
 > - Pop-out artifact to separate browser window
 > - Auto-generate multi-level descriptions (oneliner, short, long)
+>
+> **Phase 6 — Per-Artifact Sandbox Management (April 2026):**
+> - Per-artifact sandbox API (start/stop/restart/status per artifact)
+> - UI controls in artifact panel (status dot, start/stop/restart buttons, stopped overlay)
+> - Version switcher auto-restarts sandbox with selected version's files
 
 ---
 
@@ -341,6 +346,38 @@ Artifacts are indexed for search:
 - AI can browse and compare versions
 - Smart edit suggestions based on context
 
+### Phase 6: Per-Artifact Sandbox Management (April 2026)
+
+**API Routes:**
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/sandbox/status` | List all sandbox-capable artifacts for the org (`preview_url IS NOT NULL`, `status = active`) |
+| GET | `/api/sandbox/[artifactId]` | Check if sandbox is alive, returns status + CPU/network metrics |
+| POST | `/api/sandbox/[artifactId]` | Start/restart sandbox from artifact's stored files |
+| DELETE | `/api/sandbox/[artifactId]` | Stop sandbox via SDK, clear `preview_url` |
+
+**Sandbox Naming Convention:** `layers-{orgId_first8}-{timestamp_base36}`
+
+**State Management:**
+- Ephemeral: in-memory cache in `execute.ts` with 5-minute TTL
+- Persistent: snapshots saved to `sandbox_snapshots` table
+
+**UI Controls in Artifact Panel:**
+- Green/gray status dot indicating running/stopped state
+- Start / Stop / Restart buttons using per-artifact API
+- Stopped overlay with "Start sandbox" CTA when sandbox is not running
+- Version switcher auto-restarts sandbox with selected version's files
+
+**Data Model (sandbox-related columns on `artifacts` table):**
+- `artifacts.snapshot_id` — Vercel sandbox snapshot ID
+- `artifacts.preview_url` — Live preview URL
+- `artifacts.run_command` — Dev server command (e.g., `npm run dev`)
+- `artifacts.expose_port` — Port number for preview (e.g., 5173)
+
+**Supporting tables:**
+- `sandbox_snapshots` — Snapshot metadata + usage metrics
+- `sandbox_usage` — Per-execution cost tracking
+
 ---
 
 ## 5. Key Files (Current)
@@ -356,7 +393,9 @@ Artifacts are indexed for search:
 | `src/components/content-viewer.tsx` | Universal content viewer (HTML, code, meetings, issues) |
 | `src/app/(dashboard)/artifacts/page.tsx` | Artifacts browse page |
 | `src/app/(dashboard)/context/[id]/page.tsx` | Individual artifact/context detail page |
-| `src/app/api/sandbox/restart/route.ts` | Sandbox restart endpoint |
+| `src/app/api/sandbox/restart/route.ts` | Sandbox restart endpoint (legacy) |
+| `src/app/api/sandbox/status/route.ts` | List all sandbox-capable artifacts for org |
+| `src/app/api/sandbox/[artifactId]/route.ts` | Per-artifact sandbox CRUD (GET/POST/DELETE) |
 | `src/app/api/sandbox/demo/route.ts` | Sandbox demo page API |
 | `src/lib/database.types.ts` | Supabase generated types |
 

@@ -74,6 +74,26 @@ The SharePanel (in chat-interface.tsx) provides:
 
 Accessed via **Actions → Share...** in the chat header.
 
+## Fixes & Updates (April 2026)
+
+### Middleware Fix
+`/share/*` routes added to public paths in `src/middleware.ts` — previously non-authenticated users were redirected to `/login` when visiting share links.
+
+### Auth Fix
+Share page (`src/app/share/[token]/page.tsx`) now uses `createAdminClient()` to bypass RLS for anonymous visitors. Security is enforced by the share token lookup + `is_active` check, not by Supabase RLS.
+
+### Share Page Rendering
+- Standalone page (outside dashboard layout) — no sidebar, no nav, no chat input
+- Read-only message bubbles with tool call badges
+- Header with title + date + branding
+- Footer with "Powered by Layers"
+
+### Share Types (Clarified)
+- **Public** (`allow_public_view = true`) — anyone with link, no auth required
+- **Org-only** (`allow_public_view = false`) — checks `org_members` via user-scoped Supabase client
+
+---
+
 ## Future Enhancements
 
 - [ ] Share artifacts (not just conversations)
