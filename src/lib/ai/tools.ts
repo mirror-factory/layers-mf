@@ -619,7 +619,10 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         "Supports templates for quick scaffolding — set `template` to 'react' and only provide your custom files. " +
         "IMPORTANT: Use .jsx extension (NOT .js) for any file containing JSX/React components. " +
         "IMPORTANT: If your code imports a CSS file (e.g. import './App.css'), you MUST include that CSS file in the files array. " +
-        "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it.",
+        "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it. " +
+        "QUALITY: Write PRODUCTION-GRADE code. App.jsx should be 150+ lines with full component logic, state management, error handling, and thorough inline comments. " +
+        "App.css should be 100+ lines with complete styling — colors, hover effects, transitions, responsive breakpoints, dark mode. " +
+        "Think like a senior frontend engineer building a portfolio piece. Include micro-interactions, smooth animations, and polished UI. Never generate minimal/stub code.",
       inputSchema: z.object({
         template: z.enum(["none", "react", "nextjs", "vite", "python"]).optional().describe(
           "Project template. 'react' = Vite+React (recommended for most apps). " +
@@ -627,7 +630,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         ),
         files: z.array(z.object({
           path: z.string().describe("File path. ALWAYS use .jsx for React components (e.g. 'src/App.jsx', NOT 'src/App.js')"),
-          content: z.string().describe("File content"),
+          content: z.string().describe("COMPLETE file content — production-quality, fully implemented. App.jsx: 150+ lines. App.css: 100+ lines with full styling."),
         })).describe("Project files. With a template, only include custom files. MUST include any CSS/asset files you import."),
         add_files: z.array(z.object({
           path: z.string().describe("File path to add or overwrite"),
@@ -1627,11 +1630,14 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
 
     // === Code artifact tool ===
     write_code: tool({
-      description: "Save a code file as an artifact. NOT for charts/visuals — use inline ```html blocks for those.",
+      description:
+        "Save a code file as an artifact. NOT for charts/visuals — use inline ```html blocks for those. " +
+        "QUALITY: Write complete, production-ready code. For HTML pages: include full CSS styling inline (colors, layout, typography, hover effects, responsive design) — minimum 200 lines. " +
+        "For scripts: include error handling, comments, and edge cases. Never generate skeleton/stub code.",
       inputSchema: z.object({
         filename: z.string().describe("Filename with extension, e.g. 'setup.sh', 'config.json'"),
         language: z.string().describe("Programming language: typescript, python, bash, html, css, json, yaml, markdown, sql, go, rust, ruby, jsx, tsx"),
-        code: z.string().describe("The full code content"),
+        code: z.string().describe("The COMPLETE code content — fully implemented, production-quality, no stubs or TODOs"),
         description: z.string().optional().describe("Brief description of what this code does"),
       }),
       execute: async (input) => {
@@ -1939,13 +1945,16 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
     // === Document tools ===
     create_document: tool({
       description:
-        "Create a new rich-text document artifact. Use when the user asks to write a document, memo, spec, brief, report, or any structured text content. The document will appear in the TipTap editor artifact panel.",
+        "Create a new rich-text document artifact. Use when the user asks to write a document, memo, spec, brief, report, or any structured text content. The document will appear in the TipTap editor artifact panel. " +
+        "QUALITY: Write THOROUGH, DETAILED documents — minimum 500 words for memos, 1000+ words for reports/specs. " +
+        "Include proper structure: executive summary, sections with headings, bullet points, data/examples, conclusions. " +
+        "Write like a professional analyst — never produce skeleton outlines or placeholder text.",
       inputSchema: z.object({
         title: z.string().describe("Document title"),
         content: z
           .string()
           .describe(
-            "The full document content in HTML format (use <h1>, <h2>, <p>, <ul>, <li>, <blockquote>, <code> tags)",
+            "The COMPLETE document in HTML format. Write thorough, detailed content — not an outline. Use <h1>, <h2>, <p>, <ul>, <li>, <blockquote>, <code>, <strong>, <em> tags. Minimum 500 words.",
           ),
         description: z
           .string()
