@@ -665,9 +665,16 @@ async function executeFromSandbox(
     const previewUrl = sandbox.domain(options.exposePort);
     console.log(`[sandbox] Dev server started (detached), preview: ${previewUrl}`);
 
-    // Return immediately — don't wait for health check.
-    // The UI iframe has built-in retry logic for 502s.
-    // This makes the tool return in ~2s instead of blocking for 60s+.
+    // Quick health check — wait up to 10s for Vite to compile, then return
+    // This prevents the iframe from loading too early and showing blank
+    const ready = await waitForServer(previewUrl, {
+      initialDelayMs: 1500,
+      pollIntervalMs: 1000,
+      maxAttempts: 8,
+      timeoutPerRequestMs: 3000,
+    });
+    console.log(`[sandbox] Health check: ${ready ? "READY" : "still starting (iframe will retry)"}`);
+
     return {
       stdout: `Project running at ${previewUrl}`,
       stderr: "",
@@ -675,7 +682,7 @@ async function executeFromSandbox(
       previewUrl,
       sandboxId: sandbox.name,
       snapshotId,
-      healthCheckPassed: true,
+      healthCheckPassed: ready,
     };
   }
 

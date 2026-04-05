@@ -644,12 +644,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         const _log = (msg: string) => console.log(`[run_project +${((Date.now()-_t0)/1000).toFixed(1)}s] ${msg}`);
         try {
           _log("Starting...");
-          const { executeProject, getLatestSnapshot } = await import("@/lib/sandbox/execute");
-
-          // Check for existing snapshot to restore from (skips fresh npm install)
-          const existingSnapshot = await getLatestSnapshot(orgId);
-          const snapshotId = existingSnapshot?.snapshotId;
-          _log(`Snapshot: ${snapshotId ? `FOUND ${snapshotId}` : "NONE"}`);
+          const { executeProject } = await import("@/lib/sandbox/execute");
+          // Persistent sandboxes handle snapshot/resume automatically — no manual lookup needed
           _log(`Template: ${input.template ?? "auto"}, files: ${input.files.map(f => f.path).join(", ")}`);
 
           // Auto-fix .js → .jsx for files containing JSX (Vite requires .jsx extension)
@@ -776,7 +772,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
 
           // Ensure npm install runs when template provides package.json
           const hasPackageJson = allFiles.some(f => f.path === "package.json");
-          const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
+          const installCommand = input.install_command ?? (hasPackageJson ? "npm install" : undefined);
 
           // Auto-detect port if not specified — prevents blocking hang on long-running dev servers
           const isNextjs = template === "nextjs" || input.run_command.includes("next");
@@ -786,7 +782,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             ?? (input.run_command.includes("start") ? 3000 : undefined);
 
           // Run sandbox (fast with snapshots: ~5s restore, ~20s cold)
-          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, snapshot=${snapshotId ?? "none"}, port=${exposePort ?? "none"}`);
+          _log(`executeProject: ${allFiles.length} files, install=${installCommand ?? "none"}, port=${exposePort ?? "none"}`);
           const result = await executeProject({
             files: allFiles,
             installCommand,
@@ -795,7 +791,6 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             exposePort,
             orgId,
             userId,
-            snapshotId,
           });
           _log(`executeProject done: exit=${result.exitCode}, preview=${result.previewUrl ?? "none"}`);
           _log("Saving artifact...");
@@ -825,7 +820,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
             sandboxId: result.sandboxId,
             snapshotId: result.snapshotId ?? null,
             artifactId: savedArtifactId,
-            restoredFromSnapshot: !!snapshotId,
+            restoredFromSnapshot: false,
             outputFiles: result.outputFiles,
             fileCount: allFiles.length,
             files: allFiles,
