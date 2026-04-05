@@ -2730,26 +2730,47 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             // Load the selected version's content + files
                             try {
                               const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
-                              if (res.ok) {
-                                const data = await res.json();
-                                if (data.content) {
-                                  setActiveArtifact((prev) => {
-                                    if (!prev) return prev;
-                                    const updated = { ...prev, code: data.content };
-                                    // Update files if the version has them (map file_path → path)
-                                    if (data.files && Array.isArray(data.files)) {
-                                      updated.files = data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
-                                        path: f.path ?? f.file_path ?? "",
-                                        content: f.content,
-                                      }));
-                                    }
-                                    return updated;
+                              if (!res.ok) return;
+                              const data = await res.json();
+                              if (!data.content) return;
+
+                              const versionFiles = data.files && Array.isArray(data.files)
+                                ? data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
+                                    path: f.path ?? f.file_path ?? "",
+                                    content: f.content,
+                                  }))
+                                : undefined;
+
+                              setActiveArtifact((prev) => {
+                                if (!prev) return prev;
+                                return { ...prev, code: data.content, files: versionFiles ?? prev.files };
+                              });
+
+                              // Auto-restart sandbox with selected version's files
+                              if (activeArtifact.previewUrl && versionFiles) {
+                                setPreviewError(null);
+                                setPreviewRetryCount(0);
+                                setSandboxRestarting(true);
+                                try {
+                                  const restartRes = await fetch("/api/sandbox/restart", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      snapshotId: activeArtifact.snapshotId,
+                                      runCommand: activeArtifact.runCommand ?? "npm run dev",
+                                      exposePort: activeArtifact.exposePort ?? 5173,
+                                      files: versionFiles,
+                                    }),
                                   });
-                                }
-                                // If this is a sandbox artifact, prompt user that restart is needed
-                                if (activeArtifact.previewUrl && activeArtifact.type !== "document") {
-                                  setPreviewError(`Viewing v${versionNumber}. Click Restart to load this version in the sandbox.`);
-                                }
+                                  if (restartRes.ok) {
+                                    const restartData = await restartRes.json();
+                                    if (restartData.previewUrl) {
+                                      setActiveArtifact((prev) => prev ? { ...prev, previewUrl: restartData.previewUrl } : prev);
+                                    }
+                                  }
+                                } catch { /* silent */ }
+                                setSandboxRestarting(false);
+                                setArtifactViewMode("preview");
                               }
                             } catch {
                               // silent
