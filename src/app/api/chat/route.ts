@@ -612,7 +612,7 @@ export async function POST(request: NextRequest) {
     model: compactedModel,
     instructions: fullInstructions,
     tools: allTools,
-    maxTokens: 16384, // Max out output length for detailed code generation
+    maxTokens: 65536, // Max out output — Gemini supports 65K, Claude 32K, OpenAI 16K (gateway handles per-model caps)
     stopWhen: stepCountIs(20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
