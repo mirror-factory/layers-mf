@@ -113,14 +113,17 @@ export function ArtifactVersionHistory({
           const isSelected = v.version_number === selectedVersion;
 
           return (
-            <button
+            <div
               key={v.id}
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 setSelectedVersion(v.version_number);
                 onSelect?.(v.version_number);
               }}
+              onKeyDown={(e) => { if (e.key === "Enter") { setSelectedVersion(v.version_number); onSelect?.(v.version_number); } }}
               className={cn(
-                "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors",
+                "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer",
                 isSelected ? "bg-primary/10" : "hover:bg-muted/50",
               )}
             >
@@ -195,7 +198,7 @@ export function ArtifactVersionHistory({
                   </>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
