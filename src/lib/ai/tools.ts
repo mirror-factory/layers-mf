@@ -619,10 +619,56 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         "Supports templates for quick scaffolding — set `template` to 'react' and only provide your custom files. " +
         "IMPORTANT: Use .jsx extension (NOT .js) for any file containing JSX/React components. " +
         "IMPORTANT: If your code imports a CSS file (e.g. import './App.css'), you MUST include that CSS file in the files array. " +
-        "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it. " +
-        "QUALITY: Write PRODUCTION-GRADE code. App.jsx should be 150+ lines with full component logic, state management, error handling, and thorough inline comments. " +
-        "App.css should be 100+ lines with complete styling — colors, hover effects, transitions, responsive breakpoints, dark mode. " +
-        "Think like a senior frontend engineer building a portfolio piece. Include micro-interactions, smooth animations, and polished UI. Never generate minimal/stub code.",
+        "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it.\n\n" +
+
+        "⚠️ CRITICAL QUALITY REQUIREMENTS — READ CAREFULLY:\n" +
+        "You are building PORTFOLIO-QUALITY, AWARD-WINNING web applications. Every app must look like it was built by a top-tier design agency. " +
+        "Do NOT rush. Take the time to write extensive, detailed, beautiful code. Efficiency does NOT matter — only QUALITY, DESIGN, and FEATURES matter.\n\n" +
+
+        "CODE LENGTH REQUIREMENTS:\n" +
+        "- App.jsx: MINIMUM 300 lines. Include full component logic, multiple sub-components, state management, event handlers, data structures, conditional rendering, and thorough comments.\n" +
+        "- App.css: MINIMUM 200 lines. Include complete design system — custom properties, typography scale, color palette, component styles, hover/active/focus states, transitions, animations, keyframes, responsive breakpoints (mobile/tablet/desktop), dark mode, scrollbar styling.\n" +
+        "- If the app needs it, create MULTIPLE component files (src/components/Header.jsx, src/components/Card.jsx, etc.) — don't cram everything into App.jsx.\n\n" +
+
+        "DESIGN REQUIREMENTS:\n" +
+        "- Color palette: Use 3-5 harmonious colors with proper contrast. Include CSS custom properties (--primary, --secondary, --accent, --bg, --text).\n" +
+        "- Typography: Import a Google Font or use a curated system font stack. Establish a clear type scale (h1-h6, body, caption, overline).\n" +
+        "- Spacing: Use an 8px grid system consistently. Generous padding and margins — never cramped.\n" +
+        "- Shadows: Multiple elevation levels (--shadow-sm, --shadow-md, --shadow-lg). Cards and buttons should float.\n" +
+        "- Borders: Subtle, rounded (8-16px radius). Use border for structure, not decoration.\n" +
+        "- Icons: Use emoji or SVG icons for visual richness.\n\n" +
+
+        "ANIMATION REQUIREMENTS:\n" +
+        "- Page load: Fade-in or slide-up animation on mount (@keyframes fadeIn, slideUp).\n" +
+        "- Hover effects: Scale transform (1.02-1.05), color shifts, shadow elevation changes on ALL interactive elements.\n" +
+        "- Transitions: transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) on buttons, cards, links.\n" +
+        "- Loading states: Skeleton shimmer or pulse animation.\n" +
+        "- Scroll: Smooth scroll behavior. Consider scroll-driven animations for hero sections.\n" +
+        "- Micro-interactions: Button press (scale 0.97), input focus glow, toggle animations.\n\n" +
+
+        "FEATURE REQUIREMENTS:\n" +
+        "- State management: Use useState, useReducer, or useContext as appropriate. Persist to localStorage when useful.\n" +
+        "- Error handling: Try-catch on async operations, error boundaries, user-friendly error messages.\n" +
+        "- Responsive: Mobile-first. Test at 375px, 768px, 1024px, 1440px. Use CSS Grid and Flexbox.\n" +
+        "- Accessibility: Semantic HTML, ARIA labels, keyboard navigation, focus management, color contrast.\n" +
+        "- Empty states: Show helpful illustrations or messages when lists are empty.\n" +
+        "- Loading states: Skeleton screens or spinners during data operations.\n\n" +
+
+        "EXAMPLE — if asked to 'build a blog': Create a full blog app with:\n" +
+        "- Hero section with animated gradient background and large headline\n" +
+        "- Featured post card with image placeholder, category badge, read time, author avatar\n" +
+        "- Post grid (3 columns desktop, 2 tablet, 1 mobile) with hover lift animations\n" +
+        "- Search bar with live filtering and debounce\n" +
+        "- Category filter pills with active state animations\n" +
+        "- Individual post view with rich typography, pull quotes, code blocks\n" +
+        "- Dark/light theme toggle with CSS custom properties and smooth transition\n" +
+        "- Reading progress bar at top of page\n" +
+        "- Scroll-to-top button that fades in after scrolling\n" +
+        "- Newsletter signup section with form validation\n" +
+        "- Footer with links, social icons, gradient border-top\n" +
+        "- Minimum 500+ lines of JSX across components, 300+ lines of CSS\n" +
+        "This level of detail and completeness is the MINIMUM expected for every app.",
+
       inputSchema: z.object({
         template: z.enum(["none", "react", "nextjs", "vite", "python"]).optional().describe(
           "Project template. 'react' = Vite+React (recommended for most apps). " +
@@ -630,8 +676,8 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         ),
         files: z.array(z.object({
           path: z.string().describe("File path. ALWAYS use .jsx for React components (e.g. 'src/App.jsx', NOT 'src/App.js')"),
-          content: z.string().describe("COMPLETE file content — production-quality, fully implemented. App.jsx: 150+ lines. App.css: 100+ lines with full styling."),
-        })).describe("Project files. With a template, only include custom files. MUST include any CSS/asset files you import."),
+          content: z.string().describe("COMPLETE file content — production-quality, fully implemented. App.jsx: 300+ lines minimum. App.css: 200+ lines minimum. Write EVERYTHING — no shortcuts."),
+        })).describe("Project files. With a template, only include custom files. MUST include any CSS/asset files you import. Create MULTIPLE component files for complex apps."),
         add_files: z.array(z.object({
           path: z.string().describe("File path to add or overwrite"),
           content: z.string().describe("File content"),
