@@ -116,6 +116,22 @@ function getTemplateFiles(template: string): { path: string; content: string }[]
       { path: "src/App.jsx", content: "import React from 'react';\n\nexport default function App() {\n  return <div style={{padding: '2rem', textAlign: 'center'}}>\n    <h1>App is running</h1>\n    <p>Edit src/App.jsx to get started</p>\n  </div>;\n}" },
     ];
   }
+  if (template === "nextjs") {
+    // Next.js App Router — supports API routes, server components, AI SDK
+    return [
+      { path: "package.json", content: JSON.stringify({
+        name: "app", private: true,
+        scripts: { dev: "next dev -H 0.0.0.0 -p 3000" },
+        dependencies: {
+          next: "^15.0.0", react: "^18.2.0", "react-dom": "^18.2.0",
+          ai: "^6.0.0", "@ai-sdk/react": "^2.0.0", "@ai-sdk/gateway": "^1.0.0",
+        },
+      }, null, 2) },
+      { path: "app/layout.jsx", content: "export const metadata = { title: 'App' };\nexport default function Layout({ children }) {\n  return <html lang=\"en\"><body style={{margin:0,fontFamily:'-apple-system,system-ui,sans-serif'}}>{children}</body></html>;\n}" },
+      { path: "app/page.jsx", content: "'use client';\nimport { useState } from 'react';\n\nexport default function Home() {\n  return <div style={{padding:'2rem',textAlign:'center'}}>\n    <h1>App is running</h1>\n    <p>Edit app/page.jsx to get started</p>\n  </div>;\n}" },
+      { path: "app/api/chat/route.js", content: "import { streamText } from 'ai';\nimport { createGateway } from '@ai-sdk/gateway';\n\nconst gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });\n\nexport async function POST(req) {\n  const { messages } = await req.json();\n  const result = streamText({\n    model: gateway('google/gemini-3.1-flash-lite-preview'),\n    messages,\n  });\n  return result.toUIMessageStreamResponse();\n}" },
+    ];
+  }
   if (template === "python") {
     return [
       { path: "requirements.txt", content: "" },
@@ -763,7 +779,9 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
           const installCommand = input.install_command ?? (hasPackageJson && !snapshotId ? "npm install" : undefined);
 
           // Auto-detect port if not specified — prevents blocking hang on long-running dev servers
+          const isNextjs = template === "nextjs" || input.run_command.includes("next");
           const exposePort = input.expose_port
+            ?? (isNextjs ? 3000 : undefined)
             ?? (input.run_command.includes("dev") ? 5173 : undefined)
             ?? (input.run_command.includes("start") ? 3000 : undefined);
 
@@ -1301,7 +1319,7 @@ Be strict but fair. Return a check for every single rule listed above.`,
           "generate-object",   // generateObject for structured data
           "tools",             // Tool calling patterns
           "streaming",         // Streaming patterns
-          "sandbox-ai-app",   // How to build AI apps in sandbox (no server)
+          "sandbox-ai-app",   // How to build AI apps in sandbox — use Next.js template for full AI SDK support
           "embeddings",        // Embedding generation
           "gateway",           // AI Gateway configuration
         ]).describe("The AI SDK topic to look up"),
@@ -1309,9 +1327,37 @@ Be strict but fair. Return a check for every single rule listed above.`,
       execute: async ({ topic }) => {
         const patterns: Record<string, { description: string; code: string; notes: string }> = {
           "sandbox-ai-app": {
-            description: "Building AI apps in a Vite sandbox (no Next.js server available)",
-            code: `// In sandbox, you can't use useChat (requires server route).
-// Instead, call the AI Gateway directly from the client:
+            description: "Building AI apps in sandbox — PREFERRED: use Next.js template (supports useChat + API routes + streaming). Alternative: fetch-based for Vite.",
+            code: `// PREFERRED: Use run_project with template "nextjs" for full AI SDK support.
+// The sandbox runs a full Next.js server with API routes.
+//
+// 1. Set template: "nextjs" in run_project
+// 2. Provide app/page.jsx (client component with useChat)
+// 3. Provide app/api/chat/route.js (server with streamText)
+// 4. The template auto-includes: next, react, ai, @ai-sdk/react, @ai-sdk/gateway
+// 5. AI_GATEWAY_API_KEY is automatically available as env var
+//
+// Example app/page.jsx:
+// 'use client';
+// import { useChat } from '@ai-sdk/react';
+// import { DefaultChatTransport } from 'ai';
+// export default function Chat() {
+//   const { messages, sendMessage, status } = useChat({
+//     transport: new DefaultChatTransport({ api: '/api/chat' }),
+//   });
+//   // ... render messages and input
+// }
+//
+// Example app/api/chat/route.js:
+// import { streamText } from 'ai';
+// import { createGateway } from '@ai-sdk/gateway';
+// const gw = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });
+// export async function POST(req) {
+//   const { messages } = await req.json();
+//   return streamText({ model: gw('google/gemini-3.1-flash-lite-preview'), messages }).toUIMessageStreamResponse();
+// }
+//
+// ALTERNATIVE for Vite (no server): call AI Gateway directly from the client:
 
 const API_KEY = import.meta.env.VITE_AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_API_KEY;
 

@@ -193,7 +193,7 @@ TOOL SELECTION RULES:
 
 **AI SDK Reference:**
 - ai_sdk_reference — Look up Vercel AI SDK patterns BEFORE writing any AI-powered code. Use topic "sandbox-ai-app" for Vite sandbox apps (no server), "chat-client"/"chat-server" for Next.js apps.
-- IMPORTANT: Sandbox apps (run_project with Vite) do NOT have a Next.js server. You CANNOT use useChat or streamText. Call ai_sdk_reference with topic "sandbox-ai-app" to get the correct fetch-based pattern.
+- IMPORTANT: For AI-powered apps, use template "nextjs" (NOT "react/vite"). Next.js runs fully in the sandbox with API routes, useChat, and streamText. Call ai_sdk_reference("sandbox-ai-app") first to get the patterns.
 
 CRITICAL — ARTIFACT FILE RULES (run_project):
 - ALWAYS use .jsx extension for files with JSX/React (NOT .js). Vite will crash on .js with JSX.
