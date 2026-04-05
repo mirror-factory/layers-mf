@@ -2769,21 +2769,36 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         </a>
                       )}
                       {activeArtifact.previewUrl && (
+                        <span className="inline-flex items-center gap-1 mr-1">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", sandboxStopped ? "bg-muted-foreground" : "bg-green-500")} />
+                          <span className="text-[10px] text-muted-foreground">{sandboxStopped ? "Stopped" : "Running"}</span>
+                        </span>
+                      )}
+                      {activeArtifact.previewUrl && (
                         <button
                           disabled={sandboxRestarting}
                           onClick={async () => {
                             setSandboxRestarting(true);
+                            setSandboxStopped(false);
                             setArtifactViewMode("preview");
+                            setPreviewError(null);
+                            setPreviewRetryCount(0);
                             try {
-                              const res = await fetch("/api/sandbox/restart", {
+                              const endpoint = activeArtifact.artifactId
+                                ? `/api/sandbox/${activeArtifact.artifactId}`
+                                : "/api/sandbox/restart";
+                              const body = activeArtifact.artifactId
+                                ? {}
+                                : {
+                                    snapshotId: activeArtifact.snapshotId ?? undefined,
+                                    runCommand: activeArtifact.runCommand ?? "npm start",
+                                    exposePort: activeArtifact.exposePort ?? 5173,
+                                    files: activeArtifact.files,
+                                  };
+                              const res = await fetch(endpoint, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  snapshotId: activeArtifact.snapshotId ?? undefined,
-                                  runCommand: activeArtifact.runCommand ?? "npm start",
-                                  exposePort: activeArtifact.exposePort ?? 5173,
-                                  files: activeArtifact.files,
-                                }),
+                                body: JSON.stringify(body),
                               });
                               if (res.ok) {
                                 const data = await res.json();
@@ -2811,51 +2826,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                           )}
                         </button>
                       )}
-                      {activeArtifact.previewUrl && (
+                      {activeArtifact.previewUrl && !sandboxStopped && (
                         <button
-                          onClick={() => {
-                            if (sandboxStopped) {
-                              // Turn on — restart sandbox
-                              setSandboxStopped(false);
-                              setSandboxRestarting(true);
-                              setPreviewError(null);
-                              setPreviewRetryCount(0);
-                              fetch("/api/sandbox/restart", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  snapshotId: activeArtifact.snapshotId ?? undefined,
-                                  runCommand: activeArtifact.runCommand ?? "npm start",
-                                  exposePort: activeArtifact.exposePort ?? 5173,
-                                  files: activeArtifact.files,
-                                }),
-                              })
-                                .then(res => res.ok ? res.json() : null)
-                                .then(data => {
-                                  if (data?.previewUrl) {
-                                    setActiveArtifact(prev => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
-                                  }
-                                })
-                                .catch(() => {})
-                                .finally(() => setSandboxRestarting(false));
-                            } else {
-                              // Turn off — hide preview
-                              setSandboxStopped(true);
+                          disabled={sandboxRestarting}
+                          onClick={async () => {
+                            if (activeArtifact.artifactId) {
+                              try {
+                                await fetch(`/api/sandbox/${activeArtifact.artifactId}`, { method: "DELETE" });
+                              } catch { /* best effort */ }
                             }
+                            setSandboxStopped(true);
                           }}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors",
-                            sandboxStopped
-                              ? "border-muted bg-muted/50 text-muted-foreground hover:bg-muted"
-                              : "border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900"
-                          )}
-                          title={sandboxStopped ? "Start sandbox" : "Stop sandbox"}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900 px-2 py-0.5 text-[10px] transition-colors"
+                          title="Stop sandbox"
                         >
-                          {sandboxStopped ? (
-                            <><Square className="h-2.5 w-2.5" /> Start</>
-                          ) : (
-                            <><Square className="h-2.5 w-2.5 fill-current" /> Stop</>
-                          )}
+                          <Square className="h-2.5 w-2.5 fill-current" /> Stop
                         </button>
                       )}
                       {activeArtifact.artifactId && (
@@ -2932,15 +2917,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                 setPreviewRetryCount(0);
                                 setSandboxRestarting(true);
                                 try {
-                                  const restartRes = await fetch("/api/sandbox/restart", {
+                                  const endpoint = activeArtifact.artifactId
+                                    ? `/api/sandbox/${activeArtifact.artifactId}`
+                                    : "/api/sandbox/restart";
+                                  const body = activeArtifact.artifactId
+                                    ? {}
+                                    : {
+                                        snapshotId: activeArtifact.snapshotId,
+                                        runCommand: activeArtifact.runCommand ?? "npm run dev",
+                                        exposePort: activeArtifact.exposePort ?? 5173,
+                                        files: versionFiles,
+                                      };
+                                  const restartRes = await fetch(endpoint, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      snapshotId: activeArtifact.snapshotId,
-                                      runCommand: activeArtifact.runCommand ?? "npm run dev",
-                                      exposePort: activeArtifact.exposePort ?? 5173,
-                                      files: versionFiles,
-                                    }),
+                                    body: JSON.stringify(body),
                                   });
                                   if (restartRes.ok) {
                                     const restartData = await restartRes.json();
@@ -2986,15 +2977,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                   setSandboxRestarting(true);
                                   setPreviewError(null);
                                   setPreviewRetryCount(0);
-                                  fetch("/api/sandbox/restart", {
+                                  const endpoint = activeArtifact.artifactId
+                                    ? `/api/sandbox/${activeArtifact.artifactId}`
+                                    : "/api/sandbox/restart";
+                                  const body = activeArtifact.artifactId
+                                    ? {}
+                                    : {
+                                        snapshotId: activeArtifact.snapshotId ?? undefined,
+                                        runCommand: activeArtifact.runCommand ?? "npm start",
+                                        exposePort: activeArtifact.exposePort ?? 5173,
+                                        files: activeArtifact.files,
+                                      };
+                                  fetch(endpoint, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      snapshotId: activeArtifact.snapshotId ?? undefined,
-                                      runCommand: activeArtifact.runCommand ?? "npm start",
-                                      exposePort: activeArtifact.exposePort ?? 5173,
-                                      files: activeArtifact.files,
-                                    }),
+                                    body: JSON.stringify(body),
                                   })
                                     .then(res => res.ok ? res.json() : null)
                                     .then(data => {
