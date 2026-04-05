@@ -1436,12 +1436,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: () => ({
-        model,
-        conversationId,
-        visualLevel,
-        activeArtifactId: activeArtifactRef.current.id,
-        activeFilePath: activeArtifactRef.current.filePath,
+      body: { model, conversationId, visualLevel },
+      headers: () => ({
+        "x-artifact-id": activeArtifactRef.current.id ?? "",
+        "x-artifact-file": activeArtifactRef.current.filePath ?? "",
       }),
     }),
     // Auto-continue after client-side tool results (ask_user, artifact_panel, etc.)

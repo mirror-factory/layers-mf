@@ -379,8 +379,8 @@ export async function POST(request: NextRequest) {
 
   const conversationId: string | null = (body.conversationId as string) ?? null;
   const visualLevel: string = (body.visualLevel as string) ?? "medium";
-  const activeArtifactId: string | null = (body.activeArtifactId as string) ?? null;
-  const activeFilePath: string | null = (body.activeFilePath as string) ?? null;
+  const activeArtifactId: string | null = request.headers.get("x-artifact-id") || null;
+  const activeFilePath: string | null = request.headers.get("x-artifact-file") || null;
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
