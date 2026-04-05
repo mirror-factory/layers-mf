@@ -60,7 +60,7 @@ const MODELS = [
   // Flagship
   { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", tier: "flagship" },
   { id: "openai/gpt-5.4", label: "GPT-5.4", tier: "flagship" },
-  { id: "google/gemini-3-pro", label: "Gemini 3 Pro", tier: "flagship" },
+  { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", tier: "flagship" },
   // Balanced
   { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "balanced" },
   { id: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini", tier: "balanced" },

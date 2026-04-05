@@ -46,7 +46,7 @@ const ALLOWED_MODELS = new Set([
   // Flagship
   "anthropic/claude-opus-4.6",
   "openai/gpt-5.4",
-  "google/gemini-3-pro",
+  "google/gemini-3.1-pro-preview",
   // Balanced
   "anthropic/claude-sonnet-4.6",
   "openai/gpt-5.4-mini",

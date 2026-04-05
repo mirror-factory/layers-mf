@@ -10,7 +10,7 @@ export const MODEL_MATRIX = {
   flagship: {
     claude: "anthropic/claude-opus-4.6",       // Deep reasoning, synthesis
     openai: "openai/gpt-5.4",                  // Complex analysis
-    gemini: "google/gemini-3-pro",             // Multimodal, long context
+    gemini: "google/gemini-3.1-pro-preview",             // Multimodal, long context
   },
   balanced: {
     claude: "anthropic/claude-sonnet-4.6",     // Chat, extraction
