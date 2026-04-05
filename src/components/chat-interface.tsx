@@ -1701,13 +1701,55 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         lastAutoOpenedRef.current = partId;
         if (input?.action === "close") {
           setActiveArtifact(null);
+          addToolOutput({
+            tool: "artifact_panel" as never,
+            toolCallId: partId,
+            output: JSON.stringify({ success: true, action: "close" }),
+          });
+        } else if (input?.action === "open" && input?.artifactId) {
+          // Fetch artifact data and open the panel
+          fetch(`/api/artifacts/${input.artifactId}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data) {
+                // Map file_path → path for consistency with ActiveArtifact
+                const rawFiles = Array.isArray(data.files) ? data.files : [];
+                const files = rawFiles.length > 0
+                  ? rawFiles.map((f: { file_path?: string; path?: string; content: string }) => ({ path: f.file_path ?? f.path ?? "", content: f.content }))
+                  : undefined;
+                setActiveArtifact({
+                  filename: String(data.filename ?? data.title ?? "Untitled"),
+                  language: String(data.language ?? "text"),
+                  code: String(data.content ?? data.code ?? ""),
+                  type: data.type === "document" ? "document" : "code",
+                  artifactId: String(input.artifactId),
+                  currentVersion: typeof data.current_version === "number" ? data.current_version : undefined,
+                  files,
+                  previewUrl: typeof data.preview_url === "string" ? data.preview_url : undefined,
+                });
+                setArtifactViewMode(data.type === "document" ? "code" : data.preview_url ? "preview" : "code");
+                setSelectedFilePath(pickDefaultFile(files));
+              }
+              addToolOutput({
+                tool: "artifact_panel" as never,
+                toolCallId: partId,
+                output: JSON.stringify({ success: true, action: "open", artifactId: input.artifactId }),
+              });
+            })
+            .catch(() => {
+              addToolOutput({
+                tool: "artifact_panel" as never,
+                toolCallId: partId,
+                output: JSON.stringify({ success: false, error: "Failed to fetch artifact" }),
+              });
+            });
+        } else {
+          addToolOutput({
+            tool: "artifact_panel" as never,
+            toolCallId: partId,
+            output: JSON.stringify({ success: true, action: input?.action ?? "open" }),
+          });
         }
-        // Send tool result so the AI can continue
-        addToolOutput({
-          tool: "artifact_panel" as never,
-          toolCallId: partId,
-          output: JSON.stringify({ success: true, action: input?.action ?? "open" }),
-        });
         break;
       }
 
