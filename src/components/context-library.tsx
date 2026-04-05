@@ -34,7 +34,14 @@ import {
   Download,
   MoreVertical,
   Users,
+  Pin,
+  PinOff,
+  Archive,
+  ArchiveRestore,
+  Tag,
+  PanelLeft,
 } from "lucide-react";
+import { CollectionsSidebar, type SidebarSection } from "@/components/collections-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -76,6 +83,8 @@ interface ContextItem {
   status: string;
   ingested_at: string;
   user_tags?: string[] | null;
+  is_pinned?: boolean;
+  is_archived?: boolean;
 }
 
 interface Props {
@@ -308,18 +317,21 @@ function SourcePills({
 function ItemActions({
   item,
   onDelete,
+  onPin,
+  onArchive,
   deleting,
   className,
 }: {
   item: ContextItem;
   onDelete: (id: string) => void;
+  onPin?: (id: string, pinned: boolean) => void;
+  onArchive?: (id: string, archived: boolean) => void;
   deleting: boolean;
   className?: string;
 }) {
   function handleDownload(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    // Fetch the full item content, then download as file
     fetch(`/api/context/${item.id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -335,9 +347,7 @@ function ItemActions({
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       })
-      .catch(() => {
-        // Silently fail — could add toast in future
-      });
+      .catch(() => {});
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -347,6 +357,29 @@ function ItemActions({
 
   return (
     <div className={cn("flex items-center gap-0.5", className)}>
+      {/* Pin toggle */}
+      {onPin && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPin(item.id, !item.is_pinned); }}
+                className={cn(
+                  "inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors",
+                  item.is_pinned
+                    ? "text-primary hover:text-primary/70 hover:bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                )}
+                aria-label={item.is_pinned ? "Unpin" : "Pin"}
+              >
+                {item.is_pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{item.is_pinned ? "Unpin" : "Pin"}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -361,6 +394,24 @@ function ItemActions({
           <TooltipContent side="bottom">Download</TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Archive toggle */}
+      {onArchive && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onArchive(item.id, !item.is_archived); }}
+                className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                aria-label={item.is_archived ? "Unarchive" : "Archive"}
+              >
+                {item.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{item.is_archived ? "Unarchive" : "Archive"}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       <AlertDialog>
         <TooltipProvider delayDuration={200}>
@@ -403,7 +454,7 @@ function ItemActions({
 }
 
 /* ---------- Grid Card ---------- */
-function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onInfoClick }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null; onInfoClick?: (item: ContextItem) => void }) {
+function ContextGridCard({ item, isChecked, onToggle, onDelete, onPin, onArchive, onTagClick, deletingId, onInfoClick }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; onPin?: (id: string, pinned: boolean) => void; onArchive?: (id: string, archived: boolean) => void; onTagClick?: (tag: string) => void; deletingId: string | null; onInfoClick?: (item: ContextItem) => void }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -418,6 +469,13 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onIn
         isChecked && "ring-2 ring-primary border-primary/30",
       )}
     >
+      {/* Pin indicator */}
+      {item.is_pinned && (
+        <div className="absolute top-2.5 right-2.5 z-10">
+          <Pin className="h-3.5 w-3.5 text-primary fill-primary/20" />
+        </div>
+      )}
+
       {/* Checkbox overlay */}
       <div className={cn(
         "absolute top-2.5 left-2.5 z-10 transition-opacity",
@@ -455,6 +513,8 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onIn
             <ItemActions
               item={item}
               onDelete={onDelete}
+              onPin={onPin}
+              onArchive={onArchive}
               deleting={deletingId === item.id}
               className="opacity-0 group-hover:opacity-100 transition-opacity"
             />
@@ -504,9 +564,14 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onIn
         {item.user_tags && item.user_tags.length > 0 && (
           <div className="flex items-center gap-1 mt-2 flex-wrap">
             {item.user_tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+              <button
+                key={tag}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(tag); }}
+                className="inline-flex items-center gap-0.5 rounded-full bg-primary/5 border border-primary/10 px-1.5 py-0 h-4 text-[10px] font-normal text-primary/80 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Tag className="h-2 w-2" />
                 {tag}
-              </Badge>
+              </button>
             ))}
             {item.user_tags.length > 3 && (
               <span className="text-[10px] text-muted-foreground">+{item.user_tags.length - 3}</span>
@@ -519,7 +584,7 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, deletingId, onIn
 }
 
 /* ---------- List Row ---------- */
-function ContextListRow({ item, isChecked, onToggle, onDelete, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; deletingId: string | null }) {
+function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive, onTagClick, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; onPin?: (id: string, pinned: boolean) => void; onArchive?: (id: string, archived: boolean) => void; onTagClick?: (tag: string) => void; deletingId: string | null }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -561,13 +626,33 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, deletingId }: { i
           <SourceIcon className={cn("h-4 w-4", sourceMeta.color)} />
         </div>
 
-        {/* Title + description */}
+        {/* Title + description + tags */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.title}</p>
+          <div className="flex items-center gap-1.5">
+            {item.is_pinned && <Pin className="h-3 w-3 text-primary fill-primary/20 shrink-0" />}
+            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.title}</p>
+          </div>
           {item.description_short && (
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
               {item.description_short}
             </p>
+          )}
+          {item.user_tags && item.user_tags.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {item.user_tags.slice(0, 3).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(tag); }}
+                  className="inline-flex items-center gap-0.5 rounded-full bg-primary/5 border border-primary/10 px-1.5 py-0 h-4 text-[10px] font-normal text-primary/80 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  <Tag className="h-2 w-2" />
+                  {tag}
+                </button>
+              ))}
+              {item.user_tags.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">+{item.user_tags.length - 3}</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -598,6 +683,8 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, deletingId }: { i
       <ItemActions
         item={item}
         onDelete={onDelete}
+        onPin={onPin}
+        onArchive={onArchive}
         deleting={deletingId === item.id}
         className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
       />
@@ -679,6 +766,14 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const [sharedLoading, setSharedLoading] = useState(false);
   const sharedFetched = useRef(false);
 
+  // Sidebar state
+  const [sidebarSection, setSidebarSection] = useState<SidebarSection>("all");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => new Set(items.filter((i) => i.is_pinned).map((i) => i.id)));
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set(items.filter((i) => i.is_archived).map((i) => i.id)));
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+
   // Fetch "shared with me" items when that filter is selected
   useEffect(() => {
     if (selected !== "shared-with-me" || sharedFetched.current) return;
@@ -743,13 +838,58 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
 
   const sources = Object.keys(groups).sort();
 
-  // Filter -> search -> sort -> paginate
+  // Enrich items with live pin/archive state
+  const enrichedItems = useMemo(
+    () => items.map((item) => ({
+      ...item,
+      is_pinned: pinnedIds.has(item.id),
+      is_archived: archivedIds.has(item.id),
+    })),
+    [items, pinnedIds, archivedIds],
+  );
+
+  // Filter -> sidebar section -> search -> sort -> paginate
   const processed = useMemo(() => {
     let result: ContextItem[] = selected === "shared-with-me"
       ? sharedItems
       : selected === "all"
-        ? items
-        : (groups[selected] ?? []);
+        ? enrichedItems
+        : (enrichedItems.filter((i) => normalizeSource(i.source_type) === selected));
+
+    // Sidebar section filters
+    if (typeof sidebarSection === "string") {
+      if (sidebarSection === "pinned") {
+        result = result.filter((i) => pinnedIds.has(i.id));
+      } else if (sidebarSection === "archived") {
+        result = result.filter((i) => archivedIds.has(i.id));
+      }
+      // "all" and "recent" show everything (recent could sort differently)
+    } else if (sidebarSection.type === "tag") {
+      result = result.filter(
+        (i) => i.user_tags && i.user_tags.some((t) => t.toLowerCase() === sidebarSection.name.toLowerCase()),
+      );
+    } else if (sidebarSection.type === "smart") {
+      if (sidebarSection.id === "needs-review") {
+        result = result.filter((i) => i.status === "pending" || i.status === "error");
+      } else if (sidebarSection.id === "this-week") {
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        result = result.filter((i) => new Date(i.ingested_at) >= weekAgo);
+      } else if (sidebarSection.id === "untagged") {
+        result = result.filter((i) => !i.user_tags || i.user_tags.length === 0);
+      }
+    }
+
+    // Hide archived items from non-archived views
+    if (sidebarSection !== "archived") {
+      result = result.filter((i) => !archivedIds.has(i.id));
+    }
+
+    // Tag filter (from clicking a tag chip)
+    if (tagFilter) {
+      result = result.filter(
+        (i) => i.user_tags && i.user_tags.some((t) => t.toLowerCase() === tagFilter.toLowerCase()),
+      );
+    }
 
     if (contentTypeFilter !== "all") {
       result = result.filter((i) => i.content_type === contentTypeFilter);
@@ -779,21 +919,82 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
         break;
     }
 
+    // Pinned items float to top (within sort order)
+    sorted.sort((a, b) => {
+      const aPinned = pinnedIds.has(a.id) ? 1 : 0;
+      const bPinned = pinnedIds.has(b.id) ? 1 : 0;
+      return bPinned - aPinned;
+    });
+
     return sorted;
-  }, [items, groups, selected, contentTypeFilter, searchQuery, sort, sharedItems]);
+  }, [enrichedItems, selected, contentTypeFilter, searchQuery, sort, sharedItems, sidebarSection, tagFilter, pinnedIds, archivedIds]);
 
   const visible = processed.slice(0, visibleCount);
   const hasMore = visibleCount < processed.length;
 
-  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest" || searchQuery.trim() !== "" || selected !== "all";
+  const hasActiveFilters = contentTypeFilter !== "all" || sort !== "newest" || searchQuery.trim() !== "" || selected !== "all" || tagFilter !== null;
 
   function clearFilters() {
     setContentTypeFilter("all");
     setSort("newest");
     setSearchQuery("");
     setSelected("all");
+    setTagFilter(null);
+    setSidebarSection("all");
     setVisibleCount(PAGE_SIZE);
   }
+
+  const handlePin = useCallback(async (id: string, pinned: boolean) => {
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      if (pinned) next.add(id); else next.delete(id);
+      return next;
+    });
+    try {
+      await fetch(`/api/context/${id}/pin`, { method: pinned ? "POST" : "DELETE" });
+    } catch {
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        if (pinned) next.delete(id); else next.add(id);
+        return next;
+      });
+    }
+  }, []);
+
+  const handleArchive = useCallback(async (id: string, archived: boolean) => {
+    setArchivedIds((prev) => {
+      const next = new Set(prev);
+      if (archived) next.add(id); else next.delete(id);
+      return next;
+    });
+    try {
+      await fetch(`/api/context/${id}/archive`, { method: archived ? "POST" : "DELETE" });
+    } catch {
+      setArchivedIds((prev) => {
+        const next = new Set(prev);
+        if (archived) next.delete(id); else next.add(id);
+        return next;
+      });
+    }
+  }, []);
+
+  const handleTagClick = useCallback((tag: string) => {
+    setTagFilter(tag);
+    setSidebarSection({ type: "tag", name: tag });
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const handleSidebarSelect = useCallback((section: SidebarSection) => {
+    setSidebarSection(section);
+    setVisibleCount(PAGE_SIZE);
+    if (typeof section === "string") {
+      setTagFilter(null);
+    } else if (section.type === "tag") {
+      setTagFilter(section.name);
+    } else {
+      setTagFilter(null);
+    }
+  }, []);
 
   function handleSourceChange(source: string) {
     setSelected(source);
@@ -864,7 +1065,43 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   }
 
   return (
-    <div data-testid="context-library" className="flex flex-col h-full min-h-0">
+    <div data-testid="context-library" className="flex h-full min-h-0">
+      {/* Mobile sidebar toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden fixed bottom-4 left-4 z-30 h-10 w-10 rounded-full bg-card border shadow-lg"
+        onClick={() => setSidebarMobileOpen(!sidebarMobileOpen)}
+      >
+        <PanelLeft className="h-4 w-4" />
+      </Button>
+
+      {/* Sidebar — hidden on mobile unless toggled */}
+      <div className={cn(
+        "hidden md:flex shrink-0",
+        sidebarMobileOpen && "!flex fixed inset-y-0 left-0 z-40 bg-card shadow-xl",
+      )}>
+        <CollectionsSidebar
+          active={sidebarSection}
+          onSelect={(section) => {
+            handleSidebarSelect(section);
+            setSidebarMobileOpen(false);
+          }}
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        />
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarMobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setSidebarMobileOpen(false)}
+        />
+      )}
+
+      {/* Main content */}
+      <div className="flex flex-col flex-1 min-w-0 h-full min-h-0">
       {/* Drop zone */}
       <div className="px-1 pb-4">
         <InlineDropZone />
@@ -1063,6 +1300,19 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 </button>
               </Badge>
             )}
+            {tagFilter && (
+              <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                <Tag className="h-3 w-3" />
+                {tagFilter}
+                <button
+                  onClick={() => { setTagFilter(null); setSidebarSection("all"); setVisibleCount(PAGE_SIZE); }}
+                  className="ml-0.5 hover:text-foreground"
+                  aria-label="Remove tag filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
             <button
               onClick={clearFilters}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
@@ -1101,6 +1351,9 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 isChecked={checkedIds.has(item.id)}
                 onToggle={() => toggleItem(item.id)}
                 onDelete={handleDeleteItem}
+                onPin={handlePin}
+                onArchive={handleArchive}
+                onTagClick={handleTagClick}
                 deletingId={deletingItemId}
                 onInfoClick={(item) => { setInfoPanelItem(item); setInfoPanelOpen(true); }}
               />
@@ -1115,6 +1368,9 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 isChecked={checkedIds.has(item.id)}
                 onToggle={() => toggleItem(item.id)}
                 onDelete={handleDeleteItem}
+                onPin={handlePin}
+                onArchive={handleArchive}
+                onTagClick={handleTagClick}
                 deletingId={deletingItemId}
               />
             ))}
@@ -1182,6 +1438,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
         open={infoPanelOpen}
         onOpenChange={setInfoPanelOpen}
       />
+      </div>
     </div>
   );
 }
