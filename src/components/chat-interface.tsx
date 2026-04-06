@@ -830,9 +830,25 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     const wsResult = String(ws.result ?? "");
     // Use Perplexity's provider citations if available, fall back to URL extraction
     const providerCitations = Array.isArray(ws.citations)
-      ? (ws.citations as { index: number; url: string }[]).map(c => ({ title: getHostname(c.url), url: c.url }))
+      ? (ws.citations as { index: number; url: string }[])
+          .filter(c => c.url && typeof c.url === "string" && c.url.startsWith("http"))
+          .map(c => ({ title: getHostname(c.url), url: c.url }))
       : [];
-    const citations = providerCitations.length > 0 ? providerCitations : extractUrls(wsResult);
+    // Fallback 1: extract URLs from response text
+    const textUrls = providerCitations.length === 0 ? extractUrls(wsResult) : [];
+    // Fallback 2: parse footnote references [1] and match to any numbered sources in text
+    const footnoteUrls: { title: string; url: string }[] = [];
+    if (providerCitations.length === 0 && textUrls.length === 0) {
+      // Look for markdown-style source links: [Title](url) or Source: url patterns
+      const sourceRegex = /(?:Source|Reference|Via|From):\s*(https?:\/\/[^\s)]+)/gi;
+      let srcMatch;
+      while ((srcMatch = sourceRegex.exec(wsResult)) !== null) {
+        footnoteUrls.push({ title: getHostname(srcMatch[1]), url: srcMatch[1] });
+      }
+    }
+    const citations = providerCitations.length > 0 ? providerCitations
+      : textUrls.length > 0 ? textUrls
+      : footnoteUrls;
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
@@ -1881,7 +1897,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       const parts = m.parts as { type: string; state?: string; toolCallId?: string }[];
       for (const part of parts) {
         if (
-          part.type === "tool-create_skill" &&
+          (part.type === "tool-create_skill" || part.type === "tool-create_tool_from_code") &&
           part.state === "output-available" &&
           part.toolCallId &&
           !createSkillSeenRef.current.has(part.toolCallId)

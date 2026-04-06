@@ -1924,6 +1924,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           const result = await generateText({
             model: gateway("perplexity/sonar"),
             prompt: query,
+            system: "Always include source URLs at the end of your response in this exact format:\n\nSources:\n- [Title](URL)\n- [Title](URL)\n\nThis is required for every response.",
           });
 
           // Extract sources from provider metadata (Perplexity returns citations)
