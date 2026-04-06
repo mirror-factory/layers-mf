@@ -18,7 +18,6 @@ import {
   Copy,
   Check,
   MessageSquare,
-  Share2,
   History,
   Pin,
   PinOff,
@@ -46,6 +45,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { TagManager } from "@/components/tag-manager";
+import { ShareLinkButton } from "@/components/share-link-button";
 
 const SOURCE_META: Record<
   string,
@@ -143,7 +143,6 @@ export function ContextInfoPanel({
   const [fullItem, setFullItem] = useState<FullItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [savingTags, setSavingTags] = useState(false);
   const [versions, setVersions] = useState<VersionEntry[]>([]);
@@ -277,13 +276,6 @@ export function ContextInfoPanel({
     }
   };
 
-  const handleShare = () => {
-    const url = `${window.location.origin}/context/${item.id}`;
-    navigator.clipboard.writeText(url);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
-  };
-
   const handlePin = () => {
     onPin?.(item.id, !item.is_pinned);
   };
@@ -356,15 +348,14 @@ export function ContextInfoPanel({
                 )}
                 {item.is_archived ? "Unarchive" : "Archive"}
               </Button>
-              <Button
+              <ShareLinkButton
+                resourceType="context_item"
+                resourceId={item.id}
+                resourceTitle={item.title}
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs h-8"
-                onClick={handleShare}
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                {linkCopied ? "Copied" : "Share"}
-              </Button>
+              />
               <DropdownMenu onOpenChange={(isOpen) => { if (isOpen) loadCollections(); }}>
                 <DropdownMenuTrigger asChild>
                   <Button

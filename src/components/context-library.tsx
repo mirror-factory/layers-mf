@@ -40,6 +40,8 @@ import {
   ArchiveRestore,
   Tag,
   PanelLeft,
+  FolderPlus,
+  Inbox,
 } from "lucide-react";
 import { CollectionsSidebar, type SidebarSection } from "@/components/collections-sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +128,34 @@ type SortOption = "newest" | "oldest" | "title-az";
 type ViewMode = "grid" | "list";
 
 const PAGE_SIZE = 24;
+const FILTER_STORAGE_KEY = "layers-library-filters";
+
+interface PersistedFilters {
+  sourceType?: string;
+  contentType?: string;
+  sort?: SortOption;
+  viewMode?: ViewMode;
+  sidebarSection?: SidebarSection;
+  tagFilter?: string | null;
+}
+
+function loadPersistedFilters(): PersistedFilters | null {
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedFilters;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedFilters(filters: PersistedFilters) {
+  try {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+  } catch {
+    // storage full or unavailable -- ignore
+  }
+}
 
 const ACCEPTED = ".pdf,.docx,.txt,.md";
 
@@ -465,7 +495,7 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, onPin, onArchive
     <div
       data-testid={`context-item-${item.id}`}
       className={cn(
-        "group relative rounded-lg border bg-card transition-all hover:shadow-md hover:border-foreground/15",
+        "group relative rounded-lg border bg-card transition-all duration-150 hover:shadow-md hover:border-foreground/15 hover:scale-[1.01] min-h-[140px]",
         isChecked && "ring-2 ring-primary border-primary/30",
       )}
     >
@@ -532,10 +562,13 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, onPin, onArchive
 
         {/* Description */}
         {item.description_short && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
             {item.description_short}
           </p>
         )}
+
+        {/* Spacer to push footer down */}
+        <div className="flex-1" />
 
         {/* Shared by badge */}
         {"sharedBy" in item && (item as ContextItem & { sharedBy?: string }).sharedBy && (
@@ -596,7 +629,7 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive,
       role="listitem"
       data-testid={`context-item-${item.id}`}
       className={cn(
-        "group flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-accent/30 transition-colors",
+        "group flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-accent/40 transition-colors",
         isChecked && "bg-primary/5",
       )}
     >
@@ -693,12 +726,69 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive,
 }
 
 /* ---------- Empty State ---------- */
-function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+function EmptyState({
+  hasFilters,
+  onClear,
+  sidebarSection,
+}: {
+  hasFilters: boolean;
+  onClear: () => void;
+  sidebarSection?: SidebarSection;
+}) {
+  // Sidebar-section-specific empty states
+  if (!hasFilters && sidebarSection === "pinned") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
+          <Pin className="h-7 w-7 opacity-30" />
+        </div>
+        <p className="text-sm font-medium text-foreground">No pinned items</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          Pin items for quick access from the library or item detail view.
+        </p>
+      </div>
+    );
+  }
+
+  if (!hasFilters && sidebarSection === "archived") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
+          <Archive className="h-7 w-7 opacity-30" />
+        </div>
+        <p className="text-sm font-medium text-foreground">Nothing archived</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          Archive items you don&apos;t need right now. They&apos;ll be kept here for later.
+        </p>
+      </div>
+    );
+  }
+
+  if (
+    !hasFilters &&
+    typeof sidebarSection === "object" &&
+    sidebarSection?.type === "collection"
+  ) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
+          <FolderPlus className="h-7 w-7 opacity-30" />
+        </div>
+        <p className="text-sm font-medium text-foreground">This collection is empty</p>
+        <p className="text-xs mt-1 max-w-xs text-center">
+          Drag items here or add from the library to organize your knowledge.
+        </p>
+      </div>
+    );
+  }
+
   if (hasFilters) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <Search className="h-12 w-12 mb-4 opacity-20" />
-        <p className="text-sm font-medium text-foreground">No matching items</p>
+        <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted mb-4">
+          <Search className="h-7 w-7 opacity-30" />
+        </div>
+        <p className="text-sm font-medium text-foreground">No items match your filters</p>
         <p className="text-xs mt-1 max-w-xs text-center">
           Try adjusting your filters or search query.
         </p>
@@ -712,19 +802,19 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
   return (
     <div data-testid="context-empty-state" className="flex flex-col items-center justify-center py-20 text-muted-foreground">
       <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-muted mb-5">
-        <FolderOpen className="h-8 w-8 opacity-40" />
+        <Inbox className="h-8 w-8 opacity-30" />
       </div>
-      <p className="text-base font-semibold text-foreground mb-1">Your context library is empty</p>
+      <p className="text-base font-semibold text-foreground mb-1">Your knowledge library is empty</p>
       <p className="text-sm max-w-md text-center mb-6">
-        Add documents, meeting transcripts, and other context so your AI agents can reference them during sessions.
+        Connect a source or upload files to get started. Your AI agents will reference these during sessions.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg w-full">
         <Link
-          href="/integrations"
+          href="/settings/integrations"
           className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 hover:bg-accent/50 hover:border-foreground/15 transition-all text-center"
         >
           <Plus className="h-5 w-5 text-muted-foreground" />
-          <span className="text-xs font-medium">Connect integration</span>
+          <span className="text-xs font-medium">Connect a source</span>
           <span className="text-[11px] text-muted-foreground">Linear, Drive, Gmail, Slack</span>
         </Link>
         <Link
@@ -751,15 +841,22 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
 /* ========== Main Component ========== */
 export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const router = useRouter();
-  const [selected, setSelected] = useState<string>("all");
-  const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
-  const [sort, setSort] = useState<SortOption>("newest");
+
+  // Load persisted filters from localStorage (runs once)
+  const [persistedLoaded] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return loadPersistedFilters();
+  });
+
+  const [selected, setSelected] = useState<string>(persistedLoaded?.sourceType ?? "all");
+  const [contentTypeFilter, setContentTypeFilter] = useState<string>(persistedLoaded?.contentType ?? "all");
+  const [sort, setSort] = useState<SortOption>(persistedLoaded?.sort ?? "newest");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(persistedLoaded?.viewMode ?? "grid");
   const [infoPanelItem, setInfoPanelItem] = useState<typeof items[0] | null>(null);
   const [infoPanelOpen, setInfoPanelOpen] = useState(false);
   const [sharedItems, setSharedItems] = useState<(ContextItem & { sharedBy?: string })[]>([]);
@@ -767,12 +864,24 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
   const sharedFetched = useRef(false);
 
   // Sidebar state
-  const [sidebarSection, setSidebarSection] = useState<SidebarSection>("all");
+  const [sidebarSection, setSidebarSection] = useState<SidebarSection>(persistedLoaded?.sidebarSection ?? "all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => new Set(items.filter((i) => i.is_pinned).map((i) => i.id)));
   const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set(items.filter((i) => i.is_archived).map((i) => i.id)));
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(persistedLoaded?.tagFilter ?? null);
+
+  // Persist filter state to localStorage
+  useEffect(() => {
+    savePersistedFilters({
+      sourceType: selected,
+      contentType: contentTypeFilter,
+      sort,
+      viewMode,
+      sidebarSection,
+      tagFilter,
+    });
+  }, [selected, contentTypeFilter, sort, viewMode, sidebarSection, tagFilter]);
 
   // Fetch "shared with me" items when that filter is selected
   useEffect(() => {
@@ -1044,6 +1153,52 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
     }
   }
 
+  async function handleBulkArchive() {
+    if (checkedIds.size === 0) return;
+    const ids = [...checkedIds];
+    // Optimistic update
+    setArchivedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+    setCheckedIds(new Set());
+    try {
+      await Promise.all(
+        ids.map((id) => fetch(`/api/context/${id}/archive`, { method: "POST" })),
+      );
+    } catch {
+      // Revert on failure
+      setArchivedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  async function handleBulkPin() {
+    if (checkedIds.size === 0) return;
+    const ids = [...checkedIds];
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+    setCheckedIds(new Set());
+    try {
+      await Promise.all(
+        ids.map((id) => fetch(`/api/context/${id}/pin`, { method: "POST" })),
+      );
+    } catch {
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+    }
+  }
+
   const handleDeleteItem = useCallback(async (id: string) => {
     setDeletingItemId(id);
     try {
@@ -1061,7 +1216,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
 
   // Empty library state
   if (items.length === 0) {
-    return <EmptyState hasFilters={false} onClear={clearFilters} />;
+    return <EmptyState hasFilters={false} onClear={clearFilters} sidebarSection={sidebarSection} />;
   }
 
   return (
@@ -1323,6 +1478,9 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
         )}
       </div>
 
+      {/* Divider between filters and content */}
+      <div className="border-b mx-1 mb-3" />
+
       {/* Select all bar */}
       {visible.length > 0 && (
         <div className="flex items-center gap-2 px-1 pb-2">
@@ -1341,7 +1499,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
       {/* Items */}
       <div className="flex-1 overflow-y-auto px-1">
         {visible.length === 0 ? (
-          <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+          <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} sidebarSection={sidebarSection} />
         ) : viewMode === "grid" ? (
           <div data-testid="context-items-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {visible.map((item) => (
@@ -1394,23 +1552,35 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
 
       {/* Floating action bar */}
       {someChecked && (
-        <div data-testid="bulk-action-bar" className="sticky bottom-0 border-t bg-card px-4 py-2.5 flex items-center justify-between rounded-b-lg">
-          <span data-testid="bulk-selection-count" className="text-sm text-muted-foreground">
-            {checkedIds.size} item{checkedIds.size !== 1 ? "s" : ""} selected
+        <div data-testid="bulk-action-bar" className="sticky bottom-0 border-t bg-card/95 backdrop-blur-sm px-4 py-2.5 flex items-center justify-between rounded-b-lg shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+          <span data-testid="bulk-selection-count" className="text-sm font-medium text-foreground">
+            {checkedIds.size} selected
           </span>
-          <div className="flex items-center gap-2">
-            <ExportDropdown itemIds={[...checkedIds]} label="Export selected" />
+          <div className="flex items-center gap-1.5">
             <Button
-              data-testid="bulk-cancel-button"
-              variant="ghost"
+              data-testid="bulk-pin-button"
+              variant="outline"
               size="sm"
-              onClick={() => setCheckedIds(new Set())}
+              onClick={handleBulkPin}
+              className="h-8"
             >
-              Cancel
+              <Pin className="h-3.5 w-3.5 mr-1.5" />
+              Pin
             </Button>
+            <Button
+              data-testid="bulk-archive-button"
+              variant="outline"
+              size="sm"
+              onClick={handleBulkArchive}
+              className="h-8"
+            >
+              <Archive className="h-3.5 w-3.5 mr-1.5" />
+              Archive
+            </Button>
+            <ExportDropdown itemIds={[...checkedIds]} label="Export selected" />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button data-testid="bulk-delete-button" variant="destructive" size="sm" disabled={deleting}>
+                <Button data-testid="bulk-delete-button" variant="destructive" size="sm" disabled={deleting} className="h-8">
                   <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                   Delete
                 </Button>
@@ -1430,6 +1600,15 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <Button
+              data-testid="bulk-cancel-button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCheckedIds(new Set())}
+              className="h-8 ml-1"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       )}
