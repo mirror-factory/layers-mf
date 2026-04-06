@@ -584,7 +584,7 @@ function ContextGridCard({ item, isChecked, onToggle, onDelete, onPin, onArchive
 }
 
 /* ---------- List Row ---------- */
-function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive, onTagClick, deletingId }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; onPin?: (id: string, pinned: boolean) => void; onArchive?: (id: string, archived: boolean) => void; onTagClick?: (tag: string) => void; deletingId: string | null }) {
+function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive, onTagClick, deletingId, onInfoClick }: { item: ContextItem; isChecked: boolean; onToggle: () => void; onDelete: (id: string) => void; onPin?: (id: string, pinned: boolean) => void; onArchive?: (id: string, archived: boolean) => void; onTagClick?: (tag: string) => void; deletingId: string | null; onInfoClick?: (item: ContextItem) => void }) {
   const sourceMeta = SOURCE_META[normalizeSource(item.source_type)] ?? { label: item.source_type, icon: FileText, color: "text-muted-foreground", bg: "bg-muted" };
   const SourceIcon = sourceMeta.icon;
   const ContentIcon = CONTENT_TYPE_ICON[item.content_type] ?? FileText;
@@ -607,9 +607,8 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive,
         className="shrink-0"
         aria-label={`Select ${item.title}`}
       />
-      <Link
-        href={`/context/${item.id}`}
-        className="flex items-center gap-3 flex-1 min-w-0"
+      <div
+        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
         onClick={() => {
           trackInteraction({
             type: "click",
@@ -619,6 +618,7 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive,
             contentType: item.content_type,
             metadata: { fromPage: "/context" },
           });
+          onInfoClick?.(item);
         }}
       >
         {/* Source icon */}
@@ -677,7 +677,7 @@ function ContextListRow({ item, isChecked, onToggle, onDelete, onPin, onArchive,
 
         {/* Mobile status indicator */}
         <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 sm:hidden", status.className)} />
-      </Link>
+      </div>
 
       {/* Actions */}
       <ItemActions
@@ -1372,6 +1372,7 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
                 onArchive={handleArchive}
                 onTagClick={handleTagClick}
                 deletingId={deletingItemId}
+                onInfoClick={(item) => { setInfoPanelItem(item); setInfoPanelOpen(true); }}
               />
             ))}
           </div>
@@ -1437,6 +1438,9 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
         item={infoPanelItem}
         open={infoPanelOpen}
         onOpenChange={setInfoPanelOpen}
+        onPin={handlePin}
+        onArchive={handleArchive}
+        onTagClick={handleTagClick}
       />
       </div>
     </div>
