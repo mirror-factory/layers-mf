@@ -7,6 +7,26 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import {
+  CodeBlock,
+  CodeBlockHeader,
+  CodeBlockTitle,
+  CodeBlockFilename,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+} from "@/components/ai-elements/code-block";
 import {
   MessageSquare,
   Code,
@@ -37,11 +57,72 @@ import {
   Lock,
   ExternalLink,
   ChevronRight,
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  Code2,
+  Link,
+  MessageSquareText,
+  Check,
+  X,
 } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Sub-components                                                      */
-/* ------------------------------------------------------------------ */
+const SAMPLE_CODE = `import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp, Users, MessageSquare } from "lucide-react";
+
+export function DashboardMetrics({ data }: { data: MetricData }) {
+  const metrics = [
+    { label: "Active Users", value: data.users, icon: Users, delta: "+12%" },
+    { label: "Conversations", value: data.chats, icon: MessageSquare, delta: "+8%" },
+    { label: "Artifacts", value: data.artifacts, icon: TrendingUp, delta: "+23%" },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {metrics.map((m) => (
+        <Card key={m.label} className="border-border/60">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">{m.label}</p>
+              <p className="text-2xl font-bold">{m.value.toLocaleString()}</p>
+            </div>
+            <span className="text-xs text-emerald-400">{m.delta}</span>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}`;
+
+const SAMPLE_HTML = [
+  "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'/>",
+  "<meta name='viewport' content='width=device-width,initial-scale=1.0'/>",
+  "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js'></script>",
+  "<style>*{margin:0;padding:0;box-sizing:border-box}",
+  "body{background:#0a0a0b;color:#e4e4e7;font-family:system-ui,sans-serif;padding:24px}",
+  ".g{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}",
+  ".m{background:#18181b;border:1px solid #27272a;border-radius:8px;padding:16px}",
+  ".m .l{font-size:11px;color:#71717a;text-transform:uppercase;letter-spacing:.05em}",
+  ".m .v{font-size:28px;font-weight:700;margin-top:4px}.m .d{font-size:12px;color:#34d399;margin-top:2px}",
+  ".cc{background:#18181b;border:1px solid #27272a;border-radius:8px;padding:16px}",
+  ".ct{font-size:13px;color:#a1a1aa;margin-bottom:12px}</style></head><body>",
+  "<div class='g'>",
+  "<div class='m'><div class='l'>Active Users</div><div class='v' id='u'>0</div><div class='d'>+12%</div></div>",
+  "<div class='m'><div class='l'>Conversations</div><div class='v' id='c'>0</div><div class='d'>+8%</div></div>",
+  "<div class='m'><div class='l'>Artifacts Created</div><div class='v' id='a'>0</div><div class='d'>+23%</div></div>",
+  "</div><div class='cc'><div class='ct'>Weekly Activity</div><canvas id='ch' height='120'></canvas></div>",
+  "<script>function av(e,n,d){let s=null;function t(ts){if(!s)s=ts;const p=Math.min((ts-s)/d,1);",
+  "e.textContent=Math.floor(p*n).toLocaleString();if(p<1)requestAnimationFrame(t)}requestAnimationFrame(t)}",
+  "av(document.getElementById('u'),1247,1200);av(document.getElementById('c'),3891,1400);",
+  "av(document.getElementById('a'),562,1000);",
+  "new Chart(document.getElementById('ch'),{type:'bar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],",
+  "datasets:[{label:'Conversations',data:[42,58,71,63,89,34,47],backgroundColor:'rgba(168,85,247,0.5)',",
+  "borderColor:'rgba(168,85,247,0.8)',borderWidth:1,borderRadius:4}]},options:{responsive:true,",
+  "plugins:{legend:{display:false}},scales:{x:{grid:{color:'#27272a'},ticks:{color:'#71717a',font:{size:11}}},",
+  "y:{grid:{color:'#27272a'},ticks:{color:'#71717a',font:{size:11}}}}}});</script></body></html>",
+].join("");
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -130,18 +211,94 @@ function TimelineStep({ label, description, last = false }: { label: string; des
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main Page                                                           */
-/* ------------------------------------------------------------------ */
+function ChatDemoCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <Card className={cn("border-border/60 bg-zinc-950/80 overflow-hidden", className)}>
+      <CardContent className="p-0 space-y-0 divide-y divide-border/30">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChatRow({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("px-4 py-3", className)}>{children}</div>;
+}
+
+function CitationPill({ url, label }: { url: string; label: string }) {
+  const domain = new URL(url).hostname;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/50 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=16`}
+        alt=""
+        className="h-3 w-3 rounded-sm"
+        width={12}
+        height={12}
+      />
+      {label}
+    </a>
+  );
+}
+
+function InterviewDemo() {
+  const choices = ["Manual", "Scheduled", "Event-driven"];
+  const sources = ["Linear", "Slack", "GitHub", "Google Drive"];
+  return (
+    <div className="rounded-lg border bg-card shadow-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <MessageSquareText className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Interview: Skill Requirements</span>
+        </div>
+        <button className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Dismiss">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <p className="px-4 pt-3 text-xs text-muted-foreground">Help me understand the requirements for this new skill.</p>
+      <div className="p-4 space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Skill name <span className="text-destructive ml-0.5">*</span></label>
+          <input type="text" readOnly value="Daily Standup Report" className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Trigger type <span className="text-destructive ml-0.5">*</span></label>
+          <div className="flex flex-wrap gap-2">
+            {choices.map((opt) => (
+              <span key={opt} className={cn("rounded-md border px-3 py-1.5 text-xs font-medium", opt === "Scheduled" ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground")}>{opt}</span>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Data sources</label>
+          <div className="flex flex-wrap gap-2">
+            {sources.map((opt) => {
+              const sel = opt === "Linear" || opt === "Slack";
+              return <span key={opt} className={cn("rounded-md border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5", sel ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground")}>{sel && <Check className="h-3 w-3" />}{opt}</span>;
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 px-4 py-3 border-t bg-muted/30">
+        <Button variant="ghost" size="sm">Skip</Button>
+        <Button size="sm"><Check className="h-3.5 w-3.5 mr-1.5" />Submit</Button>
+      </div>
+    </div>
+  );
+}
 
 export function OverviewPage() {
   const [heroFormation] = useState<"galaxy">("galaxy");
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 space-y-24">
-      {/* ============================================================ */}
       {/*  Section 1 — Hero                                            */}
-      {/* ============================================================ */}
       <section className="flex flex-col items-center text-center gap-6">
         <NeuralMorph size={120} dotCount={18} formation={heroFormation} />
         <div>
@@ -157,9 +314,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 2 — The Stack                                       */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="The Stack"
@@ -217,9 +372,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 3 — Chat System                                     */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Chat System"
@@ -230,7 +383,7 @@ export function OverviewPage() {
             <p>
               Every conversation is an agent loop. The AI can call tools, inspect results,
               and decide its next step autonomously. It searches your knowledge base, writes
-              and runs code, creates documents, and manages project issues — all in one thread.
+              and runs code, creates documents, and manages project issues -- all in one thread.
             </p>
             <p>
               Models are swappable mid-conversation. Switch from Claude Haiku for quick
@@ -253,58 +406,146 @@ export function OverviewPage() {
             </ul>
           </div>
 
-          {/* Mini chat simulation */}
-          <Card className="border-border/60 bg-card/50 overflow-hidden">
-            <CardContent className="p-0">
-              {/* User message */}
-              <div className="border-b border-border/40 p-4 flex gap-3">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-[11px] font-medium text-primary">
-                  A
-                </div>
-                <p className="text-sm text-foreground leading-relaxed">
+          {/* Chat demo 1: Knowledge search */}
+          <ChatDemoCard>
+            <ChatRow>
+              <Message from="user">
+                <MessageContent>
                   What were the key decisions from yesterday&apos;s meeting?
-                </p>
+                </MessageContent>
+              </Message>
+            </ChatRow>
+            <ChatRow className="py-2">
+              <Tool>
+                <ToolHeader type="tool-search_context" state="output-available" />
+                <ToolContent>
+                  <ToolOutput
+                    output="Found 3 matching documents in knowledge base"
+                    errorText={undefined}
+                  />
+                </ToolContent>
+              </Tool>
+            </ChatRow>
+            <ChatRow>
+              <div className="flex gap-3">
+                <div className="shrink-0 mt-1">
+                  <NeuralDots size={24} dotCount={5} />
+                </div>
+                <Message from="assistant">
+                  <MessageContent>
+                    <MessageResponse>{`Based on the meeting notes from April 5, three key decisions were made:
+
+1. **Prioritize connector overhaul** for Q2
+2. **Move scheduling** to background jobs architecture
+3. **Ship sharing** for conversations this week
+
+*Source: Meeting Notes -- April 5 Standup*`}</MessageResponse>
+                  </MessageContent>
+                </Message>
               </div>
-              {/* Tool call */}
-              <div className="border-b border-border/40 px-4 py-2.5 flex items-center gap-2">
-                <NeuralDots size={18} dotCount={4} />
-                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary gap-1">
-                  <CheckCircle2 className="h-2.5 w-2.5" /> search_context
+            </ChatRow>
+          </ChatDemoCard>
+        </div>
+
+        {/* Chat demo 2: Artifact creation */}
+        <div className="mt-6">
+          <ChatDemoCard>
+            <ChatRow>
+              <Message from="user">
+                <MessageContent>
+                  Build me a landing page for Mirror Factory
+                </MessageContent>
+              </Message>
+            </ChatRow>
+            <ChatRow className="py-2">
+              <Tool>
+                <ToolHeader type="tool-write_code" state="output-available" />
+                <ToolContent>
+                  <ToolOutput
+                    output="Created artifact: mirror-factory-landing (React + Tailwind)"
+                    errorText={undefined}
+                  />
+                </ToolContent>
+              </Tool>
+            </ChatRow>
+            <ChatRow>
+              <div className="flex gap-3">
+                <div className="shrink-0 mt-1">
+                  <NeuralDots size={24} dotCount={5} />
+                </div>
+                <Message from="assistant">
+                  <MessageContent>
+                    <MessageResponse>{`I've created a landing page for **Mirror Factory** with a hero section, feature grid, and CTA. The sandbox is running with a live preview.
+
+You can view it in the artifact panel or open the sandbox URL directly.`}</MessageResponse>
+                  </MessageContent>
+                </Message>
+              </div>
+            </ChatRow>
+          </ChatDemoCard>
+        </div>
+
+        {/* Chat demo 3: Web Search */}
+        <div className="mt-6">
+          <ChatDemoCard>
+            <ChatRow>
+              <Message from="user">
+                <MessageContent>
+                  What&apos;s the latest on the AI SDK v6 release?
+                </MessageContent>
+              </Message>
+            </ChatRow>
+            <ChatRow className="py-2">
+              <div className="flex items-center gap-2">
+                <Tool>
+                  <ToolHeader type="tool-web_search" state="output-available" />
+                </Tool>
+                <Badge variant="outline" className="text-[9px] border-border/40 text-muted-foreground gap-1">
+                  <Globe className="h-2.5 w-2.5" /> Perplexity
                 </Badge>
-                <span className="text-[10px] text-muted-foreground">3 results</span>
               </div>
-              {/* Assistant response */}
-              <div className="p-4 flex gap-3">
-                <div className="shrink-0 mt-0.5">
-                  <NeuralDots size={28} dotCount={5} />
+            </ChatRow>
+            <ChatRow>
+              <div className="flex gap-3">
+                <div className="shrink-0 mt-1">
+                  <NeuralDots size={24} dotCount={5} />
                 </div>
-                <div className="text-sm text-foreground leading-relaxed space-y-2">
-                  <p>
-                    Based on the meeting notes from April 5, three key decisions were made:
-                  </p>
-                  <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-                    <li>Prioritize connector overhaul for Q2</li>
-                    <li>Move scheduling to background jobs architecture</li>
-                    <li>Ship sharing for conversations this week</li>
-                  </ol>
-                  <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
-                    <BookOpen className="h-2.5 w-2.5" />
-                    Source: Meeting Notes — April 5 Standup
-                  </p>
-                </div>
+                <Message from="assistant">
+                  <MessageContent>
+                    <MessageResponse>{`AI SDK v6 was released with several major changes:
+
+- **ToolLoopAgent** replaces manual tool loop patterns
+- **UIMessage** is the new message format (replaces v5 Message type)
+- **createAgentUIStream** for server-side agent streaming
+
+The migration guide covers all breaking changes from v5.`}</MessageResponse>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <CitationPill url="https://sdk.vercel.ai/docs" label="AI SDK Docs" />
+                      <CitationPill url="https://vercel.com/blog" label="Vercel Blog" />
+                      <CitationPill url="https://github.com/vercel/ai" label="GitHub" />
+                    </div>
+                  </MessageContent>
+                </Message>
               </div>
-            </CardContent>
-          </Card>
+            </ChatRow>
+          </ChatDemoCard>
+        </div>
+
+        {/* Interview Tool Demo */}
+        <div className="mt-6">
+          <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
+            <UserPlus className="h-3.5 w-3.5 text-primary" />
+            The ask_user tool presents structured interview forms mid-conversation:
+          </p>
+          <InterviewDemo />
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 4 — Artifacts & Sandbox                             */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Artifacts & Sandbox"
-          subtitle="Code, documents, and live previews — all versioned, all sandboxed."
+          subtitle="Code, documents, and live previews -- all versioned, all sandboxed."
         />
         <Tabs defaultValue="code" className="w-full">
           <TabsList className="mb-4">
@@ -320,42 +561,58 @@ export function OverviewPage() {
           </TabsList>
 
           <TabsContent value="code">
-            <Card className="border-border/60 bg-card/50">
-              <CardContent className="p-4">
-                <pre className="text-xs text-muted-foreground font-mono leading-relaxed overflow-x-auto">
-                  <code>{`export function Dashboard() {
-  const { data } = useQuery("analytics");
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      <MetricCard title="Active Users" value={data.users} />
-      <MetricCard title="Conversations" value={data.chats} />
-      <MetricCard title="Artifacts" value={data.artifacts} />
-    </div>
-  );
-}`}</code>
-                </pre>
-              </CardContent>
-            </Card>
+            <CodeBlock code={SAMPLE_CODE} language="tsx" showLineNumbers>
+              <CodeBlockHeader>
+                <CodeBlockTitle>
+                  <CodeBlockFilename>dashboard-metrics.tsx</CodeBlockFilename>
+                </CodeBlockTitle>
+                <CodeBlockActions>
+                  <CodeBlockCopyButton />
+                </CodeBlockActions>
+              </CodeBlockHeader>
+            </CodeBlock>
           </TabsContent>
 
           <TabsContent value="document">
             <Card className="border-border/60 bg-card/50">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex gap-2 border-b border-border/40 pb-3">
-                  {["Bold", "Italic", "Heading", "List", "Link"].map((btn) => (
-                    <span
-                      key={btn}
-                      className="text-[10px] text-muted-foreground border border-border/60 rounded px-2 py-0.5"
+              <CardContent className="p-4 space-y-4">
+                {/* Formatting toolbar */}
+                <div className="flex gap-1 border-b border-border/40 pb-3">
+                  {[
+                    { icon: Bold, label: "Bold" },
+                    { icon: Italic, label: "Italic" },
+                    { icon: Heading1, label: "Heading 1" },
+                    { icon: Heading2, label: "Heading 2" },
+                    { icon: List, label: "List" },
+                    { icon: Code2, label: "Code" },
+                    { icon: Link, label: "Link" },
+                  ].map((btn) => (
+                    <button
+                      key={btn.label}
+                      className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      aria-label={btn.label}
                     >
-                      {btn}
-                    </span>
+                      <btn.icon className="h-3.5 w-3.5" />
+                    </button>
                   ))}
                 </div>
-                <p className="text-sm text-foreground">
-                  TipTap rich text editor with AI-assisted writing. Supports headings,
-                  lists, code blocks, images, and tables. Full formatting toolbar with
-                  keyboard shortcuts.
-                </p>
+                {/* Document content */}
+                <div className="prose prose-sm prose-invert max-w-none space-y-3">
+                  <h2 className="text-lg font-semibold text-foreground m-0">
+                    Q2 Connector Overhaul Plan
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    This document outlines the plan for rebuilding our integration connectors
+                    in Q2. The goal is to move from polling-based ingestion to real-time
+                    webhooks with incremental sync.
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-4">
+                    <li>Migrate Google Drive to push notifications via Changes API</li>
+                    <li>Add Slack real-time events for channel messages</li>
+                    <li>Implement GitHub webhook handlers for repo activity</li>
+                    <li>Build unified retry and error handling layer</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -363,13 +620,23 @@ export function OverviewPage() {
           <TabsContent value="preview">
             <Card className="border-border/60 bg-card/50">
               <CardContent className="p-4">
-                <div className="rounded-lg border border-border/40 bg-background/50 h-48 flex flex-col items-center justify-center gap-3">
-                  <Play className="h-8 w-8 text-primary/40" />
-                  <p className="text-sm text-muted-foreground">Live sandbox preview</p>
-                  <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400 gap-1">
-                    <StatusDot status="green" /> Running
-                  </Badge>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400 gap-1">
+                      <StatusDot status="green" /> Running
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      sandbox-3k0h486n
+                    </span>
+                  </div>
+                  <Play className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
+                <iframe
+                  srcDoc={SAMPLE_HTML}
+                  className="w-full h-64 rounded-lg border border-border/40 bg-zinc-950"
+                  title="Live sandbox preview"
+                  sandbox="allow-scripts"
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -382,13 +649,11 @@ export function OverviewPage() {
         </p>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 5 — Tools & Capabilities                            */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Tools & Capabilities"
-          subtitle="The agent's toolkit — each tool is a capability the AI can invoke autonomously during conversations."
+          subtitle="The agent's toolkit -- each tool is a capability the AI can invoke autonomously during conversations."
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <ToolCard icon={Search} name="search_context" description="Search your knowledge base with hybrid vector + BM25 ranking" />
@@ -403,9 +668,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 6 — Scheduling Vision                               */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Scheduling"
@@ -446,9 +709,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 7 — Connectors & MCP                                */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Connectors & MCP"
@@ -471,9 +732,7 @@ export function OverviewPage() {
         </p>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 8 — Sharing & Organizations                         */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading
           title="Sharing & Organizations"
@@ -492,7 +751,7 @@ export function OverviewPage() {
               {
                 icon: Link2,
                 label: "Share Links",
-                desc: "Public URLs — anyone with the link can view",
+                desc: "Public URLs -- anyone with the link can view",
                 active: true,
               },
               {
@@ -572,9 +831,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 9 — Multi-User Chat Vision                          */}
-      {/* ============================================================ */}
       <section>
         <div className="mb-8 flex items-center gap-3">
           <div>
@@ -627,9 +884,9 @@ export function OverviewPage() {
                   <span className="text-[10px] text-muted-foreground">12 open issues</span>
                 </div>
                 <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-                  <li>Connector overhaul — 5 related issues, highest impact</li>
-                  <li>Sharing for all content types — 3 issues, user-facing</li>
-                  <li>Context library polish — 4 issues, quick wins</li>
+                  <li>Connector overhaul -- 5 related issues, highest impact</li>
+                  <li>Sharing for all content types -- 3 issues, user-facing</li>
+                  <li>Context library polish -- 4 issues, quick wins</li>
                 </ol>
               </div>
             </div>
@@ -637,9 +894,7 @@ export function OverviewPage() {
         </Card>
       </section>
 
-      {/* ============================================================ */}
       {/*  Section 10 — Status & Roadmap                               */}
-      {/* ============================================================ */}
       <section>
         <SectionHeading title="Status & Roadmap" />
 
@@ -676,7 +931,7 @@ export function OverviewPage() {
 
         {/* Up Next */}
         <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <ChevronRight className="h-4 w-4 text-primary" /> Up Next — P0
+          <ChevronRight className="h-4 w-4 text-primary" /> Up Next -- P0
         </h3>
         <div className="space-y-2 mb-10">
           {[
@@ -699,7 +954,7 @@ export function OverviewPage() {
 
         {/* On the Horizon */}
         <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-          <Clock className="h-4 w-4" /> On the Horizon — P1/P2
+          <Clock className="h-4 w-4" /> On the Horizon -- P1/P2
         </h3>
         <div className="flex flex-wrap gap-2">
           {[
