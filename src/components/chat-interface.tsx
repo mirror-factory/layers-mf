@@ -52,6 +52,7 @@ import { SourceCitation, type CitationSource } from "@/components/chat/source-ci
 import { ContextWindowBar } from "@/components/chat/context-window-bar";
 import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
+import { ShareLinkButton } from "@/components/share-link-button";
 import { NeuralMorph } from "@/components/ui/neural-morph";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
@@ -1871,7 +1872,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       for (const part of parts) {
         if (
           part.type === "tool-create_skill" &&
-          part.state === "result" &&
+          part.state === "output-available" &&
           part.toolCallId &&
           !createSkillSeenRef.current.has(part.toolCallId)
         ) {
@@ -2878,6 +2879,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         >
                           <Clock className="h-3.5 w-3.5" />
                         </Button>
+                      )}
+                      {activeArtifact.artifactId && (
+                        <ShareLinkButton
+                          resourceType="artifact"
+                          resourceId={activeArtifact.artifactId}
+                          resourceTitle={activeArtifact.filename}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                        />
                       )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
                         <X className="h-4 w-4" />

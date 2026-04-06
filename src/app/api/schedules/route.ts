@@ -50,11 +50,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const body = await request.json();
-  const { name, description, action_type, target_service, payload, schedule, max_runs } = body;
+  const { name, description, prompt, action_type, target_service, payload, schedule, max_runs, model } = body;
 
-  if (!name || !action_type || !schedule) {
+  if (!name || !schedule) {
     return NextResponse.json(
-      { error: "Missing required fields: name, action_type, schedule" },
+      { error: "Missing required fields: name, schedule" },
       { status: 400 }
     );
   }
@@ -63,6 +63,13 @@ export async function POST(request: NextRequest) {
     ? schedule.replace("once:", "")
     : calculateNextCron(schedule);
 
+  // Merge prompt into payload so the cron executor can find it
+  const mergedPayload = {
+    ...(payload ?? {}),
+    ...(prompt ? { prompt } : {}),
+    ...(model ? { model } : {}),
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("scheduled_actions")
@@ -70,10 +77,10 @@ export async function POST(request: NextRequest) {
       org_id: member.org_id,
       created_by: user.id,
       name,
-      description: description ?? null,
-      action_type,
+      description: description ?? prompt ?? null,
+      action_type: action_type ?? "custom",
       target_service: target_service ?? null,
-      payload: payload ?? {},
+      payload: mergedPayload,
       schedule,
       next_run_at: nextRun,
       max_runs: max_runs ?? null,

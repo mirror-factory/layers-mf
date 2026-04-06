@@ -18,6 +18,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import {
+  requestNotificationPermission,
+  sendDesktopNotification,
+} from "@/lib/notifications/desktop";
 
 interface Notification {
   id: string;
@@ -59,17 +63,46 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const initialFetchDone = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications?limit=20");
       if (!res.ok) return;
       const data = await res.json();
-      setNotifications(data.notifications ?? []);
+      const incoming: Notification[] = data.notifications ?? [];
+
+      // Fire desktop notifications for genuinely new unread items
+      // (skip on first fetch so we don't spam on page load)
+      if (initialFetchDone.current) {
+        for (const n of incoming) {
+          if (!n.is_read && !seenIdsRef.current.has(n.id)) {
+            sendDesktopNotification(
+              n.title,
+              n.body ?? "",
+              n.link ?? undefined,
+            );
+          }
+        }
+      }
+
+      // Track all seen IDs
+      for (const n of incoming) {
+        seenIdsRef.current.add(n.id);
+      }
+      initialFetchDone.current = true;
+
+      setNotifications(incoming);
       setUnreadCount(data.unread_count ?? 0);
     } catch {
       // Silently fail — polling will retry
     }
+  }, []);
+
+  // Request desktop notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
   }, []);
 
   // Initial fetch + polling every 30s

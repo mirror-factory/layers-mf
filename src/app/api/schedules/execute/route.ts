@@ -1,11 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { executeScheduleAndCreateChat } from "@/lib/schedule-executor";
+import { generateText, tool, stepCountIs } from "ai";
+import { gateway } from "@ai-sdk/gateway";
+import { z } from "zod";
+import { searchContext, searchContextChunks } from "@/lib/db/search";
+import { calculateNextCron } from "@/lib/cron";
+
+export const maxDuration = 120;
+
+const SCHEDULE_MODEL = "google/gemini-3-flash";
+
+const SYSTEM_PROMPT = `You are Granger, an AI assistant running a scheduled background task.
+You have access to a knowledge base via search_context. Use it when the user's prompt requires looking up information.
+Be concise and actionable. Summarize findings clearly.`;
+
+function createScheduleTools(supabase: ReturnType<typeof createAdminClient>, orgId: string) {
+  return {
+    search_context: tool({
+      description: "Search the organization's knowledge base.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query"),
+        limit: z.number().min(1).max(20).optional().describe("Maximum results"),
+      }),
+      execute: async ({ query, limit }: { query: string; limit?: number }) => {
+        const chunkResults = await searchContextChunks(
+          supabase as Parameters<typeof searchContextChunks>[0],
+          orgId,
+          query,
+          limit ?? 8,
+          undefined,
+          true,
+        );
+        if (chunkResults.length > 0) {
+          return {
+            results: chunkResults.map((r) => ({
+              title: r.title,
+              snippet: r.parent_content?.slice(0, 500) ?? r.description_short ?? "",
+              source_type: r.source_type,
+              content_type: r.content_type,
+            })),
+          };
+        }
+        const results = await searchContext(
+          supabase as Parameters<typeof searchContext>[0],
+          orgId,
+          query,
+          limit ?? 8,
+        );
+        return {
+          results: results.map((r) => ({
+            title: r.title,
+            snippet: r.description_short ?? r.description_long?.slice(0, 500) ?? "",
+            source_type: r.source_type,
+            content_type: r.content_type,
+          })),
+        };
+      },
+    }),
+  };
+}
 
 /**
  * POST /api/schedules/execute
- * Execute a scheduled action immediately and create a chat conversation with results.
- * Supports both endpoint-based schedules and custom schedules (processed via chat AI).
+ * Execute a schedule on-demand (from "Run Now" button).
+ * Creates a conversation, runs AI, saves results, notifies user.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -28,56 +86,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization" }, { status: 400 });
   }
 
-  let body: { scheduleId?: string; endpoint?: string };
+  let body: { scheduleId?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { scheduleId, endpoint } = body;
-
+  const { scheduleId } = body;
   if (!scheduleId) {
     return NextResponse.json(
       { error: "Missing required field: scheduleId" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // If an explicit endpoint was provided, use the direct executor
-  if (endpoint) {
-    if (!endpoint.startsWith("/api/")) {
-      return NextResponse.json(
-        { error: "Endpoint must be an internal API path" },
-        { status: 400 }
-      );
-    }
-
-    try {
-      const result = await executeScheduleAndCreateChat(
-        scheduleId,
-        member.org_id,
-        user.id,
-        endpoint
-      );
-
-      return NextResponse.json({
-        conversationId: result.conversationId,
-        result: result.result,
-      });
-    } catch (err) {
-      return NextResponse.json(
-        { error: err instanceof Error ? err.message : "Execution failed" },
-        { status: 500 }
-      );
-    }
-  }
-
-  // Custom schedule — look up the schedule and process via chat AI
   try {
     const adminSupabase = createAdminClient();
 
-    // Fetch the schedule details
+    // Fetch the schedule
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: schedule, error: scheduleError } = await (adminSupabase as any)
       .from("scheduled_actions")
@@ -86,35 +113,25 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (scheduleError || !schedule) {
-      return NextResponse.json(
-        { error: "Schedule not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
     }
 
-    // Check if there's a known endpoint in the payload
-    if (schedule.payload?.endpoint) {
-      const result = await executeScheduleAndCreateChat(
-        scheduleId,
-        member.org_id,
-        user.id,
-        schedule.payload.endpoint
-      );
+    const orgId = member.org_id;
 
-      return NextResponse.json({
-        conversationId: result.conversationId,
-        result: result.result,
-      });
-    }
+    // Build prompt
+    const prompt =
+      schedule.payload?.prompt ??
+      schedule.description ??
+      `Execute scheduled action: ${schedule.name}`;
 
-    // No endpoint — create a conversation and send the description to the chat API
+    // Create conversation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: conv } = await (adminSupabase as any)
       .from("conversations")
       .insert({
-        org_id: member.org_id,
+        org_id: orgId,
         user_id: user.id,
-        title: `Schedule: ${schedule.name}`,
+        title: `Scheduled: ${schedule.name}`,
         initiated_by: "schedule",
         schedule_id: scheduleId,
       })
@@ -124,56 +141,83 @@ export async function POST(request: NextRequest) {
     if (!conv) {
       return NextResponse.json(
         { error: "Failed to create conversation" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // Build the prompt from the schedule's description/payload
-    const prompt = schedule.description
-      ?? schedule.payload?.prompt
-      ?? `Execute scheduled action: ${schedule.name}`;
+    const conversationId = conv.id as string;
 
-    // Send the prompt to the chat API
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const chatRes = await fetch(`${baseUrl}/api/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: request.headers.get("cookie") ?? "",
-      },
-      body: JSON.stringify({
-        messages: [{ role: "user", parts: [{ type: "text", text: prompt }] }],
-        conversationId: conv.id,
-        model: "google/gemini-2.5-flash-lite",
-      }),
+    // Save user message
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminSupabase as any).from("chat_messages").insert({
+      org_id: orgId,
+      user_id: user.id,
+      conversation_id: conversationId,
+      role: "user",
+      content: [{ type: "text", text: prompt }],
+      channel: "schedule",
     });
 
-    // Read the streamed response to completion (we don't need to parse it)
-    if (chatRes.body) {
-      const reader = chatRes.body.getReader();
-      while (true) {
-        const { done } = await reader.read();
-        if (done) break;
-      }
-    }
+    // Run AI
+    const tools = createScheduleTools(adminSupabase, orgId);
 
-    // Update schedule run metadata
+    const { text } = await generateText({
+      model: gateway(SCHEDULE_MODEL),
+      system: SYSTEM_PROMPT,
+      prompt,
+      tools,
+      stopWhen: stepCountIs(5),
+    });
+
+    const responseText = text || "Schedule executed but produced no output.";
+
+    // Save AI response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminSupabase as any).from("chat_messages").insert({
+      org_id: orgId,
+      user_id: user.id,
+      conversation_id: conversationId,
+      role: "assistant",
+      content: [{ type: "text", text: responseText }],
+      channel: "schedule",
+    });
+
+    // Update schedule metadata
+    const newRunCount = (schedule.run_count ?? 0) + 1;
+    const isCompleted = schedule.max_runs && newRunCount >= schedule.max_runs;
+    const isOneShot = typeof schedule.schedule === "string" && schedule.schedule.startsWith("once:");
+    const nextRun = isOneShot ? null : calculateNextCron(schedule.schedule);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminSupabase as any)
       .from("scheduled_actions")
       .update({
         last_run_at: new Date().toISOString(),
-        run_count: (schedule.run_count ?? 0) + 1,
+        run_count: newRunCount,
+        next_run_at: nextRun,
+        status: isCompleted || isOneShot ? "completed" : schedule.status,
+        error_message: null,
+        last_conversation_id: conversationId,
       })
       .eq("id", scheduleId);
 
-    return NextResponse.json({
-      conversationId: conv.id,
+    // Create notification
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminSupabase as any).from("notifications").insert({
+      org_id: orgId,
+      user_id: user.id,
+      type: "schedule_complete",
+      title: `Scheduled: ${schedule.name}`,
+      body: responseText.slice(0, 200),
+      link: `/chat?id=${conversationId}`,
+      metadata: { schedule_id: scheduleId, conversation_id: conversationId },
     });
+
+    return NextResponse.json({ conversationId });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Execution failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1929,8 +1929,29 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           // Extract sources from provider metadata (Perplexity returns citations)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const providerMeta = result.providerMetadata ?? (result as any).experimental_providerMetadata;
-          const perplexityMeta = providerMeta?.perplexity as Record<string, unknown> | undefined;
-          const citations = (perplexityMeta?.citations as string[]) ?? [];
+          // Try multiple metadata paths — Gateway may wrap under different keys
+          const perplexityMeta = (providerMeta?.perplexity ?? providerMeta?.["perplexity/sonar"] ?? providerMeta?.gateway) as Record<string, unknown> | undefined;
+          let citations = (perplexityMeta?.citations as string[]) ?? [];
+
+          // Fallback: scan all provider metadata keys for a citations array
+          if (citations.length === 0 && providerMeta && typeof providerMeta === "object") {
+            for (const key of Object.keys(providerMeta)) {
+              const meta = providerMeta[key] as Record<string, unknown> | undefined;
+              if (meta?.citations && Array.isArray(meta.citations)) {
+                citations = meta.citations as string[];
+                break;
+              }
+            }
+          }
+
+          // Final fallback: extract URLs from the text itself
+          if (citations.length === 0) {
+            const urlRegex = /https?:\/\/[^\s)\]>]+/g;
+            const found = result.text.match(urlRegex);
+            if (found) citations = [...new Set(found)];
+          }
+
+          console.log(`[web_search] query="${query}" citations=${citations.length} providerMetaKeys=${providerMeta ? Object.keys(providerMeta).join(",") : "none"}`);
 
           return {
             query,
