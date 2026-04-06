@@ -9,12 +9,27 @@ import {
   Wifi,
   WifiOff,
   AlertCircle,
+  HardDrive,
+  Github,
+  Hash,
+  BarChart3,
+  Mail,
+  StickyNote,
+  Globe,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { NeuralDots } from "@/components/ui/neural-dots";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface Integration {
@@ -241,6 +256,185 @@ function ConnectorCard({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Nango provider catalog for the Add Integration dialog              */
+/* ------------------------------------------------------------------ */
+
+const NANGO_PROVIDERS = [
+  { id: "google-drive", label: "Google Drive", icon: HardDrive, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10", description: "Documents, spreadsheets, and files" },
+  { id: "github", label: "GitHub", icon: Github, color: "text-gray-900 dark:text-gray-100", bgColor: "bg-gray-500/10", description: "Repositories and issues" },
+  { id: "slack", label: "Slack", icon: Hash, color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/10", description: "Messages and channels" },
+  { id: "linear", label: "Linear", icon: BarChart3, color: "text-indigo-600 dark:text-indigo-400", bgColor: "bg-indigo-500/10", description: "Issues, projects, and cycles" },
+  { id: "gmail", label: "Gmail", icon: Mail, color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/10", description: "Email threads and messages" },
+  { id: "notion", label: "Notion", icon: StickyNote, color: "text-stone-700 dark:text-stone-300", bgColor: "bg-stone-500/10", description: "Pages, databases, and wiki content" },
+] as const;
+
+/* ------------------------------------------------------------------ */
+/*  Add Integration Dialog                                             */
+/* ------------------------------------------------------------------ */
+
+function AddIntegrationDialog({
+  open,
+  onOpenChange,
+  connectedProviders,
+  onConnectNango,
+  connectingNango,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  connectedProviders: Set<string>;
+  onConnectNango: () => void;
+  connectingNango: boolean;
+}) {
+  const [mcpName, setMcpName] = useState("");
+  const [mcpUrl, setMcpUrl] = useState("");
+  const [mcpSaving, setMcpSaving] = useState(false);
+  const [mcpError, setMcpError] = useState<string | null>(null);
+
+  const handleAddMCP = async () => {
+    if (!mcpName.trim() || !mcpUrl.trim()) return;
+    setMcpSaving(true);
+    setMcpError(null);
+    try {
+      const res = await fetch("/api/mcp-servers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: mcpName.trim(), url: mcpUrl.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Failed to add MCP server" }));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      setMcpName("");
+      setMcpUrl("");
+      onOpenChange(false);
+      window.location.reload();
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "Failed to add MCP server");
+    } finally {
+      setMcpSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Integration</DialogTitle>
+          <DialogDescription>
+            Connect an OAuth integration or add an MCP server.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Nango OAuth integrations */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium">OAuth Integrations</h3>
+          <p className="text-xs text-muted-foreground">
+            Connect via Nango to sync documents, issues, and messages automatically.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {NANGO_PROVIDERS.map((provider) => {
+              const Icon = provider.icon;
+              const isConnected = connectedProviders.has(provider.id) ||
+                (provider.id === "github" && connectedProviders.has("github-app"));
+              return (
+                <button
+                  key={provider.id}
+                  onClick={() => {
+                    onConnectNango();
+                  }}
+                  disabled={connectingNango}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                    "hover:bg-accent hover:border-accent-foreground/20",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    isConnected && "border-emerald-500/30 bg-emerald-500/5"
+                  )}
+                >
+                  <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg shrink-0", provider.bgColor)}>
+                    <Icon className={cn("h-4 w-4", provider.color)} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium truncate">{provider.label}</span>
+                      {isConnected && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                          Connected
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">{provider.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {connectingNango && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Opening Nango connect window...
+            </div>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        {/* MCP Server */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            MCP Server
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Add an MCP (Model Context Protocol) server to give your AI direct tool access.
+          </p>
+          <div className="space-y-2">
+            <Input
+              placeholder="Server name"
+              value={mcpName}
+              onChange={(e) => setMcpName(e.target.value)}
+            />
+            <Input
+              placeholder="https://mcp.example.com/sse"
+              value={mcpUrl}
+              onChange={(e) => setMcpUrl(e.target.value)}
+            />
+          </div>
+          {mcpError && (
+            <p className="text-xs text-destructive">{mcpError}</p>
+          )}
+          <Button
+            onClick={handleAddMCP}
+            disabled={mcpSaving || !mcpName.trim() || !mcpUrl.trim()}
+            variant="outline"
+            className="w-full"
+            size="sm"
+          >
+            {mcpSaving ? (
+              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+            ) : (
+              <Server className="h-3 w-3 mr-2" />
+            )}
+            {mcpSaving ? "Adding..." : "Add MCP Server"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ConnectorsView                                                     */
+/* ------------------------------------------------------------------ */
+
 interface ConnectorsViewProps {
   integrations: Integration[];
   mcpServers: MCPServer[];
@@ -251,6 +445,13 @@ export function ConnectorsView({
   mcpServers,
 }: ConnectorsViewProps) {
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const connectedProviders = new Set(
+    integrations
+      .filter((i) => i.status === "active" || i.status === "connected")
+      .map((i) => i.provider)
+  );
 
   const handleConnectIntegration = async () => {
     // Opens Nango connect UI — same logic as IntegrationsConnect
@@ -293,6 +494,7 @@ export function ConnectorsView({
               // silent
             }
             setConnectingId(null);
+            setDialogOpen(false);
             window.location.reload();
           } else {
             setConnectingId(null);
@@ -339,6 +541,15 @@ export function ConnectorsView({
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl">
+      {/* Add Integration Dialog */}
+      <AddIntegrationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        connectedProviders={connectedProviders}
+        onConnectNango={handleConnectIntegration}
+        connectingNango={connectingId === "nango"}
+      />
+
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 mb-1">
@@ -357,13 +568,9 @@ export function ConnectorsView({
 
       {/* Actions */}
       <div className="flex items-center gap-3 mb-6">
-        <Button onClick={handleConnectIntegration} disabled={connectingId === "nango"}>
-          {connectingId === "nango" ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Plug className="h-4 w-4 mr-2" />
-          )}
-          {connectingId === "nango" ? "Connecting..." : "Add Integration"}
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plug className="h-4 w-4 mr-2" />
+          Add Integration
         </Button>
         <Button variant="outline" onClick={() => window.location.reload()}>
           <RefreshCw className="h-4 w-4 mr-2" />
