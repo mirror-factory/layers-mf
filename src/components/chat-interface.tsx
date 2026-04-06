@@ -1512,6 +1512,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const isLoading = status === "streaming" || status === "submitted";
   const promptSentRef = useRef(false);
   const liveActivityStartedRef = useRef(false);
+  const [messageQueue, setMessageQueue] = useState<string[]>([]);
 
   // Start/end Dynamic Island Live Activity based on streaming state
   useEffect(() => {
@@ -1522,6 +1523,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       liveActivityStartedRef.current = false;
     }
   }, [isLoading, conversationId, model]);
+
+  // Auto-send the next queued message when the AI finishes responding
+  useEffect(() => {
+    if (status === "ready" && messageQueue.length > 0) {
+      const [next, ...rest] = messageQueue;
+      setMessageQueue(rest);
+      sendMessage({ text: next });
+    }
+  }, [status, messageQueue, sendMessage]);
 
   // Detect pending ask_user tool calls that need user interaction
   const pendingInterview = (() => {
@@ -2023,7 +2033,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
   function handleSend() {
     let text = input.trim();
-    if ((!text && pendingFiles.length === 0) || isLoading) return;
+    if (!text && pendingFiles.length === 0) return;
 
     // Default text when sending files without a message
     if (!text && pendingFiles.length > 0) {
@@ -2040,6 +2050,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         console.log(`[Granger] Slash command ${cmd} → "${expanded}"`);
         text = expanded;
       }
+    }
+
+    // Queue the message if the AI is still responding (no file support in queue)
+    if (isLoading) {
+      setMessageQueue((prev) => [...prev, text]);
+      setInput("");
+      return;
     }
 
     const files = buildFileList();
@@ -2626,9 +2643,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Send / Stop button */}
                 {isLoading ? (
-                  <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop" className="h-8 w-8 shrink-0">
-                    <Square className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop" className="h-8 w-8">
+                      <Square className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={handleSend} disabled={!input.trim()} aria-label="Queue message" data-testid="chat-queue" className="h-8 w-8">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ) : (
                   <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} data-testid="chat-submit" aria-label="Send message" className="h-8 w-8 shrink-0">
                     <Send className="h-4 w-4" />
@@ -2636,6 +2658,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 )}
               </div>
           </div>
+          {/* Queued messages indicator */}
+          {messageQueue.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{messageQueue.length} message{messageQueue.length > 1 ? "s" : ""} queued</span>
+              <button
+                type="button"
+                onClick={() => setMessageQueue([])}
+                className="ml-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            </div>
+          )}
           {/* Context window bar — pops up above prompt area */}
           {showContextBar && messages.length > 0 && (
             <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
