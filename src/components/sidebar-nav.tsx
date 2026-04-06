@@ -32,6 +32,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -268,6 +269,9 @@ export function SidebarNav({
         {/* User */}
         <div className={cn("border-t space-y-1", isVisuallyCollapsed ? "p-1" : "p-3")}>
           {!isVisuallyCollapsed && <p className="text-xs text-muted-foreground truncate mb-2">{email}</p>}
+
+          {/* Notifications */}
+          <NotificationBell collapsed={isVisuallyCollapsed} />
 
           {/* Credit balance */}
           {credits !== null && (
