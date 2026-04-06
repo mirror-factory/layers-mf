@@ -1844,8 +1844,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   // Dynamic MCP server slash commands
   const [mcpMenuItems, setMcpMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string; toolNames: string[] }[]>([]);
 
-  useEffect(() => {
-    // Fetch skills
+  const refreshSkillMenuItems = useCallback(() => {
     fetch("/api/skills")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
@@ -1861,6 +1860,31 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         setSkillMenuItems(items);
       })
       .catch(() => {});
+  }, []);
+
+  // Re-fetch skills when create_skill tool completes
+  const createSkillSeenRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      const parts = m.parts as { type: string; state?: string; toolCallId?: string }[];
+      for (const part of parts) {
+        if (
+          part.type === "tool-create_skill" &&
+          part.state === "result" &&
+          part.toolCallId &&
+          !createSkillSeenRef.current.has(part.toolCallId)
+        ) {
+          createSkillSeenRef.current.add(part.toolCallId);
+          refreshSkillMenuItems();
+        }
+      }
+    }
+  }, [messages, refreshSkillMenuItems]);
+
+  useEffect(() => {
+    // Fetch skills on mount
+    refreshSkillMenuItems();
 
     // Fetch active MCP servers to generate auto-commands
     fetch("/api/mcp-servers")
