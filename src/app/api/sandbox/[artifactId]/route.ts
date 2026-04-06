@@ -33,19 +33,26 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   if (!artifact) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const sandboxName = artifact.snapshot_id ?? `layers-${auth.orgId.slice(0, 8)}`;
-  try {
-    const { Sandbox } = await import("@vercel/sandbox");
-    const sb = await Sandbox.get({ name: sandboxName });
-    return NextResponse.json({
-      status: "running",
-      previewUrl: artifact.preview_url,
-      cpuUsageMs: sb.activeCpuUsageMs ?? 0,
-      networkTransfer: sb.networkTransfer ?? { ingress: 0, egress: 0 },
-    });
-  } catch {
-    return NextResponse.json({ status: "stopped", previewUrl: null });
+  // Try both the stored snapshot_id and the deterministic name
+  const deterministicName = `layers-${auth.orgId.slice(0, 8)}-${artifactId.slice(0, 8)}`;
+  const namesToTry = [artifact.snapshot_id, deterministicName].filter(Boolean);
+
+  for (const name of namesToTry) {
+    try {
+      const { Sandbox } = await import("@vercel/sandbox");
+      const sb = await Sandbox.get({ name });
+      return NextResponse.json({
+        status: "running",
+        previewUrl: artifact.preview_url,
+        cpuUsageMs: sb.activeCpuUsageMs ?? 0,
+        networkTransfer: sb.networkTransfer ?? { ingress: 0, egress: 0 },
+      });
+    } catch {
+      // Not found — try next name
+    }
   }
+
+  return NextResponse.json({ status: "stopped", previewUrl: null });
 }
 
 /**
@@ -98,6 +105,10 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
 
   try {
     const { executeProject } = await import("@/lib/sandbox/execute");
+
+    // Use a deterministic sandbox name per artifact so restarts reuse it
+    const sandboxName = `layers-${auth.orgId.slice(0, 8)}-${artifactId.slice(0, 8)}`;
+
     const result = await executeProject({
       files,
       installCommand: "npm install",
@@ -105,14 +116,18 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
       exposePort: artifact.expose_port ?? 5173,
       orgId: auth.orgId,
       userId: auth.user.id,
-      snapshotId: artifact.snapshot_id ?? undefined,
+      sandboxName,
     });
 
     if (result.previewUrl) {
+      // Update both preview_url and snapshot_id so future restarts find this sandbox
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (auth.supabase as any)
         .from("artifacts")
-        .update({ preview_url: result.previewUrl })
+        .update({
+          preview_url: result.previewUrl,
+          snapshot_id: result.sandboxId ?? sandboxName,
+        })
         .eq("id", artifactId);
     }
 
@@ -147,13 +162,19 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   if (!artifact) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const sandboxName = artifact.snapshot_id ?? `layers-${auth.orgId.slice(0, 8)}`;
-  try {
-    const { Sandbox } = await import("@vercel/sandbox");
-    const sb = await Sandbox.get({ name: sandboxName });
-    await sb.stop();
-  } catch {
-    // Already stopped or doesn't exist
+  // Try both the stored snapshot_id and the deterministic name
+  const deterministicName = `layers-${auth.orgId.slice(0, 8)}-${artifactId.slice(0, 8)}`;
+  const namesToTry = [artifact.snapshot_id, deterministicName].filter(Boolean);
+
+  for (const name of namesToTry) {
+    try {
+      const { Sandbox } = await import("@vercel/sandbox");
+      const sb = await Sandbox.get({ name });
+      await sb.stop();
+      break; // stopped successfully
+    } catch {
+      // Not found or already stopped — try next
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
