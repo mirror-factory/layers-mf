@@ -7,34 +7,73 @@
 
 ## Start Here
 
-**[roadmap.md](./roadmap.md)** — Single source of truth for what's built, what's partially built, and what's next. Read this first.
+**[roadmap.md](./roadmap.md)** -- Single source of truth for what's built, what's partially built, and what's next. Read this first.
 
 ---
 
 ## Document Index
 
-### Active Docs
+### Chat
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Roadmap](./roadmap.md) | Active | Master status, shipped features, prioritized backlog |
-| [Library Hub & Sharing](./library-hub-and-sharing.md) | Active | Product vision — library as the central hub |
-| [Content Organization](./content-organization.md) | Active | Collections, tags, smart filters, AI classification (technical) |
-| [Universal Artifact System](./universal-artifact-system.md) | Active | Code, documents, sandboxes — creation, versioning, editing |
-| [Artifact System v2](./artifact-system-v2.md) | Active | Artifact types, tool registry, missing tools |
-| [Context Engineering](./context-engineering.md) | Active | System prompt caching, compaction, priority docs flow |
-| [Brand Guide](./brand-guide.md) | Active | Colors, fonts, NeuralDots animation, component patterns |
-| [Tool Result Cards](./tool-result-cards.md) | Active | Universal card component for tool outputs, citation bar |
-| [Connector Persistence](./connector-persistence.md) | Active | ConnectionManager, OAuth auto-refresh, token persistence |
-| [Mobile App](./mobile-app.md) | Active | Capacitor setup for native iOS/Android, PWA manifest |
+| [Context Engineering](./chat/context-engineering.md) | Active | System prompt caching, compaction, priority docs flow |
 
-### RFCs & Proposals
+### Artifacts
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Ingestion Pipeline](./ingestion-pipeline.md) | RFC | Queue-based ingestion redesign |
-| [Sharing Permissions](./sharing-permissions.md) | RFC | Per-resource permissions model |
-| [Org Permissions System](./org-permissions-system.md) | Proposal | Multi-org, roles, guests |
+| [Universal Artifact System](./artifacts/universal-artifact-system.md) | Active | Code, documents, sandboxes -- creation, versioning, editing |
+| [Artifact System v2](./artifacts/artifact-system-v2.md) | Active | Artifact types, tool registry, missing tools |
+
+### Library
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Library Hub & Sharing](./library/library-hub-and-sharing.md) | Active | Product vision -- library as the central hub |
+| [Content Organization](./library/content-organization.md) | Active | Collections, tags, smart filters, AI classification (technical) |
+| [Ingestion Pipeline](./library/ingestion-pipeline.md) | RFC | Queue-based ingestion redesign |
+
+### Sharing
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Sharing Permissions](./sharing/sharing-permissions.md) | RFC | Per-resource permissions model |
+
+### Organization
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Org Permissions System](./organization/org-permissions-system.md) | Proposal | Multi-org, roles, guests |
+
+### Integrations
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Connector Persistence](./integrations/connector-persistence.md) | Active | ConnectionManager, OAuth auto-refresh, token persistence |
+
+### Notifications
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Notification Events](./notifications/notification-events.md) | Active | Notification event types and delivery |
+
+### Platform
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Brand Guide](./platform/brand-guide.md) | Active | Colors, fonts, NeuralDots animation, component patterns |
+| [Mobile App](./platform/mobile-app.md) | Active | Capacitor setup for native iOS/Android, PWA manifest |
+| [Tool Result Cards](./platform/tool-result-cards.md) | Active | Universal card component for tool outputs, citation bar |
+| [Auto-Registry Strategy](./platform/auto-registry-strategy.md) | Active | Convention-over-configuration auto-generation plan |
+
+### Registries
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Tool Registry](./registries/tool-registry.md) | Active | Built-in tool catalog and MCP integrations |
+| [DB Schema Reference](./registries/db-schema-reference.md) | Active | Database tables, columns, relationships |
+| [API Reference](./registries/api-reference.md) | Active | API routes documentation |
 
 ### Historical
 
@@ -53,6 +92,16 @@ These docs are superseded by newer documents. Kept for reference in `archive/`.
 | [accounts-orgs-sharing.md](./archive/accounts-orgs-sharing.md) | org-permissions-system.md |
 | [sharing-system.md](./archive/sharing-system.md) | sharing-permissions.md + library-hub-and-sharing.md |
 | [diagrams.md](./archive/diagrams.md) | Inline Mermaid diagrams in newer docs |
+
+---
+
+## Generated Documentation
+
+Auto-generated reference docs live in [`docs/generated/`](../generated/README.md):
+
+| File | Source | Command |
+|------|--------|---------|
+| [tools.md](../generated/tools.md) | `src/lib/ai/tools/_metadata.ts` | `pnpm tools:generate` |
 
 ---
 
