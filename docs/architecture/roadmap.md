@@ -82,26 +82,43 @@
 
 ---
 
+## Known Bugs (Fix Before New Features)
+
+| Bug | Area | Details |
+|-----|------|---------|
+| Skills slash commands not appearing | Skills/Chat | Newly added skills don't show in slash command menu until page refresh |
+| Connectors "Add Integration" button broken | Connectors | Button opens nothing — no modal/page showing available integrations |
+| Scheduling not working end-to-end | Scheduling | Cron triggers but doesn't create background chats or send notifications |
+| Skill editor not using TipTap | Skills | Editor needs same TipTap editor as chat/documents with save capability |
+| MCP server connection not discoverable | Connectors | Users can't find or add MCP servers easily |
+
+---
+
 ## What's Not Built (Prioritized)
 
-### P0 — Next Up
+### P0 — Next Up (Current Sprint)
 
-**1. Context library polish**
+**1. /overview showcase page**
+- Full product overview at `/overview` showing all capabilities
+- Live mini-component demos: chat, sandbox, TipTap, interview tool, web search
+- Simulated multi-user chat, artifact tabs (code/document/sandbox)
+- NeuralDots animation throughout
+- Scheduling vision, MCP connectors, sharing, organizations
+- Current status + roadmap narrative (positive framing, not "broken" list)
+- Story of what the platform is and where it's going
+
+**2. Context library polish**
 - Content detail view (full content, metadata, tags, related items on click)
 - Inline preview (hover card or side panel)
 - Bulk actions (select multiple → tag, move, archive, delete)
 - Empty states for collections, tags, search
 - Filter persistence (remember last state)
 - Visual polish (card sizing, spacing, responsive)
+- Consistent content type icons across library, chat, search
 
-**2. Sharing for all content types**
-- Public share links for artifacts (like conversation shares)
-- Public share links for context items/documents
-- Share dialog wired up for artifacts + context items (API exists)
-- "Shared with me" sidebar section
-- Download/export (individual items, bulk ZIP, artifact project ZIP)
-
-**3. Ingestion pipeline refactor**
+**3. Connectors & ingestion overhaul**
+- Fix "Add Integration" button — modal showing all available integrations (Nango + MCP)
+- Connector status page: sync history, error details, last sync time
 - Break monolithic sync route (1,285 lines) into queue-based pipeline
 - Semantic chunking (recursive 400-512 tokens, not 12K truncation)
 - Incremental sync (delta detection, not full re-sync)
@@ -109,44 +126,103 @@
 - Retry/dead-letter queue for failed items
 - Content deduplication across sources
 
+**4. Sharing for all content types**
+- Public share links for artifacts (like conversation shares)
+- Public share links for context items/documents
+- Share dialog wired up for artifacts + context items (API exists)
+- "Shared with me" sidebar section
+- Download/export (individual items, bulk ZIP, artifact project ZIP)
+- Sharing flow diagrams in docs (between people, between orgs)
+
+**5. Organization management**
+- Org dashboard: member count, content stats, usage, costs
+- Org-level rules & priorities (like personal rules but for all members)
+- Org activity feed: who added what, shared what, who's active
+- Org library view (what the org collectively knows)
+- "See all shared things" view
+- Proper member management polish (role UI, invite flow)
+
 ### P1 — Important
 
-**4. Smart collections**
-- JSONB filter execution engine
+**6. Scheduling system (rebuild)**
+- Scheduling = start a background chat with a prompt on a cron
+- Chat runs autonomously, generates artifacts, stores results
+- Notify user via desktop (macOS) + iOS push (Capacitor)
+- Notification includes link to chat + any sandbox/artifact created
+- Visual flow preview: show the scheduled process as an artifact
+- Schedule management page: create, edit, pause, delete, view history
+- Example: "Every day 9am: news + weather → sandbox dashboard → notify me"
+
+**7. Notifications & inbox system**
+- Desktop notifications (macOS Notification Center)
+- iOS push notifications (Capacitor plugin)
+- Notification types: scheduled tasks, chat mentions, library changes, sharing, approvals
+- Inbox page: unified feed of all notifications
+- Notification preferences (which types, which channels)
+- Unread badges on sidebar
+
+**8. Skills system polish**
+- Fix slash commands not appearing for new skills
+- Skill creator modeled after skills.sh
+- TipTap editor for skill content (same editor as chat/documents)
+- Save/edit capability in skill editor
+- Skill templates and marketplace integration
+
+**9. Smart collections & AI features**
+- JSONB filter execution engine for smart collections
 - UI to create/edit smart collections
 - Built-in smart collections (Needs Review, Added This Week, Untagged, Stale)
-
-**5. AI auto-classification pipeline**
-- Background cron job on ingestion
-- Auto-tag, auto-categorize every new item
+- Background cron for auto-classification on ingestion
 - Staleness scoring (content-type-specific decay)
 - Related items precomputation (embedding similarity)
 
-**6. Multi-user collaborative chat**
+**10. Multi-user collaborative chat**
 - Multiple users in one conversation
-- @mention users (notify + include in context)
+- @mention users → they get notified and can respond in the chat
+- @mention AI → responds when tagged
+- "AI watching" toggle → AI monitors and jumps in when relevant
 - Real-time presence (who's online, typing indicator)
-- AI responds when @mentioned or addressed
+- Conversation roles (owner, participant, viewer)
 
-### P2 — Future
+### P2 — Future / Platform
 
-**7. Per-resource permissions**
+**11. Per-resource permissions & approvals**
 - View/Comment/Edit/Admin per item
 - Permission inheritance (org default → collection → item)
+- Approval workflows for document edits, scheduled tasks
+- Pending approvals in inbox/notifications
+- Hierarchy-based approval routing
 - Admin controls (disable public sharing, audit log)
 
-**8. Multi-org support**
+**12. Multi-org support**
 - Users join multiple orgs
 - Org switcher
 - Guest accounts (free, access only shared items)
 - Cross-org sharing
+- Org-to-org content sharing
 
-**9. Advanced features**
+**13. API/SDK layer**
+- All features accessible via documented API
+- API-first architecture (frontend is just one consumer)
+- SDK packages (TypeScript, Python) for building on Layers
+- API documentation + playground
+- Rate limiting, API keys, usage tracking per consumer
+
+**14. Testing suite**
+- Comprehensive test coverage: frontend, API, chat routes
+- Integration tests with real Supabase
+- Browser tests (Playwright/Expect) for critical flows
+- Test any new feature/variation automatically
+- CI pipeline: typecheck + unit + integration + e2e on every push
+
+**15. Advanced features**
 - Version diff (side-by-side comparison)
 - Artifact search (across all artifacts + versions)
 - Sandbox cost tracking UI (live timer, cumulative cost)
 - Sandbox console (terminal for dev server logs)
 - Content marketplace (publish collections as knowledge packs)
+- Voice/live transcription (Gemini Live API)
+- Vertical templates (HR, customer support, research)
 
 ---
 
