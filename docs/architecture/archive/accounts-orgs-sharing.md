@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED** — This document is outdated. See [org-permissions-system.md](../org-permissions-system.md) for current information.
+> Moved to archive on 2026-04-06.
+
+---
+
 # Accounts, Organizations & Content Sharing — Architecture Document
 
 > Last updated: 2026-04-02

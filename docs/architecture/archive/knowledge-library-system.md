@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED** — This document is outdated. See [knowledge-library-system-v2.md](./knowledge-library-system-v2.md) for current information.
+> Moved to archive on 2026-04-06.
+
+---
+
 # Knowledge Library & Context Engineering — Architecture Document
 
 > Status: Research & Planning

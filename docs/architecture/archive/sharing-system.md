@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED** — This document is outdated. See [sharing-permissions.md](../sharing-permissions.md) and [library-hub-and-sharing.md](../library-hub-and-sharing.md) for current information.
+> Moved to archive on 2026-04-06.
+
+---
+
 # Sharing System — Architecture Document
 
 > Status: Implemented (basic)

@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED** — This document is outdated. See [content-organization.md](../content-organization.md) and [library-hub-and-sharing.md](../library-hub-and-sharing.md) for current information.
+> Moved to archive on 2026-04-06.
+
+---
+
 # Knowledge Library & Context Engineering — Complete Requirements
 
 > Status: Research & Planning

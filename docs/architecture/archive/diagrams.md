@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED** — This document is outdated. Newer docs have inline Mermaid diagrams where needed.
+> Moved to archive on 2026-04-06.
+
+---
+
 # Context Engineering — Architecture Diagrams
 
 ## 1. Content Flow (Current → Target)
