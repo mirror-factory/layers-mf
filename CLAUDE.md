@@ -49,6 +49,16 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Consu
 |  desc: Claude API + Anthropic SDK patterns
 |  use when: adding AI features via Anthropic SDK
 
+## Changelog
+
+After every `git push`, update the changelog:
+1. Add new entries to `src/data/changelog.ts` for all features, fixes, and docs changes
+2. Group changes by type (feat/fix/docs/refactor)
+3. Write clear, user-facing descriptions (not commit messages)
+4. Update the version number if shipping a significant batch
+
+The changelog page is at `/changelog`. The overview page at `/overview` also shows current status.
+
 ## Architecture
 
 - `src/app/` — App Router pages and layouts

@@ -30,6 +30,8 @@ import {
   FileCode2,
   Share2,
   BookOpen,
+  LayoutDashboard,
+  ScrollText,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
@@ -45,6 +47,8 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/skills", label: "Skills", icon: Puzzle },
   { href: "/sandbox", label: "Sandbox", icon: Terminal },
   { href: "/how-it-works", label: "How It Works", icon: BookOpen },
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
+  { href: "/changelog", label: "Changelog", icon: ScrollText },
 ];
 
 const COMING_SOON_ITEMS: NavItem[] = [
