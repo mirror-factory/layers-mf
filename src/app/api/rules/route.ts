@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,11 +18,15 @@ export async function GET() {
   if (!member)
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
+  const { searchParams } = new URL(request.url);
+  const scope = searchParams.get("scope") ?? "personal";
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("rules")
     .select("*")
     .eq("org_id", member.org_id)
+    .eq("scope", scope)
     .order("priority", { ascending: true });
 
   if (error)
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const body = await request.json();
-  const { text, priority } = body;
+  const { text, priority, scope } = body;
 
   if (!text?.trim()) {
     return NextResponse.json(
@@ -56,6 +60,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const ruleScope = scope === "org" ? "org" : "personal";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -65,6 +71,8 @@ export async function POST(request: NextRequest) {
       text: text.trim(),
       priority: priority ?? 0,
       is_active: true,
+      scope: ruleScope,
+      applies_to_all: ruleScope === "org",
     })
     .select("*")
     .single();

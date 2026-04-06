@@ -7,7 +7,7 @@ import { GranolaClient, LinearApiClient, NotionClient, GmailClient, DriveClient 
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
-import { loadRules, formatRulesForPrompt } from "@/lib/ai/priority-docs";
+import { loadPersonalRules, loadOrgRules, formatRulesForPrompt, formatOrgRulesForPrompt } from "@/lib/ai/priority-docs";
 import { createCompactionMiddleware } from "@/lib/ai/compaction-middleware";
 import { getContextWindow } from "@/lib/ai/token-counter";
 import { createHash } from "crypto";
@@ -619,8 +619,11 @@ export async function POST(request: NextRequest) {
   const allTools = { ...baseTools, ...mcpTools };
 
   // Build system prompt with caching — rules + visual instructions are stable per org
-  const orgRules = await loadRules(supabase, orgId);
-  const rulesSection = formatRulesForPrompt(orgRules);
+  const [personalRules, orgScopeRules] = await Promise.all([
+    loadPersonalRules(supabase, orgId),
+    loadOrgRules(supabase, orgId),
+  ]);
+  const rulesSection = formatRulesForPrompt(personalRules) + formatOrgRulesForPrompt(orgScopeRules);
   const rulesHash = createHash("md5").update(rulesSection + visualLevel).digest("hex");
   const cacheKey = `${orgId}:${rulesHash}`;
 

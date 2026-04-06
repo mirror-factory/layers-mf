@@ -28,15 +28,21 @@ export type Rule = {
 
 export async function loadRules(
   supabase: SupabaseClient,
-  orgId: string
+  orgId: string,
+  scope?: 'personal' | 'org'
 ): Promise<Rule[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  let query = (supabase as any)
     .from('rules')
     .select('*')
     .eq('org_id', orgId)
-    .eq('is_active', true)
-    .order('priority', { ascending: true });
+    .eq('is_active', true);
+
+  if (scope) {
+    query = query.eq('scope', scope);
+  }
+
+  const { data, error } = await query.order('priority', { ascending: true });
 
   if (error) {
     console.error('[priority-docs] failed to load rules:', error.message);
@@ -45,8 +51,28 @@ export async function loadRules(
   return (data ?? []) as Rule[];
 }
 
+export async function loadOrgRules(
+  supabase: SupabaseClient,
+  orgId: string
+): Promise<Rule[]> {
+  return loadRules(supabase, orgId, 'org');
+}
+
+export async function loadPersonalRules(
+  supabase: SupabaseClient,
+  orgId: string
+): Promise<Rule[]> {
+  return loadRules(supabase, orgId, 'personal');
+}
+
 export function formatRulesForPrompt(rules: Rule[]): string {
   if (rules.length === 0) return '';
   const lines = rules.map(r => `- ${r.text}`).join('\n');
   return `\n\n## User Rules\nThe organization has defined these rules — you MUST follow them:\n${lines}\n`;
+}
+
+export function formatOrgRulesForPrompt(rules: Rule[]): string {
+  if (rules.length === 0) return '';
+  const lines = rules.map(r => `- ${r.text}`).join('\n');
+  return `\n\n## Organization Rules\nThese rules apply to ALL members and conversations — you MUST follow them:\n${lines}\n`;
 }
