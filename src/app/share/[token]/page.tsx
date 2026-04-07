@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { NeuralDots } from "@/components/ui/neural-dots";
+import { ShareSignupCTA } from "@/components/share-signup-cta";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -119,6 +120,8 @@ export default async function SharedChatPage({
           Powered by <span className="text-primary font-medium">Layers</span> &middot; AI OS for knowledge teams
         </p>
       </footer>
+
+      <ShareSignupCTA />
     </div>
   );
 }

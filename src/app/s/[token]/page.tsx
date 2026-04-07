@@ -2,6 +2,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { Badge } from "@/components/ui/badge";
+import { ShareSignupCTA } from "@/components/share-signup-cta";
 import type { Metadata } from "next";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -279,6 +280,8 @@ function SharedPageShell({
           &middot; AI OS for knowledge teams
         </p>
       </footer>
+
+      <ShareSignupCTA />
     </div>
   );
 }

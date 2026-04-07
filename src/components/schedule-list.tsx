@@ -15,6 +15,10 @@ import {
   Pencil,
   AlertCircle,
   X,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cronToHuman, isValidCron } from "@/lib/cron";
@@ -739,6 +743,405 @@ function ScheduleRow({
   );
 }
 
+// ── Calendar Helpers ──
+
+type ViewMode = "list" | "calendar";
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfWeek(year: number, month: number): number {
+  return new Date(year, month, 1).getDay();
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function getScheduleDaysInMonth(
+  schedule: ScheduledAction,
+  year: number,
+  month: number,
+): number[] {
+  const cron = schedule.schedule;
+  const days: number[] = [];
+  const daysInMonth = getDaysInMonth(year, month);
+
+  if (cron.startsWith("once:")) {
+    const dateStr = cron.replace("once:", "");
+    const date = new Date(dateStr);
+    if (date.getFullYear() === year && date.getMonth() === month) {
+      days.push(date.getDate());
+    }
+    return days;
+  }
+
+  const parts = cron.split(" ");
+  if (parts.length !== 5) return days;
+
+  const [minutePart, hourPart, , , dowPart] = parts;
+
+  // Interval schedules (every N hours/minutes) -- show on all days
+  if (
+    (minutePart?.startsWith("*/") && hourPart === "*") ||
+    (hourPart?.startsWith("*/") && minutePart === "0")
+  ) {
+    for (let d = 1; d <= daysInMonth; d++) days.push(d);
+    return days;
+  }
+
+  // Weekly with specific days
+  if (dowPart && dowPart !== "*") {
+    const cronDays = dowPart.split(",").map((d) => parseInt(d, 10));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      if (cronDays.includes(date.getDay())) {
+        days.push(d);
+      }
+    }
+    return days;
+  }
+
+  // Daily -- show on all days
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+  return days;
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Color palette for schedule dots (deterministic by index)
+const DOT_COLORS = [
+  "bg-primary",
+  "bg-green-500",
+  "bg-blue-500",
+  "bg-yellow-500",
+  "bg-purple-500",
+  "bg-pink-500",
+  "bg-orange-500",
+  "bg-cyan-500",
+];
+
+function getScheduleColor(index: number): string {
+  return DOT_COLORS[index % DOT_COLORS.length] ?? "bg-primary";
+}
+
+function formatComingUpTime(dateStr: string | null): string {
+  if (!dateStr) return "--";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+
+  if (diffMs < 0) return "overdue";
+  if (diffMs < 60_000) return "in < 1 min";
+  if (diffMs < 3_600_000) {
+    const mins = Math.round(diffMs / 60_000);
+    return `in ${mins} min${mins !== 1 ? "s" : ""}`;
+  }
+  if (diffMs < 86_400_000) {
+    const hrs = Math.round(diffMs / 3_600_000);
+    return `in ${hrs} hour${hrs !== 1 ? "s" : ""}`;
+  }
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (isSameDay(date, tomorrow)) {
+    return `tomorrow ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  }
+
+  const days = Math.round(diffMs / 86_400_000);
+  return `in ${days} day${days !== 1 ? "s" : ""}`;
+}
+
+// ── Schedule Calendar ──
+
+function ScheduleCalendar({
+  schedules,
+  timezone,
+}: {
+  schedules: ScheduledAction[];
+  timezone: string;
+}) {
+  const now = new Date();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState<number | null>(now.getDate());
+
+  const activeSchedules = schedules.filter((s) => s.status === "active");
+
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayOfWeek(viewYear, viewMonth);
+  const today = new Date();
+  const isCurrentMonth =
+    today.getFullYear() === viewYear && today.getMonth() === viewMonth;
+
+  // Build a map: day number -> list of schedule indices that run on that day
+  const dayScheduleMap = useMemo(() => {
+    const map: Record<number, number[]> = {};
+    activeSchedules.forEach((schedule, idx) => {
+      const days = getScheduleDaysInMonth(schedule, viewYear, viewMonth);
+      days.forEach((d) => {
+        if (!map[d]) map[d] = [];
+        map[d].push(idx);
+      });
+    });
+    return map;
+  }, [activeSchedules, viewYear, viewMonth]);
+
+  const goToPrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear(viewYear - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const goToNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewYear(viewYear + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const goToToday = () => {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+    setSelectedDay(today.getDate());
+  };
+
+  // Schedules for selected day
+  const selectedDaySchedules = selectedDay
+    ? (dayScheduleMap[selectedDay] ?? []).map((idx) => activeSchedules[idx]).filter(Boolean)
+    : [];
+
+  // Coming up: next 5 scheduled runs
+  const comingUp = useMemo(() => {
+    return activeSchedules
+      .filter((s) => s.next_run_at)
+      .sort((a, b) => {
+        const aTime = new Date(a.next_run_at!).getTime();
+        const bTime = new Date(b.next_run_at!).getTime();
+        return aTime - bTime;
+      })
+      .slice(0, 5);
+  }, [activeSchedules]);
+
+  // Blank cells before the first day
+  const blanks: null[] = Array.from({ length: firstDay }, () => null);
+  const dayCells: (number | null)[] = [
+    ...blanks,
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goToPrevMonth}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <h3 className="text-sm font-medium min-w-[140px] text-center">
+            {MONTH_NAMES[viewMonth]} {viewYear}
+          </h3>
+          <button
+            onClick={goToNextMonth}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        {!isCurrentMonth && (
+          <button
+            onClick={goToToday}
+            className="text-xs text-primary hover:underline"
+          >
+            Today
+          </button>
+        )}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="border rounded-lg overflow-hidden">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 border-b bg-muted/30">
+          {WEEKDAY_HEADERS.map((day) => (
+            <div
+              key={day}
+              className="px-1 py-2 text-center text-[11px] font-medium text-muted-foreground"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div className="grid grid-cols-7">
+          {dayCells.map((day, i) => {
+            if (day === null) {
+              return <div key={`blank-${i}`} className="h-16 border-b border-r last:border-r-0 bg-muted/10" />;
+            }
+            const isToday = isCurrentMonth && day === today.getDate();
+            const isSelected = day === selectedDay;
+            const scheduleIndices = dayScheduleMap[day] ?? [];
+            const hasSchedules = scheduleIndices.length > 0;
+
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day === selectedDay ? null : day)}
+                className={cn(
+                  "h-16 border-b border-r last:border-r-0 p-1 text-left transition-colors relative",
+                  "hover:bg-accent/30",
+                  isSelected && "ring-2 ring-primary ring-inset bg-primary/5",
+                  !isSelected && !isToday && "bg-background",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-flex items-center justify-center text-xs w-6 h-6 rounded-full",
+                    isToday && "bg-primary text-primary-foreground font-bold",
+                    !isToday && "text-foreground",
+                  )}
+                >
+                  {day}
+                </span>
+                {hasSchedules && (
+                  <div className="flex gap-0.5 mt-0.5 flex-wrap px-0.5">
+                    {scheduleIndices.slice(0, 3).map((idx) => (
+                      <span
+                        key={idx}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          getScheduleColor(idx),
+                        )}
+                      />
+                    ))}
+                    {scheduleIndices.length > 3 && (
+                      <span className="text-[9px] text-muted-foreground leading-none">
+                        +{scheduleIndices.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected day detail */}
+      {selectedDay !== null && (
+        <div className="border rounded-lg p-3 space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground">
+            {MONTH_NAMES[viewMonth]} {selectedDay}, {viewYear}
+          </h4>
+          {selectedDaySchedules.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No schedules on this day.</p>
+          ) : (
+            <div className="space-y-2">
+              {selectedDaySchedules.map((schedule) => {
+                if (!schedule) return null;
+                const idx = activeSchedules.indexOf(schedule);
+                const prompt = getPromptFromSchedule(schedule);
+                return (
+                  <div
+                    key={schedule.id}
+                    className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
+                  >
+                    <span
+                      className={cn(
+                        "mt-1 h-2 w-2 rounded-full shrink-0",
+                        getScheduleColor(idx),
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{schedule.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {cronToHuman(schedule.schedule)}
+                      </p>
+                      {prompt && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {prompt}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Coming Up */}
+      {comingUp.length > 0 && (
+        <div className="border rounded-lg p-3 space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Coming Up
+          </h4>
+          <div className="space-y-2">
+            {comingUp.map((schedule) => {
+              const idx = activeSchedules.indexOf(schedule);
+              const prompt = getPromptFromSchedule(schedule);
+              return (
+                <div
+                  key={schedule.id}
+                  className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
+                >
+                  <span
+                    className={cn(
+                      "mt-1 h-2 w-2 rounded-full shrink-0",
+                      getScheduleColor(idx),
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium truncate">{schedule.name}</p>
+                      <span
+                        className="text-[11px] text-muted-foreground shrink-0"
+                        title={
+                          schedule.next_run_at
+                            ? formatLocalDate(schedule.next_run_at, timezone)
+                            : undefined
+                        }
+                      >
+                        {formatComingUpTime(schedule.next_run_at)}
+                      </span>
+                    </div>
+                    {prompt && (
+                      <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                        {prompt}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main List ──
 
 export function ScheduleList({
@@ -748,6 +1151,7 @@ export function ScheduleList({
 }) {
   const [schedules, setSchedules] = useState(initialSchedules);
   const [tab, setTab] = useState<Tab>("active");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [timezone, setTimezone] = useState("America/New_York");
 
@@ -886,35 +1290,35 @@ export function ScheduleList({
 
   return (
     <div>
-      {/* Header with tabs + create button */}
+      {/* Header with view toggle + create button */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 border-b flex-1">
-          {TABS.map((t) => {
-            const count = schedules.filter((s) => {
-              if (t.value === "completed")
-                return s.status === "completed" || s.status === "failed";
-              return s.status === t.value;
-            }).length;
-            return (
-              <button
-                key={t.value}
-                onClick={() => setTab(t.value)}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
-                  tab === t.value
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-                {count > 0 && (
-                  <span className="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 rounded-lg border p-0.5 bg-muted/30">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <List className="h-3.5 w-3.5" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode("calendar")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                viewMode === "calendar"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Calendar
+            </button>
+          </div>
         </div>
         <Button size="sm" className="ml-4" onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -922,34 +1326,70 @@ export function ScheduleList({
         </Button>
       </div>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Clock className="h-8 w-8 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No {tab} schedules</p>
-          <p className="text-xs mt-1">
-            Create a schedule or ask Granger in chat.
-          </p>
-        </div>
+      {viewMode === "calendar" ? (
+        <ScheduleCalendar schedules={schedules} timezone={timezone} />
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          {filtered.map((schedule) => (
-            <ScheduleRow
-              key={schedule.id}
-              schedule={schedule}
-              timezone={timezone}
-              loading={loadingId === schedule.id}
-              isEditing={editingId === schedule.id}
-              onEdit={() => setEditingId(schedule.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onToggleStatus={() => toggleStatus(schedule.id, schedule.status)}
-              onDelete={() => setDeleteTarget(schedule)}
-              onRunNow={() => runNow(schedule)}
-              onSubmitEdit={(data) => handleEdit(schedule.id, data)}
-              editSubmitting={editSubmitting}
-            />
-          ))}
-        </div>
+        <>
+          {/* Status tabs (list view only) */}
+          <div className="flex gap-1 border-b mb-4">
+            {TABS.map((t) => {
+              const count = schedules.filter((s) => {
+                if (t.value === "completed")
+                  return s.status === "completed" || s.status === "failed";
+                return s.status === t.value;
+              }).length;
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => setTab(t.value)}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+                    tab === t.value
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t.label}
+                  {count > 0 && (
+                    <span className="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* List */}
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Clock className="h-8 w-8 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No {tab} schedules</p>
+              <p className="text-xs mt-1">
+                Create a schedule or ask Granger in chat.
+              </p>
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              {filtered.map((schedule) => (
+                <ScheduleRow
+                  key={schedule.id}
+                  schedule={schedule}
+                  timezone={timezone}
+                  loading={loadingId === schedule.id}
+                  isEditing={editingId === schedule.id}
+                  onEdit={() => setEditingId(schedule.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onToggleStatus={() => toggleStatus(schedule.id, schedule.status)}
+                  onDelete={() => setDeleteTarget(schedule)}
+                  onRunNow={() => runNow(schedule)}
+                  onSubmitEdit={(data) => handleEdit(schedule.id, data)}
+                  editSubmitting={editSubmitting}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Create Dialog */}
