@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       const nextRun = isOneShot ? null : calculateNextCron(schedule.schedule);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      const { error: updateErr } = await (supabase as any)
         .from("scheduled_actions")
         .update({
           last_run_at: new Date().toISOString(),
@@ -193,6 +193,10 @@ export async function GET(request: NextRequest) {
           last_conversation_id: conversationId,
         })
         .eq("id", schedule.id);
+
+      if (updateErr) {
+        console.error(`[schedule] Failed to update schedule ${schedule.id}:`, updateErr.message);
+      }
 
       // 6. Create a notification for the user
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
