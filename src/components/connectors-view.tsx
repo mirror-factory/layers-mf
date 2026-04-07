@@ -258,8 +258,12 @@ function MCPGalleryPanel({
     return () => clearTimeout(timer);
   }, [query, open, fetchRegistry]);
 
-  const popularServers = servers.filter((s) => POPULAR_NAMES.has(s.name));
-  const allServers = servers;
+  // Deduplicate servers by URL (registry may return duplicates)
+  const dedupedServers = Array.from(
+    new Map(servers.map((s) => [s.url, s])).values()
+  );
+  const popularServers = dedupedServers.filter((s) => POPULAR_NAMES.has(s.name));
+  const allServers = dedupedServers;
 
   const handleConnectMCP = async (server: RegistryServer) => {
     setConnecting(true);
@@ -400,7 +404,7 @@ function MCPGalleryPanel({
     const isConnected = connectedServerUrls.has(server.url);
     return (
       <button
-        key={server.name + server.url}
+        key={server.url}
         onClick={() => {
           setSelectedServer(server);
           setMcpError(null);
