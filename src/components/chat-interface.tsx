@@ -2388,7 +2388,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             } : null;
                             return (
                               <MessageStats
-                                model={model}
+                                model={run?.model ?? model}
                                 text={text}
                                 stats={statsData}
                                 className="ml-1"
