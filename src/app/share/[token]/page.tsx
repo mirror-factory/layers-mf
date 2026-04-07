@@ -53,14 +53,15 @@ export default async function SharedChatPage({
 
   const { data: messages } = await sb
     .from("chat_messages")
-    .select("role, parts, created_at")
+    .select("role, content, created_at")
     .eq("conversation_id", share.conversation_id)
     .order("created_at", { ascending: true });
 
   if (!conversation || !messages) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chatMessages = messages as { role: string; parts: any[]; created_at: string }[];
+  const chatMessages = (messages as { role: string; content: any[]; created_at: string }[])
+    .map(m => ({ role: m.role, parts: m.content, created_at: m.created_at }));
 
   return (
     <div className="min-h-screen bg-background">
