@@ -225,8 +225,8 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* Hide global mobile header when chat is showing its own */}
-      <style>{`@media (max-width: 767px) { .sidebar-mobile-header { display: none !important; } }`}</style>
+      {/* Hide global mobile header when chat is showing its own. Remove body bottom padding (chat handles its own). */}
+      <style>{`@media (max-width: 767px) { .sidebar-mobile-header { display: none !important; } body { padding-bottom: 0 !important; } }`}</style>
 
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">

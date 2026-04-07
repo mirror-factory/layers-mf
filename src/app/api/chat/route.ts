@@ -1024,6 +1024,45 @@ export async function POST(request: NextRequest) {
           console.error("[chat] agent_run error:", err);
         }
       }
+
+      // Auto-title untitled conversations (runs in stream onFinish which reliably fires)
+      if (conversationId && lastUserText) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: conv } = await (adminDb as any)
+            .from("conversations")
+            .select("title")
+            .eq("id", conversationId)
+            .single();
+
+          if (!conv?.title) {
+            const { generateText: genTitle } = await import("ai");
+            const { gateway: gw } = await import("@ai-sdk/gateway");
+            const { text: generatedTitle } = await genTitle({
+              model: gw("google/gemini-3.1-flash-lite-preview"),
+              prompt: `Generate a 3-6 word title for this conversation. No quotes, no punctuation at end. Just the title.\n\nUser: ${lastUserText.slice(0, 200)}`,
+              maxOutputTokens: 20,
+            });
+            const title = generatedTitle.trim().slice(0, 80) || lastUserText.slice(0, 50);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (adminDb as any)
+              .from("conversations")
+              .update({ title, updated_at: new Date().toISOString() })
+              .eq("id", conversationId);
+            console.log(`[chat] Auto-titled: "${title}" for conv=${conversationId}`);
+          }
+        } catch (err) {
+          // Fallback: use truncated user message
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (adminDb as any)
+              .from("conversations")
+              .update({ title: lastUserText.slice(0, 50), updated_at: new Date().toISOString() })
+              .eq("id", conversationId)
+              .is("title", null);
+          } catch { /* silent */ }
+        }
+      }
     },
   });
 

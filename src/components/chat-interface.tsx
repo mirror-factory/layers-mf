@@ -1152,28 +1152,31 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         <ToolContent>
           {"input" in part && (() => {
             try {
-              const safeInput = JSON.parse(JSON.stringify(part.input));
-              return <ToolInput input={safeInput} />;
+              const inputStr = JSON.stringify(part.input, null, 2);
+              return (
+                <div className="text-xs text-muted-foreground">
+                  <pre className="whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{inputStr}</pre>
+                </div>
+              );
             } catch {
-              return <ToolInput input={{ _note: "Input contains non-serializable data" }} />;
+              return null;
             }
           })()}
           {isDone && !isApproval && (() => {
-            let safeOutput = output;
-            if (output && typeof output === "object") {
-              try { safeOutput = JSON.parse(JSON.stringify(output)); } catch { safeOutput = { _note: "Output contains non-serializable data" }; }
+            if (errorText) {
+              return <div className="text-xs text-destructive mt-1">{errorText}</div>;
+            }
+            if (output === undefined) return null;
+            let outputStr: string;
+            try {
+              outputStr = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+            } catch {
+              outputStr = "[Output contains non-serializable data]";
             }
             return (
-              <ToolOutput
-                output={
-                  safeOutput !== undefined ? (
-                    <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                      {typeof safeOutput === "string" ? safeOutput : JSON.stringify(safeOutput, null, 2)}
-                    </pre>
-                  ) : null
-                }
-                errorText={errorText}
-              />
+              <div className="text-xs text-muted-foreground mt-1">
+                <pre className="whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{outputStr}</pre>
+              </div>
             );
           })()}
         </ToolContent>
