@@ -48,6 +48,16 @@ body {
   }
 }
 
+/* When chat page is active, hide global mobile header (chat has its own) */
+@media (max-width: 767px) {
+  body.chat-active .sidebar-mobile-header {
+    display: none !important;
+  }
+  body.chat-active {
+    padding-bottom: 0 !important;
+  }
+}
+
 /* Mobile chat text: prevent long URLs/links from overflowing */
 @media (max-width: 767px) {
   /* Streamdown rendered markdown — break long words/URLs */

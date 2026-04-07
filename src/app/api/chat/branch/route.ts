@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
   const adminDb = createAdminClient();
 
   // Create a new conversation
-  const branchTitle = `Branch from: ${sourceConv.title ?? "Untitled"}`;
+  // Use null title so auto-title kicks in after first response
+  const branchTitle = sourceConv.title ? `${sourceConv.title} (branch)` : null;
   const { data: newConv, error: createError } = await adminDb
     .from("conversations")
     .insert({

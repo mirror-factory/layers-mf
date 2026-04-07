@@ -31,6 +31,12 @@ interface Conversation {
 }
 
 export default function ChatPage() {
+  // Add body class to hide global mobile header (chat has its own)
+  useEffect(() => {
+    document.body.classList.add("chat-active");
+    return () => document.body.classList.remove("chat-active");
+  }, []);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const templateParam = searchParams.get("template");
@@ -225,8 +231,7 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* Hide global mobile header when chat is showing its own. Remove body bottom padding (chat handles its own). */}
-      <style>{`@media (max-width: 767px) { .sidebar-mobile-header { display: none !important; } body { padding-bottom: 0 !important; } }`}</style>
+      {/* Hide global mobile header when chat is showing its own */}
 
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">
