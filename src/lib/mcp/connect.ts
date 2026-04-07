@@ -83,13 +83,48 @@ export async function connectMCPServer(options: {
     headers["Authorization"] = `Bearer ${options.apiKey}`;
   }
 
-  const client = await createMCPClient({
-    transport: {
-      type: options.transportType ?? "http",
-      url: options.url,
-      headers,
-    },
-  });
+  // Try connecting with the latest protocol version first, fall back to older versions
+  // Many MCP servers don't support the very latest spec yet
+  const transportConfig = {
+    type: (options.transportType ?? "http") as "http" | "sse",
+    url: options.url,
+    headers,
+  };
+
+  // Try connecting — if protocol version fails, retry with older versions
+  let client;
+  let lastError: Error | null = null;
+
+  // First try with default (latest) protocol version
+  try {
+    client = await createMCPClient({ transport: transportConfig });
+  } catch (err) {
+    lastError = err instanceof Error ? err : new Error(String(err));
+    const msg = lastError.message;
+
+    // If protocol version mismatch, try with explicit older versions
+    if (msg.includes("Unsupported protocol version") || msg.includes("protocol")) {
+      const olderVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
+      for (const version of olderVersions) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          client = await (createMCPClient as any)({
+            transport: transportConfig,
+            protocolVersion: version,
+          });
+          lastError = null;
+          break;
+        } catch (retryErr) {
+          lastError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
+          if (!lastError.message.includes("protocol")) break; // different error
+        }
+      }
+    }
+  }
+
+  if (!client) {
+    throw lastError ?? new Error("Failed to connect to MCP server");
+  }
 
   const tools = await client.tools();
   const toolNames = Object.keys(tools);
