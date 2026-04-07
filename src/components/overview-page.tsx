@@ -994,55 +994,58 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
           ))}
         </div>
 
-        {/* Up Next */}
+        {/* Up Next -- P0 */}
         <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
           <ChevronRight className="h-4 w-4 text-primary" /> Up Next -- P0
         </h3>
-        <div className="space-y-2 mb-10">
-          {[
-            "Context library polish",
-            "Connectors & ingestion overhaul",
-            "Sharing for all content types",
-            "Organization management",
-            "Scheduling system rebuild",
-            "Notifications & inbox",
-          ].map((item, i) => (
+        <div className="space-y-3 mb-10">
+          {([
+            { title: "Context library polish", desc: "Content detail panels, bulk actions (select multiple items to tag, move, archive), empty states, filter persistence across sessions, and responsive grid/list layouts that work on every screen size." },
+            { title: "Connectors & ingestion overhaul", desc: "Replace the monolithic 1,285-line sync route with a queue-based pipeline. Semantic chunking (400-512 tokens, not 12K truncation), incremental sync via webhooks, retry with dead-letter queue, and deduplication across sources." },
+            { title: "Sharing for all content types", desc: "Public share links for artifacts, documents, and context items (not just conversations). Token-protected links with optional passwords and expiry. Email and SMS sharing for people without Layers accounts. Download and export as PDF, DOCX, ZIP." },
+            { title: "Organization management", desc: "Org dashboard showing member count, content stats, AI usage and costs. Org-level rules that apply to every member's chat. Activity feed showing who added, shared, or changed what. The org as a mirror of a person -- its own library, priorities, and identity." },
+            { title: "Scheduling system", desc: "Background chats that run on a cron schedule. The AI executes a prompt autonomously, searches your knowledge base, generates artifacts or sandbox dashboards, and sends you a desktop notification with the link. Example: every morning at 9am, get news + weather + calendar in a dashboard." },
+            { title: "Notifications & inbox", desc: "Unified notification system across desktop, email, and in-app. Triggered by scheduled task completion, content shares, chat mentions, approval requests, integration errors, and credit alerts. Notification preferences per channel and type." },
+          ] as { title: string; desc: string }[]).map((item, i) => (
             <div
-              key={item}
-              className="flex items-center gap-3 rounded-md border border-border/40 bg-card/30 px-3 py-2"
+              key={item.title}
+              className="rounded-lg border border-border/40 bg-card/30 p-4"
             >
-              <span className="text-[10px] font-mono text-primary w-4 text-right">{i + 1}</span>
-              <span className="text-xs text-foreground">{item}</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[10px] font-mono text-primary font-bold w-4 text-right">{i + 1}</span>
+                <span className="text-sm font-semibold text-foreground">{item.title}</span>
+              </div>
+              <p className="text-xs text-muted-foreground ml-7 leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
 
-        {/* On the Horizon */}
+        {/* On the Horizon -- P1/P2 */}
         <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
           <Clock className="h-4 w-4" /> On the Horizon -- P1/P2
         </h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            "Parallel agents & orchestration",
-            "Image generation & media tools",
-            "Content authoring & publishing",
-            "Cross-platform sharing (ChatGPT, Claude MCP, Slack)",
-            "Layers as MCP server",
-            "Token/passcode sharing for non-users",
-            "Multi-user real-time chat",
-            "Per-resource permissions & guest access",
-            "Public API & SDK",
-            "Voice interface & live transcription",
-            "Canvas / whiteboard mode",
-            "Workflow builder",
-          ].map((item) => (
-            <Badge
-              key={item}
-              variant="outline"
-              className="text-[10px] text-muted-foreground border-border/40"
+        <div className="space-y-3">
+          {([
+            { title: "Parallel agents & orchestration", desc: "Spawn multiple sub-agents from a single conversation. Each agent works independently -- one searches Linear, another queries Gmail, another checks the knowledge base -- all in parallel. Results converge back to the orchestrator for synthesis. Agent memory persists across conversations. Different models for different tasks (fast model for search, flagship for code gen)." },
+            { title: "Image generation & media tools", desc: "Generate images via AI Gateway (DALL-E, Stable Diffusion, Flux, Recraft). Edit images (inpaint, outpaint, upscale, background removal). Audio transcription via Whisper, text-to-speech via ElevenLabs. Media stored as artifacts alongside code and documents. Gallery view for image collections." },
+            { title: "Content authoring & publishing", desc: "Create documents, reports, and presentations directly in chat, then publish to multiple destinations. Guided authoring wizard with AI assist. Export to PDF, DOCX, or deploy as a static site on Vercel. Snapshot sandboxes as shareable static pages." },
+            { title: "Cross-platform sharing", desc: "Share Layers content TO other platforms: ChatGPT (as knowledge files), Claude (via MCP -- Layers becomes a server others connect to), Slack (post summaries to channels), Notion (bidirectional sync), Email (formatted content with token-protected links), Discord (bot integration). A guided wizard walks you through connecting Layers to your tools." },
+            { title: "Layers as MCP server", desc: "Expose your organization's knowledge as an MCP endpoint. Other AI tools (Claude Desktop, Cursor, custom apps) connect to Layers and search your documents, meetings, and context -- without leaving their environment. Your knowledge base becomes an API anyone can query." },
+            { title: "Token & passcode sharing", desc: "Share specific content with people who don't have Layers accounts. Generate time-limited access tokens with optional passcodes. A lightweight guest portal renders the content read-only. QR codes for sandbox previews and shared documents. SMS and email delivery of protected links." },
+            { title: "Multi-user real-time chat", desc: "Multiple team members in one conversation with the AI. @mention Bobby -- he gets notified and can respond in the thread. @mention the AI -- it responds when tagged. Toggle on 'AI watching' mode where the AI monitors the conversation and jumps in when it can help, like a team member who's always available." },
+            { title: "Per-resource permissions & approvals", desc: "View, comment, edit, and admin permissions per item. Permission inheritance flows from org defaults to collections to individual items. Approval workflows for document edits and scheduled tasks. Pending approvals surface in the inbox with hierarchy-based routing." },
+            { title: "Public API & SDK", desc: "Every Layers feature accessible via a documented API. TypeScript and Python SDK packages. API playground for testing. Rate limiting and usage tracking per API key. The frontend is just one consumer of the API -- others can build their own interfaces, integrations, and automations on top." },
+            { title: "Voice interface & live transcription", desc: "Live voice conversations with the AI using Gemini Live API. Real-time transcription of meetings and calls. Voice commands for hands-free operation. Audio artifacts stored alongside text and code." },
+            { title: "Canvas & whiteboard", desc: "Visual collaboration space with AI assist. Draw diagrams, map out architectures, brainstorm with sticky notes. The AI can read the canvas and suggest improvements, generate code from diagrams, or turn sketches into artifacts." },
+            { title: "Workflow builder", desc: "Visual tool for creating multi-step automations. Drag-and-drop nodes: triggers (schedule, webhook, event), actions (search, generate, share, notify), conditions (if/then branching). Connect tools into pipelines that run autonomously. Like Zapier but with your AI and your knowledge base." },
+          ] as { title: string; desc: string }[]).map((item) => (
+            <div
+              key={item.title}
+              className="rounded-lg border border-border/20 bg-card/20 p-4"
             >
-              {item}
-            </Badge>
+              <p className="text-sm font-medium text-foreground mb-1">{item.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+            </div>
           ))}
         </div>
       </section>
