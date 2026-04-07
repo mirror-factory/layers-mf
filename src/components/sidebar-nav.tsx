@@ -191,7 +191,7 @@ export function SidebarNav({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0",
-          isVisuallyCollapsed ? "w-[48px]" : "w-56",
+          isVisuallyCollapsed ? "md:w-[48px] w-full" : "md:w-56 w-full",
           open ? "translate-x-0" : "-translate-x-full"
         )}
         onMouseEnter={() => setHovered(true)}

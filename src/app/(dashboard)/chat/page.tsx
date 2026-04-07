@@ -143,8 +143,8 @@ export default function ChatPage() {
       {/* Sidebar — full-screen on mobile, side panel on desktop */}
       <aside
         className={cn(
-          "fixed inset-0 top-0 z-40 flex flex-col bg-card transition-transform duration-200",
-          "md:static md:inset-auto md:w-64 md:shrink-0 md:border-r",
+          "fixed inset-x-0 bottom-0 top-[53px] z-30 flex flex-col bg-card transition-transform duration-200",
+          "md:static md:inset-auto md:top-auto md:w-64 md:shrink-0 md:border-r md:z-auto",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           panelVisible ? "md:translate-x-0" : "md:hidden"
         )}

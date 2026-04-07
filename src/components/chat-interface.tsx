@@ -2943,18 +2943,138 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
             return (
               <>
-                {/* Mobile: back button header */}
-                <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b shrink-0">
-                  <button
-                    onClick={() => setActiveArtifact(null)}
-                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
-                    aria-label="Close artifact"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span>Back to chat</span>
-                  </button>
-                  <div className="flex-1" />
-                  <span className="text-xs font-medium truncate max-w-[50%]">{displayName}</span>
+                {/* Mobile: simplified toolbar with back, filename, and actions dropdown */}
+                <div className="md:hidden flex flex-col border-b shrink-0">
+                  {/* Row 1: Back, filename, actions menu, close */}
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <button
+                      onClick={() => setActiveArtifact(null)}
+                      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px] shrink-0"
+                      aria-label="Back to chat"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Back</span>
+                    </button>
+                    <span className="flex-1 text-sm font-medium truncate text-center">{displayName}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center justify-center rounded-md min-h-[44px] min-w-[44px] p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="More actions">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {activeArtifact.type !== "document" && activeArtifact.artifactId && (
+                          <DropdownMenuItem
+                            disabled={codeSaving}
+                            onClick={async () => {
+                              if (!activeArtifact.artifactId) return;
+                              if (displayCode === activeArtifact.code) return;
+                              setCodeSaving(true);
+                              try {
+                                await fetch(`/api/artifacts/${activeArtifact.artifactId}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ content: displayCode }),
+                                });
+                                const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ content: displayCode, change_type: "manual_edit", change_summary: "Manual save" }),
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.new_version) {
+                                    setActiveArtifact((prev) => prev ? { ...prev, code: displayCode, currentVersion: data.new_version } : prev);
+                                  }
+                                }
+                              } catch {} finally { setCodeSaving(false); }
+                            }}
+                          >
+                            <Save className="h-4 w-4 mr-2" /> Save
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.previewUrl && (
+                          <DropdownMenuItem asChild>
+                            <a href={activeArtifact.previewUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-2" /> Open in new tab
+                            </a>
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.previewUrl && (
+                          <DropdownMenuItem
+                            disabled={sandboxRestarting}
+                            onClick={async () => {
+                              setSandboxRestarting(true);
+                              setSandboxStopped(false);
+                              setArtifactViewMode("preview");
+                              setPreviewError(null);
+                              setPreviewRetryCount(0);
+                              try {
+                                const endpoint = activeArtifact.artifactId
+                                  ? `/api/sandbox/${activeArtifact.artifactId}`
+                                  : "/api/sandbox/restart";
+                                const body = activeArtifact.artifactId
+                                  ? {}
+                                  : { snapshotId: activeArtifact.snapshotId ?? undefined, runCommand: activeArtifact.runCommand ?? "npm start", exposePort: activeArtifact.exposePort ?? 5173, files: activeArtifact.files };
+                                const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.previewUrl) setActiveArtifact((prev) => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                }
+                              } catch {} finally { setSandboxRestarting(false); }
+                            }}
+                          >
+                            <Zap className="h-4 w-4 mr-2" /> {sandboxRestarting ? "Restarting..." : "Restart sandbox"}
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.previewUrl && !sandboxStopped && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (activeArtifact.artifactId) {
+                                try { await fetch(`/api/sandbox/${activeArtifact.artifactId}`, { method: "DELETE" }); } catch {}
+                              }
+                              setSandboxStopped(true);
+                            }}
+                          >
+                            <Square className="h-4 w-4 mr-2" /> Stop sandbox
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.artifactId && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setShowVersionHistory(v => !v)}>
+                              <Clock className="h-4 w-4 mr-2" /> Version history
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {/* Row 2: Code/Preview tabs (non-document only) */}
+                  {activeArtifact.type !== "document" && (
+                    <div className="flex items-center gap-1 px-3 py-1.5 border-t">
+                      <div className="flex rounded-md border bg-background overflow-hidden">
+                        <button
+                          onClick={() => setArtifactViewMode("code")}
+                          className={cn("px-3 py-1.5 text-xs min-h-[36px]", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          Code
+                        </button>
+                        <button
+                          onClick={() => setArtifactViewMode("preview")}
+                          className={cn("px-3 py-1.5 text-xs border-l min-h-[36px]", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          {activeArtifact.previewUrl ? "Live" : "Preview"}
+                        </button>
+                      </div>
+                      {activeArtifact.previewUrl && (
+                        <span className="inline-flex items-center gap-1 ml-auto">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", sandboxStopped ? "bg-muted-foreground" : "bg-green-500")} />
+                          <span className="text-[10px] text-muted-foreground">{sandboxStopped ? "Stopped" : "Running"}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* File tree sidebar — collapsible (desktop only) */}
                 {fileTreeCollapsed ? (
@@ -2993,8 +3113,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Code/Preview area — or TipTap editor for documents */}
                 <div className="flex-1 flex flex-col min-w-0">
-                  {/* Header bar */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b">
+                  {/* Header bar — desktop only (mobile uses simplified toolbar above) */}
+                  <div className="hidden md:flex items-center justify-between px-4 py-2 border-b">
                     <div className="flex items-center gap-2 min-w-0">
                       {activeArtifact.type === "document" ? (
                         <FileText className="h-4 w-4 text-blue-500 shrink-0" />
@@ -3188,95 +3308,96 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </div>
                   </div>
                   {activeArtifact.description && (
-                    <div className="px-4 py-1.5 border-b bg-muted/10">
+                    <div className="hidden md:block px-4 py-1.5 border-b bg-muted/10">
                       <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
                     </div>
                   )}
-                  <div className="flex flex-1 overflow-hidden">
-                    {/* Version history sidebar — slides in from right */}
-                    {showVersionHistory && activeArtifact.artifactId && (
-                      <div className="w-56 shrink-0 border-r overflow-y-auto p-2 bg-muted/10">
-                        <ArtifactVersionHistory
-                          artifactId={activeArtifact.artifactId}
-                          currentVersion={activeArtifact.currentVersion ?? 1}
-                          onRestore={async (newVersion) => {
-                            // Reload artifact content after restore
-                            try {
-                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}`);
-                              if (res.ok) {
-                                const data = await res.json();
-                                setActiveArtifact((prev) => prev ? {
-                                  ...prev,
-                                  code: data.content ?? prev.code,
-                                  currentVersion: data.current_version ?? newVersion,
-                                  files: data.files?.length > 0
-                                    ? data.files.map((f: { file_path: string; content: string }) => ({ path: f.file_path, content: f.content }))
-                                    : prev.files,
-                                } : prev);
-                              }
-                            } catch {
-                              // silent
-                            }
-                          }}
-                          onSelect={async (versionNumber) => {
-                            // Load the selected version's content + files
-                            try {
-                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
-                              if (!res.ok) return;
+                  <div className="flex flex-1 overflow-hidden relative">
+                    {/* Version history — full-screen overlay on mobile, sidebar on desktop */}
+                    {showVersionHistory && activeArtifact.artifactId && (() => {
+                      const versionHistoryProps = {
+                        artifactId: activeArtifact.artifactId!,
+                        currentVersion: activeArtifact.currentVersion ?? 1,
+                        onRestore: async (newVersion: number) => {
+                          try {
+                            const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}`);
+                            if (res.ok) {
                               const data = await res.json();
-                              if (!data.content) return;
-
-                              const versionFiles = data.files && Array.isArray(data.files)
-                                ? data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
-                                    path: f.path ?? f.file_path ?? "",
-                                    content: f.content,
-                                  }))
-                                : undefined;
-
-                              setActiveArtifact((prev) => {
-                                if (!prev) return prev;
-                                return { ...prev, code: data.content, files: versionFiles ?? prev.files };
-                              });
-
-                              // Auto-restart sandbox with selected version's files
-                              if (activeArtifact.previewUrl && versionFiles) {
-                                setPreviewError(null);
-                                setPreviewRetryCount(0);
-                                setSandboxRestarting(true);
-                                try {
-                                  const endpoint = activeArtifact.artifactId
-                                    ? `/api/sandbox/${activeArtifact.artifactId}`
-                                    : "/api/sandbox/restart";
-                                  const body = activeArtifact.artifactId
-                                    ? {}
-                                    : {
-                                        snapshotId: activeArtifact.snapshotId,
-                                        runCommand: activeArtifact.runCommand ?? "npm run dev",
-                                        exposePort: activeArtifact.exposePort ?? 5173,
-                                        files: versionFiles,
-                                      };
-                                  const restartRes = await fetch(endpoint, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify(body),
-                                  });
-                                  if (restartRes.ok) {
-                                    const restartData = await restartRes.json();
-                                    if (restartData.previewUrl) {
-                                      setActiveArtifact((prev) => prev ? { ...prev, previewUrl: restartData.previewUrl } : prev);
-                                    }
-                                  }
-                                } catch { /* silent */ }
-                                setSandboxRestarting(false);
-                                setArtifactViewMode("preview");
-                              }
-                            } catch {
-                              // silent
+                              setActiveArtifact((prev) => prev ? {
+                                ...prev,
+                                code: data.content ?? prev.code,
+                                currentVersion: data.current_version ?? newVersion,
+                                files: data.files?.length > 0
+                                  ? data.files.map((f: { file_path: string; content: string }) => ({ path: f.file_path, content: f.content }))
+                                  : prev.files,
+                              } : prev);
                             }
-                          }}
-                        />
-                      </div>
-                    )}
+                          } catch { /* silent */ }
+                        },
+                        onSelect: async (versionNumber: number) => {
+                          try {
+                            const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            if (!data.content) return;
+                            const versionFiles = data.files && Array.isArray(data.files)
+                              ? data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
+                                  path: f.path ?? f.file_path ?? "",
+                                  content: f.content,
+                                }))
+                              : undefined;
+                            setActiveArtifact((prev) => {
+                              if (!prev) return prev;
+                              return { ...prev, code: data.content, files: versionFiles ?? prev.files };
+                            });
+                            if (activeArtifact.previewUrl && versionFiles) {
+                              setPreviewError(null);
+                              setPreviewRetryCount(0);
+                              setSandboxRestarting(true);
+                              try {
+                                const endpoint = activeArtifact.artifactId
+                                  ? `/api/sandbox/${activeArtifact.artifactId}`
+                                  : "/api/sandbox/restart";
+                                const body = activeArtifact.artifactId
+                                  ? {}
+                                  : { snapshotId: activeArtifact.snapshotId, runCommand: activeArtifact.runCommand ?? "npm run dev", exposePort: activeArtifact.exposePort ?? 5173, files: versionFiles };
+                                const restartRes = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                                if (restartRes.ok) {
+                                  const restartData = await restartRes.json();
+                                  if (restartData.previewUrl) setActiveArtifact((prev) => prev ? { ...prev, previewUrl: restartData.previewUrl } : prev);
+                                }
+                              } catch { /* silent */ }
+                              setSandboxRestarting(false);
+                              setArtifactViewMode("preview");
+                            }
+                          } catch { /* silent */ }
+                        },
+                      };
+                      return (
+                        <>
+                          {/* Mobile: full-screen overlay */}
+                          <div className="md:hidden fixed inset-0 z-[60] bg-background flex flex-col">
+                            <div className="flex items-center justify-between px-3 py-2 border-b safe-area-top">
+                              <span className="text-sm font-medium">Version History</span>
+                              <button
+                                onClick={() => setShowVersionHistory(false)}
+                                className="inline-flex items-center justify-center rounded-md min-h-[44px] min-w-[44px] p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                aria-label="Close version history"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2">
+                              <ArtifactVersionHistory {...versionHistoryProps} />
+                            </div>
+                          </div>
+                          {/* Desktop: sidebar */}
+                          <div className="hidden md:block w-56 shrink-0 border-r overflow-y-auto p-2 bg-muted/10">
+                            <ArtifactVersionHistory {...versionHistoryProps} />
+                          </div>
+                        </>
+                      );
+                    })()}
                     <div className="flex-1 overflow-auto">
                     {activeArtifact.type === "document" ? (
                       <DocumentArtifactEditor

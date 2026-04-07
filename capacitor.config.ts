@@ -14,6 +14,7 @@ const config: CapacitorConfig = {
     contentInset: "automatic",
     preferredContentMode: "mobile",
     scheme: "Granger",
+    backgroundColor: "#0b0f0e",
   },
   plugins: {},
   // Custom native plugins registered via CAPBridgedPlugin:
