@@ -57,7 +57,11 @@ const ALLOWED_MODELS = new Set([
   "openai/gpt-5-nano",
   "google/gemini-3.1-flash-lite-preview",
   // Local (Ollama — dev only, requires Ollama running on localhost:11434)
+  // Any ollama/ prefix model is accepted via isOllamaModel() check
+  "ollama/qwen3:8b",
   "ollama/gemma4:26b",
+  "ollama/qwen3.5:27b",
+  "ollama/llama3.2-vision:11b",
   // Legacy (in case old conversations reference these)
   "openai/gpt-4o-mini",
   "openai/gpt-4o",
@@ -459,7 +463,8 @@ export async function POST(request: NextRequest) {
 
   // Model comes from header (dynamic ref) with body fallback
   const requestedModel = request.headers.get("x-model") || (body.model as string) || "google/gemini-3.1-flash-lite-preview";
-  const modelId = ALLOWED_MODELS.has(requestedModel)
+  // Accept any ollama/ prefixed model (local dev) + cloud models from allowed list
+  const modelId = (ALLOWED_MODELS.has(requestedModel) || requestedModel.startsWith("ollama/"))
     ? requestedModel
     : "google/gemini-3.1-flash-lite-preview";
   if (requestedModel !== modelId) {

@@ -76,17 +76,53 @@ const CLOUD_MODELS = [
   { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite", tier: "fast" },
 ] as const;
 
-const LOCAL_MODELS = [
-  { id: "ollama/gemma4:26b", label: "Gemma 4 26B (Local)", tier: "local" },
-] as const;
+const STATIC_LOCAL_MODELS = [
+  { id: "ollama/qwen3:8b", label: "Qwen 3 8B", tier: "local" },
+  { id: "ollama/gemma4:26b", label: "Gemma 4 26B", tier: "local" },
+  { id: "ollama/qwen3.5:27b", label: "Qwen 3.5 27B", tier: "local" },
+  { id: "ollama/llama3.2-vision:11b", label: "Llama 3.2 Vision 11B", tier: "local" },
+];
 
-// Local model detection happens client-side only to avoid hydration mismatch
-function useIsLocal() {
+// Detect which local models are actually loaded in Ollama
+function useLocalModels() {
   const [isLocal, setIsLocal] = useState(false);
+  const [availableModels, setAvailableModels] = useState<typeof STATIC_LOCAL_MODELS>([]);
+
   useEffect(() => {
-    setIsLocal(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const local = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    setIsLocal(local);
+    if (!local) return;
+
+    // Query Ollama for available models
+    fetch("http://localhost:11434/api/tags")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.models) return;
+        const ollamaNames = new Set((data.models as { name: string }[]).map(m => m.name));
+        // Filter static list to only show models that are actually pulled
+        const available = STATIC_LOCAL_MODELS.filter(m => {
+          const ollamaId = m.id.replace("ollama/", "");
+          return ollamaNames.has(ollamaId);
+        });
+        // Also add any Ollama models not in our static list
+        for (const m of data.models as { name: string; size: number }[]) {
+          const id = `ollama/${m.name}`;
+          if (!STATIC_LOCAL_MODELS.some(s => s.id === id)) {
+            available.push({
+              id,
+              label: `${m.name} (${(m.size / 1e9).toFixed(0)}GB)`,
+              tier: "local",
+            });
+          }
+        }
+        setAvailableModels(available);
+      })
+      .catch(() => {
+        // Ollama not running — show static list
+        setAvailableModels(STATIC_LOCAL_MODELS);
+      });
   }, []);
-  return isLocal;
+  return { isLocal, availableModels };
 }
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
@@ -1546,14 +1582,14 @@ interface ChatInterfaceInnerProps {
 }
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
-  const isLocal = useIsLocal();
-  const MODELS = isLocal ? [...CLOUD_MODELS, ...LOCAL_MODELS] : CLOUD_MODELS;
+  const { isLocal, availableModels: localModels } = useLocalModels();
+  const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
 
   // Switch to local model once we detect localhost (after hydration)
   useEffect(() => {
     if (isLocal && model === "google/gemini-3.1-flash-lite-preview") {
-      setModel("ollama/gemma4:26b");
+      setModel("ollama/qwen3:8b");
     }
   }, [isLocal]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showContextBar, setShowContextBar] = useState(false);
@@ -2737,7 +2773,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             <SelectContent>
                               {MODELS.map((m) => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">
-                                  {m.label}
+                                  <span className="flex items-center gap-1.5">
+                                    {m.tier === "local" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />}
+                                    {m.label}
+                                    {m.tier === "local" && <span className="text-[9px] text-emerald-400 font-medium ml-1">LOCAL</span>}
+                                  </span>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -2842,7 +2882,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             <SelectContent>
                               {MODELS.map((m) => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">
-                                  {m.label}
+                                  <span className="flex items-center gap-1.5">
+                                    {m.tier === "local" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />}
+                                    {m.label}
+                                    {m.tier === "local" && <span className="text-[9px] text-emerald-400 font-medium ml-1">LOCAL</span>}
+                                  </span>
                                 </SelectItem>
                               ))}
                             </SelectContent>
