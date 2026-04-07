@@ -175,14 +175,14 @@ function ConnectorCard({
           )}
         </div>
       </div>
-      <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="shrink-0">
         {status === "connected" ? (
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onDisconnect}>
+          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={onDisconnect}>
             <WifiOff className="h-3 w-3 mr-1" />
             Disconnect
           </Button>
         ) : (
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onReconnect}>
+          <Button variant="ghost" size="sm" className="h-7 text-xs text-primary" onClick={onReconnect}>
             <Plug className="h-3 w-3 mr-1" />
             Reconnect
           </Button>
