@@ -119,7 +119,7 @@ export default async function HomePage() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-8 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-6 p-4 sm:p-8 max-w-6xl mx-auto overflow-x-hidden w-full">
       {/* Hero greeting with pixel canvas */}
       <HomeHero
         greeting={greeting}
