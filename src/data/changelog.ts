@@ -11,6 +11,54 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.6.0",
+    date: "2026-04-07",
+    title: "MCP-First Architecture, Chat Tool Management & Avatar Overhaul",
+    highlights: [
+      "Full MCP tool management from chat: search, connect, disconnect, list servers",
+      "Inline OAuth and API key cards — connect integrations without leaving chat",
+      "Removed Nango — all integrations now powered by MCP servers",
+      "New NeuralMorph orbit avatars with color support (white for user, green for AI)",
+      "Notifications consolidated into single /notifications page",
+    ],
+    changes: [
+      // MCP Tools
+      { type: "feat", description: "search_mcp_servers: search 3 registries (official, Smithery, curated) from chat" },
+      { type: "feat", description: "connect_mcp_server: add servers from registry results or pasted URLs" },
+      { type: "feat", description: "disconnect_mcp_server: remove MCP servers by name from chat" },
+      { type: "feat", description: "list_mcp_servers: show all connected servers with status and tools" },
+      { type: "feat", description: "Inline OAuth card: discovers endpoints, generates PKCE, redirects to provider directly" },
+      { type: "feat", description: "Inline API key card: paste token in chat, connects immediately" },
+      { type: "feat", description: "OAuth callback returns to /chat instead of connectors page" },
+      // MCP Fixes
+      { type: "fix", description: "MCP OAuth column mismatch: token_url/client_id now read correctly from DB" },
+      { type: "fix", description: "MCP reconnect: OAuth servers trigger auth flow instead of page reload loop" },
+      { type: "fix", description: "MCP PATCH/DELETE use admin client to bypass RLS (disconnect actually works now)" },
+      { type: "fix", description: "MCP tool loading: per-server error logging, error_message surfaced in UI" },
+      { type: "fix", description: "OAuth discovery uses server-side proxy to avoid CORS failures" },
+      // Nango Removal
+      { type: "refactor", description: "Removed Nango entirely — 12,800 lines deleted across 67 files" },
+      { type: "refactor", description: "Removed 12 Nango-dependent AI tools and 5 specialist agents" },
+      { type: "refactor", description: "Connectors page now MCP-only (no more credential cards)" },
+      { type: "refactor", description: "Simplified createTools() — no more clients or permissions params" },
+      // Avatar & UI
+      { type: "feat", description: "NeuralMorph color prop: white user avatar, green AI avatar with orbit formation" },
+      { type: "feat", description: "Sidebar logo: NeuralMorph orbit replaces old NeuralDots" },
+      { type: "feat", description: "Model selection persists to localStorage across refreshes" },
+      { type: "feat", description: "Chat auto-focus: textarea focused on mount and conversation switch" },
+      { type: "fix", description: "Sidebar jitter: collapsed state initialized from localStorage (no flash)" },
+      { type: "fix", description: "Share panel: moved out of dead code block, now renders when triggered" },
+      { type: "fix", description: "Image attachments right-aligned for user messages" },
+      // Notifications
+      { type: "feat", description: "Consolidated /inbox and /notifications into single route" },
+      { type: "feat", description: "Schedule notifications: started + complete dual notifications" },
+      { type: "feat", description: "Notification bell 'View all' links to /notifications (same data source)" },
+      // Docs
+      { type: "docs", description: "Media types doc: file support matrix per model (images, PDF, text)" },
+      { type: "docs", description: "Browserbase roadmap item: browser automation for AI agents" },
+    ],
+  },
+  {
     version: "0.5.1",
     date: "2026-04-07",
     title: "iOS Push Notifications",
