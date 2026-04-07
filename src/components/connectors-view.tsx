@@ -6,13 +6,10 @@ import {
   Server,
   RefreshCw,
   Loader2,
-  Wifi,
   WifiOff,
-  AlertCircle,
   HardDrive,
   Github,
   Hash,
-  BarChart3,
   Mail,
   StickyNote,
   Globe,
@@ -31,15 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -206,59 +195,84 @@ function ConnectorCard({
 }
 
 /* ------------------------------------------------------------------ */
-/*  MCP Gallery Panel                                                  */
+/*  MCP Gallery (inline, not a Sheet)                                  */
 /* ------------------------------------------------------------------ */
 
-function MCPGalleryPanel({
-  open,
-  onOpenChange,
+function MCPGalleryView({
   connectedServerUrls,
+  onBack,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   connectedServerUrls: Set<string>;
+  onBack: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [servers, setServers] = useState<RegistryServer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [selectedServer, setSelectedServer] = useState<RegistryServer | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [bearerToken, setBearerToken] = useState("");
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
   const [customUrl, setCustomUrl] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchRegistry = useCallback(async (q: string) => {
-    setLoading(true);
+  const fetchRegistry = useCallback(async (q: string, pageNum: number, append: boolean) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const params = q ? `?q=${encodeURIComponent(q)}` : "";
-      const res = await fetch(`/api/mcp/registry${params}`);
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      params.set("page", String(pageNum));
+      const paramStr = params.toString();
+      const res = await fetch(`/api/mcp/registry${paramStr ? `?${paramStr}` : ""}`);
       if (res.ok) {
         const data = await res.json();
-        setServers(data.servers ?? []);
+        const newServers: RegistryServer[] = data.servers ?? [];
+        if (append) {
+          setServers((prev) => {
+            const urlSet = new Set(prev.map((s) => s.url));
+            const unique = newServers.filter((s) => !urlSet.has(s.url));
+            return [...prev, ...unique];
+          });
+        } else {
+          setServers(newServers);
+        }
+        setTotalCount(data.totalCount ?? null);
+        setHasMore(data.hasMore ?? false);
       }
     } catch {
       // silent
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
-    if (open) {
-      fetchRegistry("");
-    }
-  }, [open, fetchRegistry]);
+    fetchRegistry("", 1, false);
+  }, [fetchRegistry]);
 
   useEffect(() => {
-    if (!open) return;
     const timer = setTimeout(() => {
-      fetchRegistry(query);
+      setPage(1);
+      fetchRegistry(query, 1, false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, open, fetchRegistry]);
+  }, [query, fetchRegistry]);
 
-  // Deduplicate servers by URL (registry may return duplicates)
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchRegistry(query, nextPage, true);
+  };
+
+  // Deduplicate servers by URL
   const dedupedServers = Array.from(
     new Map(servers.map((s) => [s.url, s])).values()
   );
@@ -290,7 +304,7 @@ function MCPGalleryPanel({
       } else {
         setBearerToken("");
         setSelectedServer(null);
-        onOpenChange(false);
+        onBack();
         window.location.reload();
       }
     } catch (err) {
@@ -316,7 +330,7 @@ function MCPGalleryPanel({
       }
       setCustomName("");
       setCustomUrl("");
-      onOpenChange(false);
+      onBack();
       window.location.reload();
     } catch (err) {
       setMcpError(err instanceof Error ? err.message : "Connection failed");
@@ -542,116 +556,140 @@ function MCPGalleryPanel({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-2xl p-0 flex flex-col"
+    <div className="p-4 sm:p-8 max-w-5xl">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
       >
-        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <SheetTitle>MCP Gallery</SheetTitle>
-          <SheetDescription>
-            Browse and connect MCP servers to extend your AI with tools.
-          </SheetDescription>
-        </SheetHeader>
+        <ArrowLeft className="h-4 w-4" />
+        Back to connectors
+      </button>
 
-        <ScrollArea className="flex-1">
-          <div className="px-6 py-4">
-            {selectedServer ? (
-              renderServerDetail(selectedServer)
-            ) : (
-              <div className="space-y-4">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search MCP servers..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="pl-9"
-                  />
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-1">MCP Gallery</h2>
+        <p className="text-sm text-muted-foreground">
+          Browse and connect MCP servers to extend your AI with tools.
+        </p>
+      </div>
+
+      {selectedServer ? (
+        renderServerDetail(selectedServer)
+      ) : (
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search MCP servers..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Result count */}
+          {!loading && query && (
+            <p className="text-xs text-muted-foreground">
+              Found {allServers.length}{totalCount !== null && totalCount > allServers.length ? ` of ${totalCount}` : ""} servers{query ? ` for "${query}"` : ""}
+            </p>
+          )}
+
+          <Tabs defaultValue="popular" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="popular" className="flex-1">Popular</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1">All ({allServers.length})</TabsTrigger>
+              <TabsTrigger value="custom" className="flex-1">Custom URL</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="popular" className="mt-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
+              ) : popularServers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No popular servers found.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {popularServers.map(renderServerCard)}
+                </div>
+              )}
+            </TabsContent>
 
-                <Tabs defaultValue="popular" className="w-full">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="popular" className="flex-1">Popular</TabsTrigger>
-                    <TabsTrigger value="all" className="flex-1">All ({allServers.length})</TabsTrigger>
-                    <TabsTrigger value="custom" className="flex-1">Custom URL</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="popular" className="mt-4">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : popularServers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No popular servers found.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        {popularServers.map(renderServerCard)}
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="all" className="mt-4">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : allServers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No servers found{query ? ` for "${query}"` : ""}.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        {allServers.map(renderServerCard)}
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="custom" className="mt-4">
-                    <div className="space-y-4">
-                      <p className="text-xs text-muted-foreground">
-                        Add any MCP server by URL. Supports streamable-http and SSE transports.
-                      </p>
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="Server name"
-                          value={customName}
-                          onChange={(e) => setCustomName(e.target.value)}
-                        />
-                        <Input
-                          placeholder="https://mcp.example.com/mcp"
-                          value={customUrl}
-                          onChange={(e) => setCustomUrl(e.target.value)}
-                        />
-                      </div>
-                      {mcpError && (
-                        <p className="text-xs text-destructive">{mcpError}</p>
-                      )}
+            <TabsContent value="all" className="mt-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : allServers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No servers found{query ? ` for "${query}"` : ""}.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {allServers.map(renderServerCard)}
+                  </div>
+                  {hasMore && (
+                    <div className="flex justify-center pt-2">
                       <Button
-                        onClick={handleConnectCustom}
-                        disabled={connecting || !customName.trim() || !customUrl.trim()}
                         variant="outline"
-                        className="w-full"
+                        size="sm"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
                       >
-                        {connecting ? (
+                        {loadingMore ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Server className="h-4 w-4 mr-2" />
-                        )}
-                        {connecting ? "Adding..." : "Add MCP Server"}
+                        ) : null}
+                        {loadingMore ? "Loading..." : "Load more"}
                       </Button>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="custom" className="mt-4">
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Add any MCP server by URL. Supports streamable-http and SSE transports.
+                </p>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Server name"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="https://mcp.example.com/mcp"
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                  />
+                </div>
+                {mcpError && (
+                  <p className="text-xs text-destructive">{mcpError}</p>
+                )}
+                <Button
+                  onClick={handleConnectCustom}
+                  disabled={connecting || !customName.trim() || !customUrl.trim()}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {connecting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Server className="h-4 w-4 mr-2" />
+                  )}
+                  {connecting ? "Adding..." : "Add MCP Server"}
+                </Button>
               </div>
-            )}
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -668,7 +706,7 @@ export function ConnectorsView({
   mcpServers,
   credentials,
 }: ConnectorsViewProps) {
-  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [view, setView] = useState<"list" | "gallery">("list");
 
   const connectedServerUrls = new Set(mcpServers.map((s) => s.url));
 
@@ -703,14 +741,17 @@ export function ConnectorsView({
     mcpServers.filter((s) => s.is_active && !s.error_message).length;
   const totalConnectors = credentials.length + mcpServers.length;
 
+  if (view === "gallery") {
+    return (
+      <MCPGalleryView
+        connectedServerUrls={connectedServerUrls}
+        onBack={() => setView("list")}
+      />
+    );
+  }
+
   return (
     <div className="p-4 sm:p-8 max-w-5xl">
-      <MCPGalleryPanel
-        open={galleryOpen}
-        onOpenChange={setGalleryOpen}
-        connectedServerUrls={connectedServerUrls}
-      />
-
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 mb-1">
@@ -729,7 +770,7 @@ export function ConnectorsView({
 
       {/* Actions */}
       <div className="flex items-center gap-3 mb-6">
-        <Button onClick={() => setGalleryOpen(true)}>
+        <Button onClick={() => setView("gallery")}>
           <Plus className="h-4 w-4 mr-2" />
           Add Connector
         </Button>
