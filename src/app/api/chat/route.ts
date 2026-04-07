@@ -683,21 +683,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const fullInstructions = instructions + dateTimeContext + artifactContext;
+  // For local models: use a slim system prompt (skip visual instructions, design guidelines)
+  // This dramatically reduces prefill time (~10K tokens -> ~2K tokens)
+  const isLocal = isOllamaModel(modelId);
+  const fullInstructions = isLocal
+    ? `You are Granger, an AI assistant. Be helpful and concise.\n\n${dateTimeContext}${artifactContext}`
+    : instructions + dateTimeContext + artifactContext;
 
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
 
   // Select model: Ollama for local models, AI Gateway for cloud models
   let baseModel;
-  if (isOllamaModel(modelId)) {
+  if (isLocal) {
     const { ollama } = await import("ollama-ai-provider-v2");
     const ollamaModelName = modelId.replace("ollama/", "");
     baseModel = ollama(ollamaModelName);
   } else {
     baseModel = gateway(modelId);
   }
-  const compactedModel = wrapLanguageModel({
+  // Skip compaction middleware for local models (smaller context, simpler pipeline)
+  const compactedModel = isLocal ? baseModel : wrapLanguageModel({
     model: baseModel,
     middleware: createCompactionMiddleware(getContextWindow(modelId)),
   });
@@ -706,9 +712,10 @@ export async function POST(request: NextRequest) {
     model: compactedModel,
     instructions: fullInstructions,
     tools: allTools,
+    // Local models: smaller output cap. Cloud: max out.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prepareStep: () => ({ maxOutputTokens: 128000 } as any), // Max out — Claude 128K, Gemini 65K, OpenAI 128K
-    stopWhen: stepCountIs(20),
+    prepareStep: () => ({ maxOutputTokens: isLocal ? 4096 : 128000 } as any),
+    stopWhen: stepCountIs(isLocal ? 5 : 20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
     onStepFinish: ({ usage, toolCalls, text, providerMetadata }) => {
