@@ -11,6 +11,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let darkBg = UIColor(red: 11/255.0, green: 15/255.0, blue: 14/255.0, alpha: 1)
         window?.backgroundColor = darkBg
         window?.rootViewController?.view.backgroundColor = darkBg
+
+        // Make the WebView extend behind the status bar and home indicator
+        // so CSS safe-area-inset padding handles the offset
+        if let webView = window?.rootViewController?.view {
+            webView.insetsLayoutMarginsFromSafeArea = false
+        }
+
         return true
     }
 

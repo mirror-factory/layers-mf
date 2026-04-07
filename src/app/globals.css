@@ -12,28 +12,31 @@
   }
 }
 
-/* Mobile viewport fix for Capacitor */
-html, body {
+/* Mobile viewport fix for Capacitor — extend into safe areas */
+html {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  /* Match dark theme so notch/home indicator areas blend seamlessly */
+  background-color: hsl(168, 14%, 5%);
 }
 
-/* iOS safe area support — match dark theme so notch/home indicator areas blend in */
-html {
-  background-color: hsl(168, 14%, 5%);
+body {
+  /* Use 100% height, not 100dvh — dvh excludes safe areas on iOS */
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Pad content away from notch/home indicator but let background extend */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 @media (prefers-color-scheme: light) {
   html {
     background-color: hsl(165, 10%, 99%);
   }
-}
-
-/* Extend content into safe areas for Capacitor iOS */
-#__next, main {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Mobile chat text: prevent long URLs/links from overflowing */
