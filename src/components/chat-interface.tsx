@@ -2363,7 +2363,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                   {/* Actions row — copy, branch (both roles), feedback + cost (assistant only) */}
                   {!isStreaming && text && (
-                    <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={cn("flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity", m.role === "user" && "justify-end")}>
                       <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted transition-colors" title="Copy"><Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" /></button>
                       {conversationId && (
                         <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted transition-colors" title="Branch"><GitBranch className="h-3 w-3 text-primary/60 hover:text-primary" /></button>

@@ -66,12 +66,18 @@ function getProviderIcon(modelId: string): string {
   if (modelId.startsWith("anthropic/")) return "A";
   if (modelId.startsWith("openai/")) return "O";
   if (modelId.startsWith("google/")) return "G";
+  if (modelId.startsWith("ollama/")) return "L";
   return "?";
+}
+
+function isLocalModel(modelId: string): boolean {
+  return modelId.startsWith("ollama/");
 }
 
 export function MessageStats({ model, text, stats, className }: MessageStatsProps) {
   const [open, setOpen] = useState(false);
 
+  const local = isLocalModel(model);
   // Fallback: estimate cost from text length if no stats available
   const estimatedOutputTokens = stats?.outputTokens ?? Math.ceil(text.length / 4);
   const estimatedInputTokens = stats?.inputTokens ?? 0;
@@ -79,7 +85,10 @@ export function MessageStats({ model, text, stats, className }: MessageStatsProp
   const cacheWrite = stats?.cacheWriteTokens ?? 0;
   const durationMs = stats?.durationMs ?? 0;
   const toolCalls = stats?.toolCalls ?? [];
-  const costUsd = stats?.costUsd ?? calculateCost(model, estimatedInputTokens, estimatedOutputTokens);
+  // Local models are free — don't calculate cost
+  const costUsd = local ? 0 : (stats?.costUsd ?? calculateCost(model, estimatedInputTokens, estimatedOutputTokens));
+  // Estimate TTFT from step details (first step duration is close to TTFT)
+  const ttft = stats?.stepDetails?.[0]?.durationMs ?? 0;
 
   return (
     <div className={cn("relative inline-block", className)}>
@@ -108,13 +117,34 @@ export function MessageStats({ model, text, stats, className }: MessageStatsProp
                 </span>
                 <span className="font-medium text-foreground">{formatModelName(model)}</span>
               </div>
-              {durationMs > 0 && (
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>{formatDuration(durationMs)}</span>
-                </div>
+              {local && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">LOCAL</span>
               )}
             </div>
+
+            {/* Timing */}
+            {(durationMs > 0 || ttft > 0) && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                {ttft > 0 && (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="h-3 w-3 text-amber-400" />
+                      <span>First token</span>
+                    </div>
+                    <span className="text-right font-mono">{formatDuration(ttft)}</span>
+                  </>
+                )}
+                {durationMs > 0 && (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3 w-3 text-blue-400" />
+                      <span>Total time</span>
+                    </div>
+                    <span className="text-right font-mono">{formatDuration(durationMs)}</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Token breakdown */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
@@ -150,7 +180,9 @@ export function MessageStats({ model, text, stats, className }: MessageStatsProp
             {/* Cost */}
             <div className="flex items-center justify-between pt-1.5 border-t border-border/30">
               <span className="text-muted-foreground">Cost</span>
-              <span className="font-mono font-medium text-emerald-400">{formatCost(costUsd)}</span>
+              <span className="font-mono font-medium text-emerald-400">
+                {local ? "$0 (local)" : formatCost(costUsd)}
+              </span>
             </div>
 
             {/* Cache hit rate badge */}

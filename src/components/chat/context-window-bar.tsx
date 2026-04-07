@@ -173,9 +173,12 @@ export function ContextWindowBar({ messages, modelId, conversationId, className 
   return (
     <div className={cn("w-full", className)}>
       {/* Compact bar */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group hover:bg-muted/50 rounded-md px-2 py-1 transition-colors"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpanded(!expanded); }}
+        className="flex items-center gap-2 w-full text-left group hover:bg-muted/50 rounded-md px-2 py-1 transition-colors cursor-pointer"
       >
         <Zap className={cn("h-3 w-3 shrink-0", utilizationColor)} />
         <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden flex">
@@ -202,7 +205,7 @@ export function ContextWindowBar({ messages, modelId, conversationId, className 
         ) : (
           <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
         )}
-      </button>
+      </div>
 
       {/* Expanded detail panel */}
       {expanded && (
@@ -278,7 +281,7 @@ export function ContextWindowBar({ messages, modelId, conversationId, className 
           {/* Cost breakdown toggle */}
           {conversationId && (
             <button
-              onClick={() => setShowCostBreakdown(!showCostBreakdown)}
+              onClick={(e) => { e.stopPropagation(); setShowCostBreakdown(!showCostBreakdown); }}
               className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
             >
               <DollarSign className="h-3 w-3" />
