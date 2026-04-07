@@ -562,7 +562,7 @@ export async function POST(request: NextRequest) {
     console.log(`[chat] Skipping MCP/credentials/rules for local model (${Date.now() - t0}ms)`);
   }
   try {
-    if (isLocal) throw new Error("skip"); // jump to catch block
+    if (isLocal) throw new Error("skip-local");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: mcpServers } = await (adminDb as any)
       .from("mcp_servers")
@@ -627,75 +627,83 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (err) {
-    console.error("[chat] MCP server loading failed:", err);
+    if (err instanceof Error && err.message !== "skip-local") {
+      console.error("[chat] MCP server loading failed:", err);
+    }
   }
+
+  console.log(`[chat] ${Date.now() - t0}ms | tools created`);
 
   const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
   const allTools = { ...baseTools, ...mcpTools };
 
-  // Build system prompt with caching — rules + visual instructions are stable per org
-  const [personalRules, orgScopeRules] = await Promise.all([
-    loadPersonalRules(supabase, orgId),
-    loadOrgRules(supabase, orgId),
-  ]);
-  const rulesSection = formatRulesForPrompt(personalRules) + formatOrgRulesForPrompt(orgScopeRules);
-  const rulesHash = createHash("md5").update(rulesSection + visualLevel).digest("hex");
-  const cacheKey = `${orgId}:${rulesHash}`;
+  let fullInstructions: string;
 
-  let instructions = getCachedSystemPrompt(cacheKey);
-  if (!instructions) {
-    instructions = getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + rulesSection;
-    setCachedSystemPrompt(cacheKey, instructions);
-    console.log("[chat] System prompt cache MISS — assembled and cached");
+  if (isLocal) {
+    // LOCAL MODEL: skip rules, skip prompt cache, skip artifact context — go fast
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    fullInstructions = `You are Granger, an AI assistant. Be helpful and concise. Today is ${dateStr}.`;
+    console.log(`[chat] ${Date.now() - t0}ms | local model — slim prompt ready`);
   } else {
-    console.log("[chat] System prompt cache HIT");
-  }
+    // CLOUD MODEL: full pipeline — rules, visual instructions, artifact context
+    const [personalRules, orgScopeRules] = await Promise.all([
+      loadPersonalRules(supabase, orgId),
+      loadOrgRules(supabase, orgId),
+    ]);
+    const rulesSection = formatRulesForPrompt(personalRules) + formatOrgRulesForPrompt(orgScopeRules);
+    const rulesHash = createHash("md5").update(rulesSection + visualLevel).digest("hex");
+    const cacheKey = `${orgId}:${rulesHash}`;
 
-  // Inject real-time date/time (changes every request, not cached)
-  const now = new Date();
-  const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
-
-  // Inject active artifact context so the AI knows what's open in the side panel
-  let artifactContext = "";
-  if (activeArtifactId) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sb = supabase as any;
-      const { data: artifact } = await sb
-        .from("artifacts")
-        .select("id, title, type, language, current_version, content, framework, run_command, expose_port")
-        .eq("id", activeArtifactId)
-        .single();
-
-      if (artifact) {
-        // Fetch files for the current version
-        const { data: artFiles } = await sb
-          .from("artifact_files")
-          .select("file_path, language")
-          .eq("artifact_id", activeArtifactId)
-          .eq("version_number", artifact.current_version);
-
-        const fileList = artFiles?.map((f: { file_path: string }) => f.file_path) ?? [];
-        artifactContext = `\n\n## Active Artifact (currently open in side panel)\n` +
-          `- ID: ${artifact.id}\n` +
-          `- Title: ${artifact.title}\n` +
-          `- Type: ${artifact.type} | Language: ${artifact.language ?? "unknown"} | Version: v${artifact.current_version}\n` +
-          (fileList.length > 0 ? `- Files: ${fileList.join(", ")}\n` : "") +
-          (activeFilePath ? `- Currently viewing: ${activeFilePath}\n` : "") +
-          `\nWhen the user asks to edit, change, or modify this artifact, use edit_code with artifactId="${artifact.id}"` +
-          (activeFilePath ? ` and filePath="${activeFilePath}"` : "") +
-          `. Do NOT create a new artifact.\n`;
-      }
-    } catch {
-      // Artifact lookup failed — continue without context
+    let instructions = getCachedSystemPrompt(cacheKey);
+    if (!instructions) {
+      instructions = getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + rulesSection;
+      setCachedSystemPrompt(cacheKey, instructions);
+      console.log("[chat] System prompt cache MISS — assembled and cached");
+    } else {
+      console.log("[chat] System prompt cache HIT");
     }
-  }
 
-  // For local models: use a slim system prompt (skip visual instructions, design guidelines)
-  // This dramatically reduces prefill time (~10K tokens -> ~2K tokens)
-  const fullInstructions = isLocal
-    ? `You are Granger, an AI assistant. Be helpful and concise.\n\n${dateTimeContext}${artifactContext}`
-    : instructions + dateTimeContext + artifactContext;
+    const now = new Date();
+    const dateTimeContext = `\n\n## Current Date & Time\nToday is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. The current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.\n`;
+
+    let artifactContext = "";
+    if (activeArtifactId) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sb = supabase as any;
+        const { data: artifact } = await sb
+          .from("artifacts")
+          .select("id, title, type, language, current_version, content, framework, run_command, expose_port")
+          .eq("id", activeArtifactId)
+          .single();
+
+        if (artifact) {
+          const { data: artFiles } = await sb
+            .from("artifact_files")
+            .select("file_path, language")
+            .eq("artifact_id", activeArtifactId)
+            .eq("version_number", artifact.current_version);
+
+          const fileList = artFiles?.map((f: { file_path: string }) => f.file_path) ?? [];
+          artifactContext = `\n\n## Active Artifact (currently open in side panel)\n` +
+            `- ID: ${artifact.id}\n` +
+            `- Title: ${artifact.title}\n` +
+            `- Type: ${artifact.type} | Language: ${artifact.language ?? "unknown"} | Version: v${artifact.current_version}\n` +
+            (fileList.length > 0 ? `- Files: ${fileList.join(", ")}\n` : "") +
+            (activeFilePath ? `- Currently viewing: ${activeFilePath}\n` : "") +
+            `\nWhen the user asks to edit, change, or modify this artifact, use edit_code with artifactId="${artifact.id}"` +
+            (activeFilePath ? ` and filePath="${activeFilePath}"` : "") +
+            `. Do NOT create a new artifact.\n`;
+        }
+      } catch {
+        // Artifact lookup failed — continue without context
+      }
+    }
+
+    fullInstructions = instructions + dateTimeContext + artifactContext;
+    console.log(`[chat] ${Date.now() - t0}ms | cloud model — full prompt ready`);
+  }
 
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
