@@ -38,6 +38,10 @@ export function NotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [soundOn, setSoundOn] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("notification-sound") !== "off";
+  });
 
   const fetchPrefs = useCallback(async () => {
     setLoading(true);
@@ -141,31 +145,33 @@ export function NotificationSettings() {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              if (!('Notification' in window)) return;
-              if (Notification.permission === 'granted') {
-                new Notification('Granger: Notifications enabled', {
-                  body: 'You will receive desktop alerts for important events.',
-                  icon: '/icon.png',
-                });
-              } else if (Notification.permission !== 'denied') {
-                const result = await Notification.requestPermission();
-                if (result === 'granted') {
-                  new Notification('Granger: Notifications enabled', {
-                    body: 'You will receive desktop alerts for important events.',
-                    icon: '/icon.png',
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (!('Notification' in window)) return;
+                if (Notification.permission === 'granted') {
+                  new Notification('Granger: Test notification', {
+                    body: 'Desktop notifications are working.',
+                    icon: '/favicon.ico',
                   });
+                } else if (Notification.permission !== 'denied') {
+                  const result = await Notification.requestPermission();
+                  if (result === 'granted') {
+                    new Notification('Granger: Notifications enabled', {
+                      body: 'You will receive desktop alerts for important events.',
+                      icon: '/favicon.ico',
+                    });
+                  }
                 }
-              }
-            }}
-          >
-            {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
-              ? 'Enabled'
-              : 'Enable'}
-          </Button>
+              }}
+            >
+              {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                ? 'Test'
+                : 'Enable'}
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -182,12 +188,36 @@ export function NotificationSettings() {
               </p>
             </div>
           </div>
-          <Switch
-            checked={typeof window !== "undefined" && localStorage.getItem("notification-sound") !== "off"}
-            onCheckedChange={(v) => {
-              localStorage.setItem("notification-sound", v ? "on" : "off");
-            }}
-          />
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.frequency.value = 800;
+                  osc.type = "sine";
+                  gain.gain.value = 0.15;
+                  osc.start();
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                  osc.stop(ctx.currentTime + 0.3);
+                } catch { /* audio not available */ }
+              }}
+            >
+              Test
+            </Button>
+            <Switch
+              checked={soundOn}
+              onCheckedChange={(v) => {
+                setSoundOn(v);
+                localStorage.setItem("notification-sound", v ? "on" : "off");
+              }}
+            />
+          </div>
         </div>
       </Card>
 
@@ -308,6 +338,53 @@ export function NotificationSettings() {
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
           {saved ? "Saved" : "Save changes"}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            try {
+              // Create a real test notification in the DB
+              await fetch("/api/notifications", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "system_alert",
+                  title: "Test notification",
+                  body: "This is a test notification from settings. If you see this in the bell and as a desktop alert, notifications are working.",
+                  link: "/settings/notifications",
+                }),
+              });
+              // Also fire a desktop notification immediately
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Granger: Test notification", {
+                  body: "In-app + desktop notifications are working.",
+                  icon: "/favicon.ico",
+                });
+              }
+              // Also play the ping sound
+              if (soundOn) {
+                try {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.frequency.value = 800;
+                  osc.type = "sine";
+                  gain.gain.value = 0.15;
+                  osc.start();
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                  osc.stop(ctx.currentTime + 0.3);
+                } catch { /* audio not available */ }
+              }
+            } catch {
+              // silent
+            }
+          }}
+        >
+          Send Test Notification
         </Button>
       </div>
     </div>
