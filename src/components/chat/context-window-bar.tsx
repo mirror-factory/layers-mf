@@ -97,18 +97,25 @@ export function ContextWindowBar({ messages, modelId, conversationId, className 
       .catch(() => {});
   }, [expanded, modelId]);
 
-  // Fetch conversation cost stats when cost breakdown is expanded
+  // Fetch conversation cost stats — re-fetch when messages change or breakdown is opened
   useEffect(() => {
-    if (!showCostBreakdown || !conversationId) return;
-    fetch(`/api/chat/stats?conversation_id=${conversationId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) {
-          setAgentRuns(data.runs ?? []);
-          setTotals(data.totals ?? null);
-        }
-      })
-      .catch(() => {});
+    if (!conversationId) return;
+    // Always fetch when breakdown is shown, or when messages change (to update totals)
+    if (!showCostBreakdown && agentRuns.length > 0) return; // skip if hidden and we already have data
+    // Small delay to let agent_run insert complete
+    const timer = setTimeout(() => {
+      fetch(`/api/chat/stats?conversation_id=${conversationId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data) {
+            setAgentRuns(data.runs ?? []);
+            setTotals(data.totals ?? null);
+          }
+        })
+        .catch(() => {});
+    }, showCostBreakdown ? 0 : 1500); // immediate when expanded, delayed otherwise
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCostBreakdown, conversationId, messages.length]);
 
   // Estimate tokens from conversation history

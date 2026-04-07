@@ -99,5 +99,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
+  // Copy agent_runs for cost tracking continuity
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: sourceRuns } = await (adminDb as any)
+    .from("agent_runs")
+    .select("model, query, step_count, finish_reason, total_input_tokens, total_output_tokens, cache_read_tokens, cache_write_tokens, duration_ms, tool_calls, gateway_cost_usd, step_details")
+    .eq("conversation_id", conversationId)
+    .eq("org_id", member.org_id)
+    .order("created_at", { ascending: true });
+
+  if (sourceRuns && sourceRuns.length > 0) {
+    // Only copy runs up to the branch point (match assistant message count)
+    const assistantCount = messagesToCopy.filter((m: { role: string }) => m.role === "assistant").length;
+    const runsToCopy = sourceRuns.slice(0, assistantCount).map((run: Record<string, unknown>) => ({
+      ...run,
+      org_id: member.org_id,
+      user_id: user.id,
+      conversation_id: newConv.id,
+    }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminDb as any).from("agent_runs").insert(runsToCopy);
+  }
+
   return NextResponse.json({ conversationId: newConv.id, title: branchTitle }, { status: 201 });
 }
