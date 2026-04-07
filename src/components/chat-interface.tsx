@@ -1638,7 +1638,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   // Switch to local model once we detect localhost (after hydration)
   useEffect(() => {
     if (isLocal && model === "google/gemini-3.1-flash-lite-preview") {
-      setModel("ollama/qwen3:8b");
+      // Keep flash lite as default — local models are optional
+      // setModel("ollama/qwen3:8b");
     }
   }, [isLocal]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showContextBar, setShowContextBar] = useState(false);
@@ -2036,10 +2037,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   }, [messages]);
 
   // Load context panel preference from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("chat-context-panel");
-    if (stored === "true") setContextPanelOpen(true);
-  }, []);
+  // Context panel hidden by default — user can open via button
+  // (removed auto-restore from localStorage)
 
   const getDebugJSON = useCallback(() => ({
     conversationId,
@@ -2355,8 +2354,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     <div className="flex h-full overflow-hidden flex-col md:flex-row">
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
-        {/* Chat actions bar — hidden on mobile (actions move to prompt bar), visible on desktop */}
-        {messages.length > 0 && (
+        {/* Chat actions — hidden entirely, per-message actions handle copy/branch/feedback */}
+        {messages.length > 0 && false && (
           <div className="hidden md:flex justify-end px-4 py-1 border-b relative">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2395,7 +2394,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </DropdownMenu>
             {shareOpen && conversationId && (
               <SharePanel
-                conversationId={conversationId}
+                conversationId={conversationId!}
                 onClose={() => setShareOpen(false)}
               />
             )}
@@ -2654,7 +2653,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="shrink-0 sticky bottom-0 z-10 bg-background border-t p-3 sm:p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative"
+          className="shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 relative"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -2671,7 +2670,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
-          <div className="max-w-5xl mx-auto rounded-2xl border bg-card/80 backdrop-blur shadow-lg p-3">
+          <div className="max-w-3xl mx-auto rounded-2xl border border-border/50 bg-card/60 backdrop-blur-md shadow-xl p-3">
             {/* Interview UI — renders as overlay above the input area */}
             {pendingInterview && (
               <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">

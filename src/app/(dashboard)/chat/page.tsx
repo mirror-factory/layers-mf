@@ -170,10 +170,10 @@ export default function ChatPage() {
             className="flex-1 rounded-md border bg-background px-2.5 py-1.5 text-sm md:text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[44px] md:min-h-0"
             onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
           />
-          {/* Desktop: collapse panel button */}
+          {/* Desktop: collapse panel button — removed, use main header toggle instead */}
           <button
             onClick={() => { setSidebarOpen(false); setPanelVisible(false); }}
-            className="hidden md:inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="hidden items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Close sidebar"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -237,44 +237,42 @@ export default function ChatPage() {
       <div className="flex flex-col flex-1 min-w-0">
         {/* Chat header — includes safe-top on mobile since global header is hidden */}
         <div className="border-b px-3 py-1.5 shrink-0 safe-top">
-          <div className="flex items-center gap-1.5">
-            {/* Mobile: hamburger / Desktop: panel toggle */}
+          <div className="flex items-center gap-2">
+            {/* Left: menu/panel toggle */}
             <button
               onClick={() => {
                 if (window.innerWidth < 768) setSidebarOpen(true);
                 else togglePanel();
               }}
               className={cn(
-                "inline-flex items-center justify-center rounded-md p-1.5 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0",
+                "inline-flex items-center justify-center rounded-md p-1.5 transition-colors shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0",
                 panelVisible
                   ? "text-muted-foreground hover:text-foreground hover:bg-muted"
                   : "text-primary hover:bg-primary/10"
               )}
               aria-label="Menu"
-              title={panelVisible ? "Hide conversations" : "Show conversations"}
             >
               {panelVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
 
-            {/* Chat title -- conversation name on mobile, "Chat with Granger" on desktop */}
-            <span className="flex-1 text-xs text-muted-foreground truncate text-center md:text-left">
-              <span className="md:hidden">
-                {activeId
-                  ? (conversations.find((c) => c.id === activeId)?.title ?? "New conversation")
-                  : "New chat"}
-              </span>
-              <span className="hidden md:inline">Chat with Granger</span>
+            {/* Center: conversation title */}
+            <span className="flex-1 text-sm font-medium text-foreground truncate text-center">
+              {activeId
+                ? (conversations.find((c) => c.id === activeId)?.title ?? "New conversation")
+                : "Chat with Granger"}
             </span>
 
-            {/* New chat -- always visible */}
-            <button
-              onClick={createConversation}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
-              aria-label="New conversation"
-              title="New conversation"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            {/* Right: new chat + actions grouped together */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={createConversation}
+                className="inline-flex items-center justify-center rounded-md p-2 text-primary hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
+                aria-label="New conversation"
+                title="New conversation"
+              >
+                <Plus className="h-5 w-5 md:h-4 md:w-4" />
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
