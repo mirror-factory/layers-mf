@@ -127,8 +127,20 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
   }, []);
 
   // Request desktop notification permission on mount
+  // Chrome blocks auto-requests, so we also request on first bell click
+  const permissionRequested = useRef(false);
   useEffect(() => {
+    // Try on mount (works in Safari, may be blocked in Chrome)
     requestNotificationPermission();
+  }, []);
+
+  const ensurePermission = useCallback(() => {
+    if (!permissionRequested.current) {
+      permissionRequested.current = true;
+      requestNotificationPermission().then((granted) => {
+        if (granted) console.log("[notifications] Desktop notifications enabled");
+      });
+    }
   }, []);
 
   // Initial fetch + polling every 30s
@@ -176,7 +188,7 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) ensurePermission(); }}>
       <PopoverTrigger asChild>
         <button
           className={cn(

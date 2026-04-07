@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save, Monitor } from "lucide-react";
+import { Loader2, Save, Monitor, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
@@ -166,6 +166,28 @@ export function NotificationSettings() {
               ? 'Enabled'
               : 'Enable'}
           </Button>
+        </div>
+      </Card>
+
+      <Card className="p-4 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <Volume2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div>
+              <Label className="text-sm font-medium">
+                Notification Sound
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Play a ping sound when new notifications arrive.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={typeof window !== "undefined" && localStorage.getItem("notification-sound") !== "off"}
+            onCheckedChange={(v) => {
+              localStorage.setItem("notification-sound", v ? "on" : "off");
+            }}
+          />
         </div>
       </Card>
 
