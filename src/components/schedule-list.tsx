@@ -12,10 +12,30 @@ import {
   Globe,
   Plus,
   ExternalLink,
-  X,
+  Pencil,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { cronToHuman } from "@/lib/cron";
+import { cronToHuman, isValidCron } from "@/lib/cron";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ScheduledAction = {
   id: string;
@@ -43,13 +63,21 @@ const TABS: { value: Tab; label: string }[] = [
 ];
 
 const CRON_PRESETS = [
-  { label: "Every hour", value: "0 * * * *" },
-  { label: "Daily at 9 AM", value: "0 9 * * *" },
-  { label: "Weekdays at 9 AM", value: "0 9 * * 1-5" },
-  { label: "Weekly Monday 9 AM", value: "0 9 * * 1" },
-  { label: "Every 6 hours", value: "0 */6 * * *" },
-  { label: "Custom", value: "" },
+  { label: "Every hour", value: "0 * * * *", description: "At minute 0 of every hour" },
+  { label: "Daily at 9am", value: "0 9 * * *", description: "Every day at 9:00 AM" },
+  { label: "Weekdays at 9am", value: "0 9 * * 1-5", description: "Monday through Friday at 9:00 AM" },
+  { label: "Every 6 hours", value: "0 */6 * * *", description: "At minute 0 every 6 hours" },
+  { label: "Weekly Monday 9am", value: "0 9 * * 1", description: "Every Monday at 9:00 AM" },
+  { label: "Every 30 minutes", value: "*/30 * * * *", description: "At minute 0 and 30 of every hour" },
+  { label: "Custom", value: "", description: "Enter a custom cron expression" },
 ];
+
+const STATUS_BADGE_STYLES: Record<string, string> = {
+  active: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  paused: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20",
+  completed: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  failed: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+};
 
 function formatRelativeDate(dateStr: string | null): string {
   if (!dateStr) return "--";
@@ -70,14 +98,6 @@ function formatRelativeDate(dateStr: string | null): string {
   const days = Math.round(absDiffMs / 86_400_000);
   return diffMs > 0 ? `in ${days}d` : `${days}d ago`;
 }
-
-const SERVICE_COLORS: Record<string, string> = {
-  linear: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  gmail: "bg-red-500/10 text-red-600 dark:text-red-400",
-  granola: "bg-green-500/10 text-green-600 dark:text-green-400",
-  slack: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-  notion: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400",
-};
 
 function formatLocalDate(dateStr: string | null, timezone: string): string {
   if (!dateStr) return "--";
@@ -106,72 +126,153 @@ function getTimezoneAbbr(timezone: string): string {
   }
 }
 
-// ── Create Schedule Form ──
+function getPromptFromSchedule(schedule: ScheduledAction): string {
+  const prompt =
+    (schedule.payload as Record<string, unknown> | null)?.prompt as string | undefined;
+  return prompt ?? schedule.description ?? "";
+}
 
-function CreateScheduleForm({
-  onCreated,
-  onCancel,
+// ── Cron Selector ──
+
+function CronSelector({
+  selectedPreset,
+  customCron,
+  cronError,
+  onPresetChange,
+  onCustomCronChange,
 }: {
-  onCreated: () => void;
-  onCancel: () => void;
+  selectedPreset: string;
+  customCron: string;
+  cronError: string | null;
+  onPresetChange: (value: string) => void;
+  onCustomCronChange: (value: string) => void;
 }) {
-  const [name, setName] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState(CRON_PRESETS[1].value);
-  const [customCron, setCustomCron] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const cronValue = selectedPreset || customCron;
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-muted-foreground mb-2">
+        Schedule
+      </label>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {CRON_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => {
+              onPresetChange(preset.value);
+              if (preset.value) onCustomCronChange("");
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-xs border transition-colors",
+              (preset.value ? selectedPreset === preset.value : !selectedPreset)
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-accent",
+            )}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      {!selectedPreset && (
+        <div>
+          <input
+            type="text"
+            value={customCron}
+            onChange={(e) => onCustomCronChange(e.target.value)}
+            placeholder="Cron expression, e.g. 0 9 * * 1-5"
+            className={cn(
+              "w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring",
+              cronError && "border-destructive focus:ring-destructive",
+            )}
+          />
+          {cronError && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {cronError}
+            </p>
+          )}
+        </div>
+      )}
+      {cronValue && !cronError && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {cronToHuman(cronValue)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Schedule Form (used in Sheet for create + edit) ──
+
+function ScheduleForm({
+  mode,
+  initialName,
+  initialPrompt,
+  initialSchedule,
+  onSubmit,
+  onCancel,
+  submitting,
+}: {
+  mode: "create" | "edit";
+  initialName: string;
+  initialPrompt: string;
+  initialSchedule: string;
+  onSubmit: (data: { name: string; prompt: string; schedule: string }) => void;
+  onCancel: () => void;
+  submitting: boolean;
+}) {
+  const matchingPreset = CRON_PRESETS.find((p) => p.value === initialSchedule && p.value !== "");
+  const [name, setName] = useState(initialName);
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [selectedPreset, setSelectedPreset] = useState(matchingPreset?.value ?? "");
+  const [customCron, setCustomCron] = useState(matchingPreset ? "" : initialSchedule);
+  const [cronError, setCronError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const cronValue = selectedPreset || customCron;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !prompt.trim() || !cronValue.trim()) {
-      setError("Name, prompt, and schedule are required.");
-      return;
+  const validateCron = (value: string): boolean => {
+    if (!value.trim()) {
+      setCronError("Cron expression is required.");
+      return false;
     }
+    if (!isValidCron(value.trim())) {
+      setCronError("Invalid cron expression. Use format: minute hour day month weekday");
+      return false;
+    }
+    setCronError(null);
+    return true;
+  };
 
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/schedules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          prompt: prompt.trim(),
-          schedule: cronValue.trim(),
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to create schedule");
-        return;
-      }
-
-      onCreated();
-    } catch {
-      setError("Network error");
-    } finally {
-      setSubmitting(false);
+  const handleCustomCronChange = (value: string) => {
+    setCustomCron(value);
+    if (value.trim()) {
+      validateCron(value);
+    } else {
+      setCronError(null);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="border rounded-lg p-4 mb-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">New Schedule</h3>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-1 rounded-md text-muted-foreground hover:bg-accent transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !prompt.trim()) {
+      setError("Name and prompt are required.");
+      return;
+    }
+    if (!cronValue.trim()) {
+      setError("Schedule is required.");
+      return;
+    }
+    if (!selectedPreset && !validateCron(cronValue)) {
+      return;
+    }
+    setError(null);
+    onSubmit({ name: name.trim(), prompt: prompt.trim(), schedule: cronValue.trim() });
+  };
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5 mt-4">
       <div>
         <label htmlFor="sched-name" className="block text-xs font-medium text-muted-foreground mb-1">
           Name
@@ -195,72 +296,173 @@ function CreateScheduleForm({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="What should the AI do? e.g. Check my open Linear issues and summarize what needs attention today."
-          rows={3}
+          rows={4}
           className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">
-          Schedule
-        </label>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {CRON_PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => {
-                setSelectedPreset(preset.value);
-                if (preset.value) setCustomCron("");
-              }}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs border transition-colors",
-                (preset.value ? selectedPreset === preset.value : !selectedPreset)
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-accent",
-              )}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-        {!selectedPreset && (
-          <input
-            type="text"
-            value={customCron}
-            onChange={(e) => setCustomCron(e.target.value)}
-            placeholder="Cron expression, e.g. 0 9 * * 1-5"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        )}
-        {cronValue && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {cronToHuman(cronValue)}
-          </p>
-        )}
-      </div>
+      <CronSelector
+        selectedPreset={selectedPreset}
+        customCron={customCron}
+        cronError={cronError}
+        onPresetChange={setSelectedPreset}
+        onCustomCronChange={handleCustomCronChange}
+      />
 
       {error && (
         <p className="text-xs text-destructive">{error}</p>
       )}
 
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm rounded-md border text-muted-foreground hover:bg-accent transition-colors"
-        >
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-        >
-          {submitting ? "Creating..." : "Create Schedule"}
-        </button>
+        </Button>
+        <Button type="submit" size="sm" disabled={submitting}>
+          {submitting
+            ? mode === "create" ? "Creating..." : "Saving..."
+            : mode === "create" ? "Create Schedule" : "Save Changes"}
+        </Button>
       </div>
     </form>
+  );
+}
+
+// ── Schedule Row ──
+
+function ScheduleRow({
+  schedule,
+  timezone,
+  loading,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  onRunNow,
+}: {
+  schedule: ScheduledAction;
+  timezone: string;
+  loading: boolean;
+  onEdit: () => void;
+  onToggleStatus: () => void;
+  onDelete: () => void;
+  onRunNow: () => void;
+}) {
+  const promptPreview = getPromptFromSchedule(schedule);
+
+  return (
+    <div
+      className={cn(
+        "group border-b last:border-b-0 px-4 py-3 transition-colors hover:bg-accent/30",
+        loading && "opacity-60 pointer-events-none",
+      )}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          {/* Row 1: Name + status badge */}
+          <div className="flex items-center gap-2 mb-0.5">
+            <h3 className="text-sm font-medium truncate">{schedule.name}</h3>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] px-1.5 py-0 h-5 capitalize",
+                STATUS_BADGE_STYLES[schedule.status] ?? "",
+              )}
+            >
+              {schedule.status}
+            </Badge>
+          </div>
+
+          {/* Row 2: Prompt preview */}
+          {promptPreview && (
+            <p className="text-xs text-muted-foreground mb-1.5 line-clamp-1 max-w-lg">
+              {promptPreview}
+            </p>
+          )}
+
+          {/* Row 3: Meta info */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <RefreshCw className="h-3 w-3" />
+              {cronToHuman(schedule.schedule)}
+            </span>
+            <span
+              className="flex items-center gap-1"
+              title={schedule.next_run_at ? formatLocalDate(schedule.next_run_at, timezone) : undefined}
+            >
+              <Calendar className="h-3 w-3" />
+              Next: {formatRelativeDate(schedule.next_run_at)}
+            </span>
+            {schedule.last_run_at && (
+              <span
+                className="flex items-center gap-1"
+                title={formatLocalDate(schedule.last_run_at, timezone)}
+              >
+                <Zap className="h-3 w-3" />
+                Last: {formatRelativeDate(schedule.last_run_at)}
+              </span>
+            )}
+            <span>
+              Runs: {schedule.run_count}
+              {schedule.max_runs != null && `/${schedule.max_runs}`}
+            </span>
+            <span className="flex items-center gap-1" title={timezone}>
+              <Globe className="h-3 w-3" />
+              {getTimezoneAbbr(timezone)}
+            </span>
+          </div>
+
+          {/* Last conversation link */}
+          {schedule.last_conversation_id && (
+            <a
+              href={`/chat?id=${schedule.last_conversation_id}`}
+              className="inline-flex items-center gap-1 mt-1.5 text-xs text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              View last run
+            </a>
+          )}
+        </div>
+
+        {/* Actions - visible on hover */}
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            title="Edit"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          {schedule.status === "active" && (
+            <button
+              onClick={onRunNow}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+              title="Run Now"
+            >
+              <Zap className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {(schedule.status === "active" || schedule.status === "paused") && (
+            <button
+              onClick={onToggleStatus}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              title={schedule.status === "active" ? "Pause" : "Resume"}
+            >
+              {schedule.status === "active" ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -275,7 +477,15 @@ export function ScheduleList({
   const [tab, setTab] = useState<Tab>("active");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [timezone, setTimezone] = useState("America/New_York");
-  const [showCreate, setShowCreate] = useState(false);
+
+  // Sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
+  const [editingSchedule, setEditingSchedule] = useState<ScheduledAction | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<ScheduledAction | null>(null);
 
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -299,6 +509,65 @@ export function ScheduleList({
     }
   };
 
+  const openCreate = () => {
+    setSheetMode("create");
+    setEditingSchedule(null);
+    setSheetOpen(true);
+  };
+
+  const openEdit = (schedule: ScheduledAction) => {
+    setSheetMode("edit");
+    setEditingSchedule(schedule);
+    setSheetOpen(true);
+  };
+
+  const handleCreate = async (data: { name: string; prompt: string; schedule: string }) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          prompt: data.prompt,
+          schedule: data.schedule,
+        }),
+      });
+      if (res.ok) {
+        setSheetOpen(false);
+        fetchSchedules();
+      }
+    } catch {
+      // handled by form
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = async (data: { name: string; prompt: string; schedule: string }) => {
+    if (!editingSchedule) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/schedules/${editingSchedule.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          prompt: data.prompt,
+          schedule: data.schedule,
+        }),
+      });
+      if (res.ok) {
+        setSheetOpen(false);
+        fetchSchedules();
+      }
+    } catch {
+      // handled by form
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "paused" : "active";
     setLoadingId(id);
@@ -318,15 +587,17 @@ export function ScheduleList({
     }
   };
 
-  const deleteSchedule = async (id: string) => {
-    setLoadingId(id);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setLoadingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/schedules/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/schedules/${deleteTarget.id}`, { method: "DELETE" });
       if (res.ok) {
-        setSchedules((prev) => prev.filter((s) => s.id !== id));
+        setSchedules((prev) => prev.filter((s) => s.id !== deleteTarget.id));
       }
     } finally {
       setLoadingId(null);
+      setDeleteTarget(null);
     }
   };
 
@@ -341,32 +612,19 @@ export function ScheduleList({
       const data = await res.json();
 
       if (data.conversationId) {
-        if (confirm("Schedule executed. Open the results conversation?")) {
-          window.location.href = `/chat?id=${data.conversationId}`;
-        }
-      } else if (data.error) {
-        alert(data.error);
-      } else {
-        alert("Executed successfully");
+        window.location.href = `/chat?id=${data.conversationId}`;
       }
-
       fetchSchedules();
     } catch {
-      alert("Failed to execute");
+      // silent
     } finally {
       setLoadingId(null);
     }
   };
 
-  const getPromptPreview = (schedule: ScheduledAction): string | null => {
-    const prompt =
-      (schedule.payload as Record<string, unknown> | null)?.prompt as string | undefined;
-    return prompt ?? schedule.description;
-  };
-
   return (
     <div>
-      {/* Header with create button */}
+      {/* Header with tabs + create button */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1 border-b flex-1">
           {TABS.map((t) => {
@@ -396,25 +654,11 @@ export function ScheduleList({
             );
           })}
         </div>
-        <button
-          onClick={() => setShowCreate((v) => !v)}
-          className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
+        <Button size="sm" className="ml-4" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
           New
-        </button>
+        </Button>
       </div>
-
-      {/* Create form */}
-      {showCreate && (
-        <CreateScheduleForm
-          onCreated={() => {
-            setShowCreate(false);
-            fetchSchedules();
-          }}
-          onCancel={() => setShowCreate(false)}
-        />
-      )}
 
       {/* List */}
       {filtered.length === 0 ? (
@@ -422,145 +666,73 @@ export function ScheduleList({
           <Clock className="h-8 w-8 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No {tab} schedules</p>
           <p className="text-xs mt-1">
-            Create a schedule above or ask Granger in chat.
+            Create a schedule or ask Granger in chat.
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((schedule) => {
-            const promptPreview = getPromptPreview(schedule);
-            return (
-              <div
-                key={schedule.id}
-                className={cn(
-                  "border rounded-lg p-4 transition-colors",
-                  loadingId === schedule.id && "opacity-60",
-                )}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium truncate">
-                        {schedule.name}
-                      </h3>
-                      {schedule.target_service && (
-                        <span
-                          className={cn(
-                            "text-[10px] font-medium px-1.5 py-0.5 rounded-full uppercase tracking-wide",
-                            SERVICE_COLORS[schedule.target_service] ??
-                              "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {schedule.target_service}
-                        </span>
-                      )}
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground uppercase tracking-wide">
-                        {schedule.action_type}
-                      </span>
-                    </div>
-
-                    {promptPreview && (
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                        {promptPreview}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <RefreshCw className="h-3 w-3" />
-                        {cronToHuman(schedule.schedule)}
-                      </span>
-                      <span
-                        className="flex items-center gap-1"
-                        title={
-                          schedule.next_run_at
-                            ? formatLocalDate(schedule.next_run_at, timezone)
-                            : undefined
-                        }
-                      >
-                        <Calendar className="h-3 w-3" />
-                        Next: {formatRelativeDate(schedule.next_run_at)}
-                      </span>
-                      {schedule.last_run_at && (
-                        <span
-                          className="flex items-center gap-1"
-                          title={formatLocalDate(schedule.last_run_at, timezone)}
-                        >
-                          <Zap className="h-3 w-3" />
-                          Last: {formatRelativeDate(schedule.last_run_at)}
-                        </span>
-                      )}
-                      <span>
-                        Runs: {schedule.run_count}
-                        {schedule.max_runs != null && `/${schedule.max_runs}`}
-                      </span>
-                      <span
-                        className="flex items-center gap-1"
-                        title={timezone}
-                      >
-                        <Globe className="h-3 w-3" />
-                        {getTimezoneAbbr(timezone)}
-                      </span>
-                    </div>
-
-                    {/* Link to last conversation */}
-                    {schedule.last_conversation_id && (
-                      <a
-                        href={`/chat?id=${schedule.last_conversation_id}`}
-                        className="inline-flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        View last run
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {schedule.status === "active" && (
-                      <button
-                        onClick={() => runNow(schedule)}
-                        disabled={loadingId === schedule.id}
-                        className="p-1.5 rounded-md text-muted-foreground hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                        title="Run Now"
-                      >
-                        <Zap className="h-4 w-4" />
-                      </button>
-                    )}
-                    {(schedule.status === "active" ||
-                      schedule.status === "paused") && (
-                      <button
-                        onClick={() =>
-                          toggleStatus(schedule.id, schedule.status)
-                        }
-                        disabled={loadingId === schedule.id}
-                        className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                        title={
-                          schedule.status === "active" ? "Pause" : "Resume"
-                        }
-                      >
-                        {schedule.status === "active" ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteSchedule(schedule.id)}
-                      disabled={loadingId === schedule.id}
-                      className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="border rounded-lg overflow-hidden">
+          {filtered.map((schedule) => (
+            <ScheduleRow
+              key={schedule.id}
+              schedule={schedule}
+              timezone={timezone}
+              loading={loadingId === schedule.id}
+              onEdit={() => openEdit(schedule)}
+              onToggleStatus={() => toggleStatus(schedule.id, schedule.status)}
+              onDelete={() => setDeleteTarget(schedule)}
+              onRunNow={() => runNow(schedule)}
+            />
+          ))}
         </div>
       )}
+
+      {/* Create / Edit Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {sheetMode === "create" ? "New Schedule" : "Edit Schedule"}
+            </SheetTitle>
+            <SheetDescription>
+              {sheetMode === "create"
+                ? "Set up a recurring AI task that runs automatically."
+                : "Update the schedule name, prompt, or timing."}
+            </SheetDescription>
+          </SheetHeader>
+          <ScheduleForm
+            key={editingSchedule?.id ?? "create"}
+            mode={sheetMode}
+            initialName={editingSchedule?.name ?? ""}
+            initialPrompt={editingSchedule ? getPromptFromSchedule(editingSchedule) : ""}
+            initialSchedule={editingSchedule?.schedule ?? "0 9 * * *"}
+            onSubmit={sheetMode === "create" ? handleCreate : handleEdit}
+            onCancel={() => setSheetOpen(false)}
+            submitting={submitting}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete schedule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{deleteTarget?.name}&quot; and stop all future runs.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

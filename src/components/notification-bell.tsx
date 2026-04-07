@@ -41,6 +41,27 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   library_update: FileText,
 };
 
+function playNotificationPing() {
+  try {
+    const soundEnabled = localStorage.getItem("notification-sound") !== "off";
+    if (!soundEnabled) return;
+
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = "sine";
+    gain.gain.value = 0.1;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {
+    /* audio not available */
+  }
+}
+
 function relativeTime(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -73,17 +94,22 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
       const data = await res.json();
       const incoming: Notification[] = data.notifications ?? [];
 
-      // Fire desktop notifications for genuinely new unread items
+      // Fire desktop notifications + sound for genuinely new unread items
       // (skip on first fetch so we don't spam on page load)
       if (initialFetchDone.current) {
+        let hasNew = false;
         for (const n of incoming) {
           if (!n.is_read && !seenIdsRef.current.has(n.id)) {
+            hasNew = true;
             sendDesktopNotification(
               n.title,
               n.body ?? "",
               n.link ?? undefined,
             );
           }
+        }
+        if (hasNew) {
+          playNotificationPing();
         }
       }
 

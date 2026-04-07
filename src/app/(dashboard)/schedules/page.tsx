@@ -37,11 +37,28 @@ export default async function SchedulesPage() {
         </p>
       </div>
       <PageExplainer
-        title="How Schedules Work"
+        title="How Scheduling Works"
         sections={[
-          { title: "What are schedules", content: "Recurring or one-time tasks that Granger executes automatically. Examples: 'Check my Linear every morning', 'Send a weekly digest', 'Sync Drive files daily'." },
-          { title: "Creating schedules", content: "Ask Granger in chat: 'every morning check my Linear issues'. Granger converts natural language to cron expressions and creates the schedule." },
-          { title: "Managing schedules", content: "Pause, resume, edit, or delete schedules here. Each schedule shows its cron expression, last run time, and next scheduled execution." },
+          {
+            title: "What schedules do",
+            content:
+              "Schedules run your prompts automatically on a recurring basis. The AI creates a new conversation each time, searches your knowledge base, and sends you a notification when done.",
+          },
+          {
+            title: "Viewing results",
+            content:
+              "You can view the results by clicking the notification or finding the conversation in your chat history. Each schedule tracks its last run and links to the conversation.",
+          },
+          {
+            title: "Timing options",
+            content:
+              "Choose from presets like \"Every hour\", \"Daily at 9am\", \"Weekdays at 9am\", \"Every 6 hours\", \"Weekly Monday 9am\", or \"Every 30 minutes\". You can also enter a custom cron expression for advanced scheduling.",
+          },
+          {
+            title: "Managing schedules",
+            content:
+              "Pause, resume, edit, or delete schedules anytime. You can also ask Granger in chat to create schedules using natural language, e.g. \"every morning check my Linear issues\".",
+          },
         ]}
       />
       <ScheduleList initialSchedules={schedules ?? []} />

@@ -6,7 +6,6 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
-import { TestingChecklist } from "@/components/testing-checklist";
 import { NotificationProvider } from "@/components/notification-provider";
 import { PushNotificationProvider } from "@/components/push-notification-provider";
 
@@ -65,7 +64,6 @@ export default async function DashboardLayout({
       </main>
       <CommandPalette />
       <KeyboardShortcuts />
-      <TestingChecklist />
       <NotificationProvider />
       <PushNotificationProvider />
     </div>

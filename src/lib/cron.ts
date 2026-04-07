@@ -1,6 +1,18 @@
 import { Cron } from "croner";
 
 /**
+ * Validate a cron expression. Returns true if parseable by croner.
+ */
+export function isValidCron(expression: string): boolean {
+  try {
+    new Cron(expression);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Calculate the next run time from a cron expression.
  * Returns an ISO string or null if the expression is invalid.
  */
