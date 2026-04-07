@@ -319,8 +319,11 @@ export function ConnectorsView({
     // Optimistic removal from UI
     setRemovedIds((prev) => new Set(prev).add(id));
     try {
-      await fetch(`/api/mcp-servers/${id}`, { method: "DELETE" });
-    } catch {
+      const res = await fetch(`/api/mcp-servers/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+    } catch (err) {
+      console.error("[mcp] Disconnect failed:", err);
+      setMcpError(err instanceof Error ? err.message : "Failed to disconnect");
       // Revert on failure
       setRemovedIds((prev) => {
         const next = new Set(prev);
