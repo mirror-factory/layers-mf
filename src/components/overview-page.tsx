@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { NeuralMorph } from "@/components/ui/neural-morph";
+import { AgentSwarm } from "@/components/ui/agent-swarm";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -666,6 +667,36 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
           <ToolCard icon={Mail} name="ask_gmail_agent" description="Search emails and draft responses via Gmail" />
           <ToolCard icon={Shield} name="review_compliance" description="Check content against organizational rules and policies" />
         </div>
+
+        {/* Parallel Execution */}
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <h3 className="text-base font-semibold text-foreground">Parallel Execution</h3>
+            <p>
+              Tools run in parallel when they have no dependencies. The agent dispatches
+              multiple tool calls simultaneously -- searching your knowledge base, checking
+              Linear, and querying meetings all at once -- then synthesizes results once
+              every branch completes.
+            </p>
+            <p>
+              This dramatically reduces latency for multi-step tasks compared to sequential
+              execution.
+            </p>
+          </div>
+          <div className="flex justify-center py-4">
+            <AgentSwarm
+              animated
+              size={36}
+              agents={[
+                { name: "Checking Linear", status: "complete" },
+                { name: "Querying meetings", status: "complete" },
+                { name: "Searching knowledge base", status: "running" },
+                { name: "Drafting email", status: "pending" },
+                { name: "Reviewing compliance", status: "pending" },
+              ]}
+            />
+          </div>
+        </div>
       </section>
 
       {/*  Section 6 — Scheduling Vision                               */}
@@ -894,6 +925,40 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
         </Card>
       </section>
 
+      {/*  Section 9b — Agent Orchestration                             */}
+      <section>
+        <SectionHeading
+          title="Agent Orchestration"
+          subtitle="The primary agent delegates to specialists. Each runs independently, returns results, and the orchestrator synthesizes."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              Sub-agents -- Linear, Gmail, Drive, Notion -- each operate in their own tool
+              loop with dedicated context. The orchestrator dispatches work in parallel,
+              collects structured outputs, and merges everything into a single coherent
+              response.
+            </p>
+            <p>
+              Each specialist agent has its own set of tools and permissions, enforcing
+              least-privilege access across integrations.
+            </p>
+          </div>
+          <div className="flex justify-center py-4">
+            <AgentSwarm
+              animated
+              size={36}
+              agents={[
+                { name: "Linear Agent", status: "complete" },
+                { name: "Gmail Agent", status: "complete" },
+                { name: "Drive Agent", status: "running" },
+                { name: "Notion Agent", status: "running" },
+              ]}
+            />
+          </div>
+        </div>
+      </section>
+
       {/*  Section 10 — Status & Roadmap                               */}
       <section>
         <SectionHeading title="Status & Roadmap" />
@@ -958,14 +1023,18 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
         </h3>
         <div className="flex flex-wrap gap-2">
           {[
+            "Parallel agents & orchestration",
+            "Image generation & media tools",
+            "Content authoring & publishing",
+            "Cross-platform sharing (ChatGPT, Claude MCP, Slack)",
+            "Layers as MCP server",
+            "Token/passcode sharing for non-users",
             "Multi-user real-time chat",
             "Per-resource permissions & guest access",
             "Public API & SDK",
-            "Custom AI agents marketplace",
+            "Voice interface & live transcription",
             "Canvas / whiteboard mode",
-            "Voice interface",
-            "Mobile app",
-            "Cross-org collaboration",
+            "Workflow builder",
           ].map((item) => (
             <Badge
               key={item}
