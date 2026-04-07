@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { MCPChat } from "@/components/mcp-chat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -514,6 +515,11 @@ export function ConnectorsView({
             </span>
           )}
         </p>
+      </div>
+
+      {/* MCP Chat Assistant */}
+      <div className="mb-6">
+        <MCPChat />
       </div>
 
       {/* Tabs */}
