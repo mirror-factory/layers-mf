@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { SkillCard } from "@/components/skill-card";
+import { SkillCard, SkillIcon } from "@/components/skill-card";
 import { SkillCreator } from "@/components/skill-creator";
 import { BUILTIN_SKILLS } from "@/lib/skills/types";
-import { SKILLS_REGISTRY, SKILL_CATEGORIES, searchSkills, searchSkillsMarketplace, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
+import { SKILL_CATEGORIES, searchSkills, searchSkillsMarketplace, type MarketplaceSkill, type SkillCategory } from "@/lib/skills/registry";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ExternalLink, Loader2, Puzzle, Search, Code2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronDown, ExternalLink, Loader2, Puzzle, Search, Upload, Tag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { SkillsEditor } from "@/components/skills-editor";
 
 type SkillRow = {
@@ -43,6 +44,7 @@ export default function SkillsPage() {
   const [browseCategory, setBrowseCategory] = useState<SkillCategory>("all");
   const [liveResults, setLiveResults] = useState<{ name: string; source: string; installs: number; id: string; installCommand: string; url: string }[]>([]);
   const [liveSearching, setLiveSearching] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
 
   const fetchSkills = useCallback(async () => {
     try {
@@ -177,7 +179,7 @@ export default function SkillsPage() {
           description: "Installed from skills.sh",
           systemPrompt,
           category: "marketplace",
-          icon: "\uD83D\uDCE6",
+          icon: "package",
           isActive: true,
           source: skill.source,
           tools: [],
@@ -408,238 +410,324 @@ export default function SkillsPage() {
           {/* Browse tab */}
           {tab === "browse" && (
             <div className="space-y-6">
-              {/* Search input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search skills..."
-                  value={browseSearch}
-                  onChange={(e) => setBrowseSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-
-              {/* Category filter pills */}
-              <div className="flex flex-wrap gap-2">
-                {SKILL_CATEGORIES.map((cat) => (
+              {selectedSkill ? (
+                /* Skill Detail View */
+                <div className="space-y-6">
                   <button
-                    key={cat.value}
-                    onClick={() => setBrowseCategory(cat.value)}
-                    className={cn(
-                      "text-xs px-3 py-1.5 rounded-full font-medium transition-colors",
-                      browseCategory === cat.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
+                    onClick={() => setSelectedSkill(null)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {cat.label}
+                    <ArrowLeft className="h-3 w-3" />
+                    Back to browse
                   </button>
-                ))}
-              </div>
 
-              {/* Skill count */}
-              <p className="text-xs text-muted-foreground">
-                {availableMarketplace.length} skill{availableMarketplace.length !== 1 ? 's' : ''} available
-                {browseSearch && ` matching "${browseSearch}"`}
-                {browseCategory !== 'all' && ` in ${browseCategory}`}
-              </p>
-
-              {/* Built-in skills (only shown when not searching) */}
-              {!browseSearch && browseCategory === 'all' && availableBuiltins.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Built-in Skills</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {availableBuiltins.map((skill) => (
-                      <div
-                        key={skill.slug}
-                        className="rounded-lg border bg-card p-4"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl shrink-0">{skill.icon}</span>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-sm">
-                              {skill.name}
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {skill.description}
-                            </p>
-                            {skill.slashCommand && (
-                              <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground mt-2 inline-block">
-                                {skill.slashCommand}
-                              </code>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleInstallBuiltin(skill.slug)}
-                            className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                          >
-                            Install
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Registry skills */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">
-                    {browseSearch || browseCategory !== 'all' ? 'Results' : 'Community Skills'}
-                  </h3>
-                  <a
-                    href="https://skills.sh"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    skills.sh registry
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-                {availableMarketplace.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {availableMarketplace.map((skill) => (
-                      <div
-                        key={skill.slug}
-                        className="rounded-lg border bg-card p-4"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl shrink-0">
-                            {skill.icon}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-sm">
-                              {skill.name}
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {skill.description}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <span
-                                className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                                  skill.author === "Vercel"
-                                    ? "bg-foreground text-background"
-                                    : "bg-muted text-muted-foreground"
-                                )}
-                              >
-                                {skill.author}
-                              </span>
-                              <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground">
-                                /{skill.slug}
-                              </code>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleInstallMarketplace(skill)}
-                            disabled={installingMarketplace === skill.slug}
-                            className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                          >
-                            {installingMarketplace === skill.slug ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              "Install"
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-muted-foreground">
-                      {browseSearch
-                        ? `No skills found matching "${browseSearch}".`
-                        : "All available skills are installed."}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Live skills.sh API results */}
-              {browseSearch.length >= 2 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium flex items-center gap-2">
-                      Live from skills.sh
-                      {liveSearching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                    </h3>
-                    <span className="text-xs text-muted-foreground">
-                      {liveResults.length} result{liveResults.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  {liveResults.length > 0 ? (
-                    <div className="grid gap-2">
-                      {liveResults.map((skill) => (
-                        <div
-                          key={skill.id}
-                          className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-sm font-mono">{skill.name}</h4>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                {skill.installs.toLocaleString()} installs
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{skill.source}</p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <code className="text-[10px] px-2 py-1 rounded bg-muted font-mono text-muted-foreground hidden sm:block">
-                              {skill.installCommand}
-                            </code>
-                            <a
-                              href={skill.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline flex items-center gap-1"
-                            >
-                              View <ExternalLink className="h-3 w-3" />
-                            </a>
-                            {installedLive.has(skill.id) ? (
-                              <span className="text-xs text-green-600 font-medium whitespace-nowrap">
-                                Installed &#10003;
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleInstallLive(skill)}
-                                disabled={installingLive === skill.id}
-                                className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                              >
-                                {installingLive === skill.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  "Install"
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted">
+                      <SkillIcon icon={selectedSkill.icon} className="h-7 w-7 text-muted-foreground" />
                     </div>
-                  ) : !liveSearching ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      No results from skills.sh for &quot;{browseSearch}&quot;
-                    </p>
-                  ) : null}
-                </div>
-              )}
+                    <div>
+                      <h2 className="text-lg font-semibold">{selectedSkill.name}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {selectedSkill.category}
+                        </Badge>
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                            selectedSkill.author === "Vercel"
+                              ? "bg-foreground text-background"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {selectedSkill.author}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Footer link */}
-              <div className="text-center pt-2 pb-4 border-t">
-                <a
-                  href="https://skills.sh"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                >
-                  Browse more at skills.sh
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </div>
+                  <p className="text-sm text-muted-foreground">{selectedSkill.description}</p>
+
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium mb-1">Slash Command</p>
+                      <code className="text-xs px-2 py-1 rounded bg-muted font-mono text-muted-foreground">
+                        /{selectedSkill.slug}
+                      </code>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium mb-1">Source</p>
+                      <p className="text-xs text-muted-foreground font-mono">{selectedSkill.source}</p>
+                    </div>
+                    {selectedSkill.tags.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium mb-1 flex items-center gap-1">
+                          <Tag className="h-3 w-3" /> Tags
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedSkill.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-[10px]">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-medium mb-1">Instructions Preview</p>
+                      <p className="text-xs text-muted-foreground">
+                        {`You are a ${selectedSkill.name} specialist. ${selectedSkill.description}. Use your expertise to help the user with tasks related to this domain.`.slice(0, 500)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {installedSlugs.has(selectedSkill.slug) ? (
+                    <p className="text-sm text-green-600 font-medium">Already installed</p>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleInstallMarketplace(selectedSkill);
+                        setSelectedSkill(null);
+                      }}
+                      disabled={installingMarketplace === selectedSkill.slug}
+                      className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {installingMarketplace === selectedSkill.slug ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Install Skill"
+                      )}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* Browse Grid */
+                <>
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search skills..."
+                      value={browseSearch}
+                      onChange={(e) => setBrowseSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+
+                  {/* Category filter pills */}
+                  <div className="flex flex-wrap gap-2">
+                    {SKILL_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.value}
+                        onClick={() => setBrowseCategory(cat.value)}
+                        className={cn(
+                          "text-xs px-3 py-1.5 rounded-full font-medium transition-colors",
+                          browseCategory === cat.value
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Skill count */}
+                  <p className="text-xs text-muted-foreground">
+                    {availableMarketplace.length} skill{availableMarketplace.length !== 1 ? 's' : ''} available
+                    {browseSearch && ` matching "${browseSearch}"`}
+                    {browseCategory !== 'all' && ` in ${browseCategory}`}
+                  </p>
+
+                  {/* Built-in skills (only shown when not searching) */}
+                  {!browseSearch && browseCategory === 'all' && availableBuiltins.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Built-in Skills</h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {availableBuiltins.map((skill) => (
+                          <div
+                            key={skill.slug}
+                            className="rounded-lg border bg-card p-4"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <SkillIcon icon={skill.icon} className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-medium text-sm">
+                                  {skill.name}
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {skill.description}
+                                </p>
+                                {skill.slashCommand && (
+                                  <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground mt-2 inline-block">
+                                    {skill.slashCommand}
+                                  </code>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleInstallBuiltin(skill.slug)}
+                                className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                              >
+                                Install
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Registry skills */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium">
+                        {browseSearch || browseCategory !== 'all' ? 'Results' : 'Community Skills'}
+                      </h3>
+                      <a
+                        href="https://skills.sh"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        skills.sh registry
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    {availableMarketplace.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {availableMarketplace.map((skill) => (
+                          <button
+                            key={skill.slug}
+                            onClick={() => setSelectedSkill(skill)}
+                            className="rounded-lg border bg-card p-4 text-left transition-all hover:bg-accent/50 hover:border-foreground/10"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <SkillIcon icon={skill.icon} className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-medium text-sm">
+                                  {skill.name}
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {skill.description}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                      skill.author === "Vercel"
+                                        ? "bg-foreground text-background"
+                                        : "bg-muted text-muted-foreground"
+                                    )}
+                                  >
+                                    {skill.author}
+                                  </span>
+                                  <code className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-muted-foreground">
+                                    /{skill.slug}
+                                  </code>
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-sm text-muted-foreground">
+                          {browseSearch
+                            ? `No skills found matching "${browseSearch}".`
+                            : "All available skills are installed."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Live skills.sh API results */}
+                  {browseSearch.length >= 2 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium flex items-center gap-2">
+                          Live from skills.sh
+                          {liveSearching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                        </h3>
+                        <span className="text-xs text-muted-foreground">
+                          {liveResults.length} result{liveResults.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      {liveResults.length > 0 ? (
+                        <div className="grid gap-2">
+                          {liveResults.map((skill) => (
+                            <div
+                              key={skill.id}
+                              className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-sm font-mono">{skill.name}</h4>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                    {skill.installs.toLocaleString()} installs
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">{skill.source}</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <code className="text-[10px] px-2 py-1 rounded bg-muted font-mono text-muted-foreground hidden sm:block">
+                                  {skill.installCommand}
+                                </code>
+                                <a
+                                  href={skill.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                >
+                                  View <ExternalLink className="h-3 w-3" />
+                                </a>
+                                {installedLive.has(skill.id) ? (
+                                  <span className="text-xs text-green-600 font-medium whitespace-nowrap">
+                                    Installed
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleInstallLive(skill)}
+                                    disabled={installingLive === skill.id}
+                                    className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                  >
+                                    {installingLive === skill.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      "Install"
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : !liveSearching ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          No results from skills.sh for &quot;{browseSearch}&quot;
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Footer link */}
+                  <div className="text-center pt-2 pb-4 border-t">
+                    <a
+                      href="https://skills.sh"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      Browse more at skills.sh
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

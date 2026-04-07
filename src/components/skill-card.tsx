@@ -1,7 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FileText, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  Trash2,
+  Puzzle,
+  Package,
+  Code2,
+  Brain,
+  Zap,
+  Mail,
+  Mic,
+  BarChart3,
+  Palette,
+  ClipboardList,
+  Triangle,
+  Atom,
+  Blocks,
+  Rocket,
+  FileType,
+  Plug,
+  FlaskConical,
+  GitBranch,
+  Container,
+  Shield,
+  TrendingUp,
+  Scale,
+  Target,
+  PenTool,
+  Presentation,
+  Smartphone,
+  Calendar,
+  UserPlus,
+  type LucideIcon,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,6 +60,41 @@ type SkillRow = {
   is_builtin: boolean;
   reference_files?: ReferenceFile[];
 };
+
+export const SKILL_ICON_MAP: Record<string, LucideIcon> = {
+  "package": Package,
+  "code": Code2,
+  "brain": Brain,
+  "zap": Zap,
+  "mail": Mail,
+  "mic": Mic,
+  "bar-chart": BarChart3,
+  "palette": Palette,
+  "clipboard-list": ClipboardList,
+  "triangle": Triangle,
+  "atom": Atom,
+  "blocks": Blocks,
+  "rocket": Rocket,
+  "file-type": FileType,
+  "plug": Plug,
+  "flask-conical": FlaskConical,
+  "git-branch": GitBranch,
+  "container": Container,
+  "shield": Shield,
+  "trending-up": TrendingUp,
+  "scale": Scale,
+  "target": Target,
+  "pen-tool": PenTool,
+  "presentation": Presentation,
+  "smartphone": Smartphone,
+  "calendar": Calendar,
+  "user-plus": UserPlus,
+};
+
+export function SkillIcon({ icon, className }: { icon: string; className?: string }) {
+  const IconComponent = SKILL_ICON_MAP[icon] ?? Puzzle;
+  return <IconComponent className={className} />;
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   productivity: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
@@ -58,9 +126,9 @@ export function SkillCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="text-2xl shrink-0" role="img" aria-label={skill.name}>
-            {skill.icon}
-          </span>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <SkillIcon icon={skill.icon} className="h-4 w-4 text-muted-foreground" />
+          </div>
           <div className="min-w-0">
             <h3 className="font-medium text-sm leading-tight">{skill.name}</h3>
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">

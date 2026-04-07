@@ -53,7 +53,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "productivity",
-    icon: "📋",
+    icon: "clipboard-list",
     systemPrompt:
       "You are a project management specialist. Focus on sprint planning, issue tracking, and team coordination. Use Linear tools to query and manage issues. Format results as tables. Suggest next actions.",
     tools: [
@@ -74,7 +74,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "communication",
-    icon: "✉️",
+    icon: "mail",
     systemPrompt:
       "You are an email drafting specialist. Search context for relevant information, then draft clear, professional emails. Always ask for approval before saving drafts.",
     tools: [
@@ -92,7 +92,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "productivity",
-    icon: "🎙️",
+    icon: "mic",
     systemPrompt:
       "You are a meeting analysis specialist. When given a transcript or asked about meetings, extract: decisions made, action items (with owners and deadlines), key discussion points, and follow-up items. Format clearly with sections.",
     tools: [
@@ -113,7 +113,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "development",
-    icon: "💻",
+    icon: "code",
     systemPrompt:
       "You are a code generation specialist. Write clean, well-commented code. For HTML/CSS: use write_code with preview. For scripts that need execution: use run_code. Always explain what the code does.",
     tools: [
@@ -132,7 +132,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "productivity",
-    icon: "📊",
+    icon: "bar-chart",
     systemPrompt:
       "You are a weekly reporting specialist. Search across all context sources to compile a comprehensive weekly summary including: completed tasks, open items, key decisions, upcoming deadlines, and recommended priorities for next week.",
     tools: [
@@ -151,7 +151,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     version: "1.0.0",
     author: "Granger",
     category: "creative",
-    icon: "🎨",
+    icon: "palette",
     systemPrompt:
       "You are a brand content specialist for Mirror Factory. Write in a direct, technical, no-BS tone. Reference company values from priority docs. Content should be clear, concise, and professional without being corporate.",
     tools: [
