@@ -14,6 +14,7 @@ import {
   Wrench,
   ArrowLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,24 +87,24 @@ function ConnectorCard({
   name,
   icon: Icon,
   status,
-  type,
   lastActivity,
-  description,
   errorMessage,
   toolCount,
+  authType,
   onDisconnect,
   onReconnect,
+  onRemove,
 }: {
   name: string;
   icon: React.ElementType;
   status: ConnectorStatus;
-  type: "API" | "MCP";
   lastActivity: string | null;
-  description?: string;
   errorMessage?: string | null;
   toolCount?: number;
+  authType?: string;
   onDisconnect?: () => void;
   onReconnect?: () => void;
+  onRemove?: () => void;
 }) {
   const statusDot =
     status === "connected"
@@ -111,6 +112,8 @@ function ConnectorCard({
       : status === "error"
         ? "bg-destructive"
         : "bg-muted-foreground/40";
+
+  const statusLabel = status === "connected" ? "Connected" : status === "error" ? "Error" : "Disconnected";
 
   return (
     <div className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50">
@@ -120,14 +123,11 @@ function ConnectorCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium truncate">{name}</span>
-          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot)} />
-          <Badge variant="outline" className="text-[10px] shrink-0">
-            {type}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {description && (
-            <p className="text-[11px] text-muted-foreground truncate">{description}</p>
+          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot)} title={statusLabel} />
+          {authType && (
+            <Badge variant="outline" className="text-[10px] shrink-0">
+              {authType === "oauth" ? "OAuth" : authType === "bearer" ? "API Key" : "Open"}
+            </Badge>
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
@@ -138,14 +138,14 @@ function ConnectorCard({
             </span>
           )}
           {lastActivity && (
-            <span>Last used {new Date(lastActivity).toLocaleDateString()}</span>
+            <span>Last active {new Date(lastActivity).toLocaleDateString()}</span>
           )}
           {errorMessage && status === "error" && (
-            <span className="text-destructive truncate">{errorMessage}</span>
+            <span className="text-destructive truncate max-w-[200px]">{errorMessage}</span>
           )}
         </div>
       </div>
-      <div className="shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         {status === "connected" ? (
           <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={onDisconnect}>
             <WifiOff className="h-3 w-3 mr-1" />
@@ -157,6 +157,9 @@ function ConnectorCard({
             Reconnect
           </Button>
         )}
+        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={onRemove} title="Remove permanently">
+          <X className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   );
@@ -279,16 +282,30 @@ export function ConnectorsView({
 
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
+  // Disconnect = deactivate (keep record, can reconnect)
   const handleDisconnectMCP = async (id: string) => {
-    // Optimistic removal from UI
+    try {
+      const res = await fetch(`/api/mcp-servers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: false }),
+      });
+      if (!res.ok) throw new Error(`Disconnect failed: ${res.status}`);
+      window.location.reload();
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "Failed to disconnect");
+    }
+  };
+
+  // Remove = permanently delete from DB
+  const handleRemoveMCP = async (id: string) => {
     setRemovedIds((prev) => new Set(prev).add(id));
     try {
       const res = await fetch(`/api/mcp-servers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+      if (!res.ok) throw new Error(`Remove failed: ${res.status}`);
     } catch (err) {
-      console.error("[mcp] Disconnect failed:", err);
-      setMcpError(err instanceof Error ? err.message : "Failed to disconnect");
-      // Revert on failure
+      console.error("[mcp] Remove failed:", err);
+      setMcpError(err instanceof Error ? err.message : "Failed to remove");
       setRemovedIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -306,7 +323,7 @@ export function ConnectorsView({
       await fetch(`/api/mcp-servers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: true }),
+        body: JSON.stringify({ is_active: true, error_message: null }),
       });
 
       // If OAuth server, trigger the OAuth flow instead of just reloading
@@ -557,12 +574,13 @@ export function ConnectorsView({
                     name={server.name}
                     icon={Server}
                     status={mcpStatus}
-                    type="MCP"
                     lastActivity={server.last_connected_at}
                     errorMessage={server.error_message}
                     toolCount={server.discovered_tools?.length ?? 0}
+                    authType={server.auth_type}
                     onDisconnect={() => handleDisconnectMCP(server.id)}
                     onReconnect={() => handleReconnectMCP(server.id)}
+                    onRemove={() => handleRemoveMCP(server.id)}
                   />
                 );
               })}
