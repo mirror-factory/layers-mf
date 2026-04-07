@@ -77,6 +77,7 @@ export function ShareSignupCTA() {
             >
               Get Started Free
             </Link>
+            <p className="text-[10px] text-muted-foreground">Free while in development. All features included.</p>
             <button
               onClick={() => setShow(false)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"

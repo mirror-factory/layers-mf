@@ -15,23 +15,9 @@ const PLANS = [
   {
     id: "free",
     name: "Free",
-    price: "$0/mo",
-    features: ["50 credits/month", "1 user", "3 integrations"],
+    price: "Free while in development",
+    features: ["Unlimited credits (dev)", "Full AI access", "All integrations", "All features included"],
     available: true,
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$19/mo",
-    features: ["500 credits/month", "5 users", "Unlimited integrations"],
-    available: false,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$49/mo",
-    features: ["5,000 credits/month", "Unlimited users", "Priority support"],
-    available: false,
   },
 ] as const;
 
@@ -177,40 +163,14 @@ export default function SignupPage() {
                 </p>
               )}
             </div>
-            {/* Plan selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Choose a plan</label>
-              <div className="grid grid-cols-3 gap-2">
-                {PLANS.map((plan) => (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => plan.available && setSelectedPlan(plan.id)}
-                    className={cn(
-                      "relative rounded-md border p-3 text-left text-xs transition-colors",
-                      selectedPlan === plan.id
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "hover:bg-accent",
-                      !plan.available && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <div className="font-semibold">{plan.name}</div>
-                    <div className="text-muted-foreground">{plan.price}</div>
-                    <ul className="mt-2 space-y-1">
-                      {plan.features.map((f) => (
-                        <li key={f} className="flex items-start gap-1">
-                          <Check className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                          <span>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    {!plan.available && (
-                      <span className="mt-2 inline-block text-[10px] font-medium text-muted-foreground">
-                        Coming Soon
-                      </span>
-                    )}
-                  </button>
-                ))}
+            {/* Plan info */}
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-primary">Free while in development</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">All features included. No credit card required.</p>
+                </div>
+                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-1 rounded">BETA</span>
               </div>
             </div>
 
