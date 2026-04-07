@@ -85,8 +85,10 @@ export async function connectMCPServer(options: {
 
   // Try connecting with the latest protocol version first, fall back to older versions
   // Many MCP servers don't support the very latest spec yet
+  // Try both transport types — some servers respond as SSE even when using streamable-http
+  const requestedType = options.transportType ?? "http";
   const transportConfig = {
-    type: (options.transportType ?? "http") as "http" | "sse",
+    type: requestedType as "http" | "sse",
     url: options.url,
     headers,
   };
@@ -117,6 +119,30 @@ export async function connectMCPServer(options: {
         } catch (retryErr) {
           lastError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
           if (!lastError.message.includes("protocol")) break; // different error
+        }
+      }
+    }
+  }
+
+  // If HTTP transport failed, try SSE (many servers respond with SSE format)
+  if (!client && requestedType === "http") {
+    try {
+      const sseConfig = { type: "sse" as const, url: options.url, headers };
+      client = await createMCPClient({ transport: sseConfig });
+      lastError = null;
+    } catch (sseErr) {
+      // Also try SSE with older protocol versions
+      const olderVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
+      for (const version of olderVersions) {
+        try {
+          const sseConfig = { type: "sse" as const, url: options.url, headers };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          client = await (createMCPClient as any)({ transport: sseConfig, protocolVersion: version });
+          lastError = null;
+          break;
+        } catch (retryErr) {
+          lastError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
+          if (!lastError.message.includes("protocol")) break;
         }
       }
     }
