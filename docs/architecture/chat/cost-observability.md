@@ -389,3 +389,160 @@ The AI Gateway `caching: 'auto'` setting is the recommended approach. It abstrac
 3. For Google: no-op (caching is automatic on supported models)
 
 This means switching providers in the model selector does not require any cache configuration changes.
+
+---
+
+## Analytics API
+
+### GET `/api/analytics/usage`
+
+Aggregated usage analytics from the `agent_runs` table. Requires authentication and `owner` or `admin` role on the organization.
+
+**Query params:**
+
+| Param | Values | Default | Description |
+|-------|--------|---------|-------------|
+| `period` | `day`, `week`, `month` | `week` | Time window for the query (1 day, 7 days, or 30 days) |
+| `group_by` | `model`, `provider`, `user`, `day` | `model` | Primary grouping dimension |
+
+**Response shape:**
+
+```json
+{
+  "summary": {
+    "totalRequests": 1247,
+    "totalInputTokens": 4200000,
+    "totalOutputTokens": 1800000,
+    "totalCost": 12.45,
+    "totalCacheReadTokens": 3024000,
+    "cacheHitRate": 72,
+    "avgDurationMs": 2400,
+    "avgTtft": 380,
+    "modelsUsed": 4,
+    "uniqueConversations": 89
+  },
+  "byModel": [
+    { "model": "anthropic/claude-sonnet-4.6", "requests": 420, "inputTokens": 2100000, "outputTokens": 900000, "cost": 8.20, "avgDuration": 2800 }
+  ],
+  "byProvider": [
+    { "provider": "anthropic", "requests": 420, "cost": 8.20 }
+  ],
+  "byDay": [
+    { "date": "2026-04-06", "requests": 180, "cost": 1.80, "inputTokens": 600000, "outputTokens": 250000 }
+  ],
+  "topTools": [
+    { "tool": "search_context", "count": 456 }
+  ],
+  "period": "week",
+  "groupBy": "model",
+  "interval": "7 days"
+}
+```
+
+**SQL / aggregation patterns used:**
+
+- **Data fetch**: Single query on `agent_runs` filtered by `org_id` and `created_at >= cutoff`, ordered descending, limited to 10,000 rows. The cutoff date is computed from the `period` param (1, 7, or 30 days ago).
+- **Summary**: Single pass over all rows accumulating totals for requests, tokens, cost, duration, and TTFT. Cache hit rate = `cacheReadTokens / (inputTokens + cacheReadTokens) * 100`. Unique models and conversations tracked via `Set`.
+- **By Model**: `Map<model, accumulator>` grouping rows by `run.model`. Each entry tracks requests, input/output tokens, cost, and duration. Sorted by request count descending.
+- **By Provider**: Provider extracted by splitting model ID on `/` (e.g., `"anthropic/claude-sonnet-4.6".split("/")[0]` yields `"anthropic"`). Grouped into `Map<provider, { requests, cost }>`. Sorted by cost descending.
+- **By Day**: Date extracted by splitting `created_at` on `T` (ISO date prefix). Grouped into `Map<date, { requests, cost, tokens }>`. Sorted by date descending.
+- **Top Tools**: Flattens `tool_calls` JSONB arrays across all rows, counts by tool name, returns top 10 sorted by count descending.
+
+---
+
+## How agent_runs Works (End-to-End Flow)
+
+```
+User sends message
+  -> Chat route receives request (POST /api/chat)
+  -> ToolLoopAgent runs (may call tools, multi-step)
+  -> onStepFinish: accumulates per-step stats (tokens, cache, duration, tools)
+  -> Stream completes
+  -> createAgentUIStreamResponse onFinish fires
+  -> ONE insert into agent_runs with all accumulated data
+  -> Client fetches via /api/chat/stats for per-conversation view
+  -> Client fetches via /api/analytics/usage for aggregate view
+```
+
+The key design decision is **one row per assistant message**, not one row per LLM step. A single agent run may involve multiple LLM calls (tool loop), but the `onStepFinish` callback collects per-step stats into an array, and the `onFinish` callback reduces that array into a single aggregate row. This keeps the table manageable (row count = message count, not step count) while retaining per-step detail in the `tool_calls` JSONB column.
+
+---
+
+## What's Tracked Per Request (Complete Column Reference)
+
+| Column | Type | How It's Populated | Purpose |
+|--------|------|--------------------|---------|
+| `id` | UUID | Auto-generated (`gen_random_uuid()`) | Primary key |
+| `chat_id` | UUID | From the request body's `conversationId` | Links run to its conversation |
+| `org_id` | UUID | From the authenticated user's org membership | Scopes analytics to organization |
+| `user_id` | UUID | From `supabase.auth.getUser()` | Attributes cost to the individual |
+| `model` | TEXT | From `response.modelId` in `onFinish` | The model that generated this response |
+| `input_tokens` | INT | `usage.inputTokens` summed across all steps | Total tokens sent to the model |
+| `output_tokens` | INT | `usage.outputTokens` summed across all steps | Total tokens generated |
+| `cache_read_tokens` | INT | `usage.inputTokenDetails.cacheReadTokens` | Tokens served from prompt cache (cost savings) |
+| `cache_write_tokens` | INT | `usage.inputTokenDetails.cacheWriteTokens` | Tokens written to prompt cache |
+| `cost_usd` | DECIMAL(10,6) | Calculated from model pricing table and token counts | Dollar cost for this single request |
+| `duration_ms` | INT | Wall-clock time from request start to stream end | Total response time |
+| `ttft_ms` | INT | Time from request start to first streamed chunk | Time to first token (perceived latency) |
+| `tool_calls` | JSONB | Array of `{ name }` objects from `steps[].toolCalls` | Which tools were invoked and how many |
+| `step_count` | INT | `steps.length` from the agent loop | Number of LLM calls in this agent run |
+| `generation_id` | TEXT | From `response.headers` (AI Gateway header) | Cross-reference with Vercel AI Gateway dashboard |
+| `created_at` | TIMESTAMPTZ | Auto-generated (`now()`) | When the run occurred |
+
+---
+
+## Analytics Dimensions
+
+What you can slice by, and what questions each dimension answers:
+
+**Per message**: model, tokens, cache, cost, TTFT, tools used. Answers: "What did this specific response cost? Was the cache helping? Which tools fired?"
+
+**Per conversation**: total cost, model mix, cache efficiency, tool frequency. Answers: "How much did this entire conversation cost? Did the user switch models? How did cache savings accumulate over turns?"
+
+**Per user**: total spend, most-used model, request count, avg response time. Answers: "Who is using the most credits? Which users prefer which models? Who generates the most tool calls?"
+
+**Per organization**: aggregate cost, provider breakdown, credit usage, member usage. Answers: "What's our total AI spend? Which provider is cheapest for our workload? Are we within budget?"
+
+**Per provider**: cost comparison, latency comparison, cache hit rates. Answers: "Is Anthropic cheaper than OpenAI for our use case? Which provider has the best cache performance?"
+
+**Per model**: cost efficiency ($/1K tokens), avg TTFT, avg throughput, popularity. Answers: "Is Sonnet good enough or do we need Opus? Which model delivers the best cost/quality tradeoff?"
+
+**Per day/week/month**: trends, cost forecasting, usage growth. Answers: "Are costs trending up? How does Monday compare to Friday? What will next month cost at this rate?"
+
+**Per tool**: most called, avg cost per call, failure rate. Answers: "Is search_context dominating tool usage? How much does a typical write_code call cost in tokens?"
+
+---
+
+## Individual vs Organization Visibility
+
+### For individual users
+
+- See the cost of each message in real-time via the info popover on every assistant response
+- Track which model is cheapest for their use case by switching mid-conversation and comparing
+- Monitor cache hit rate per message (higher = cheaper; consecutive messages on the same model get up to 90% cheaper)
+- Set personal cost awareness without requiring admin intervention — the data is always visible
+- View full conversation cost breakdown showing every LLM call, its tokens, and its cache performance
+
+### For organization admins
+
+- Dashboard showing total spend, per-user breakdown, and per-provider costs over configurable time periods
+- Set credit budgets and receive alerts before they run out
+- Identify expensive conversations or users through the analytics API's grouping dimensions
+- Compare model cost-effectiveness across the team (e.g., Sonnet vs. Opus cost per 1K tokens)
+- Track cache efficiency org-wide — low cache hit rates indicate model-switching patterns that inflate costs
+- Export usage data for billing, accounting, and forecasting via the `/api/analytics/usage` endpoint
+
+---
+
+## Future: What We Can Build on This Data
+
+| Capability | Description | Complexity |
+|------------|-------------|------------|
+| Cost anomaly alerts | Notify when a conversation exceeds a configurable dollar threshold | Low |
+| Model recommendation engine | "Sonnet is 3x cheaper for your use case with similar quality" | Medium |
+| Auto-downgrade | Route simple queries to cheaper models automatically | Medium |
+| Daily/weekly cost reports | Email digest with spend trends and cache performance | Low |
+| Per-team cost allocation | Attribute costs to teams/departments within an organization | Medium |
+| Invoice generation | Generate itemized invoices for billing downstream customers | High |
+| Token budget guardrails | Hard-stop or soft-warn when a user/org approaches a token limit | Low |
+| Cost forecasting | Project next month's spend based on trailing usage trends | Medium |

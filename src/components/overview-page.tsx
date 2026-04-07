@@ -664,6 +664,85 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
           subtitle="Full observability into every LLM call -- tokens, cache hits, cost, and timing -- per message, per conversation, per user, per org."
         />
 
+        {/* --- Narrative: what this visibility means --- */}
+        <div className="mb-10 max-w-3xl space-y-5 text-sm text-muted-foreground leading-relaxed">
+          <p>
+            Every AI interaction is tracked -- model used, tokens consumed, time to respond,
+            cache efficiency, and actual cost. This data flows into a unified analytics layer
+            that serves both individual users and organization admins.
+          </p>
+
+          <div>
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">For Individuals</h4>
+            <ul className="space-y-1.5">
+              {[
+                "See exactly what each message costs via the info popover on every assistant response",
+                "Compare models by switching mid-conversation and seeing the cost difference in real time",
+                "Monitor cache hit rates -- consecutive messages on the same model get up to 90% cheaper",
+                "Full conversation cost breakdown showing every LLM call, its tokens, and its cache performance",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                  <span className="text-[11px]">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">For Organizations</h4>
+            <ul className="space-y-1.5">
+              {[
+                "Aggregate dashboard: total spend, per-user breakdown, per-provider costs over configurable periods",
+                "Track which models deliver the best value for your team's use cases",
+                "Credit budgets with alerts before they run out",
+                "Export usage data for billing, accounting, and forecasting",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                  <span className="text-[11px]">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="text-xs text-foreground/80 font-medium">
+            Most AI platforms show you a monthly bill. Layers shows you the cost of every single
+            message, every tool call, every cache hit -- in real time, per user, per model, per
+            provider. You never wonder &quot;why was this month expensive.&quot;
+          </p>
+
+          {/* Data captured callout */}
+          <Card className="border-border/60 bg-zinc-950/80">
+            <CardContent className="p-4">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-2">
+                Data captured per message
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Model",
+                  "TTFT",
+                  "Total Time",
+                  "Input Tokens",
+                  "Output Tokens",
+                  "Cache Read",
+                  "Cache Write",
+                  "Cost",
+                  "Tools Used",
+                  "Step Count",
+                ].map((field) => (
+                  <span
+                    key={field}
+                    className="text-[10px] font-mono text-foreground/70 bg-zinc-800/80 rounded px-2 py-0.5"
+                  >
+                    {field}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* --- What We Track (3x2 grid) --- */}
         <div className="mb-10">
           <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">What We Track</h3>
