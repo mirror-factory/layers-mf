@@ -21,8 +21,9 @@
 /* Mobile viewport fix for Capacitor — extend into safe areas */
 html {
   height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
+  /* Prevent pinch-to-zoom on iOS */
+  touch-action: manipulation;
   /* Match dark theme so notch/home indicator areas blend seamlessly */
   background-color: hsl(168, 14%, 5%);
 }
@@ -30,7 +31,6 @@ html {
 body {
   /* Use 100% height, not 100dvh — dvh excludes safe areas on iOS */
   height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
   /* Pad content away from notch/home indicator but let background extend */
   padding-top: env(safe-area-inset-top, 0px);
