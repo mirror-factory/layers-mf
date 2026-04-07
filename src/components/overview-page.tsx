@@ -787,6 +787,72 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
         </div>
       </section>
 
+      {/* ============================================================ */}
+      {/*  Section 4c — Local Model Testing                              */}
+      {/* ============================================================ */}
+      <section>
+        <SectionHeading
+          title="Local Model Testing"
+          subtitle="Run Gemma 4 26B on your machine via Ollama. Free, private, offline-capable. No API costs during development."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              During development, Layers connects to Ollama running locally on your machine.
+              The model selector automatically shows local models on localhost and hides them
+              in production. No configuration needed — it just works.
+            </p>
+            <ul className="space-y-2">
+              {[
+                "Gemma 4 26B running locally (17GB, Q4_K_M quantization)",
+                "Zero API costs — unlimited testing during development",
+                "250ms time to first token (faster than cloud — no network latency)",
+                "65 tokens/sec streaming on Apple Silicon",
+                "Full tool calling support (all 43 tools work locally)",
+                "Model stays in GPU memory (keep_alive: -1 prevents unloading)",
+                "Slim system prompt (~100 tokens vs ~10,000 for cloud)",
+                "Skips credentials, MCP, rules loading for fast request setup",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Performance comparison card */}
+          <Card className="border-border/60 bg-card/50">
+            <CardContent className="p-5 space-y-4">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Performance Comparison</h4>
+              <div className="space-y-3">
+                {([
+                  { label: "Time to First Token", local: "250ms", cloud: "500-1500ms", faster: true },
+                  { label: "Throughput", local: "65 tok/s", cloud: "30-80 tok/s", faster: false },
+                  { label: "Simple Response", local: "~1.5s", cloud: "~2-3s", faster: true },
+                  { label: "Cost per Request", local: "$0", cloud: "$0.001-0.05", faster: true },
+                  { label: "Cold Start", local: "15-20s", cloud: "N/A", faster: false },
+                  { label: "Privacy", local: "On-device", cloud: "Provider servers", faster: true },
+                ] as { label: string; local: string; cloud: string; faster: boolean }[]).map((row) => (
+                  <div key={row.label} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground w-36">{row.label}</span>
+                    <span className={row.faster ? "text-primary font-medium" : "text-foreground"}>{row.local}</span>
+                    <span className="text-muted-foreground/50 px-2">vs</span>
+                    <span className={!row.faster ? "text-primary font-medium" : "text-foreground"}>{row.cloud}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-3 border-t border-border/40">
+                <p className="text-[10px] text-muted-foreground">
+                  Local models only available on localhost. Production uses AI Gateway cloud models.
+                  Switch between local and cloud anytime via the model selector.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/*  Section 5 — Tools & Capabilities                            */}
       <section>
         <SectionHeading
