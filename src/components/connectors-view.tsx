@@ -16,6 +16,11 @@ import {
   Mail,
   StickyNote,
   Globe,
+  Mic,
+  GitBranch,
+  Upload,
+  Bot,
+  Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,37 +57,57 @@ interface MCPServer {
 
 const PROVIDER_META: Record<
   string,
-  { label: string; icon: string; description: string }
+  { label: string; icon: React.ElementType; description: string }
 > = {
   granola: {
     label: "Granola",
-    icon: "🌾",
+    icon: Mic,
     description: "Meeting transcripts and notes",
   },
   linear: {
     label: "Linear",
-    icon: "📐",
+    icon: GitBranch,
     description: "Issues, projects, and cycles",
   },
   "google-drive": {
     label: "Google Drive",
-    icon: "📁",
+    icon: HardDrive,
     description: "Documents and files",
   },
   github: {
     label: "GitHub",
-    icon: "🐙",
+    icon: Github,
     description: "Repositories and issues",
   },
   "github-app": {
     label: "GitHub",
-    icon: "🐙",
+    icon: Github,
     description: "Repositories and issues",
   },
   slack: {
     label: "Slack",
-    icon: "💬",
+    icon: Hash,
     description: "Messages and channels",
+  },
+  gmail: {
+    label: "Gmail",
+    icon: Mail,
+    description: "Email threads and messages",
+  },
+  notion: {
+    label: "Notion",
+    icon: StickyNote,
+    description: "Pages, databases, and wiki content",
+  },
+  "layers-ai": {
+    label: "Layers AI",
+    icon: Bot,
+    description: "Built-in AI assistant tools",
+  },
+  upload: {
+    label: "Upload",
+    icon: Upload,
+    description: "Uploaded files and documents",
   },
 };
 
@@ -91,7 +116,7 @@ type ConnectorStatus = "connected" | "disconnected" | "error" | "connecting";
 interface ConnectorCardProps {
   id: string;
   name: string;
-  icon: string;
+  icon: React.ElementType;
   status: ConnectorStatus;
   type: "API" | "MCP";
   lastSync: string | null;
@@ -105,7 +130,7 @@ interface ConnectorCardProps {
 
 function ConnectorCard({
   name,
-  icon,
+  icon: Icon,
   status,
   type,
   lastSync,
@@ -158,7 +183,7 @@ function ConnectorCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{icon}</span>
+            <Icon className="h-5 w-5 text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-medium">{name}</CardTitle>
               {description && (
@@ -606,7 +631,7 @@ export function ConnectorsView({
                 key={integration.id}
                 id={integration.id}
                 name={meta?.label ?? integration.provider}
-                icon={meta?.icon ?? "🔌"}
+                icon={meta?.icon ?? Plug}
                 description={meta?.description}
                 status={integrationStatus}
                 type="API"
@@ -630,7 +655,7 @@ export function ConnectorsView({
                 key={server.id}
                 id={server.id}
                 name={server.name}
-                icon="🔧"
+                icon={Server}
                 status={mcpStatus}
                 type="MCP"
                 lastSync={server.last_connected_at}
