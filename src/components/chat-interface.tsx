@@ -78,9 +78,14 @@ const LOCAL_MODELS = [
   { id: "ollama/gemma4:26b", label: "Gemma 4 26B (Local)", tier: "local" },
 ] as const;
 
-// Only show local models in dev (Vercel sets NEXT_PUBLIC_VERCEL_ENV in production)
-const IS_LOCAL = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-const MODELS = IS_LOCAL ? [...CLOUD_MODELS, ...LOCAL_MODELS] : CLOUD_MODELS;
+// Local model detection happens client-side only to avoid hydration mismatch
+function useIsLocal() {
+  const [isLocal, setIsLocal] = useState(false);
+  useEffect(() => {
+    setIsLocal(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  }, []);
+  return isLocal;
+}
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
   meeting_transcript: Mic,
@@ -1535,7 +1540,16 @@ interface ChatInterfaceInnerProps {
 }
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
-  const [model, setModel] = useState<string>(IS_LOCAL ? "ollama/gemma4:26b" : "google/gemini-3.1-flash-lite-preview");
+  const isLocal = useIsLocal();
+  const MODELS = isLocal ? [...CLOUD_MODELS, ...LOCAL_MODELS] : CLOUD_MODELS;
+  const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
+
+  // Switch to local model once we detect localhost (after hydration)
+  useEffect(() => {
+    if (isLocal && model === "google/gemini-3.1-flash-lite-preview") {
+      setModel("ollama/gemma4:26b");
+    }
+  }, [isLocal]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showContextBar, setShowContextBar] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [visualLevel, setVisualLevel] = useState<string>(() => {
