@@ -2448,13 +2448,10 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
       }),
       execute: async ({ query }: { query: string }) => {
         try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/mcp/registry?q=${encodeURIComponent(query)}`,
-            { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) }
-          );
-          if (!res.ok) return { error: `Registry search failed: ${res.status}`, query };
-          const data = await res.json();
-          const servers = (data.servers ?? []).slice(0, 8);
+          // Search all three registries in parallel (curated + official + Smithery)
+          const { searchMCPRegistries } = await import("@/lib/mcp/registry-search");
+          const results = await searchMCPRegistries(query);
+          const servers = results.slice(0, 8);
           return {
             query,
             count: servers.length,
