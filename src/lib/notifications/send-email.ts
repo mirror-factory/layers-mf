@@ -19,7 +19,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 
   try {
     await resend.emails.send({
-      from: "Granger <notifications@layers.hustletogether.com>",
+      from: "Granger <notifications@mirrorfactory.ai>",
       to: params.to,
       subject: params.subject,
       text: params.text,
