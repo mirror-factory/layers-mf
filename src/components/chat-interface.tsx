@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -145,6 +146,45 @@ function getSearchSources(toolParts: ToolPart[]): CitationSource[] {
     .find((p) => p.type === "tool-search_context" && p.state === "output-available");
   if (!searchTool || !("output" in searchTool)) return [];
   return (searchTool.output as CitationSource[]) ?? [];
+}
+
+/** Error boundary for ToolCallCard — prevents circular JSON crashes from taking down the whole chat */
+class ToolCallErrorBoundary extends React.Component<
+  { children: React.ReactNode; toolName: string },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode; toolName: string }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message.slice(0, 100) };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          <div className="flex items-center gap-2 text-amber-500">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span className="font-medium">{this.props.toolName}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Tool completed but output could not be displayed. ({this.state.error})
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function SafeToolCallCard(props: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
+  const toolName = props.part.type.replace("tool-", "");
+  return (
+    <ToolCallErrorBoundary toolName={toolName}>
+      <ToolCallCard {...props} />
+    </ToolCallErrorBoundary>
+  );
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -1231,7 +1271,7 @@ function formatMessagesAsMarkdown(
       const toolName = tp.type.replace("tool-", "");
       lines.push(`### Tool: ${toolName}`);
       if ("input" in tp && tp.input) {
-        lines.push("", "**Input:**", "```json", JSON.stringify(tp.input, null, 2), "```", "");
+        lines.push("", "**Input:**", "```json", (() => { try { return JSON.stringify(tp.input, null, 2); } catch { return "[Complex input]"; } })(), "```", "");
       }
       if (tp.state === "output-available" && "output" in tp && tp.output) {
         const out = typeof tp.output === "string" ? tp.output : (() => { try { return JSON.stringify(tp.output, null, 2); } catch { return "[Complex output]"; } })();
@@ -2314,7 +2354,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <ToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(pickDefaultFile(artifact.files)); }} />
+                        <SafeToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(pickDefaultFile(artifact.files)); }} />
                       ))}
                     </div>
                   )}
