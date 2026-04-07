@@ -563,6 +563,10 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
 
+  // Client-side infrastructure tools — hide entirely (no card needed)
+  const HIDDEN_TOOLS = new Set(["tool-artifact_panel", "tool-express_tool_result"]);
+  if (HIDDEN_TOOLS.has(part.type) && isDone) return null;
+
   // express tool: render dot art inline — completely invisible as a tool call
   if (part.type === "tool-express") {
     if (!isDone) return null; // Hide while generating
@@ -1588,6 +1592,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       endLiveActivity();
+      // Record which model was used for this response
+      const assistantCount = messages.filter(m => m.role === "assistant").length;
+      messageModelRef.current.set(assistantCount - 1, modelRef.current);
     },
   });
 
@@ -1639,6 +1646,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     created_at: string;
   }
   const [agentRuns, setAgentRuns] = useState<AgentRunStats[]>([]);
+  // Track which model was used for each assistant message (by index)
+  // so the label doesn't change when user switches models
+  const messageModelRef = useRef<Map<number, string>>(new Map());
   const agentRunsFetchedRef = useRef<string | null>(null);
 
   // Fetch stats when conversation finishes a response
@@ -2478,7 +2488,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             } : null;
                             return (
                               <MessageStats
-                                model={run?.model ?? model}
+                                model={run?.model ?? messageModelRef.current.get(assistantIndex) ?? model}
                                 text={text}
                                 stats={statsData}
                                 className="ml-1"
