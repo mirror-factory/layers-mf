@@ -464,7 +464,9 @@ export async function POST(request: NextRequest) {
   const activeArtifactId: string | null = request.headers.get("x-artifact-id") || null;
   const activeFilePath: string | null = request.headers.get("x-artifact-file") || null;
 
-  console.log(`[chat] 🚀 START | model=${modelId} | requested=${requestedModel} | conv=${conversationId ?? "new"} | artifact=${activeArtifactId ?? "none"}`);
+  const t0 = Date.now();
+  const isLocal = isOllamaModel(modelId);
+  console.log(`[chat] START | model=${modelId} | local=${isLocal} | conv=${conversationId ?? "new"}`);
 
   // Extract first user message as the "query" for analytics
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
@@ -506,8 +508,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Load credentials for this user (personal) and org (shared)
+  // Skip for local models — they don't need external service credentials
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: creds } = await (supabase as any)
+  const { data: creds } = isLocal ? { data: [] } : await (supabase as any)
     .from("credentials")
     .select("provider, token_encrypted")
     .or(`user_id.eq.${userId},user_id.is.null`)
@@ -534,9 +537,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Load tool permissions for this user
+  // Load tool permissions for this user (skip for local models)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: partnerSettings } = await (supabase as any)
+  const { data: partnerSettings } = isLocal ? { data: null } : await (supabase as any)
     .from("partner_settings")
     .select("tool_permissions")
     .eq("user_id", userId)
@@ -553,8 +556,13 @@ export async function POST(request: NextRequest) {
     : "";
 
   // Load active MCP servers for this org and merge their tools via ConnectionManager
+  // Skip for local models — MCP connections are slow and unnecessary for simple local chat
   let mcpTools: Record<string, unknown> = {};
+  if (isLocal) {
+    console.log(`[chat] Skipping MCP/credentials/rules for local model (${Date.now() - t0}ms)`);
+  }
   try {
+    if (isLocal) throw new Error("skip"); // jump to catch block
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: mcpServers } = await (adminDb as any)
       .from("mcp_servers")
@@ -685,7 +693,6 @@ export async function POST(request: NextRequest) {
 
   // For local models: use a slim system prompt (skip visual instructions, design guidelines)
   // This dramatically reduces prefill time (~10K tokens -> ~2K tokens)
-  const isLocal = isOllamaModel(modelId);
   const fullInstructions = isLocal
     ? `You are Granger, an AI assistant. Be helpful and concise.\n\n${dateTimeContext}${artifactContext}`
     : instructions + dateTimeContext + artifactContext;
