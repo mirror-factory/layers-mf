@@ -396,7 +396,7 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'schedule-run-now',
     category: 'Schedules',
     title: 'Run Now on Linear Status Check',
-    description: 'Click ⚡ Run Now on "Linear Status Check"',
+    description: 'Click Run Now on "Linear Status Check"',
     expectedResult: 'Alert shows result summary. Desktop notification appears. New "Linear Status" doc in /context.',
     requiresSetup: 'Requires Linear API key connected',
   },

@@ -6,17 +6,33 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { OnboardingShell } from "@/components/onboarding-shell";
 import { cn } from "@/lib/utils";
+import {
+  FolderOpen, Zap, MessageSquare, Github, Headphones,
+  Gamepad2, CalendarDays, StickyNote, Mail,
+} from "lucide-react";
+
+const TOOL_ICON_MAP: Record<string, React.ReactNode> = {
+  "google-drive": <FolderOpen className="h-5 w-5" />,
+  "linear": <Zap className="h-5 w-5" />,
+  "slack": <MessageSquare className="h-5 w-5" />,
+  "github": <Github className="h-5 w-5" />,
+  "granola": <Headphones className="h-5 w-5" />,
+  "discord": <Gamepad2 className="h-5 w-5" />,
+  "google-calendar": <CalendarDays className="h-5 w-5" />,
+  "notion": <StickyNote className="h-5 w-5" />,
+  "gmail": <Mail className="h-5 w-5" />,
+};
 
 const TOOLS = [
-  { id: "google-drive", name: "Google Drive", description: "Docs, Sheets, Slides, PDFs", icon: "📁", available: true },
-  { id: "linear", name: "Linear", description: "Import issues and projects", icon: "◆", available: true },
-  { id: "slack", name: "Slack", description: "Link channels and threads", icon: "💬", available: true },
-  { id: "github", name: "GitHub", description: "Track repos and PRs", icon: "⚙️", available: true },
-  { id: "granola", name: "Granola", description: "Meeting transcripts", icon: "🎙️", available: true },
-  { id: "discord", name: "Discord", description: "Server messages and channels", icon: "🎮", available: true },
-  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", icon: "📅", available: true },
-  { id: "notion", name: "Notion", description: "Connect docs and wikis", icon: "📝", available: true },
-  { id: "gmail", name: "Gmail", description: "Email threads and messages", icon: "✉️", available: true },
+  { id: "google-drive", name: "Google Drive", description: "Docs, Sheets, Slides, PDFs", available: true },
+  { id: "linear", name: "Linear", description: "Import issues and projects", available: true },
+  { id: "slack", name: "Slack", description: "Link channels and threads", available: true },
+  { id: "github", name: "GitHub", description: "Track repos and PRs", available: true },
+  { id: "granola", name: "Granola", description: "Meeting transcripts", available: true },
+  { id: "discord", name: "Discord", description: "Server messages and channels", available: true },
+  { id: "google-calendar", name: "Google Calendar", description: "Sync meetings and events", available: true },
+  { id: "notion", name: "Notion", description: "Connect docs and wikis", available: true },
+  { id: "gmail", name: "Gmail", description: "Email threads and messages", available: true },
 ] as const;
 
 export default function ConnectToolsPage() {
@@ -57,7 +73,7 @@ export default function ConnectToolsPage() {
                 )}
               >
                 <div className="flex w-full items-center justify-between">
-                  <span className="text-lg">{tool.icon}</span>
+                  <span className="text-muted-foreground">{TOOL_ICON_MAP[tool.id]}</span>
                   {!tool.available && (
                     <span className="text-[10px] text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">Coming Soon</span>
                   )}

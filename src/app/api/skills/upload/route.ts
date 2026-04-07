@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       version: (parsed.version as string) ?? "1.0.0",
       author: (parsed.author as string) ?? null,
       category: (parsed.category as string) ?? "general",
-      icon: (parsed.icon as string) ?? "📦",
+      icon: (parsed.icon as string) ?? "package",
       system_prompt: (parsed.systemPrompt as string) ?? null,
       tools: (parsed.tools as unknown[]) ?? [],
       config: (parsed.config as Record<string, unknown>) ?? {},

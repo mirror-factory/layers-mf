@@ -621,7 +621,7 @@ export function createTools(supabase: AnySupabase, orgId: string, clients?: Tool
         "IMPORTANT: If your code imports a CSS file (e.g. import './App.css'), you MUST include that CSS file in the files array. " +
         "To edit an existing project, use edit_code with the artifactId — do NOT call run_project again to recreate it.\n\n" +
 
-        "⚠️ CRITICAL QUALITY REQUIREMENTS — READ CAREFULLY:\n" +
+        "CRITICAL QUALITY REQUIREMENTS — READ CAREFULLY:\n" +
         "You are building PORTFOLIO-QUALITY, AWARD-WINNING web applications. Every app must look like it was built by a top-tier design agency. " +
         "Do NOT rush. Take the time to write extensive, detailed, beautiful code. Efficiency does NOT matter — only QUALITY, DESIGN, and FEATURES matter.\n\n" +
 
@@ -2207,7 +2207,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
         description: z.string().describe("One-sentence description of what the skill does"),
         category: z.enum(["productivity", "analysis", "creative", "development", "communication", "general"]).describe("Skill category"),
         system_prompt: z.string().describe("The system prompt that defines this skill's behavior and personality"),
-        icon: z.string().optional().describe("Emoji icon for the skill, e.g. '🎯'"),
+        icon: z.string().optional().describe("Icon identifier for the skill, e.g. 'target'"),
         slash_command: z.string().optional().describe("Slash command to activate, e.g. '/sales'. Auto-generated from slug if omitted."),
         tools: z.array(z.string()).optional().describe("Tool names this skill should have access to, e.g. ['search_context', 'ask_linear_agent']"),
       }),
@@ -2237,7 +2237,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
               version: "1.0.0",
               author: null,
               category: input.category,
-              icon: input.icon ?? "⚡",
+              icon: input.icon ?? "zap",
               system_prompt: input.system_prompt,
               tools: toolDefs,
               config: {},
@@ -2328,7 +2328,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
               name: input.name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
               slug,
               description: input.description,
-              icon: "🛠️",
+              icon: "wrench",
               category: "automation",
               system_prompt: `You have access to the custom tool "${input.name}". ${input.description}. The tool code is attached as a reference file. To execute it, use run_code with the code from the reference file.`,
               tools: [{ name: "run_code", description: "Execute the tool code" }],

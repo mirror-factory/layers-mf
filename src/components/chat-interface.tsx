@@ -11,7 +11,9 @@ import {
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
   Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2, Save,
-  RefreshCw, AlertCircle,
+  RefreshCw, AlertCircle, AlertTriangle, Play, Plug, ClipboardList, Mail, StickyNote,
+  Headphones, FolderOpen, CalendarClock, CheckCircle2, Puzzle, Wrench,
+  BookOpen, Search, HelpCircle, ArrowDownToLine,
 } from "lucide-react";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
@@ -647,7 +649,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     if (review.error) {
       return (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-          <span className="text-amber-500">⚠</span> {review.error}
+          <AlertTriangle className="inline h-4 w-4 text-amber-500" /> {review.error}
         </div>
       );
     }
@@ -660,9 +662,9 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             <span className="text-sm font-medium">Compliance Review: {review.content_label}</span>
           </div>
           <div className="flex items-center gap-3 text-xs">
-            <span className="text-green-500">✓ {review.summary.passed}</span>
-            <span className="text-red-500">✗ {review.summary.failed}</span>
-            {review.summary.warnings > 0 && <span className="text-amber-500">⚠ {review.summary.warnings}</span>}
+            <span className="text-green-500 inline-flex items-center gap-0.5"><Check className="h-3 w-3" /> {review.summary.passed}</span>
+            <span className="text-red-500 inline-flex items-center gap-0.5"><X className="h-3 w-3" /> {review.summary.failed}</span>
+            {review.summary.warnings > 0 && <span className="text-amber-500 inline-flex items-center gap-0.5"><AlertTriangle className="h-3 w-3" /> {review.summary.warnings}</span>}
             <span className={`font-bold ${scoreColor}`}>{review.summary.score}%</span>
           </div>
         </div>
@@ -684,11 +686,11 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
             <div key={check.id ?? i} className="flex items-start gap-2 text-xs">
               <span className="shrink-0 mt-0.5">
                 {check.status === "pass" ? (
-                  <span className="text-green-500">✓</span>
+                  <Check className="h-3.5 w-3.5 text-green-500" />
                 ) : check.status === "fail" ? (
-                  <span className="text-red-500">✗</span>
+                  <X className="h-3.5 w-3.5 text-red-500" />
                 ) : (
-                  <span className="text-amber-500">⚠</span>
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                 )}
               </span>
               <div className="flex-1 min-w-0">
@@ -845,11 +847,11 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         {sCode && (
           <details className="group">
             <summary className="flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer hover:bg-muted">
-              <span className="text-muted-foreground">▶</span>
+              <Play className="h-3 w-3 text-muted-foreground" />
               <span className="font-mono">{sFilename}</span>
               <span className="text-muted-foreground">({sLanguage})</span>
               <span className={cn("ml-auto", sExitCode === 0 ? "text-green-600" : "text-red-600")}>
-                {sExitCode === 0 ? "✓ Success" : `✗ Exit ${sExitCode}`}
+                {sExitCode === 0 ? <span className="inline-flex items-center gap-0.5"><Check className="h-3 w-3" /> Success</span> : <span className="inline-flex items-center gap-0.5"><X className="h-3 w-3" /> Exit {sExitCode}</span>}
               </span>
             </summary>
             <div className="border-t">
@@ -2034,7 +2036,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               description: toolNames.length > 0
                 ? `${toolNames.length} MCP tools: ${toolNames.slice(0, 3).join(", ")}${toolNames.length > 3 ? "..." : ""}`
                 : "MCP server",
-              icon: "🔌",
+              icon: "plug",
               toolNames,
             };
           });
@@ -2043,26 +2045,48 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       .catch(() => {});
   }, []);
 
+  // Map icon string keys to Lucide components for slash command menu
+  const SLASH_ICON_MAP: Record<string, React.ReactNode> = {
+    "zap": <Zap className="h-4 w-4" />,
+    "clipboard-list": <ClipboardList className="h-4 w-4" />,
+    "mail": <Mail className="h-4 w-4" />,
+    "sticky-note": <StickyNote className="h-4 w-4" />,
+    "headphones": <Headphones className="h-4 w-4" />,
+    "folder-open": <FolderOpen className="h-4 w-4" />,
+    "github": <Github className="h-4 w-4" />,
+    "calendar-clock": <CalendarClock className="h-4 w-4" />,
+    "check-circle": <CheckCircle2 className="h-4 w-4" />,
+    "bar-chart": <BarChart3 className="h-4 w-4" />,
+    "play": <Play className="h-4 w-4" />,
+    "puzzle": <Puzzle className="h-4 w-4" />,
+    "wrench": <Wrench className="h-4 w-4" />,
+    "arrow-down-to-line": <ArrowDownToLine className="h-4 w-4" />,
+    "globe": <Globe className="h-4 w-4" />,
+    "search": <Search className="h-4 w-4" />,
+    "help-circle": <HelpCircle className="h-4 w-4" />,
+    "plug": <Plug className="h-4 w-4" />,
+  };
+
   // Slash command definitions with metadata for the autocomplete menu
   const SLASH_MENU_ITEMS = [
-    { cmd: "/linear", label: "Linear", description: "Query issues, create tasks", icon: "⚡" },
-    { cmd: "/tasks", label: "Tasks", description: "Show in-progress tasks", icon: "📋" },
-    { cmd: "/gmail", label: "Gmail", description: "Search and draft emails", icon: "✉️" },
-    { cmd: "/notion", label: "Notion", description: "Search pages and databases", icon: "📝" },
-    { cmd: "/granola", label: "Granola", description: "Meeting transcripts", icon: "🎙️" },
-    { cmd: "/drive", label: "Drive", description: "Search Google Drive files", icon: "📁" },
-    { cmd: "/github", label: "GitHub", description: "Repos, PRs, issues, commits", icon: "🐙" },
-    { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "⏰" },
-    { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "✅" },
-    { cmd: "/status", label: "Status", description: "Full status summary", icon: "📊" },
-    { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "▶️" },
-    { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "🧩" },
-    { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "🛠️" },
-    { cmd: "/review", label: "Review", description: "Check content against rules & guidelines", icon: "📋" },
-    { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "📥" },
-    { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "🌐" },
-    { cmd: "/search", label: "Search", description: "Search the web", icon: "🔍" },
-    { cmd: "/help", label: "Help", description: "List all commands", icon: "❓" },
+    { cmd: "/linear", label: "Linear", description: "Query issues, create tasks", icon: "zap" },
+    { cmd: "/tasks", label: "Tasks", description: "Show in-progress tasks", icon: "clipboard-list" },
+    { cmd: "/gmail", label: "Gmail", description: "Search and draft emails", icon: "mail" },
+    { cmd: "/notion", label: "Notion", description: "Search pages and databases", icon: "sticky-note" },
+    { cmd: "/granola", label: "Granola", description: "Meeting transcripts", icon: "headphones" },
+    { cmd: "/drive", label: "Drive", description: "Search Google Drive files", icon: "folder-open" },
+    { cmd: "/github", label: "GitHub", description: "Repos, PRs, issues, commits", icon: "github" },
+    { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "calendar-clock" },
+    { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "check-circle" },
+    { cmd: "/status", label: "Status", description: "Full status summary", icon: "bar-chart" },
+    { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "play" },
+    { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "puzzle" },
+    { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "wrench" },
+    { cmd: "/review", label: "Review", description: "Check content against rules & guidelines", icon: "clipboard-list" },
+    { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "arrow-down-to-line" },
+    { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "globe" },
+    { cmd: "/search", label: "Search", description: "Search the web", icon: "search" },
+    { cmd: "/help", label: "Help", description: "List all commands", icon: "help-circle" },
     // Dynamic skill commands appended from API
     ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/search", "/skills", "/help", "/email" ].includes(si.cmd)),
     // Dynamic MCP server commands
@@ -2561,7 +2585,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         onMouseEnter={() => setSlashMenuIndex(i)}
                         onClick={() => selectSlashCommand(item.cmd)}
                       >
-                        <span className="text-base w-6 text-center">{item.icon}</span>
+                        <span className="w-6 flex items-center justify-center text-muted-foreground">{SLASH_ICON_MAP[item.icon] ?? <Plug className="h-4 w-4" />}</span>
                         <span className="font-mono text-xs font-medium text-primary">{item.cmd}</span>
                         <span className="text-xs text-muted-foreground">{item.description}</span>
                       </button>
@@ -2765,7 +2789,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                                 )}
                                 title={`Visual mode: ${value}`}
                               >
-                                {lvl === "off" ? "○" : lvl === "low" ? "◔" : lvl === "med" ? "◑" : "●"}
+                                {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
                               </button>
                             );
                           })}
@@ -2913,7 +2937,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                             onClick={() => setArtifactViewMode("preview")}
                             className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
                           >
-                            {activeArtifact.previewUrl ? "▶ Live" : "Preview"}
+                            {activeArtifact.previewUrl ? "Live" : "Preview"}
                           </button>
                         </div>
                       )}

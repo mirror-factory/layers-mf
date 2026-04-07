@@ -9,7 +9,7 @@ function toSnakeCase(skill: Record<string, unknown>) {
     version: skill.version ?? "1.0.0",
     author: skill.author ?? null,
     category: skill.category ?? "general",
-    icon: skill.icon ?? "⚡",
+    icon: skill.icon ?? "zap",
     system_prompt: skill.systemPrompt ?? null,
     tools: skill.tools ?? [],
     config: skill.config ?? {},

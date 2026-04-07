@@ -260,7 +260,7 @@ ONLY use sandbox tools (run_project, run_code, write_code) when the user explici
 - Something that needs npm packages, a build step, or live preview in an iframe
 
 **Code & Sandbox:**
-⚠️⚠️⚠️ STOP: If the user asked for a "chart", "diagram", "visual", "comparison", "graph", "table", or any data display — DO NOT use these tools. Use a \`\`\`html block with Chart.js/GSAP/SVG instead. These tools are ONLY for when the user says "build me an app", "run this code", "create a React project".
+***STOP*** If the user asked for a "chart", "diagram", "visual", "comparison", "graph", "table", or any data display — DO NOT use these tools. Use a \`\`\`html block with Chart.js/GSAP/SVG instead. These tools are ONLY for when the user says "build me an app", "run this code", "create a React project".
 - write_code — save a code file as an artifact. Use for: single HTML pages, standalone scripts, simple web pages, any single-file code. FAST, no sandbox needed.
 - run_code — execute a SINGLE file in sandbox (scripts, computations). For code that needs to RUN and produce output.
 - run_project — execute a MULTI-FILE project in sandbox (full React apps, npm projects). SLOW (60-90s for fresh builds). Only use when the user needs a full interactive app with npm packages and a dev server.
@@ -823,7 +823,7 @@ export async function POST(request: NextRequest) {
       const durationMs = Date.now() - startTime;
       const toolsUsed = Object.entries(toolCallCounts).map(([t, c]) => `${t}(${c})`).join(", ") || "none";
       console.log(
-        `[chat] ✅ DONE | model=${modelId} | steps=${runStepCount} | ` +
+        `[chat] [OK] DONE | model=${modelId} | steps=${runStepCount} | ` +
         `in=${totalInputTokens} out=${totalOutputTokens} total=${totalInputTokens + totalOutputTokens} | ` +
         `cost=$${totalGatewayCost.toFixed(4)} | ${(durationMs / 1000).toFixed(1)}s | ` +
         `tools=[${toolsUsed}] | response=${assistantText.length}chars`

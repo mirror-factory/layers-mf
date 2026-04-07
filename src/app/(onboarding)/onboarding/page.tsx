@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { OnboardingShell } from "@/components/onboarding-shell";
+import { Sparkles } from "lucide-react";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -12,8 +13,8 @@ export default function WelcomePage() {
     <OnboardingShell currentStep="welcome">
       <Card>
         <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
-            ✦
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+            <Sparkles className="h-8 w-8 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Welcome to Granger</h1>
