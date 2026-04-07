@@ -10,6 +10,8 @@ import {
   Shield,
   FileText,
   Check,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -39,6 +41,8 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   schedule_complete: Calendar,
   approval_needed: Shield,
   library_update: FileText,
+  system_alert: AlertTriangle,
+  credit_low: CreditCard,
 };
 
 function playNotificationPing() {

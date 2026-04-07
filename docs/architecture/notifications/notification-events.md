@@ -9,16 +9,81 @@
 | Event | Type | Trigger | Who Gets Notified | Link | Status |
 |-------|------|---------|-------------------|------|--------|
 | Schedule completed | `schedule_complete` | Cron executor finishes a scheduled action | Schedule owner | `/chat?id={convId}` | **Implemented** |
-| Shared with you | `share` | Someone shares content with a user | Recipient | `/context/{id}` or `/s/{token}` | Not implemented |
-| Chat mention | `chat_mention` | `@user` in multi-user chat | Mentioned user | `/chat?id={convId}` | Not implemented (no multi-user yet) |
-| Approval needed | `approval_needed` | `propose_action` tool creates an approval record | Org admins | `/approvals` | Partially (approval row exists, no notification sent) |
-| Library update | `library_update` | New content ingested via sync/upload | Org members | `/context/{id}` | Not implemented |
-| Artifact shared | `share` | Artifact share link created | N/A (creator action) | `/s/{token}` | Not implemented |
-| Skill created | `library_update` | New skill saved | Org members | `/skills` | Not implemented |
-| Connector sync error | `system_alert` | Sync fails 3+ times consecutively | Org admins | `/settings/integrations` | Not implemented |
-| Credit low | `system_alert` | Credits drop below threshold | Org owner | `/settings/billing` | Not implemented |
+| Schedule failed | `system_alert` | Cron executor catches an error | Schedule owner | `/schedules` | **Implemented** |
+| Shared with you | `share` | Someone shares content with a user | Recipient | `/context/{id}` or `/artifacts/{id}` | **Implemented** |
+| Approval needed | `approval_needed` | `propose_action` tool creates an approval record | Org admins/owners | `/approvals` | **Implemented** |
+| Integration sync error | `system_alert` | Sync stream catches a top-level error | Triggering user | `/settings/integrations` | **Implemented** |
+| Credit low | `credit_low` | Balance drops below 100 after deduction | Org owner | `/settings/billing` | **Implemented** |
+| Chat mention | `chat_mention` | `@user` in multi-user chat | Mentioned user | `/chat?id={convId}` | Not built (needs multi-user chat) |
+| Library update | `library_update` | New content ingested via sync/upload | Org members | `/context/{id}` | Not built |
+| Artifact shared | `share` | Artifact share link created | N/A (creator action) | `/s/{token}` | Not built |
+| Skill created | `library_update` | New skill saved | Org members | `/skills` | Not built |
 
-> The `validTypes` array in `/api/notifications` POST currently accepts: `chat_mention`, `share`, `schedule_complete`, `approval_needed`, `library_update`. Add `system_alert` when implementing connector/credit events.
+> The `validTypes` array in `/api/notifications` POST accepts: `chat_mention`, `share`, `schedule_complete`, `approval_needed`, `library_update`, `system_alert`, `credit_low`.
+
+---
+
+## Implementation Status
+
+| Event | In-App | Push | Email | Status |
+|-------|--------|------|-------|--------|
+| schedule_complete | Yes | Yes | Via digest | Implemented |
+| share | Yes | Yes | If email_on_mention | Implemented |
+| approval_needed | Yes | Yes | If email_on_action_item | Implemented |
+| system_alert (sync/schedule error) | Yes | Yes | No | Implemented |
+| credit_low | Yes | Yes | Yes (always for owner) | Implemented |
+| chat_mention | No | No | No | Not built (needs multi-user chat) |
+| library_update | No | No | No | Not built |
+
+---
+
+## Unified notify() Function
+
+All notification triggers use the unified `notify()` function from `src/lib/notifications/notify.ts`. A single call handles three delivery channels:
+
+1. **In-app** (always) -- inserts a row into the `notifications` table. The notification bell component polls for new rows every 30 seconds.
+2. **Push** (if device registered) -- sends via APNs for iOS devices. Looks up `device_tokens` for the user and sends to all registered devices. Invalid tokens are automatically cleaned up.
+3. **Email** (if preferences allow) -- sends via Resend. Checks the `notification_preferences` table for the user and maps notification type to the relevant preference field:
+   - `chat_mention` -> `email_on_mention`
+   - `approval_needed` -> `email_on_action_item`
+   - `library_update` -> `email_on_new_context`
+   - `schedule_complete` -> `digest_enabled`
+   - `credit_low` -> always sends (critical alert)
+
+### Usage
+
+```typescript
+import { notify } from "@/lib/notifications/notify";
+
+await notify({
+  userId: "target-user-id",
+  orgId: "org-id",
+  type: "schedule_complete",
+  title: "Notification title",
+  body: "Notification body text",
+  link: "/path/to/relevant/page",
+  metadata: { key: "value" },
+});
+```
+
+Push and email are fire-and-forget -- failures are caught silently to avoid blocking the main flow. The `RESEND_API_KEY` environment variable must be set for email delivery; if missing, emails are skipped with a log message.
+
+---
+
+## Scheduling + Notifications Integration
+
+Schedules run on Vercel cron (server-side) via `/api/cron/execute-schedules`. When a schedule completes or fails:
+
+1. **On success**: calls `notify()` with type `schedule_complete`, which:
+   - Creates an in-app notification (bell icon, 30s polling)
+   - Sends push via APNs/FCM (even if app is closed)
+   - Sends email if user's `digest_enabled` preference is true
+   - The scheduled conversation is linked via `link: /chat?id={conversationId}`
+
+2. **On failure**: calls `notify()` with type `system_alert`, which:
+   - Creates an in-app notification visible immediately
+   - Sends push notification with the error summary
+   - Does not send email (system_alert type is not mapped to an email preference)
 
 ---
 
@@ -32,19 +97,17 @@
   - `body`: First 200 chars of the AI response text
   - `link`: `/chat?id={conversationId}`
   - `metadata`: `{ schedule_id, conversation_id }`
-- **Creation code**: `src/app/api/cron/execute-schedules/route.ts` (line ~199)
-- **Priority**: Done
+- **Creation code**: `src/app/api/cron/execute-schedules/route.ts` -- uses `notify()`
 
 ### 2. Shared with you
 
-- **When it fires**: When a user creates a share link targeted at a specific user, or when content is shared directly via the sharing modal.
+- **When it fires**: When a user shares content directly with another user via the content_shares system in `/api/sharing` POST.
 - **Notification data**:
-  - `title`: `"{sharer_name} shared '{item_title}' with you"`
-  - `body`: Optional description or first line of content
-  - `link`: `/context/{id}` (direct item) or `/s/{token}` (share link)
-  - `metadata`: `{ shared_by, item_id, item_type, share_token }`
-- **Creation code should live in**: The share API route (e.g., `/api/share` POST handler) after the share record is inserted.
-- **Priority**: P1 -- sharing is a core collaboration feature
+  - `title`: `"{sharer_name} shared "{item_title}" with you"`
+  - `body`: `"You have {permission} access."`
+  - `link`: `/context/{id}` or `/artifacts/{id}` depending on content type
+  - `metadata`: `{ content_type, content_id, shared_by }`
+- **Creation code**: `src/app/api/sharing/route.ts` POST handler -- fire-and-forget after share insert
 
 ### 3. Chat mention
 
@@ -54,72 +117,45 @@
   - `body`: The message text (truncated to 200 chars)
   - `link`: `/chat?id={convId}`
   - `metadata`: `{ conversation_id, sender_id, message_id }`
-- **Creation code should live in**: The message persistence layer, after a user message is saved. Parse `@mentions` from the text and resolve to user IDs.
-- **Priority**: P2 -- requires multi-user chat infrastructure first
+- **Status**: Not built -- requires multi-user chat infrastructure first
 
 ### 4. Approval needed
 
-- **When it fires**: When the `propose_action` tool creates an approval record that requires human review.
+- **When it fires**: When the `propose_action` tool creates an approval record in the `approval_queue` table.
 - **Notification data**:
-  - `title`: `"Approval needed: {action_summary}"`
-  - `body`: Description of what the AI wants to do
+  - `title`: `"Approval needed: {action_type}"`
+  - `body`: `"AI wants to {action_type} on {target_service}. {reasoning}"`
   - `link`: `/approvals`
-  - `metadata`: `{ approval_id, conversation_id, action_type }`
-- **Creation code should live in**: `/api/approval` POST handler, after the approval row is inserted. Query `org_members` for users with admin role.
-- **Priority**: P0 -- approvals exist but nobody knows they need to act on them
+  - `metadata`: `{ approval_id }`
+- **Creation code**: `src/lib/ai/tools.ts` `propose_action` execute function -- fire-and-forget, notifies all org admins/owners
 
-### 5. Library update
+### 5. Integration sync error
 
-- **When it fires**: When new content is ingested -- either via connector sync (Nango webhook) or manual upload.
+- **When it fires**: When the integration sync stream (`/api/integrations/sync`) catches a top-level error.
 - **Notification data**:
-  - `title`: `"New in library: {item_title}"`
-  - `body`: `"From {source_type} -- {description_short}"`
-  - `link`: `/context/{id}`
-  - `metadata`: `{ item_id, source_type, source_id }`
-- **Creation code should live in**: The ingestion pipeline -- specifically the webhook handlers (`/api/webhooks/google-drive`, `/api/webhooks/linear`, etc.) and the upload handler. Notify all org members (or use notification preferences to filter).
-- **Priority**: P2 -- nice to have, but could be noisy; needs per-user preferences first
-
-### 6. Artifact shared
-
-- **When it fires**: When a user creates a public share link for an artifact.
-- **Notification data**:
-  - `title`: N/A (this is a creator action, not a recipient notification)
-  - For future: if sharing with a specific user, same pattern as "Shared with you"
-- **Creation code should live in**: Share link creation handler
-- **Priority**: P2 -- depends on targeted sharing
-
-### 7. Skill created
-
-- **When it fires**: When a new skill is saved via the skills editor.
-- **Notification data**:
-  - `title`: `"New skill: {skill_name}"`
-  - `body`: `"Created by {creator_name}"`
-  - `link`: `/skills`
-  - `metadata`: `{ skill_id, created_by }`
-- **Creation code should live in**: `/api/skills` POST handler, after successful insert.
-- **Priority**: P2 -- awareness feature, low urgency
-
-### 8. Connector sync error
-
-- **When it fires**: When a connector sync (Google Drive, GitHub, Slack, etc.) fails 3 or more consecutive times. Track failure count on the `integrations` or `nango_connections` row.
-- **Notification data**:
-  - `title`: `"Sync failing: {connector_name}"`
-  - `body`: `"Failed {count} times. Last error: {error_message}"`
+  - `title`: `"Sync failed: {provider}"`
+  - `body`: `"Error syncing {provider}: {error_message}"`
   - `link`: `/settings/integrations`
-  - `metadata`: `{ integration_id, provider, error_count, last_error }`
-- **Creation code should live in**: The sync error handler in `/api/webhooks/{provider}` routes, or in a dedicated health-check cron.
-- **Priority**: P1 -- data freshness is critical; admins need to know when syncs break
+  - `metadata`: `{ provider, connection_id, error }`
+- **Creation code**: `src/app/api/integrations/sync/route.ts` -- fire-and-forget in catch block
 
-### 9. Credit low
+### 6. Credit low
 
-- **When it fires**: When org credit usage reaches a configurable threshold (e.g., 80% or 90% of monthly allocation). Check during the cost-tracking middleware or in the `credit-reset` cron.
+- **When it fires**: When `deductCredits()` reduces the org balance below 100 credits (deduplicated to once per 24 hours).
 - **Notification data**:
   - `title`: `"Credits running low"`
-  - `body`: `"{remaining} credits remaining ({percentage}% used)"`
+  - `body`: `"Your organization has {remaining} credits remaining. Top up to avoid service interruption."`
   - `link`: `/settings/billing`
-  - `metadata`: `{ org_id, remaining, total, percentage }`
-- **Creation code should live in**: The cost-tracking logic or a dedicated cron that checks thresholds. Only notify once per threshold crossing (use metadata to deduplicate).
-- **Priority**: P1 -- directly impacts ability to use the product
+  - `metadata`: `{ remaining }`
+- **Creation code**: `src/lib/credits.ts` `deductCredits()` -- fire-and-forget, notifies org owner only
+
+### 7. Library update
+
+- **Status**: Not built -- needs per-user notification preferences to avoid noise
+
+### 8. Skill created
+
+- **Status**: Not built -- low priority awareness feature
 
 ---
 
@@ -130,6 +166,7 @@
 - **Component**: `src/components/notification-bell.tsx`
 - **How it works**: Polls `/api/notifications` every 30 seconds. Shows unread count badge. Popover lists recent notifications with type icons, relative timestamps, and click-to-navigate.
 - **DB table**: `notifications` (columns: `id`, `org_id`, `user_id`, `type`, `title`, `body`, `link`, `metadata`, `is_read`, `created_at`)
+- **Icon mapping**: `TYPE_ICONS` in notification-bell.tsx maps types to Lucide icons (includes `system_alert` -> AlertTriangle, `credit_low` -> CreditCard)
 
 ### Desktop browser notifications (Implemented)
 
@@ -137,17 +174,19 @@
 - **How it works**: Requests `Notification` API permission on mount. When new unread notifications appear during polling (not on first load), fires a browser `Notification` with title, body, and click-to-navigate.
 - **Limitation**: Only works when the tab is open (polling-based). No service worker push.
 
-### Email (Not implemented)
+### Push notifications (Implemented)
 
-- **Needed**: SendGrid or Resend integration
-- **Approach**: Add an `email` column or preference to user settings. On notification insert, check if user has email delivery enabled. Queue an email via SendGrid/Resend API. Use existing digest template infrastructure (`src/lib/email/digest-template.ts`) as a starting point.
-- **Batching**: Consider batching non-urgent notifications into a 5-minute digest to avoid spamming. Urgent types (`approval_needed`, `system_alert`) should send immediately.
+- **Module**: `src/lib/notifications/send-push.ts`
+- **How it works**: Looks up device tokens from `device_tokens` table. Sends via APNs for iOS devices. Automatically removes invalid/expired tokens.
+- **Registration**: `src/lib/notifications/push-registration.ts` handles device token registration.
+- **Limitation**: Android/web push not yet implemented (logged and skipped).
 
-### iOS push (Not implemented)
+### Email via Resend (Implemented)
 
-- **Needed**: APNs via Capacitor or FCM
-- **Infrastructure exists**: `src/lib/notifications/send-push.ts` has the skeleton. `src/lib/notifications/push-registration.ts` handles device token registration. `device_tokens` table exists.
-- **Approach**: Implement the actual APNs/FCM send in `sendPushNotification()`. On notification insert, call `sendPushNotification()` for the target user. The payload maps directly: `title` -> push title, `body` -> push body, `link` -> deep link.
+- **Module**: `src/lib/notifications/send-email.ts`
+- **How it works**: Uses Resend SDK to send transactional emails from `notifications@layers.hustletogether.com`.
+- **Preference-aware**: The `notify()` function checks `notification_preferences` before sending. Different notification types map to different preference fields.
+- **Env var**: `RESEND_API_KEY` -- if not set, email is silently disabled.
 
 ### Slack webhook (Not implemented)
 
@@ -156,38 +195,68 @@
 
 ---
 
+## Native App Status (Capacitor)
+
+### iOS
+
+- Push notifications: Built. Requires APNs credentials (see PUSH-NOTIFICATION-SETUP.md)
+- Dynamic Island: Widget exists (GrangerLiveActivity), not yet connected to server pushes
+- Background execution: Limited to push handling (no background JS execution)
+- Status: In progress -- push pipeline built, credentials pending
+
+### Android
+
+- Push notifications: Built. Requires Firebase project + google-services.json
+- Background execution: Same as iOS -- push delivery only
+- Status: In progress -- Capacitor Android project created, Firebase setup pending
+
+### Desktop (macOS/Windows)
+
+- Browser Notification API: Working (macOS banners)
+- No native desktop app -- all notifications go through the browser
+- Requires browser to be running for desktop notifications
+- Sound: Web Audio API ping (works in all browsers)
+
+Note: iOS and Android native apps are wrappers around the web app via Capacitor. Full native development is not the current focus. Push notifications work via the Capacitor plugin bridge, not native Swift/Kotlin code.
+
+---
+
 ## Implementation Notes
 
 ### Creating notifications server-side
 
-All notification creation follows the same pattern (see `execute-schedules` for the reference implementation):
+All notification creation should use the unified `notify()` function:
 
 ```typescript
-await supabase.from("notifications").insert({
-  org_id: orgId,
-  user_id: targetUserId,
-  type: "schedule_complete", // one of the valid types
+import { notify } from "@/lib/notifications/notify";
+
+await notify({
+  userId: targetUserId,
+  orgId,
+  type: "schedule_complete",
   title: "Notification title",
   body: "Optional body text",
   link: "/path/to/relevant/page",
-  metadata: { /* arbitrary JSON */ },
+  metadata: { key: "value" },
 });
 ```
+
+This replaces the previous pattern of manually inserting into the `notifications` table and calling `sendPushNotification()` separately.
 
 ### Adding new notification types
 
 1. Add the type string to the `validTypes` array in `src/app/api/notifications/route.ts`
 2. Add an icon mapping in `TYPE_ICONS` in `src/components/notification-bell.tsx`
-3. Insert the notification in the relevant server-side handler
+3. Map the type to an email preference field in `notify()` (src/lib/notifications/notify.ts)
+4. Call `notify()` in the relevant server-side handler
 
 ### Deduplication
 
-For recurring events (credit low, sync errors), use `metadata` to track whether a notification was already sent for the current period. Example: store `{ last_notified_at, threshold }` and skip if already notified within the current billing cycle.
+For recurring events (credit low, sync errors), use time-based deduplication. The credit_low notification checks for an existing notification within the last 24 hours before sending a new one. Apply a similar pattern for other recurring alerts.
 
 ### Priority Summary
 
 | Priority | Events | Rationale |
 |----------|--------|-----------|
-| P0 | Approval needed | Blocking -- approvals exist but nobody sees them |
-| P1 | Shared with you, Connector sync error, Credit low | Core UX and reliability |
+| Done | Schedule complete, Share, Approval needed, Sync error, Credit low | Core notification triggers wired up |
 | P2 | Library update, Chat mention, Skill created, Artifact shared | Nice-to-have, some need prerequisites |

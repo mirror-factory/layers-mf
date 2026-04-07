@@ -1268,6 +1268,22 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         controller.enqueue(encoder.encode(sseEvent({ phase: "error", message: msg })));
+
+        // Fire-and-forget: notify the user about the sync failure
+        (async () => {
+          try {
+            const { notify } = await import("@/lib/notifications/notify");
+            await notify({
+              userId: user.id,
+              orgId,
+              type: "system_alert",
+              title: `Sync failed: ${provider}`,
+              body: `Error syncing ${provider}: ${msg.slice(0, 200)}`,
+              link: "/settings/integrations",
+              metadata: { provider, connection_id: connectionId, error: msg },
+            });
+          } catch { /* silent */ }
+        })();
       } finally {
         controller.close();
       }

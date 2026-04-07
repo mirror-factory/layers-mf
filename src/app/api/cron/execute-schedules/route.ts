@@ -198,41 +198,47 @@ export async function GET(request: NextRequest) {
         console.error(`[schedule] Failed to update schedule ${schedule.id}:`, updateErr.message);
       }
 
-      // 6. Create a notification for the user
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("notifications").insert({
-        org_id: orgId,
-        user_id: userId,
-        type: "schedule_complete",
-        title: `Scheduled: ${schedule.name}`,
-        body: responseText.slice(0, 200),
-        link: `/chat?id=${conversationId}`,
-        metadata: { schedule_id: schedule.id, conversation_id: conversationId },
-      });
-
-      // 7. Send push notification to the user's devices
+      // 6. Notify user (in-app + push + email based on preferences)
       try {
-        const { sendPushNotification } = await import("@/lib/notifications/send-push");
-        await sendPushNotification({
+        const { notify } = await import("@/lib/notifications/notify");
+        await notify({
           userId,
+          orgId,
+          type: "schedule_complete",
           title: `Scheduled: ${schedule.name}`,
-          body: responseText.slice(0, 100),
+          body: responseText.slice(0, 200),
           link: `/chat?id=${conversationId}`,
+          metadata: { schedule_id: schedule.id, conversation_id: conversationId },
         });
-      } catch (pushErr) {
-        console.error("[schedule] Push notification failed:", pushErr);
+      } catch (notifyErr) {
+        console.error("[schedule] Notification failed:", notifyErr);
       }
 
       results.push({ id: schedule.id, status: "executed", conversationId });
     } catch (err) {
       // Mark schedule with error but don't stop processing others
+      const errorMsg = err instanceof Error ? err.message : "Execution failed";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from("scheduled_actions")
-        .update({
-          error_message: err instanceof Error ? err.message : "Execution failed",
-        })
+        .update({ error_message: errorMsg })
         .eq("id", schedule.id);
+
+      // Notify user about the schedule failure
+      try {
+        const { notify } = await import("@/lib/notifications/notify");
+        await notify({
+          userId: schedule.created_by as string,
+          orgId: schedule.org_id as string,
+          type: "system_alert",
+          title: `Schedule failed: ${schedule.name}`,
+          body: `Error: ${errorMsg.slice(0, 200)}`,
+          link: "/schedules",
+          metadata: { schedule_id: schedule.id, error: errorMsg },
+        });
+      } catch {
+        /* silent */
+      }
 
       results.push({ id: schedule.id, status: "failed" });
     }

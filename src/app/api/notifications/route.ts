@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
     "schedule_complete",
     "approval_needed",
     "library_update",
+    "system_alert",
+    "credit_low",
   ];
   if (!validTypes.includes(type)) {
     return NextResponse.json(

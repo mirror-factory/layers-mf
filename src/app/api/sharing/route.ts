@@ -356,6 +356,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 });
     }
 
+    // Fire-and-forget: notify the recipient about the share
+    (async () => {
+      try {
+        const { notify } = await import("@/lib/notifications/notify");
+        // Get sharer profile for a nice title
+        const sharerDb = createAdminClient() as unknown as AnyDb;
+        const { data: profile } = await sharerDb
+          .from("profiles")
+          .select("display_name, email")
+          .eq("id", user.id)
+          .single();
+        const sharerName = profile?.display_name ?? profile?.email ?? "Someone";
+
+        // Try to get item title
+        let resourceTitle = "an item";
+        if (contentType === "context_item") {
+          const { data: item } = await sharerDb
+            .from("context_items")
+            .select("title")
+            .eq("id", contentId)
+            .single();
+          if (item?.title) resourceTitle = item.title;
+        } else if (contentType === "artifact") {
+          const { data: item } = await sharerDb
+            .from("artifacts")
+            .select("title")
+            .eq("id", contentId)
+            .single();
+          if (item?.title) resourceTitle = item.title;
+        }
+
+        // Get org_id for the recipient notification
+        const { data: recipientMember } = await sharerDb
+          .from("org_members")
+          .select("org_id")
+          .eq("user_id", sharedWith)
+          .single();
+
+        if (recipientMember) {
+          await notify({
+            userId: sharedWith,
+            orgId: recipientMember.org_id,
+            type: "share",
+            title: `${sharerName} shared "${resourceTitle}" with you`,
+            body: `You have ${permission} access.`,
+            link:
+              contentType === "context_item"
+                ? `/context/${contentId}`
+                : `/artifacts/${contentId}`,
+            metadata: {
+              content_type: contentType,
+              content_id: contentId,
+              shared_by: user.id,
+            },
+          });
+        }
+      } catch {
+        /* silent -- notification is best-effort */
+      }
+    })();
+
     return NextResponse.json({ share: data }, { status: 201 });
   }
 

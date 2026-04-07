@@ -1905,6 +1905,31 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           conflict_reason: input.conflict_check ?? null, status: "pending",
         }).select("id").single();
         if (error) return { error: `Failed: ${error.message}` };
+
+        // Fire-and-forget: notify all org admins/owners
+        (async () => {
+          try {
+            const { notify } = await import("@/lib/notifications/notify");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: admins } = await (supabase as any)
+              .from("org_members")
+              .select("user_id")
+              .eq("org_id", orgId)
+              .in("role", ["owner", "admin"]);
+            for (const admin of admins ?? []) {
+              await notify({
+                userId: admin.user_id,
+                orgId,
+                type: "approval_needed",
+                title: `Approval needed: ${input.action_type}`,
+                body: `AI wants to ${input.action_type} on ${input.target_service}. ${input.reasoning.slice(0, 150)}`,
+                link: "/approvals",
+                metadata: { approval_id: data.id },
+              });
+            }
+          } catch { /* silent */ }
+        })();
+
         return { message: "Action proposed. Waiting for approval.", approval_id: data.id };
       },
     }),
