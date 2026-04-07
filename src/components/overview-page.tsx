@@ -57,6 +57,7 @@ import {
   UserPlus,
   Lock,
   ExternalLink,
+  ChevronDown,
   ChevronRight,
   Bold,
   Italic,
@@ -303,6 +304,8 @@ function InterviewDemo() {
 
 export function OverviewPage() {
   const [heroFormation] = useState<"galaxy">("galaxy");
+  const [showUpNext, setShowUpNext] = useState(false);
+  const [showHorizon, setShowHorizon] = useState(false);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 space-y-24">
@@ -946,6 +949,13 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-4 pt-4 border-t border-border/30">
+            <a href="/analytics/costs" className="text-xs text-primary hover:underline flex items-center gap-1.5">
+              <BarChart3 className="h-3 w-3" />
+              Open full analytics dashboard
+            </a>
+          </div>
         </div>
       </section>
 
@@ -1360,36 +1370,56 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
         </div>
 
         {/* Up Next -- P0 */}
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <ChevronRight className="h-4 w-4 text-primary" /> Up Next -- P0
-        </h3>
-        <div className="space-y-3 mb-10">
-          {([
-            { title: "Context library polish", desc: "Content detail panels, bulk actions (select multiple items to tag, move, archive), empty states, filter persistence across sessions, and responsive grid/list layouts that work on every screen size." },
-            { title: "Connectors & ingestion overhaul", desc: "Replace the monolithic 1,285-line sync route with a queue-based pipeline. Semantic chunking (400-512 tokens, not 12K truncation), incremental sync via webhooks, retry with dead-letter queue, and deduplication across sources." },
-            { title: "Sharing for all content types", desc: "Public share links for artifacts, documents, and context items (not just conversations). Token-protected links with optional passwords and expiry. Email and SMS sharing for people without Layers accounts. Download and export as PDF, DOCX, ZIP." },
-            { title: "Organization management", desc: "Org dashboard showing member count, content stats, AI usage and costs. Org-level rules that apply to every member's chat. Activity feed showing who added, shared, or changed what. The org as a mirror of a person -- its own library, priorities, and identity." },
-            { title: "Scheduling system", desc: "Background chats that run on a cron schedule. The AI executes a prompt autonomously, searches your knowledge base, generates artifacts or sandbox dashboards, and sends you a desktop notification with the link. Example: every morning at 9am, get news + weather + calendar in a dashboard." },
-            { title: "Notifications & inbox", desc: "Unified notification system across desktop, email, and in-app. Triggered by scheduled task completion, content shares, chat mentions, approval requests, integration errors, and credit alerts. Notification preferences per channel and type." },
-          ] as { title: string; desc: string }[]).map((item, i) => (
-            <div
-              key={item.title}
-              className="rounded-lg border border-border/40 bg-card/30 p-4"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-mono text-primary font-bold w-4 text-right">{i + 1}</span>
-                <span className="text-sm font-semibold text-foreground">{item.title}</span>
+        <button
+          type="button"
+          onClick={() => setShowUpNext((v) => !v)}
+          className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2 hover:text-primary transition-colors"
+        >
+          {showUpNext ? (
+            <ChevronDown className="h-4 w-4 text-primary" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-primary" />
+          )}
+          Up Next -- P0
+        </button>
+        {showUpNext && (
+          <div className="space-y-3 mb-10">
+            {([
+              { title: "Context library polish", desc: "Content detail panels, bulk actions (select multiple items to tag, move, archive), empty states, filter persistence across sessions, and responsive grid/list layouts that work on every screen size." },
+              { title: "Connectors & ingestion overhaul", desc: "Replace the monolithic 1,285-line sync route with a queue-based pipeline. Semantic chunking (400-512 tokens, not 12K truncation), incremental sync via webhooks, retry with dead-letter queue, and deduplication across sources." },
+              { title: "Sharing for all content types", desc: "Public share links for artifacts, documents, and context items (not just conversations). Token-protected links with optional passwords and expiry. Email and SMS sharing for people without Layers accounts. Download and export as PDF, DOCX, ZIP." },
+              { title: "Organization management", desc: "Org dashboard showing member count, content stats, AI usage and costs. Org-level rules that apply to every member's chat. Activity feed showing who added, shared, or changed what. The org as a mirror of a person -- its own library, priorities, and identity." },
+              { title: "Scheduling system", desc: "Background chats that run on a cron schedule. The AI executes a prompt autonomously, searches your knowledge base, generates artifacts or sandbox dashboards, and sends you a desktop notification with the link. Example: every morning at 9am, get news + weather + calendar in a dashboard." },
+              { title: "Notifications & inbox", desc: "Unified notification system across desktop, email, and in-app. Triggered by scheduled task completion, content shares, chat mentions, approval requests, integration errors, and credit alerts. Notification preferences per channel and type." },
+            ] as { title: string; desc: string }[]).map((item, i) => (
+              <div
+                key={item.title}
+                className="rounded-lg border border-border/40 bg-card/30 p-4"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] font-mono text-primary font-bold w-4 text-right">{i + 1}</span>
+                  <span className="text-sm font-semibold text-foreground">{item.title}</span>
+                </div>
+                <p className="text-xs text-muted-foreground ml-7 leading-relaxed">{item.desc}</p>
               </div>
-              <p className="text-xs text-muted-foreground ml-7 leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* On the Horizon -- P1/P2 */}
-        <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-          <Clock className="h-4 w-4" /> On the Horizon -- P1/P2
-        </h3>
-        <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowHorizon((v) => !v)}
+          className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2 hover:text-primary transition-colors"
+        >
+          {showHorizon ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+          On the Horizon -- P1/P2
+        </button>
+        {showHorizon && <div className="space-y-3">
           {([
             { title: "Parallel agents & orchestration", desc: "Spawn multiple sub-agents from a single conversation. Each agent works independently -- one searches Linear, another queries Gmail, another checks the knowledge base -- all in parallel. Results converge back to the orchestrator for synthesis. Agent memory persists across conversations. Different models for different tasks (fast model for search, flagship for code gen)." },
             { title: "Image generation & media tools", desc: "Generate images via AI Gateway (DALL-E, Stable Diffusion, Flux, Recraft). Edit images (inpaint, outpaint, upscale, background removal). Audio transcription via Whisper, text-to-speech via ElevenLabs. Media stored as artifacts alongside code and documents. Gallery view for image collections." },
@@ -1412,7 +1442,7 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
               <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
             </div>
           ))}
-        </div>
+        </div>}
       </section>
 
       {/* Footer spacer */}
