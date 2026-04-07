@@ -1747,6 +1747,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus prompt on mount and when switching conversations
+  useEffect(() => {
+    // Small delay to ensure DOM is ready after conversation switch
+    const timer = setTimeout(() => textareaRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [conversationId]);
+
   // Refs for dynamic values (read by transport headers, updated by state)
   const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
   const modelRef = useRef(model);

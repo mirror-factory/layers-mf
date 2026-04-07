@@ -94,14 +94,13 @@ export function SidebarNav({
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar-collapsed") === "true";
+    }
+    return false;
+  });
   const [hovered, setHovered] = useState(false);
-
-  // Expanded by default, restore user preference
-  useEffect(() => {
-    const stored = localStorage.getItem("sidebar-collapsed");
-    if (stored === "true") setCollapsed(true);
-  }, []);
 
   // When hovered and collapsed, visually expand
   const isVisuallyCollapsed = collapsed && !hovered;
