@@ -19,6 +19,21 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Mobile chat text: prevent long URLs/links from overflowing */
+@media (max-width: 767px) {
+  /* Streamdown rendered markdown — break long words/URLs */
+  .is-assistant a,
+  .is-assistant code {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  /* Ensure list indentation is correct on mobile */
+  .is-assistant ul,
+  .is-assistant ol {
+    padding-left: 1.25rem;
+  }
+}
+
 /* Prevent iOS input zoom — ensure all inputs are at least 16px */
 @supports (-webkit-touch-callout: none) {
   input, textarea, select {

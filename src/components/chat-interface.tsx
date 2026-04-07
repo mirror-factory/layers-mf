@@ -13,7 +13,7 @@ import {
   Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2, Save,
   RefreshCw, AlertCircle, AlertTriangle, Play, Plug, ClipboardList, Mail, StickyNote,
   Headphones, FolderOpen, CalendarClock, CheckCircle2, Puzzle, Wrench,
-  BookOpen, Search, HelpCircle, ArrowDownToLine,
+  BookOpen, Search, HelpCircle, ArrowDownToLine, ChevronLeft,
 } from "lucide-react";
 import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
@@ -1560,6 +1560,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Refs for dynamic values (read by transport headers, updated by state)
   const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
   const modelRef = useRef(model);
@@ -2214,6 +2215,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     sendMessage({ text, files });
+    // Reset textarea height to single line after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -2297,7 +2302,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             )}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
           <div className="max-w-4xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
@@ -2347,44 +2352,51 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             const isStreaming = isLastAssistant && isLoading;
 
             return (
-              <div key={m.id} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+              <div key={m.id} className={cn("flex gap-2 sm:gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 {m.role === "user" ? (
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                     <User className="h-4 w-4" />
                   </div>
                 ) : (
-                  <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                    {isLastAssistant ? (() => {
-                      const msgToolNames = toolParts.map(p => {
-                        const type = (p as { type: string }).type;
-                        return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
-                      }).filter(Boolean);
+                  <>
+                    {/* Desktop: full NeuralMorph avatar */}
+                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                      {isLastAssistant ? (() => {
+                        const msgToolNames = toolParts.map(p => {
+                          const type = (p as { type: string }).type;
+                          return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
+                        }).filter(Boolean);
 
-                      // Update Dynamic Island with current tool (fire-and-forget)
-                      if (isStreaming && msgToolNames.length > 0) {
-                        updateLiveActivity("generating", msgToolNames[msgToolNames.length - 1], 0.5);
-                      }
+                        // Update Dynamic Island with current tool (fire-and-forget)
+                        if (isStreaming && msgToolNames.length > 0) {
+                          updateLiveActivity("generating", msgToolNames[msgToolNames.length - 1], 0.5);
+                        }
 
-                      // Check for emotion in text
-                      const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };
+                        // Check for emotion in text
+                        const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };
 
-                      const formation = emotionFormation
-                        ? emotionFormation
-                        : isStreaming
-                        ? getActiveFormation(msgToolNames)
-                        : getDoneFormation(msgToolNames);
+                        const formation = emotionFormation
+                          ? emotionFormation
+                          : isStreaming
+                          ? getActiveFormation(msgToolNames)
+                          : getDoneFormation(msgToolNames);
 
-                      return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
-                    })() : (
-                      /* Older messages: lightweight pulsating dot to save CPU */
-                      <div className="flex items-center justify-center w-full h-full">
-                        <span className="relative flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30" />
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60" />
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                        return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
+                      })() : (
+                        /* Older messages: lightweight pulsating dot to save CPU */
+                        <div className="flex items-center justify-center w-full h-full">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30" />
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60" />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Mobile: small colored dot instead of full avatar */}
+                    <div className="sm:hidden shrink-0 mt-1.5">
+                      <span className={cn("inline-block h-2 w-2 rounded-full", isStreaming ? "bg-primary animate-pulse" : "bg-primary/60")} />
+                    </div>
+                  </>
                 )}
 
                 <Message from={m.role} className="min-w-0 flex-1">
@@ -2495,8 +2507,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             return !hasText && !hasTools; // Hide thinking once content streams in
           })() && (
             <div className="flex gap-3 max-w-4xl">
-              <div className="rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+              <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
                 <NeuralMorph size={40} dotCount={16} formation="active" />
+              </div>
+              <div className="sm:hidden shrink-0 mt-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
               </div>
               <span className="text-xs text-muted-foreground pt-3">Thinking…</span>
             </div>
@@ -2637,6 +2652,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
               <div className="flex items-end gap-2">
                 <textarea
+                  ref={textareaRef}
                   data-testid="chat-input"
                   aria-label="Chat message input"
                   value={input}
@@ -2683,130 +2699,187 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
-                  {/* Mobile-only chat actions (three-dot) — replaces top bar on mobile */}
-                  {messages.length > 0 && (
-                    <div className="md:hidden">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat actions">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={copyDebugJSON}>
-                            <Copy className="h-3.5 w-3.5 mr-2" />
-                            Copy JSON
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={exportMarkdown}>
-                            <Download className="h-3.5 w-3.5 mr-2" />
-                            Export Markdown
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={exportJSON}>
-                            <FileJson className="h-3.5 w-3.5 mr-2" />
-                            Export JSON file
-                          </DropdownMenuItem>
-                          {conversationId && (
-                            <>
-                              <DropdownMenuSeparator />
+                  {/* Mobile-only three-dot menu — combines chat actions + attach/chart/settings */}
+                  <div className="md:hidden">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="More options">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Paperclip className="h-3.5 w-3.5 mr-2" />
+                          Attach files
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setShowContextBar(prev => !prev)}>
+                          <BarChart3 className="h-3.5 w-3.5 mr-2" />
+                          Context window
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {/* Model selector inline */}
+                        <div className="px-2 py-1.5 space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
+                          <Select value={model} onValueChange={setModel}>
+                            <SelectTrigger className="w-full text-xs h-8" aria-label="Select AI model">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MODELS.map((m) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">
+                                  {m.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DropdownMenuSeparator />
+                        {/* Visual level */}
+                        <div className="px-2 py-1.5 space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
+                          <div className="flex items-center border rounded-md overflow-hidden">
+                            {(["off", "low", "med", "high"] as const).map((lvl) => {
+                              const value = lvl === "med" ? "medium" : lvl;
+                              const isActive = visualLevel === value;
+                              return (
+                                <button
+                                  key={lvl}
+                                  onClick={() => {
+                                    setVisualLevel(value);
+                                    localStorage.setItem("granger-visual-level", value);
+                                  }}
+                                  className={cn(
+                                    "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                                    isActive
+                                      ? "bg-primary/15 text-primary"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title={`Visual mode: ${value}`}
+                                >
+                                  {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {messages.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={copyDebugJSON}>
+                              <Copy className="h-3.5 w-3.5 mr-2" />
+                              Copy JSON
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportMarkdown}>
+                              <Download className="h-3.5 w-3.5 mr-2" />
+                              Export Markdown
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportJSON}>
+                              <FileJson className="h-3.5 w-3.5 mr-2" />
+                              Export JSON file
+                            </DropdownMenuItem>
+                            {conversationId && (
                               <DropdownMenuItem onClick={() => setShareOpen(true)}>
                                 <Share2 className="h-3.5 w-3.5 mr-2" />
                                 Share...
                               </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Attach files"
-                    title="Attach files"
-                    className="h-8 w-8"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setShowContextBar(prev => !prev)}
-                    aria-label="Toggle context window"
-                    title="Context window"
-                    className="h-8 w-8"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
+                            )}
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                  {/* Settings dropdown — model selector + visual level */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat settings" title="Chat settings">
-                        <Settings2 className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 p-3 space-y-3">
-                      {/* Model selector */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
-                        <Select value={model} onValueChange={setModel}>
-                          <SelectTrigger className="w-full text-xs h-8" data-testid="model-selector" aria-label="Select AI model">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MODELS.map((m) => (
-                              <SelectItem key={m.id} value={m.id} className="text-xs">
-                                {m.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <DropdownMenuSeparator />
-                      {/* Visual level */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
-                        <div className="flex items-center border rounded-md overflow-hidden">
-                          {(["off", "low", "med", "high"] as const).map((lvl) => {
-                            const value = lvl === "med" ? "medium" : lvl;
-                            const isActive = visualLevel === value;
-                            return (
-                              <button
-                                key={lvl}
-                                onClick={() => {
-                                  setVisualLevel(value);
-                                  localStorage.setItem("granger-visual-level", value);
-                                }}
-                                className={cn(
-                                  "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
-                                  isActive
-                                    ? "bg-primary/15 text-primary"
-                                    : "text-muted-foreground hover:text-foreground"
-                                )}
-                                title={`Visual mode: ${value}`}
-                              >
-                                {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
-                              </button>
-                            );
-                          })}
+                  {/* Desktop-only buttons — hidden on mobile */}
+                  <div className="hidden md:flex items-center gap-0.5">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Attach files"
+                      title="Attach files"
+                      className="h-8 w-8"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setShowContextBar(prev => !prev)}
+                      aria-label="Toggle context window"
+                      title="Context window"
+                      className="h-8 w-8"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </Button>
+
+                    {/* Settings dropdown — model selector + visual level */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat settings" title="Chat settings">
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 p-3 space-y-3">
+                        {/* Model selector */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
+                          <Select value={model} onValueChange={setModel}>
+                            <SelectTrigger className="w-full text-xs h-8" data-testid="model-selector" aria-label="Select AI model">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MODELS.map((m) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">
+                                  {m.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                      {/* Context window stats preview */}
-                      {messages.length > 0 && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Context</label>
-                            <p className="text-[10px] text-muted-foreground">{messages.length} messages in conversation</p>
+                        <DropdownMenuSeparator />
+                        {/* Visual level */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
+                          <div className="flex items-center border rounded-md overflow-hidden">
+                            {(["off", "low", "med", "high"] as const).map((lvl) => {
+                              const value = lvl === "med" ? "medium" : lvl;
+                              const isActive = visualLevel === value;
+                              return (
+                                <button
+                                  key={lvl}
+                                  onClick={() => {
+                                    setVisualLevel(value);
+                                    localStorage.setItem("granger-visual-level", value);
+                                  }}
+                                  className={cn(
+                                    "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                                    isActive
+                                      ? "bg-primary/15 text-primary"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title={`Visual mode: ${value}`}
+                                >
+                                  {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
+                                </button>
+                              );
+                            })}
                           </div>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        </div>
+                        {/* Context window stats preview */}
+                        {messages.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Context</label>
+                              <p className="text-[10px] text-muted-foreground">{messages.length} messages in conversation</p>
+                            </div>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 {/* Send / Stop button */}
@@ -2853,8 +2926,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       </div>
 
       {/* Right panel — Artifact viewer with file tree (mini IDE) */}
+      {/* Mobile: full-screen overlay; Desktop: side panel */}
       {activeArtifact ? (
-        <aside className="hidden md:flex w-[50%] min-w-[400px] shrink-0 border-l bg-card">
+        <aside className="fixed inset-0 z-50 flex flex-col bg-background md:static md:z-auto md:flex-row md:w-[50%] md:min-w-[400px] md:shrink-0 md:border-l md:bg-card">
           {(() => {
             // Build file tree from multi-file project or single file
             const artifactFiles = activeArtifact.files?.length
@@ -2869,9 +2943,22 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
             return (
               <>
-                {/* File tree sidebar — collapsible */}
+                {/* Mobile: back button header */}
+                <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b shrink-0">
+                  <button
+                    onClick={() => setActiveArtifact(null)}
+                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
+                    aria-label="Close artifact"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Back to chat</span>
+                  </button>
+                  <div className="flex-1" />
+                  <span className="text-xs font-medium truncate max-w-[50%]">{displayName}</span>
+                </div>
+                {/* File tree sidebar — collapsible (desktop only) */}
                 {fileTreeCollapsed ? (
-                  <div className="shrink-0 border-r flex flex-col bg-muted/20">
+                  <div className="hidden md:flex shrink-0 border-r flex-col bg-muted/20">
                     <button
                       onClick={() => setFileTreeCollapsed(false)}
                       className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
@@ -2882,7 +2969,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </button>
                   </div>
                 ) : (
-                  <div className="w-44 shrink-0 border-r flex flex-col bg-muted/20">
+                  <div className="hidden md:flex w-44 shrink-0 border-r flex-col bg-muted/20">
                     <div className="px-3 py-2 border-b flex items-center justify-between">
                       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Files</p>
                       <button

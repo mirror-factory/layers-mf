@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChatInterface } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function relativeTime(dateStr: string): string {
@@ -138,32 +138,36 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full">
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* No backdrop needed — mobile sidebar is full-screen, desktop sidebar is static */}
 
-      {/* Sidebar */}
+      {/* Sidebar — full-screen on mobile, side panel on desktop */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r flex flex-col bg-card transition-transform duration-200",
+          "fixed inset-0 top-0 z-40 flex flex-col bg-card transition-transform duration-200",
+          "md:static md:inset-auto md:w-64 md:shrink-0 md:border-r",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          panelVisible ? "md:static md:translate-x-0" : "md:hidden"
+          panelVisible ? "md:translate-x-0" : "md:hidden"
         )}
       >
         <div className="p-2 border-b flex items-center gap-1.5">
+          {/* Mobile: close button (X) with proper tap target */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden inline-flex items-center justify-center rounded-md min-h-[44px] min-w-[44px] p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
           <input
             type="text"
             placeholder="Search chats…"
-            className="flex-1 rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="flex-1 rounded-md border bg-background px-2.5 py-1.5 text-sm md:text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[44px] md:min-h-0"
             onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
           />
+          {/* Desktop: collapse panel button */}
           <button
             onClick={() => { setSidebarOpen(false); setPanelVisible(false); }}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="hidden md:inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Close sidebar"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -232,7 +236,12 @@ export default function ChatPage() {
                 if (window.innerWidth < 768) setSidebarOpen(true);
                 else togglePanel();
               }}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md p-1.5 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0",
+                panelVisible
+                  ? "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-primary hover:bg-primary/10"
+              )}
               aria-label={panelVisible ? "Hide conversations" : "Show conversations"}
               title={panelVisible ? "Hide conversations" : "Show conversations"}
             >
@@ -241,7 +250,7 @@ export default function ChatPage() {
             {/* New chat — always visible, accent color */}
             <button
               onClick={createConversation}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors"
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
               aria-label="New conversation"
               title="New conversation"
             >
