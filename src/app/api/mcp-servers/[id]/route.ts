@@ -20,34 +20,59 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: {
-    is_active?: boolean;
-    name?: string;
-    oauth_authorize_url?: string;
-    oauth_token_url?: string;
-    oauth_client_id?: string;
-    oauth_client_secret?: string | null;
-  };
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Allowlist of fields that can be updated
+  const ALLOWED_FIELDS = new Set([
+    "is_active", "name", "oauth_authorize_url", "oauth_token_url",
+    "oauth_client_id", "oauth_client_secret", "api_key_encrypted",
+    "error_message", "bearer_token",
+  ]);
+
   const updates: Record<string, unknown> = {};
-  if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
-  if (typeof body.name === "string" && body.name.trim()) updates.name = body.name.trim();
-  if (typeof body.oauth_authorize_url === "string") updates.oauth_authorize_url = body.oauth_authorize_url;
-  if (typeof body.oauth_token_url === "string") updates.oauth_token_url = body.oauth_token_url;
-  if (typeof body.oauth_client_id === "string") updates.oauth_client_id = body.oauth_client_id;
-  if (body.oauth_client_secret !== undefined) updates.oauth_client_secret = body.oauth_client_secret;
+  for (const [key, value] of Object.entries(body)) {
+    if (ALLOWED_FIELDS.has(key)) updates[key] = value;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  // Use admin client to bypass RLS
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+
+  // Verify user belongs to the server's org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data: server } = await (admin as any)
+    .from("mcp_servers")
+    .select("org_id")
+    .eq("id", id)
+    .single();
+
+  if (!server) {
+    return NextResponse.json({ error: "Server not found" }, { status: 404 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: member } = await (admin as any)
+    .from("org_members")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("org_id", server.org_id)
+    .maybeSingle();
+
+  if (!member) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (admin as any)
     .from("mcp_servers")
     .update(updates)
     .eq("id", id)
@@ -56,10 +81,6 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  if (!data) {
-    return NextResponse.json({ error: "Server not found" }, { status: 404 });
   }
 
   return NextResponse.json({ server: data });
@@ -84,8 +105,37 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Use admin client to bypass RLS — user is already authenticated above
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+
+  // First verify the server belongs to the user's org
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { data: server } = await (admin as any)
+    .from("mcp_servers")
+    .select("id, org_id")
+    .eq("id", id)
+    .single();
+
+  if (!server) {
+    return NextResponse.json({ error: "Server not found" }, { status: 404 });
+  }
+
+  // Verify user belongs to this org
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: member } = await (admin as any)
+    .from("org_members")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("org_id", server.org_id)
+    .maybeSingle();
+
+  if (!member) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (admin as any)
     .from("mcp_servers")
     .delete()
     .eq("id", id);
