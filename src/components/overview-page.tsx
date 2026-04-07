@@ -68,6 +68,8 @@ import {
   MessageSquareText,
   Check,
   X,
+  BarChart3,
+  DollarSign,
 } from "lucide-react";
 
 const SAMPLE_CODE = `import { Card, CardContent } from "@/components/ui/card";
@@ -648,6 +650,141 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
           (start, stop, restart). Code artifacts run in isolated E2B sandboxes with
           real package installation and port detection.
         </p>
+      </section>
+
+      {/*  Section 4b — Cost & Token Visibility                         */}
+      <section>
+        <SectionHeading
+          title="Cost & Token Visibility"
+          subtitle="Full observability into every LLM call -- tokens, cache hits, cost, and timing -- per message and per conversation."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              Every assistant message tracks the model used, input and output tokens,
+              prompt cache performance, cost in USD, and time to first token. Switching
+              models mid-conversation is tracked per-message so you can see exactly what
+              each response costs and why.
+            </p>
+            <p>
+              Prompt caching saves up to 90% on repeated context. The system prompt,
+              tool definitions, rules, and conversation history are all cacheable. On
+              Anthropic, cache is configured via the AI Gateway. On OpenAI and Google,
+              caching is fully automatic.
+            </p>
+            <ul className="space-y-2 mt-4">
+              {[
+                "Per-message cost breakdown with model, tokens, and cache stats",
+                "Prompt caching saves up to 90% on repeated context",
+                "Context window visualization with system/rules/tools/history breakdown",
+                "Model switching tracked per-message for accurate cost attribution",
+                "Full conversation cost rollup with per-model breakdown",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Simulated context tracker + cost breakdown */}
+          <div className="space-y-4">
+            {/* Context Tracker Card */}
+            <Card className="border-border/60 bg-zinc-950/80 overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Context Window</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">128K limit</span>
+                </div>
+
+                {/* Token breakdown bars */}
+                <div className="space-y-2">
+                  {([
+                    { label: "System", tokens: "1.1K", pct: 0.86, color: "bg-blue-500" },
+                    { label: "Rules", tokens: "38", pct: 0.03, color: "bg-purple-500" },
+                    { label: "Tools", tokens: "6.0K", pct: 4.7, color: "bg-amber-500" },
+                    { label: "History", tokens: "228", pct: 0.18, color: "bg-emerald-500" },
+                  ] as const).map((item) => (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <span className="text-[10px] text-muted-foreground w-12 text-right tabular-nums">{item.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full", item.color)}
+                          style={{ width: `${Math.max(item.pct * 10, 2)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground w-10 text-right tabular-nums font-mono">{item.tokens}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Summary row */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                  <span className="text-[10px] text-muted-foreground">
+                    5.7% used <span className="mx-1.5 text-border/60">|</span> 120.7K available
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="h-2.5 w-2.5 text-primary" />
+                    <span className="text-[10px] text-primary font-medium font-mono tabular-nums">$0.0258</span>
+                  </div>
+                </div>
+
+                {/* Message counts */}
+                <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                  <span>6 messages</span>
+                  <span>3 user</span>
+                  <span>3 assistant</span>
+                  <span>2 rules</span>
+                  <span>2 MCP servers</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cost Breakdown Card */}
+            <Card className="border-border/60 bg-zinc-950/80 overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-medium text-foreground">Cost Breakdown</span>
+                </div>
+
+                {/* Step rows */}
+                <div className="space-y-1.5 font-mono">
+                  {([
+                    { step: 1, model: "Claude Sonnet 4.6", inTok: "1,234", outTok: "456", cost: "$0.0052", cacheTok: "890", cachePct: "72%" },
+                    { step: 2, model: "Claude Sonnet 4.6", inTok: "456", outTok: "1,023", cost: "$0.0168", cacheTok: "1,100", cachePct: "89%" },
+                    { step: 3, model: "Claude Sonnet 4.6", inTok: "678", outTok: "234", cost: "$0.0038", cacheTok: "1,100", cachePct: "95%" },
+                  ] as const).map((row) => (
+                    <div key={row.step} className="flex items-center gap-2 text-[10px]">
+                      <span className="text-muted-foreground w-10 shrink-0">Step {row.step}</span>
+                      <span className="text-foreground/70 w-28 shrink-0 truncate">{row.model}</span>
+                      <span className="text-muted-foreground tabular-nums w-16 text-right shrink-0">{row.inTok} in</span>
+                      <span className="text-muted-foreground mx-0.5 shrink-0">-&gt;</span>
+                      <span className="text-muted-foreground tabular-nums w-16 text-right shrink-0">{row.outTok} out</span>
+                      <span className="text-primary tabular-nums w-14 text-right shrink-0">{row.cost}</span>
+                      <Badge variant="outline" className="text-[8px] border-emerald-500/30 text-emerald-400 ml-auto shrink-0 px-1.5 py-0">
+                        {row.cachePct}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total row */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                  <span className="text-[10px] text-muted-foreground">3 steps, 1 model</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">Total:</span>
+                    <span className="text-xs text-primary font-medium font-mono tabular-nums">$0.0258</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </section>
 
       {/*  Section 5 — Tools & Capabilities                            */}
