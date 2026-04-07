@@ -712,7 +712,10 @@ export async function POST(request: NextRequest) {
   let baseModel;
   if (isLocal) {
     const { ollama } = await import("ollama-ai-provider-v2");
+    const { warmupOllama } = await import("@/lib/ai/ollama-warmup");
     const ollamaModelName = modelId.replace("ollama/", "");
+    // Ensure model stays in GPU memory (fire-and-forget on first call)
+    void warmupOllama(ollamaModelName);
     baseModel = ollama(ollamaModelName);
   } else {
     baseModel = gateway(modelId);
