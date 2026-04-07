@@ -232,6 +232,7 @@ export function ConnectorsView({
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [browseFilter, setBrowseFilter] = useState<"popular" | "all">("popular");
+  const [authFilter, setAuthFilter] = useState<"all" | "oauth" | "bearer" | "none">("all");
 
   /* Custom server state */
   const [customName, setCustomName] = useState("");
@@ -304,7 +305,9 @@ export function ConnectorsView({
   );
   const popularServers = dedupedServers.filter((s) => POPULAR_NAMES.has(s.name));
   const allServers = dedupedServers;
-  const displayServers = browseFilter === "popular" ? popularServers : allServers;
+  const filteredByAuth = (list: typeof allServers) =>
+    authFilter === "all" ? list : list.filter((s) => s.auth === authFilter);
+  const displayServers = filteredByAuth(browseFilter === "popular" ? popularServers : allServers);
 
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
@@ -755,9 +758,28 @@ export function ConnectorsView({
                 </button>
                 {!loading && query && (
                   <p className="text-xs text-muted-foreground ml-2">
-                    {allServers.length}{totalCount !== null && totalCount > allServers.length ? ` of ${totalCount}` : ""} results
+                    {displayServers.length}{totalCount !== null && totalCount > displayServers.length ? ` of ${totalCount}` : ""} results
                   </p>
                 )}
+              </div>
+
+              {/* Auth type filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground mr-1">Auth:</span>
+                {(["all", "oauth", "bearer", "none"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setAuthFilter(type)}
+                    className={cn(
+                      "text-[10px] px-2 py-1 rounded font-medium transition-colors capitalize",
+                      authFilter === type
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {type === "all" ? "All types" : type === "bearer" ? "API Key" : type === "oauth" ? "OAuth" : "No Auth"}
+                  </button>
+                ))}
               </div>
 
               {loading ? (
