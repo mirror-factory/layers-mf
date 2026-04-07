@@ -6,7 +6,7 @@ type AnySupabase = SupabaseClient<any>;
 
 /**
  * Creates inbox items for all org members based on AI-extracted entities.
- * Called after each context item is processed (upload or Nango sync).
+ * Called after each context item is processed (upload, webhook, or sync).
  */
 export async function createInboxItems(
   supabase: AnySupabase,

@@ -57,83 +57,12 @@ export async function POST(
  */
 async function executeApprovedAction(
   approval: { action_type: string; target_service: string; payload: Record<string, unknown> },
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  _supabase: Awaited<ReturnType<typeof createClient>>,
+  _userId: string
 ) {
-  const { action_type, target_service, payload } = approval;
+  const { target_service } = approval;
 
-  try {
-    // Load credentials for this service
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: member } = await (supabase as any)
-      .from("org_members")
-      .select("org_id")
-      .eq("user_id", userId)
-      .single();
-
-    if (!member) return { error: "No org found" };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: creds } = await (supabase as any)
-      .from("credentials")
-      .select("token_encrypted")
-      .eq("org_id", member.org_id)
-      .eq("provider", target_service)
-      .or(`user_id.eq.${userId},user_id.is.null`)
-      .limit(1)
-      .single();
-
-    if (!creds) {
-      return { error: `No ${target_service} credentials found. Add your API key in Settings.` };
-    }
-
-    switch (target_service) {
-      case "linear": {
-        if (action_type === "create_task") {
-          const { LinearApiClient } = await import("@/lib/api/linear");
-          const client = new LinearApiClient(creds.token_encrypted);
-          // Need teamId — look up from team key
-          const teams = await client.listTeams();
-          const team = teams.find(t => t.key === payload.team || t.name === payload.team);
-          if (!team) return { error: `Team "${payload.team}" not found in Linear` };
-          const result = await client.createIssue({
-            title: payload.title as string,
-            teamId: team.id,
-            description: payload.description as string | undefined,
-            priority: payload.priority as number | undefined,
-          });
-          return { success: true, issue: result };
-        }
-        if (action_type === "update_task" || action_type === "update_issue") {
-          const { LinearApiClient } = await import("@/lib/api/linear");
-          const client = new LinearApiClient(creds.token_encrypted);
-          const { id: issueId, ...updates } = payload;
-          const result = await client.updateIssue(issueId as string, updates);
-          return { updated: true, ...result };
-        }
-        break;
-      }
-      case "gmail": {
-        if (action_type === "draft_email") {
-          const { GmailClient } = await import("@/lib/api/gmail");
-          const client = new GmailClient(creds.token_encrypted);
-          const result = await client.createDraft(
-            payload.to as string,
-            payload.subject as string,
-            payload.body as string
-          );
-          return { success: true, draft: result };
-        }
-        break;
-      }
-      default:
-        return { executed: false, reason: `Execution not implemented for ${target_service}` };
-    }
-
-    return { executed: false, reason: `Action type ${action_type} not implemented for ${target_service}` };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[approval] Execution failed:`, msg);
-    return { error: msg };
-  }
+  // API client execution removed (moved to MCP-only integrations).
+  // Approved actions are now handled by MCP tools directly.
+  return { executed: false, reason: `Direct API execution for ${target_service} is no longer supported. Use MCP tools instead.` };
 }

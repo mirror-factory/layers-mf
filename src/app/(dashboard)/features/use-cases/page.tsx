@@ -755,7 +755,7 @@ function DataFlowSection() {
           {/* Row 2: Ingestion */}
           <div className="flex justify-center mb-4">
             <Badge variant="outline" className="text-xs px-4 py-1.5">
-              Nango OAuth + Webhook Ingestion
+              MCP + Webhook Ingestion
             </Badge>
           </div>
 

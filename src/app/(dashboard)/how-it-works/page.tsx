@@ -585,9 +585,9 @@ const SECTIONS: Section[] = [
           {[
             {
               icon: Database,
-              title: "Nango — Context Sync",
+              title: "MCP — Context Sync",
               detail:
-                "OAuth-based integrations for Google Drive, GitHub, Slack. Syncs content to your Context Library as searchable context items. Content is indexed, chunked, and embedded for hybrid search.",
+                "MCP server integrations for Google Drive, GitHub, Slack, and more. Syncs content to your Context Library as searchable context items. Content is indexed, chunked, and embedded for hybrid search.",
               badge: "Context",
             },
             {

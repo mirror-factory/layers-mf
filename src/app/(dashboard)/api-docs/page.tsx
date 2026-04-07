@@ -369,77 +369,24 @@ const CATEGORIES: Category[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/api/integrations",
-        description: "List all connected integrations for the organization.",
+        path: "/api/mcp-servers",
+        description: "List all connected MCP servers for the organization.",
         auth: "session",
         response:
-          "{ id, provider, nango_connection_id, status, last_sync_at, created_at }[]",
-      },
-      {
-        method: "DELETE",
-        path: "/api/integrations/[id]",
-        description: "Disconnect and remove an integration. Verifies org ownership.",
-        auth: "session",
-        response: "204 No Content",
-      },
-      {
-        method: "GET",
-        path: "/api/integrations/[id]/config",
-        description: "Get the sync configuration for a specific integration.",
-        auth: "session",
-        response: "{ id, provider, sync_config: object }",
-      },
-      {
-        method: "PATCH",
-        path: "/api/integrations/[id]/config",
-        description: "Update sync configuration for an integration. Merges with existing config.",
-        auth: "session",
-        body: {
-          "sync_config (object)": "Required. Config object to merge with existing settings.",
-        },
-        response: "{ sync_config: object }",
+          "{ id, name, url, is_active, auth_type, last_connected_at, error_message, discovered_tools }[]",
       },
       {
         method: "POST",
-        path: "/api/integrations/connect-session",
-        description: "Create a Nango Connect session for OAuth integration flows.",
-        auth: "session",
-        response: "{ sessionToken: string }",
-      },
-      {
-        method: "POST",
-        path: "/api/integrations/save-connection",
-        description: "Save a Nango integration connection to the database.",
+        path: "/api/mcp-servers",
+        description: "Add a new MCP server connection.",
         auth: "session",
         body: {
-          "connectionId (string)": "Nango connection ID.",
-          "provider (string)": 'Provider name (e.g. "github", "google-drive").',
+          "name (string)": "Server display name.",
+          "url (string)": "Server URL.",
+          "auth_type? (string)": '"oauth", "bearer", or "none".',
+          "bearer_token? (string)": "API key for bearer auth.",
         },
-        response: "{ ok: true }",
-      },
-      {
-        method: "POST",
-        path: "/api/integrations/sync",
-        description:
-          "Fetch data from an integrated service, extract, embed, and save as context items. Supports github, google-drive, slack, granola, linear, discord.",
-        auth: "session",
-        body: {
-          "connectionId (string)": "Nango connection ID.",
-          "provider (string)": "Provider name.",
-        },
-        response: "Server-Sent Event stream with progress updates",
-      },
-      {
-        method: "POST",
-        path: "/api/integrations/sync-trigger",
-        description:
-          "Trigger a background sync via Nango for an integration. Falls back to streaming sync if trigger fails.",
-        auth: "session",
-        body: {
-          "connectionId (string)": "Nango connection ID.",
-          "provider (string)": "Provider name.",
-        },
-        response: '{ status: "triggered", message, fallback? } — 202',
+        response: "{ id, name, url, ... }",
       },
     ],
   },
@@ -651,28 +598,6 @@ const CATEGORIES: Category[] = [
           "(raw body)": "Discord interaction/event payload. Verified via Ed25519 signature.",
         },
         response: "{ received: true } or { type: 1 } for PING",
-      },
-      {
-        method: "POST",
-        path: "/api/webhooks/nango",
-        description:
-          "Nango webhook for auth and sync completion events. Processes context extraction from connected integrations.",
-        auth: "none",
-        body: {
-          "type": '"auth" or "sync" event payload from Nango.',
-        },
-        response: "{ received: true, event?, queued?, processed? }",
-      },
-      {
-        method: "POST",
-        path: "/api/webhooks/google-drive",
-        description:
-          "Google Drive push notification receiver. Processes file changes for watched Drive resources. Runs AI extraction pipeline.",
-        auth: "none",
-        body: {
-          "(push notification)": "Google Drive change notification with X-Goog-* headers.",
-        },
-        response: "{ received: true, channelId, resourceId, resourceState }",
       },
       {
         method: "POST",

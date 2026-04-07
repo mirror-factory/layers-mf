@@ -7,16 +7,7 @@ import {
   RefreshCw,
   Loader2,
   WifiOff,
-  HardDrive,
-  Github,
-  Hash,
-  Mail,
-  StickyNote,
   Globe,
-  Mic,
-  GitBranch,
-  Upload,
-  Bot,
   Search,
   ExternalLink,
   KeyRound,
@@ -47,32 +38,7 @@ interface MCPServer {
   discovered_tools: { name: string }[];
 }
 
-interface Credential {
-  id: string;
-  provider: string;
-  status: string;
-  last_used_at: string | null;
-}
-
 /* ------------------------------------------------------------------ */
-/*  Provider metadata                                                  */
-/* ------------------------------------------------------------------ */
-
-const PROVIDER_META: Record<
-  string,
-  { label: string; icon: React.ElementType; description: string }
-> = {
-  granola: { label: "Granola", icon: Mic, description: "Meeting transcripts and notes" },
-  linear: { label: "Linear", icon: GitBranch, description: "Issues, projects, and cycles" },
-  "google-drive": { label: "Google Drive", icon: HardDrive, description: "Documents and files" },
-  github: { label: "GitHub", icon: Github, description: "Repositories and issues" },
-  "github-app": { label: "GitHub", icon: Github, description: "Repositories and issues" },
-  slack: { label: "Slack", icon: Hash, description: "Messages and channels" },
-  gmail: { label: "Gmail", icon: Mail, description: "Email threads and messages" },
-  notion: { label: "Notion", icon: StickyNote, description: "Pages, databases, and wiki content" },
-  "layers-ai": { label: "Layers AI", icon: Bot, description: "Built-in AI assistant tools" },
-  upload: { label: "Upload", icon: Upload, description: "Uploaded files and documents" },
-};
 
 /* ------------------------------------------------------------------ */
 /*  Registry server type (from /api/mcp/registry)                      */
@@ -214,12 +180,10 @@ const CONNECTOR_TABS: { value: ConnectorTab; label: string }[] = [
 
 interface ConnectorsViewProps {
   mcpServers: MCPServer[];
-  credentials: Credential[];
 }
 
 export function ConnectorsView({
   mcpServers,
-  credentials,
 }: ConnectorsViewProps) {
   const [tab, setTab] = useState<ConnectorTab>("connected");
 
@@ -514,9 +478,8 @@ export function ConnectorsView({
   };
 
   const totalConnected =
-    credentials.filter((c) => c.status === "active").length +
     mcpServers.filter((s) => s.is_active && !s.error_message).length;
-  const totalConnectors = credentials.length + mcpServers.length;
+  const totalConnectors = mcpServers.length;
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl">
@@ -527,7 +490,7 @@ export function ConnectorsView({
           <h1 className="text-xl sm:text-2xl font-semibold">Connectors</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Manage your MCP servers and API connections.
+          Manage your MCP server connections.
           {totalConnectors > 0 && (
             <span className="ml-1">
               {totalConnected} of {totalConnectors} active.
@@ -581,24 +544,6 @@ export function ConnectorsView({
             </div>
           ) : (
             <div className="space-y-2">
-              {credentials.map((cred) => {
-                const meta = PROVIDER_META[cred.provider];
-                const credStatus: ConnectorStatus =
-                  cred.status === "active" ? "connected" : "disconnected";
-
-                return (
-                  <ConnectorCard
-                    key={cred.id}
-                    name={meta?.label ?? cred.provider}
-                    icon={meta?.icon ?? Plug}
-                    description={meta?.description}
-                    status={credStatus}
-                    type="API"
-                    lastActivity={cred.last_used_at}
-                  />
-                );
-              })}
-
               {mcpServers.filter((s) => !removedIds.has(s.id)).map((server) => {
                 const mcpStatus: ConnectorStatus = server.error_message
                   ? "error"

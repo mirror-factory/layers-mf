@@ -94,7 +94,7 @@ async function processWebhookEvent(event: LinearWebhookEvent): Promise<void> {
   // This supports multi-tenant: multiple orgs can connect to different Linear workspaces.
   const { data: integration } = await supabase
     .from("integrations")
-    .select("org_id, nango_connection_id")
+    .select("org_id")
     .eq("provider", "linear")
     .eq("status", "active")
     .eq("sync_config->>provider_workspace_id", orgLinearId)
@@ -105,7 +105,7 @@ async function processWebhookEvent(event: LinearWebhookEvent): Promise<void> {
   const resolvedIntegration = integration ?? await (async () => {
     const { data: fallback } = await supabase
       .from("integrations")
-      .select("org_id, nango_connection_id")
+      .select("org_id")
       .eq("provider", "linear")
       .eq("status", "active")
       .is("sync_config", null)

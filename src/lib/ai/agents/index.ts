@@ -1,5 +1,3 @@
-export { createLinearTools, runLinearAgent } from "./linear-agent";
-export { createGmailTools, runGmailAgent } from "./gmail-agent";
-export { createNotionTools, runNotionAgent } from "./notion-agent";
-export { createGranolaTools, runGranolaAgent } from "./granola-agent";
-export { createDriveTools, runDriveAgent } from "./drive-agent";
+// Agent exports — Nango-based agents removed, now MCP-only for integrations.
+// Individual service agents (Linear, Gmail, Notion, Granola, Drive) have been
+// replaced by MCP tool connections that provide direct authenticated access.

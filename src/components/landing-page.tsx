@@ -13,7 +13,7 @@ const FEATURES = [
     icon: Plug,
     title: "Connect Everything",
     description:
-      "6 native integrations plus 700+ more via Nango. Slack, GitHub, Linear, Notion, Google Drive, and Jira out of the box.",
+      "Connect any tool via MCP servers. Slack, GitHub, Linear, Notion, Google Drive, and more out of the box.",
   },
   {
     icon: Search,

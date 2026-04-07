@@ -11,13 +11,6 @@ interface MCPServer {
   discovered_tools: { name: string }[];
 }
 
-interface Credential {
-  id: string;
-  provider: string;
-  status: string;
-  last_used_at: string | null;
-}
-
 export const metadata = {
   title: "Connectors",
 };
@@ -58,26 +51,9 @@ export default async function ConnectorsPage() {
     // Table may not exist yet
   }
 
-  // Fetch credentials (API keys / tokens)
-  let credentials: Credential[] = [];
-  try {
-    const { createAdminClient } = await import("@/lib/supabase/server");
-    const admin = createAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (admin as any)
-      .from("credentials")
-      .select("id, provider, status, last_used_at")
-      .eq("org_id", member.org_id)
-      .order("created_at", { ascending: false });
-    credentials = data ?? [];
-  } catch {
-    // Table may not exist yet
-  }
-
   return (
     <ConnectorsView
       mcpServers={mcpServers}
-      credentials={credentials}
     />
   );
 }

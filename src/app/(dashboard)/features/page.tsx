@@ -143,9 +143,9 @@ const SECTIONS: FeatureSection[] = [
           "Meeting transcripts with attendees via webhook daemon + pull sync. Token-verified payloads.",
       },
       {
-        title: "Nango Connect",
+        title: "MCP Servers",
         description:
-          "OAuth credential management + API proxy for all integrations. Handles token refresh, rate limits, and 700+ APIs.",
+          "Connect any tool via MCP servers with OAuth PKCE, bearer tokens, or no-auth. Handles tool discovery and authentication.",
       },
     ],
   },
@@ -305,7 +305,7 @@ const SECTIONS: FeatureSection[] = [
   {
     icon: Plug,
     title: "Integrations",
-    subtitle: "6 active integrations via Nango Connect with real-time sync progress",
+    subtitle: "Connect any tool via MCP servers with real-time sync",
     features: [
       {
         title: "6 Active Integrations",
@@ -315,7 +315,7 @@ const SECTIONS: FeatureSection[] = [
       {
         title: "Background Sync Engine",
         description:
-          "Powered by Nango's sync engine — automatic background sync every 15-30 min with incremental change detection, pagination, and rate limit handling.",
+          "MCP-powered integrations with automatic tool discovery, OAuth PKCE authentication, and real-time data access.",
       },
       {
         title: "Live Sync Progress",
@@ -340,7 +340,7 @@ const SECTIONS: FeatureSection[] = [
       {
         title: "Coming Soon",
         description:
-          "Google Calendar and Notion are planned. Shown in onboarding with 'Coming Soon' badges. Nango supports 700+ APIs — adding new sources is fast.",
+          "Google Calendar and Notion are planned. Any MCP-compatible server can be added instantly from the registry.",
       },
     ],
   },
@@ -431,7 +431,7 @@ const SECTIONS: FeatureSection[] = [
       {
         title: "Webhook Verification",
         description:
-          "HMAC-SHA256 for Linear and Nango, Ed25519 for Discord, Stripe signature verification. Idempotency dedup prevents duplicate processing.",
+          "HMAC-SHA256 for Linear, Ed25519 for Discord, Stripe signature verification. Idempotency dedup prevents duplicate processing.",
       },
     ],
   },
@@ -630,7 +630,7 @@ const SPRINTS: RoadmapSprint[] = [
     highlights: [
       "Credit deduction middleware + usage logging",
       "Per-org tier-based rate limiting",
-      "Webhook idempotency + Nango signature verification",
+      "Webhook idempotency + signature verification",
       "E2E billing, settings, production smoke tests",
       "Selective sync configuration per integration",
       "Production setup checklist + .env.example",
@@ -760,7 +760,7 @@ const TECH_STACK = [
   "Vercel AI SDK v6",
   "AI Gateway",
   "Inngest",
-  "Nango",
+  "MCP Protocol",
   "Stripe",
   "Zod v4",
   "Vitest",

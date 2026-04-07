@@ -2,8 +2,7 @@ import { NextRequest } from "next/server";
 import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs, pruneMessages, convertToModelMessages, wrapLanguageModel } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { createTools, type ToolClients, type ToolPermissions } from "@/lib/ai/tools";
-import { GranolaClient, LinearApiClient, NotionClient, GmailClient, DriveClient } from "@/lib/api";
+import { createTools } from "@/lib/ai/tools";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
@@ -219,26 +218,8 @@ You have these tools available — use the RIGHT tool for the job:
 - search_context — search documents, meetings, notes in the knowledge base
 - get_document — fetch full content of a specific document by ID
 
-**Specialist Agents (delegate complex requests):**
-- ask_linear_agent — Delegate to Linear specialist for ALL task/issue requests. It can list, create, update issues, manage projects, list teams.
-- ask_gmail_agent — Delegate to Gmail specialist for email search, reading, drafting.
-- ask_notion_agent — Delegate to Notion specialist for page/database queries and reading page content.
-- ask_granola_agent — Delegate to Granola specialist for meeting transcript queries. NOTE: If MCP tools like list_meetings, get_meeting_transcript, or query_granola_meetings are available, PREFER those over ask_granola_agent — they connect directly to Granola via MCP OAuth.
-- ask_drive_agent — Delegate to Drive specialist for file search and reading.
-
 **MCP Tools (from connected external servers):**
-You may have additional tools from MCP servers (like Granola, etc.). These are loaded dynamically. When both a built-in agent tool AND an MCP tool can handle a request, PREFER the MCP tool — it has a direct authenticated connection to the service.
-
-Prefer using specialist agents over individual tools — they have deeper knowledge and can multi-step.
-
-**Direct API Tools (for simple one-shot queries):**
-- list_linear_issues — query issues with state/assignee/team/priority filters
-- create_linear_issue — create a new issue (routes through approval queue)
-- query_granola — search meeting transcripts and notes
-- search_gmail — search emails with Gmail query syntax (from:, subject:, newer_than:, is:unread)
-- draft_email — draft an email (routes through approval queue)
-- search_notion — search pages and databases
-- list_drive_files — list and search Drive files
+You may have additional tools from MCP servers (like Granola, Linear, Gmail, etc.). These are loaded dynamically from connected MCP servers. Use them for service-specific requests — they have direct authenticated connections.
 
 **Scheduling:**
 - schedule_action — create a recurring or one-time scheduled action
@@ -335,11 +316,6 @@ When asked to create a custom tool or automation:
 
 ## Slash Commands
 Users may use slash commands. When you see these, call the corresponding tool:
-- /linear or /tasks → call ask_linear_agent
-- /gmail [query] → call ask_gmail_agent
-- /notion → call ask_notion_agent
-- /granola → call ask_granola_agent
-- /drive → call ask_drive_agent
 - /schedule → list scheduled actions (tell user to visit /schedules page to manage them)
 - /approve → call list_approvals (NOT search_context)
 - /search [query] → call web_search
@@ -375,8 +351,7 @@ When ask_user returns { "_skipped": true }, the user chose to skip your question
 
 ## Guidelines
 - **Visual first**: Whenever showing structured data, people, metrics, status, or lists — use \`\`\`html blocks to render inline visuals. Don't describe things in markdown when you can show them as HTML.
-- Use specialist agents (ask_linear_agent, ask_gmail_agent, etc.) for service-specific requests — they can multi-step and have deeper domain knowledge
-- Use direct API tools (list_linear_issues, search_gmail) for quick one-shot queries where you just need a list
+- Use MCP tools for service-specific requests (Linear, Gmail, Notion, etc.) — they have direct authenticated connections
 - Call search_context for general knowledge questions, meeting decisions, or cross-source queries
 - Be concise and direct — lead with the answer, then explain
 - Cite sources by name and date: [Source: title (date)]
@@ -544,45 +519,6 @@ export async function POST(request: NextRequest) {
       });
   }
 
-  // Load credentials for this user (personal) and org (shared)
-  // Skip for local models — they don't need external service credentials
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: creds } = isLocal ? { data: [] } : await (supabase as any)
-    .from("credentials")
-    .select("provider, token_encrypted")
-    .or(`user_id.eq.${userId},user_id.is.null`)
-    .eq("org_id", orgId);
-
-  const clients: ToolClients = {};
-  for (const cred of creds ?? []) {
-    switch (cred.provider) {
-      case "granola":
-        clients.granola = new GranolaClient(cred.token_encrypted);
-        break;
-      case "linear":
-        clients.linear = new LinearApiClient(cred.token_encrypted);
-        break;
-      case "notion":
-        clients.notion = new NotionClient(cred.token_encrypted);
-        break;
-      case "gmail":
-        clients.gmail = new GmailClient(cred.token_encrypted);
-        break;
-      case "drive":
-        clients.drive = new DriveClient(cred.token_encrypted);
-        break;
-    }
-  }
-
-  // Load tool permissions for this user (skip for local models)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: partnerSettings } = isLocal ? { data: null } : await (supabase as any)
-    .from("partner_settings")
-    .select("tool_permissions")
-    .eq("user_id", userId)
-    .single();
-  const toolPermissions: ToolPermissions | undefined = partnerSettings?.tool_permissions ?? undefined;
-
   // Extract last user text for auto-titling and analytics
   const lastUserMsg = [...uiMessages].reverse().find((m) => m.role === "user");
   const lastUserText = lastUserMsg
@@ -685,7 +621,7 @@ export async function POST(request: NextRequest) {
 
   console.log(`[chat] ${Date.now() - t0}ms | tools created`);
 
-  const baseTools = createTools(supabase, orgId, clients, userId, toolPermissions);
+  const baseTools = createTools(supabase, orgId, userId);
   const allTools = { ...baseTools, ...mcpTools };
 
   let fullInstructions: string;
