@@ -2,10 +2,17 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChatInterface } from "@/components/chat-interface";
+import { ChatInterface, ChatActions } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen, X, MoreHorizontal, Copy, Download, FileJson, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -126,6 +133,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const chatActionsRef = useRef<ChatActions | null>(null);
 
   // Load conversation panel preference from localStorage
   useEffect(() => {
@@ -237,7 +245,7 @@ export default function ChatPage() {
       <div className="flex flex-col flex-1 min-w-0">
         {/* Chat header — includes safe-top on mobile since global header is hidden */}
         <div className="border-b px-3 py-1.5 shrink-0 safe-top">
-          <div className="flex items-center gap-2">
+          <div className="max-w-3xl mx-auto flex items-center gap-2">
             {/* Left: menu/panel toggle */}
             <button
               onClick={() => {
@@ -262,8 +270,40 @@ export default function ChatPage() {
                 : "Chat with Granger"}
             </span>
 
-            {/* Right: new chat + actions grouped together */}
+            {/* Right: actions dropdown + new chat */}
             <div className="flex items-center gap-1 shrink-0">
+              {activeId && chatActionsRef.current?.hasMessages && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
+                      aria-label="Chat actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => chatActionsRef.current?.copyDebugJSON()}>
+                      <Copy className="h-3.5 w-3.5 mr-2" />
+                      Copy JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => chatActionsRef.current?.exportMarkdown()}>
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      Export Markdown
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => chatActionsRef.current?.exportJSON()}>
+                      <FileJson className="h-3.5 w-3.5 mr-2" />
+                      Export JSON file
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => chatActionsRef.current?.openShare()}>
+                      <Share2 className="h-3.5 w-3.5 mr-2" />
+                      Share...
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <button
                 onClick={createConversation}
                 className="inline-flex items-center justify-center rounded-md p-2 text-primary hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
@@ -277,7 +317,7 @@ export default function ChatPage() {
         </div>
         <div className="flex-1 overflow-hidden">
           {activeId ? (
-            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} onConversationUpdated={fetchConversations} />
+            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} onConversationUpdated={fetchConversations} actionsRef={chatActionsRef} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mb-2" />

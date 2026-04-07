@@ -15,11 +15,16 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 100);
   const offset = Number(searchParams.get("offset")) || 0;
 
+  // Only return notifications from the last 7 days by default
+  const daysBack = Math.min(Number(searchParams.get("days")) || 7, 90);
+  const cutoffDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("notifications")
     .select("*", { count: "exact" })
     .eq("user_id", user.id)
+    .gte("created_at", cutoffDate)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -32,13 +37,14 @@ export async function GET(request: NextRequest) {
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Also fetch unread count separately for the badge
+  // Unread count — also scoped to last 7 days so the badge matches
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { count: unreadCount } = await (supabase as any)
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("is_read", false);
+    .eq("is_read", false)
+    .gte("created_at", cutoffDate);
 
   return NextResponse.json({
     notifications: data ?? [],

@@ -176,6 +176,13 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
     setLoading(false);
   };
 
+  const clearOld = async () => {
+    setLoading(true);
+    await fetch("/api/notifications/clear-old", { method: "DELETE" });
+    await fetchNotifications();
+    setLoading(false);
+  };
+
   const handleClick = (notification: Notification) => {
     if (!notification.is_read) {
       markAsRead(notification.id);
@@ -284,7 +291,29 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
           )}
         </div>
 
-        <div className="border-t px-4 py-2">
+        <div className="border-t px-4 py-2 flex flex-col gap-1">
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto flex-1 px-2 py-1.5 text-xs text-muted-foreground"
+                onClick={markAllRead}
+                disabled={loading}
+              >
+                Dismiss all
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto flex-1 px-2 py-1.5 text-xs text-muted-foreground"
+              onClick={clearOld}
+              disabled={loading}
+            >
+              Clear old
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"

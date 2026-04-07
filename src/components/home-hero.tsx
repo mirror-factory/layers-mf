@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { MessageSquare, FileText } from "lucide-react";
-import { AiHeroBackground } from "@/components/ui/ai-hero-background";
 
 interface HomeHeroProps {
   greeting: string;
@@ -13,10 +12,14 @@ interface HomeHeroProps {
 export function HomeHero({ greeting, displayName, subtitle }: HomeHeroProps) {
   return (
     <div className="relative rounded-xl border overflow-hidden bg-card" style={{ minHeight: 280 }}>
-      {/* AI Hero dot animation background — mint colored */}
-      <div className="absolute inset-0">
-        <AiHeroBackground />
-      </div>
+      {/* Subtle dot grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.05) 1px, transparent 0)",
+          backgroundSize: "24px 24px",
+        }}
+      />
 
       <div className="relative z-10 p-6 sm:p-8">
         <p className="text-xs font-medium text-primary/70 tracking-wide uppercase mb-2">

@@ -6,69 +6,49 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
-  Home,
   Library,
   MessageSquare,
-  Inbox,
   Plug,
   BarChart3,
   LogOut,
-  UserCog,
   Shield,
   Menu,
   X,
   Coins,
-  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Clock,
   Puzzle,
-  Terminal,
-  FileText,
-  FileCode2,
-  Share2,
-  BookOpen,
   LayoutDashboard,
   ScrollText,
+  Settings,
+  Users,
+  Building2,
+  Bell as BellIcon,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { NeuralDots } from "@/components/ui/neural-dots";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
 const MAIN_ITEMS: NavItem[] = [
-  { href: "/home", label: "Home", icon: Home },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/context", label: "Library", icon: Library },
-  { href: "/priority", label: "Priority & Rules", icon: FileText },
-  { href: "/artifacts", label: "Artifacts", icon: FileCode2 },
   { href: "/skills", label: "Skills", icon: Puzzle },
-  { href: "/sandbox", label: "Sandbox", icon: Terminal },
-  { href: "/how-it-works", label: "How It Works", icon: BookOpen },
-  { href: "/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/changelog", label: "Changelog", icon: ScrollText },
-];
-
-const COMING_SOON_ITEMS: NavItem[] = [
-  { href: "/analytics/costs", label: "AI Costs", icon: Coins },
-  { href: "/sharing", label: "Sharing", icon: Share2 },
-  { href: "/schedules", label: "Schedules", icon: Clock },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/approvals", label: "Approvals", icon: CheckSquare },
-];
-
-const CONNECT_ITEMS: NavItem[] = [
   { href: "/connectors", label: "Connectors", icon: Plug },
-];
-
-const SETTINGS_ITEMS: NavItem[] = [
-  { href: "/settings", label: "Settings", icon: UserCog },
+  { href: "/schedules", label: "Scheduling", icon: Clock },
 ];
 
 const MORE_ITEMS: NavItem[] = [
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
+  { href: "/changelog", label: "Changelog", icon: ScrollText },
+  { href: "/analytics/costs", label: "Analytics", icon: BarChart3 },
+  { href: "/settings/team", label: "Team", icon: Users },
+  { href: "/settings/org", label: "Organization", icon: Building2 },
+  { href: "/settings/notifications", label: "Notifications", icon: BellIcon },
 ];
 
 function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { pathname: string; collapsed?: boolean }) {
@@ -141,7 +121,7 @@ export function SidebarNav({
 
   // Auto-expand "More" section when a route within it is active
   useEffect(() => {
-    if (MORE_ITEMS.some((item) => pathname === item.href)) {
+    if (MORE_ITEMS.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"))) {
       setMoreOpen(true);
     }
   }, [pathname]);
@@ -176,6 +156,7 @@ export function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
+        <NeuralDots size={24} dotCount={6} />
         <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
       </div>
 
@@ -200,10 +181,9 @@ export function SidebarNav({
         {/* Logo + collapse toggle */}
         <div className={cn("flex items-center border-b", isVisuallyCollapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
-            {!isVisuallyCollapsed ? (
+            <NeuralDots size={24} dotCount={6} />
+            {!isVisuallyCollapsed && (
               <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
-            ) : (
-              <span className="font-display text-lg font-bold text-primary">G</span>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -236,26 +216,16 @@ export function SidebarNav({
 
         {/* Nav */}
         <nav className={cn("flex-1 space-y-0.5 overflow-y-auto", isVisuallyCollapsed ? "p-1" : "p-2")} role="navigation" aria-label="Main navigation">
-          {/* Main */}
-          <SectionLabel collapsed={isVisuallyCollapsed}>Main</SectionLabel>
           {renderItems(MAIN_ITEMS)}
 
-          {/* Connect */}
-          <SectionLabel collapsed={isVisuallyCollapsed}>Connect</SectionLabel>
-          {renderItems(CONNECT_ITEMS)}
-
-          {/* Settings */}
-          <SectionLabel collapsed={isVisuallyCollapsed}>Settings</SectionLabel>
-          {renderItems(SETTINGS_ITEMS)}
-
-          {/* Coming Soon (collapsible) */}
+          {/* More (collapsible) */}
           {!isVisuallyCollapsed ? (
             <SectionLabel collapsed={isVisuallyCollapsed}>
               <button
                 onClick={() => setMoreOpen((prev) => !prev)}
                 className="flex w-full items-center gap-1 uppercase tracking-wider hover:text-muted-foreground transition-colors"
               >
-                Coming Soon
+                More
                 <ChevronDown
                   className={cn(
                     "h-3 w-3 transition-transform duration-200",
@@ -267,7 +237,7 @@ export function SidebarNav({
           ) : (
             <div className="my-2 border-t" />
           )}
-          {(moreOpen || isVisuallyCollapsed) && renderItems(COMING_SOON_ITEMS)}
+          {(moreOpen || isVisuallyCollapsed) && renderItems(MORE_ITEMS)}
         </nav>
 
         {/* User */}

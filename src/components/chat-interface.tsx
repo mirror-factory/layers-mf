@@ -1565,14 +1565,23 @@ function SharePanel({
   );
 }
 
+export interface ChatActions {
+  copyDebugJSON: () => void;
+  exportMarkdown: () => void;
+  exportJSON: () => void;
+  openShare: () => void;
+  hasMessages: boolean;
+}
+
 interface ChatInterfaceProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
   initialPrompt?: string | null;
   onConversationUpdated?: () => void;
+  actionsRef?: React.MutableRefObject<ChatActions | null>;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1618,6 +1627,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       initialTemplateId={initialTemplateId}
       initialPrompt={initialPrompt}
       initialMessages={initialMessages}
+      actionsRef={actionsRef}
     />
   );
 }
@@ -1628,9 +1638,10 @@ interface ChatInterfaceInnerProps {
   initialPrompt?: string | null;
   initialMessages?: UIMessage[];
   onConversationUpdated?: () => void;
+  actionsRef?: React.MutableRefObject<ChatActions | null>;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
@@ -2071,6 +2082,19 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       : `conversation-${Date.now()}.json`;
     downloadFile(json, filename, "application/json");
   }, [getDebugJSON, conversationId]);
+
+  // Expose actions to parent via ref
+  useEffect(() => {
+    if (actionsRef) {
+      actionsRef.current = {
+        copyDebugJSON,
+        exportMarkdown,
+        exportJSON,
+        openShare: () => setShareOpen(true),
+        hasMessages: messages.length > 0,
+      };
+    }
+  }, [actionsRef, copyDebugJSON, exportMarkdown, exportJSON, messages.length]);
 
   // Dynamic skill slash commands fetched from API
   const [skillMenuItems, setSkillMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string }[]>([]);
@@ -2653,7 +2677,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 relative"
+          className="shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6 relative"
+          style={{
+            background: "linear-gradient(to bottom, transparent, hsl(168 14% 5% / 0.8) 30%, hsl(168 14% 5%) 60%)",
+          }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -2988,21 +3015,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </div>
 
-                {/* Send / Stop button */}
-                {isLoading ? (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button type="button" size="icon" onClick={stop} variant="destructive" aria-label="Stop generation" data-testid="chat-stop" className="h-8 w-8">
-                      <Square className="h-3 w-3" />
-                    </Button>
-                    <Button type="button" size="icon" variant="ghost" onClick={handleSend} disabled={!input.trim()} aria-label="Queue message" data-testid="chat-queue" className="h-8 w-8">
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button type="button" size="icon" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} data-testid="chat-submit" aria-label="Send message" className="h-8 w-8 shrink-0">
+                {/* Send / Stop button — single toggle */}
+                <button
+                  type="button"
+                  onClick={isLoading ? stop : handleSend}
+                  disabled={!isLoading && !input.trim() && pendingFiles.length === 0}
+                  data-testid={isLoading ? "chat-stop" : "chat-submit"}
+                  aria-label={isLoading ? "Stop generation" : "Send message"}
+                  className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground p-2.5 shrink-0 transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {isLoading ? (
+                    <Square className="h-4 w-4 fill-current" />
+                  ) : (
                     <Send className="h-4 w-4" />
-                  </Button>
-                )}
+                  )}
+                </button>
               </div>
           </div>
           {/* Queued messages indicator */}
