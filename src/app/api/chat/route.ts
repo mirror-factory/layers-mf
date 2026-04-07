@@ -885,6 +885,7 @@ export async function POST(request: NextRequest) {
       if (conversationId && lastUserText) {
         void (async () => {
           try {
+            console.log("[chat] Auto-title: generating for conv=" + conversationId);
             // Only title untitled conversations
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: conv } = await (adminDb as any)
@@ -892,7 +893,10 @@ export async function POST(request: NextRequest) {
               .select("title")
               .eq("id", conversationId)
               .single();
-            if (conv?.title) return;
+            if (conv?.title) {
+              console.log("[chat] Auto-title: skipped, already titled conv=" + conversationId);
+              return;
+            }
 
             // Generate a concise title using a fast model
             const { generateText } = await import("ai");
@@ -904,12 +908,14 @@ export async function POST(request: NextRequest) {
             });
 
             const title = generatedTitle.trim().slice(0, 80) || lastUserText.slice(0, 50);
+            console.log("[chat] Auto-title: generated title=\"" + title + "\" for conv=" + conversationId);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (adminDb as any)
               .from("conversations")
               .update({ title, updated_at: new Date().toISOString() })
               .eq("id", conversationId);
-          } catch {
+          } catch (err) {
+            console.error("[chat] Auto-title: error for conv=" + conversationId, err);
             // Fallback: use truncated user message
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (adminDb as any)

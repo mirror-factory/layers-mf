@@ -1150,19 +1150,32 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
           />
         )}
         <ToolContent>
-          {"input" in part && <ToolInput input={part.input} />}
-          {isDone && !isApproval && (
-            <ToolOutput
-              output={
-                output !== undefined ? (
-                  <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                    {typeof output === "string" ? output : (() => { try { return JSON.stringify(output, null, 2); } catch { return "[Complex output]"; } })()}
-                  </pre>
-                ) : null
-              }
-              errorText={errorText}
-            />
-          )}
+          {"input" in part && (() => {
+            try {
+              const safeInput = JSON.parse(JSON.stringify(part.input));
+              return <ToolInput input={safeInput} />;
+            } catch {
+              return <ToolInput input={{ _note: "Input contains non-serializable data" }} />;
+            }
+          })()}
+          {isDone && !isApproval && (() => {
+            let safeOutput = output;
+            if (output && typeof output === "object") {
+              try { safeOutput = JSON.parse(JSON.stringify(output)); } catch { safeOutput = { _note: "Output contains non-serializable data" }; }
+            }
+            return (
+              <ToolOutput
+                output={
+                  safeOutput !== undefined ? (
+                    <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                      {typeof safeOutput === "string" ? safeOutput : JSON.stringify(safeOutput, null, 2)}
+                    </pre>
+                  ) : null
+                }
+                errorText={errorText}
+              />
+            );
+          })()}
         </ToolContent>
       </Tool>
       {isApproval && approvalOutput && (
@@ -1553,9 +1566,10 @@ interface ChatInterfaceProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
   initialPrompt?: string | null;
+  onConversationUpdated?: () => void;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1597,6 +1611,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
   return (
     <ChatInterfaceInner
       conversationId={conversationId}
+      onConversationUpdated={onConversationUpdated}
       initialTemplateId={initialTemplateId}
       initialPrompt={initialPrompt}
       initialMessages={initialMessages}
@@ -1609,9 +1624,10 @@ interface ChatInterfaceInnerProps {
   initialTemplateId?: string | null;
   initialPrompt?: string | null;
   initialMessages?: UIMessage[];
+  onConversationUpdated?: () => void;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
@@ -1661,6 +1677,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       // Record which model was used for this response
       const assistantCount = messages.filter(m => m.role === "assistant").length;
       messageModelRef.current.set(assistantCount - 1, modelRef.current);
+      // Re-fetch conversation list after a short delay to pick up auto-generated titles
+      if (onConversationUpdated) {
+        setTimeout(onConversationUpdated, 2000);
+      }
     },
   });
 
@@ -3160,6 +3180,25 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </div>
                   )}
                 </div>
+                {/* Mobile file selector -- horizontal scroll */}
+                {artifactFiles.length > 1 && (
+                  <div className="md:hidden flex items-center gap-1 px-3 py-1.5 border-b overflow-x-auto">
+                    {artifactFiles.map((f) => (
+                      <button
+                        key={f.path}
+                        onClick={() => setSelectedFilePath(f.path)}
+                        className={cn(
+                          "text-[10px] px-2 py-1 rounded whitespace-nowrap shrink-0",
+                          (selectedFilePath ?? artifactFiles[0]?.path) === f.path
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {f.path.split("/").pop()}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* File tree sidebar — collapsible (desktop only) */}
                 {fileTreeCollapsed ? (
                   <div className="hidden md:flex shrink-0 border-r flex-col bg-muted/20">
@@ -3482,7 +3521,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                         </>
                       );
                     })()}
-                    <div className="flex-1 overflow-auto">
+                    <div className="flex-1 overflow-auto w-full min-w-0">
                     {activeArtifact.type === "document" ? (
                       <DocumentArtifactEditor
                         content={displayCode}
@@ -3493,9 +3532,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     ) : (
                       <>
                         {artifactViewMode === "code" && (
-                          <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
-                            <div />
-                          </CodeBlock>
+                          <div className="w-full min-w-0">
+                            <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
+                              <div />
+                            </CodeBlock>
+                          </div>
                         )}
                         {artifactViewMode === "preview" && (
                           activeArtifact.previewUrl && sandboxStopped ? (
