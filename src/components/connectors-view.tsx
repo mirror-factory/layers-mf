@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plug,
   Server,
@@ -21,29 +21,30 @@ import {
   Upload,
   Bot,
   Plus,
+  Search,
+  ExternalLink,
+  KeyRound,
+  Wrench,
+  ArrowLeft,
+  ChevronRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { NeuralDots } from "@/components/ui/neural-dots";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-interface Integration {
-  id: string;
-  provider: string;
-  nango_connection_id: string;
-  status: string;
-  last_sync_at: string | null;
-}
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 interface MCPServer {
   id: string;
@@ -55,404 +56,598 @@ interface MCPServer {
   discovered_tools: { name: string }[];
 }
 
+interface Credential {
+  id: string;
+  provider: string;
+  status: string;
+  last_used_at: string | null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Provider metadata                                                  */
+/* ------------------------------------------------------------------ */
+
 const PROVIDER_META: Record<
   string,
   { label: string; icon: React.ElementType; description: string }
 > = {
-  granola: {
-    label: "Granola",
-    icon: Mic,
-    description: "Meeting transcripts and notes",
-  },
-  linear: {
-    label: "Linear",
-    icon: GitBranch,
-    description: "Issues, projects, and cycles",
-  },
-  "google-drive": {
-    label: "Google Drive",
-    icon: HardDrive,
-    description: "Documents and files",
-  },
-  github: {
-    label: "GitHub",
-    icon: Github,
-    description: "Repositories and issues",
-  },
-  "github-app": {
-    label: "GitHub",
-    icon: Github,
-    description: "Repositories and issues",
-  },
-  slack: {
-    label: "Slack",
-    icon: Hash,
-    description: "Messages and channels",
-  },
-  gmail: {
-    label: "Gmail",
-    icon: Mail,
-    description: "Email threads and messages",
-  },
-  notion: {
-    label: "Notion",
-    icon: StickyNote,
-    description: "Pages, databases, and wiki content",
-  },
-  "layers-ai": {
-    label: "Layers AI",
-    icon: Bot,
-    description: "Built-in AI assistant tools",
-  },
-  upload: {
-    label: "Upload",
-    icon: Upload,
-    description: "Uploaded files and documents",
-  },
+  granola: { label: "Granola", icon: Mic, description: "Meeting transcripts and notes" },
+  linear: { label: "Linear", icon: GitBranch, description: "Issues, projects, and cycles" },
+  "google-drive": { label: "Google Drive", icon: HardDrive, description: "Documents and files" },
+  github: { label: "GitHub", icon: Github, description: "Repositories and issues" },
+  "github-app": { label: "GitHub", icon: Github, description: "Repositories and issues" },
+  slack: { label: "Slack", icon: Hash, description: "Messages and channels" },
+  gmail: { label: "Gmail", icon: Mail, description: "Email threads and messages" },
+  notion: { label: "Notion", icon: StickyNote, description: "Pages, databases, and wiki content" },
+  "layers-ai": { label: "Layers AI", icon: Bot, description: "Built-in AI assistant tools" },
+  upload: { label: "Upload", icon: Upload, description: "Uploaded files and documents" },
 };
 
-type ConnectorStatus = "connected" | "disconnected" | "error" | "connecting";
+/* ------------------------------------------------------------------ */
+/*  Registry server type (from /api/mcp/registry)                      */
+/* ------------------------------------------------------------------ */
 
-interface ConnectorCardProps {
-  id: string;
+interface RegistryServer {
   name: string;
-  icon: React.ElementType;
-  status: ConnectorStatus;
-  type: "API" | "MCP";
-  lastSync: string | null;
-  description?: string;
-  errorMessage?: string | null;
-  toolCount?: number;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-  connecting?: boolean;
+  description: string;
+  url: string;
+  type: string;
+  website: string;
+  auth: "oauth" | "bearer" | "none";
 }
+
+const POPULAR_NAMES = new Set([
+  "GitHub", "Granola", "Sentry", "Cloudflare", "Stripe",
+  "Resend", "Supabase", "Neon", "Browserbase", "Firecrawl",
+]);
+
+/* ------------------------------------------------------------------ */
+/*  PKCE Helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/* ------------------------------------------------------------------ */
+/*  Connected Connector Card (compact)                                 */
+/* ------------------------------------------------------------------ */
+
+type ConnectorStatus = "connected" | "disconnected" | "error";
 
 function ConnectorCard({
   name,
   icon: Icon,
   status,
   type,
-  lastSync,
+  lastActivity,
   description,
   errorMessage,
   toolCount,
-  onConnect,
   onDisconnect,
-  connecting,
-}: ConnectorCardProps) {
-  const [readAccess, setReadAccess] = useState(status === "connected");
-  const [writeAccess, setWriteAccess] = useState(false);
-
-  const statusConfig: Record<
-    ConnectorStatus,
-    { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }
-  > = {
-    connected: {
-      label: "Connected",
-      variant: "default",
-      icon: <Wifi className="h-3 w-3" />,
-    },
-    disconnected: {
-      label: "Disconnected",
-      variant: "secondary",
-      icon: <WifiOff className="h-3 w-3" />,
-    },
-    error: {
-      label: "Error",
-      variant: "destructive",
-      icon: <AlertCircle className="h-3 w-3" />,
-    },
-    connecting: {
-      label: "Connecting",
-      variant: "outline",
-      icon: null,
-    },
-  };
-
-  const currentStatus = connecting ? "connecting" : status;
-  const config = statusConfig[currentStatus];
+  onReconnect,
+}: {
+  name: string;
+  icon: React.ElementType;
+  status: ConnectorStatus;
+  type: "API" | "MCP";
+  lastActivity: string | null;
+  description?: string;
+  errorMessage?: string | null;
+  toolCount?: number;
+  onDisconnect?: () => void;
+  onReconnect?: () => void;
+}) {
+  const statusDot =
+    status === "connected"
+      ? "bg-emerald-500"
+      : status === "error"
+        ? "bg-destructive"
+        : "bg-muted-foreground/40";
 
   return (
-    <Card className="relative overflow-hidden">
-      {connecting && (
-        <div className="absolute top-2 right-2">
-          <NeuralDots size={32} dotCount={8} active={true} />
+    <div className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium truncate">{name}</span>
+          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot)} />
+          <Badge variant="outline" className="text-[10px] shrink-0">
+            {type}
+          </Badge>
         </div>
-      )}
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Icon className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <CardTitle className="text-sm font-medium">{name}</CardTitle>
-              {description && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {description}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={config.variant} className="text-[10px] gap-1">
-              {currentStatus === "connecting" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                config.icon
-              )}
-              {config.label}
-            </Badge>
-            <Badge variant="outline" className="text-[10px]">
-              {type}
-            </Badge>
-          </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          {description && (
+            <p className="text-[11px] text-muted-foreground truncate">{description}</p>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Last sync / tool count info */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {lastSync
-              ? `Last sync: ${new Date(lastSync).toLocaleDateString()}`
-              : "Never synced"}
-          </span>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
           {toolCount !== undefined && toolCount > 0 && (
-            <span>
+            <span className="flex items-center gap-1">
+              <Wrench className="h-3 w-3" />
               {toolCount} tool{toolCount !== 1 ? "s" : ""}
             </span>
           )}
-        </div>
-
-        {/* Error message */}
-        {errorMessage && status === "error" && (
-          <p className="text-xs text-destructive">{errorMessage}</p>
-        )}
-
-        {/* Permission toggles (Task 6.2) */}
-        <div className="flex items-center gap-4 pt-1">
-          <label className="flex items-center gap-2 text-xs">
-            <Switch
-              checked={readAccess}
-              onCheckedChange={setReadAccess}
-              className="scale-75"
-            />
-            <span className="text-muted-foreground">Read access</span>
-          </label>
-          <label className="flex items-center gap-2 text-xs">
-            <Switch
-              checked={writeAccess}
-              onCheckedChange={setWriteAccess}
-              className="scale-75"
-            />
-            <span className="text-muted-foreground">Write access</span>
-          </label>
-        </div>
-
-        {/* Connect / Disconnect button */}
-        <div className="pt-1">
-          {status === "connected" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDisconnect}
-              className="w-full text-xs h-8"
-            >
-              <WifiOff className="h-3 w-3 mr-1.5" />
-              Disconnect
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={onConnect}
-              disabled={connecting}
-              className="w-full text-xs h-8"
-            >
-              {connecting ? (
-                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-              ) : (
-                <Plug className="h-3 w-3 mr-1.5" />
-              )}
-              {connecting ? "Connecting..." : "Connect"}
-            </Button>
+          {lastActivity && (
+            <span>Last used {new Date(lastActivity).toLocaleDateString()}</span>
+          )}
+          {errorMessage && status === "error" && (
+            <span className="text-destructive truncate">{errorMessage}</span>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {status === "connected" ? (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onDisconnect}>
+            <WifiOff className="h-3 w-3 mr-1" />
+            Disconnect
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onReconnect}>
+            <Plug className="h-3 w-3 mr-1" />
+            Reconnect
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Nango provider catalog for the Add Integration dialog              */
+/*  MCP Gallery Panel                                                  */
 /* ------------------------------------------------------------------ */
 
-const NANGO_PROVIDERS = [
-  { id: "google-drive", label: "Google Drive", icon: HardDrive, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10", description: "Documents, spreadsheets, and files" },
-  { id: "github", label: "GitHub", icon: Github, color: "text-gray-900 dark:text-gray-100", bgColor: "bg-gray-500/10", description: "Repositories and issues" },
-  { id: "slack", label: "Slack", icon: Hash, color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/10", description: "Messages and channels" },
-  { id: "linear", label: "Linear", icon: BarChart3, color: "text-indigo-600 dark:text-indigo-400", bgColor: "bg-indigo-500/10", description: "Issues, projects, and cycles" },
-  { id: "gmail", label: "Gmail", icon: Mail, color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/10", description: "Email threads and messages" },
-  { id: "notion", label: "Notion", icon: StickyNote, color: "text-stone-700 dark:text-stone-300", bgColor: "bg-stone-500/10", description: "Pages, databases, and wiki content" },
-] as const;
-
-/* ------------------------------------------------------------------ */
-/*  Add Integration Dialog                                             */
-/* ------------------------------------------------------------------ */
-
-function AddIntegrationDialog({
+function MCPGalleryPanel({
   open,
   onOpenChange,
-  connectedProviders,
-  onConnectNango,
-  connectingNango,
+  connectedServerUrls,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  connectedProviders: Set<string>;
-  onConnectNango: () => void;
-  connectingNango: boolean;
+  connectedServerUrls: Set<string>;
 }) {
-  const [mcpName, setMcpName] = useState("");
-  const [mcpUrl, setMcpUrl] = useState("");
-  const [mcpSaving, setMcpSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [servers, setServers] = useState<RegistryServer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedServer, setSelectedServer] = useState<RegistryServer | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [bearerToken, setBearerToken] = useState("");
   const [mcpError, setMcpError] = useState<string | null>(null);
+  const [customName, setCustomName] = useState("");
+  const [customUrl, setCustomUrl] = useState("");
 
-  const handleAddMCP = async () => {
-    if (!mcpName.trim() || !mcpUrl.trim()) return;
-    setMcpSaving(true);
+  const fetchRegistry = useCallback(async (q: string) => {
+    setLoading(true);
+    try {
+      const params = q ? `?q=${encodeURIComponent(q)}` : "";
+      const res = await fetch(`/api/mcp/registry${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setServers(data.servers ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchRegistry("");
+    }
+  }, [open, fetchRegistry]);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      fetchRegistry(query);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, open, fetchRegistry]);
+
+  const popularServers = servers.filter((s) => POPULAR_NAMES.has(s.name));
+  const allServers = servers;
+
+  const handleConnectMCP = async (server: RegistryServer) => {
+    setConnecting(true);
     setMcpError(null);
     try {
       const res = await fetch("/api/mcp-servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: mcpName.trim(), url: mcpUrl.trim() }),
+        body: JSON.stringify({
+          name: server.name,
+          url: server.url,
+          auth_type: server.auth,
+          bearer_token: server.auth === "bearer" ? bearerToken : undefined,
+        }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Failed to add MCP server" }));
+        const body = await res.json().catch(() => ({ error: "Failed to add server" }));
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
-      setMcpName("");
-      setMcpUrl("");
-      onOpenChange(false);
-      window.location.reload();
+      const data = await res.json();
+
+      if (server.auth === "oauth") {
+        await startOAuthFlow(data.id ?? data.server?.id, server);
+      } else {
+        setBearerToken("");
+        setSelectedServer(null);
+        onOpenChange(false);
+        window.location.reload();
+      }
     } catch (err) {
-      setMcpError(err instanceof Error ? err.message : "Failed to add MCP server");
+      setMcpError(err instanceof Error ? err.message : "Connection failed");
     } finally {
-      setMcpSaving(false);
+      setConnecting(false);
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add Integration</DialogTitle>
-          <DialogDescription>
-            Connect an OAuth integration or add an MCP server.
-          </DialogDescription>
-        </DialogHeader>
+  const handleConnectCustom = async () => {
+    if (!customName.trim() || !customUrl.trim()) return;
+    setConnecting(true);
+    setMcpError(null);
+    try {
+      const res = await fetch("/api/mcp-servers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: customName.trim(), url: customUrl.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Failed to add server" }));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      setCustomName("");
+      setCustomUrl("");
+      onOpenChange(false);
+      window.location.reload();
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "Connection failed");
+    } finally {
+      setConnecting(false);
+    }
+  };
 
-        {/* Nango OAuth integrations */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium">OAuth Integrations</h3>
-          <p className="text-xs text-muted-foreground">
-            Connect via Nango to sync documents, issues, and messages automatically.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {NANGO_PROVIDERS.map((provider) => {
-              const Icon = provider.icon;
-              const isConnected = connectedProviders.has(provider.id) ||
-                (provider.id === "github" && connectedProviders.has("github-app"));
-              return (
-                <button
-                  key={provider.id}
-                  onClick={() => {
-                    onConnectNango();
-                  }}
-                  disabled={connectingNango}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border p-3 text-left transition-colors",
-                    "hover:bg-accent hover:border-accent-foreground/20",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    isConnected && "border-emerald-500/30 bg-emerald-500/5"
-                  )}
-                >
-                  <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg shrink-0", provider.bgColor)}>
-                    <Icon className={cn("h-4 w-4", provider.color)} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium truncate">{provider.label}</span>
-                      {isConnected && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                          Connected
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{provider.description}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {connectingNango && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Opening Nango connect window...
+  const startOAuthFlow = async (serverId: string, server: RegistryServer) => {
+    try {
+      const origin = new URL(server.url).origin;
+      const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("OAuth discovery failed");
+      const meta = await res.json();
+
+      const authorizeUrl = meta.authorization_endpoint ?? "";
+      const tokenUrl = meta.token_endpoint ?? "";
+      const registrationEndpoint = meta.registration_endpoint ?? "";
+      let clientId = meta.client_id ?? "";
+
+      if (registrationEndpoint && !clientId) {
+        const regRes = await fetch(registrationEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_name: "Layers",
+            redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
+            grant_types: ["authorization_code", "refresh_token"],
+            response_types: ["code"],
+            token_endpoint_auth_method: "none",
+          }),
+        });
+        if (regRes.ok) {
+          const regData = await regRes.json();
+          clientId = regData.client_id ?? "";
+        }
+      }
+
+      if (!clientId) clientId = window.location.origin;
+
+      // Save OAuth config
+      await fetch(`/api/mcp-servers/${serverId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oauth_authorize_url: authorizeUrl,
+          oauth_token_url: tokenUrl,
+          oauth_client_id: clientId,
+        }),
+      });
+
+      // Start PKCE flow
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+      const stateObj = { serverId, tokenUrl, clientId, codeVerifier };
+      const state = btoa(JSON.stringify(stateObj))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+      });
+      window.location.href = `${authorizeUrl}?${params}`;
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "OAuth flow failed");
+    }
+  };
+
+  const authBadgeVariant = (auth: string) => {
+    if (auth === "oauth") return "default" as const;
+    if (auth === "bearer") return "secondary" as const;
+    return "outline" as const;
+  };
+
+  const renderServerCard = (server: RegistryServer) => {
+    const isConnected = connectedServerUrls.has(server.url);
+    return (
+      <button
+        key={server.name + server.url}
+        onClick={() => {
+          setSelectedServer(server);
+          setMcpError(null);
+          setBearerToken("");
+        }}
+        className={cn(
+          "flex flex-col gap-2 rounded-lg border p-4 text-left transition-all",
+          "hover:bg-accent/50 hover:border-foreground/10",
+          isConnected && "border-emerald-500/30 bg-emerald-500/5",
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Globe className="h-4 w-4 text-muted-foreground" />
             </div>
+            <div>
+              <span className="text-sm font-medium">{server.name}</span>
+              {isConnected && (
+                <Badge variant="outline" className="ml-2 text-[9px] border-emerald-500/30 text-emerald-400">
+                  Connected
+                </Badge>
+              )}
+            </div>
+          </div>
+          <Badge variant={authBadgeVariant(server.auth)} className="text-[10px] shrink-0 uppercase">
+            {server.auth}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">{server.description}</p>
+        <div className="flex items-center gap-2 mt-auto">
+          {server.website && (
+            <span className="text-[10px] text-muted-foreground/60 truncate">{server.website.replace(/^https?:\/\//, "")}</span>
           )}
+          <ChevronRight className="h-3 w-3 text-muted-foreground/40 ml-auto shrink-0" />
+        </div>
+      </button>
+    );
+  };
+
+  const renderServerDetail = (server: RegistryServer) => {
+    const isConnected = connectedServerUrls.has(server.url);
+    return (
+      <div className="flex flex-col gap-4">
+        <button
+          onClick={() => setSelectedServer(null)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Back to gallery
+        </button>
+
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+            <Globe className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">{server.name}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={authBadgeVariant(server.auth)} className="text-[10px] uppercase">
+                {server.auth}
+              </Badge>
+              {isConnected && (
+                <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">
+                  Connected
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Separator */}
-        <div className="relative my-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
+        <p className="text-sm text-muted-foreground">{server.description}</p>
 
-        {/* MCP Server */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            MCP Server
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Add an MCP (Model Context Protocol) server to give your AI direct tool access.
-          </p>
-          <div className="space-y-2">
-            <Input
-              placeholder="Server name"
-              value={mcpName}
-              onChange={(e) => setMcpName(e.target.value)}
-            />
-            <Input
-              placeholder="https://mcp.example.com/sse"
-              value={mcpUrl}
-              onChange={(e) => setMcpUrl(e.target.value)}
-            />
-          </div>
-          {mcpError && (
-            <p className="text-xs text-destructive">{mcpError}</p>
-          )}
-          <Button
-            onClick={handleAddMCP}
-            disabled={mcpSaving || !mcpName.trim() || !mcpUrl.trim()}
-            variant="outline"
-            className="w-full"
-            size="sm"
+        {server.website && (
+          <a
+            href={server.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-primary hover:underline w-fit"
           >
-            {mcpSaving ? (
-              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-            ) : (
-              <Server className="h-3 w-3 mr-2" />
-            )}
-            {mcpSaving ? "Adding..." : "Add MCP Server"}
-          </Button>
+            <ExternalLink className="h-3 w-3" />
+            {server.website.replace(/^https?:\/\//, "")}
+          </a>
+        )}
+
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-medium">Connection details</p>
+          <p className="text-[11px] text-muted-foreground font-mono break-all">{server.url}</p>
+          <p className="text-[11px] text-muted-foreground">
+            Transport: {server.type || "streamable-http"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Auth: {server.auth === "oauth" ? "OAuth 2.0 (PKCE)" : server.auth === "bearer" ? "Bearer token" : "None"}
+          </p>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {server.auth === "bearer" && !isConnected && (
+          <div className="space-y-2">
+            <label className="text-xs font-medium">Bearer Token</label>
+            <Input
+              type="password"
+              placeholder="Enter your API key or token"
+              value={bearerToken}
+              onChange={(e) => setBearerToken(e.target.value)}
+            />
+          </div>
+        )}
+
+        {mcpError && (
+          <p className="text-xs text-destructive">{mcpError}</p>
+        )}
+
+        {!isConnected && (
+          <Button
+            onClick={() => handleConnectMCP(server)}
+            disabled={connecting || (server.auth === "bearer" && !bearerToken.trim())}
+            className="w-full"
+          >
+            {connecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : server.auth === "oauth" ? (
+              <KeyRound className="h-4 w-4 mr-2" />
+            ) : (
+              <Plug className="h-4 w-4 mr-2" />
+            )}
+            {connecting
+              ? "Connecting..."
+              : server.auth === "oauth"
+                ? "Connect with OAuth"
+                : "Connect"}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetTitle>MCP Gallery</SheetTitle>
+          <SheetDescription>
+            Browse and connect MCP servers to extend your AI with tools.
+          </SheetDescription>
+        </SheetHeader>
+
+        <ScrollArea className="flex-1">
+          <div className="px-6 py-4">
+            {selectedServer ? (
+              renderServerDetail(selectedServer)
+            ) : (
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search MCP servers..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <Tabs defaultValue="popular" className="w-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="popular" className="flex-1">Popular</TabsTrigger>
+                    <TabsTrigger value="all" className="flex-1">All ({allServers.length})</TabsTrigger>
+                    <TabsTrigger value="custom" className="flex-1">Custom URL</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="popular" className="mt-4">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : popularServers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No popular servers found.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        {popularServers.map(renderServerCard)}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="all" className="mt-4">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : allServers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No servers found{query ? ` for "${query}"` : ""}.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        {allServers.map(renderServerCard)}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="custom" className="mt-4">
+                    <div className="space-y-4">
+                      <p className="text-xs text-muted-foreground">
+                        Add any MCP server by URL. Supports streamable-http and SSE transports.
+                      </p>
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Server name"
+                          value={customName}
+                          onChange={(e) => setCustomName(e.target.value)}
+                        />
+                        <Input
+                          placeholder="https://mcp.example.com/mcp"
+                          value={customUrl}
+                          onChange={(e) => setCustomUrl(e.target.value)}
+                        />
+                      </div>
+                      {mcpError && (
+                        <p className="text-xs text-destructive">{mcpError}</p>
+                      )}
+                      <Button
+                        onClick={handleConnectCustom}
+                        disabled={connecting || !customName.trim() || !customUrl.trim()}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {connecting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Server className="h-4 w-4 mr-2" />
+                        )}
+                        {connecting ? "Adding..." : "Add MCP Server"}
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -461,76 +656,17 @@ function AddIntegrationDialog({
 /* ------------------------------------------------------------------ */
 
 interface ConnectorsViewProps {
-  integrations: Integration[];
   mcpServers: MCPServer[];
+  credentials: Credential[];
 }
 
 export function ConnectorsView({
-  integrations,
   mcpServers,
+  credentials,
 }: ConnectorsViewProps) {
-  const [connectingId, setConnectingId] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
-  const connectedProviders = new Set(
-    integrations
-      .filter((i) => i.status === "active" || i.status === "connected")
-      .map((i) => i.provider)
-  );
-
-  const handleConnectIntegration = async () => {
-    // Opens Nango connect UI — same logic as IntegrationsConnect
-    setConnectingId("nango");
-    try {
-      const res = await fetch("/api/integrations/connect-session", {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to create connect session");
-      const { sessionToken } = await res.json();
-
-      const { default: Nango } = await import("@nangohq/frontend");
-      const nango = new Nango();
-      const connect = nango.openConnectUI({
-        onEvent: async (event) => {
-          if (event.type === "close") {
-            setConnectingId(null);
-            return;
-          }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const e = event as any;
-          const connectionId: string =
-            e.connectionId ??
-            e.payload?.connectionId ??
-            e.connection?.connectionId ??
-            "";
-          const provider: string =
-            e.providerConfigKey ??
-            e.payload?.providerConfigKey ??
-            e.connection?.providerConfigKey ??
-            "";
-          if (connectionId && provider) {
-            try {
-              await fetch("/api/integrations/save-connection", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ connectionId, provider }),
-              });
-            } catch {
-              // silent
-            }
-            setConnectingId(null);
-            setDialogOpen(false);
-            window.location.reload();
-          } else {
-            setConnectingId(null);
-          }
-        },
-      });
-      connect.setSessionToken(sessionToken);
-    } catch {
-      setConnectingId(null);
-    }
-  };
+  const connectedServerUrls = new Set(mcpServers.map((s) => s.url));
 
   const handleDisconnectMCP = async (id: string) => {
     try {
@@ -546,7 +682,6 @@ export function ConnectorsView({
   };
 
   const handleReconnectMCP = async (id: string) => {
-    setConnectingId(id);
     try {
       await fetch(`/api/mcp-servers/${id}`, {
         method: "PATCH",
@@ -555,24 +690,21 @@ export function ConnectorsView({
       });
       window.location.reload();
     } catch {
-      setConnectingId(null);
+      // silent
     }
   };
 
-  const totalConnectors = integrations.length + mcpServers.length;
-  const connectedCount =
-    integrations.filter((i) => i.status === "active" || i.status === "connected").length +
+  const totalConnected =
+    credentials.filter((c) => c.status === "active").length +
     mcpServers.filter((s) => s.is_active && !s.error_message).length;
+  const totalConnectors = credentials.length + mcpServers.length;
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl">
-      {/* Add Integration Dialog */}
-      <AddIntegrationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        connectedProviders={connectedProviders}
-        onConnectNango={handleConnectIntegration}
-        connectingNango={connectingId === "nango"}
+      <MCPGalleryPanel
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        connectedServerUrls={connectedServerUrls}
       />
 
       {/* Header */}
@@ -582,10 +714,10 @@ export function ConnectorsView({
           <h1 className="text-xl sm:text-2xl font-semibold">Connectors</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Manage all your integrations and MCP servers in one place.
+          Manage your MCP servers and API connections.
           {totalConnectors > 0 && (
             <span className="ml-1">
-              {connectedCount} of {totalConnectors} connected.
+              {totalConnected} of {totalConnectors} active.
             </span>
           )}
         </p>
@@ -593,9 +725,9 @@ export function ConnectorsView({
 
       {/* Actions */}
       <div className="flex items-center gap-3 mb-6">
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plug className="h-4 w-4 mr-2" />
-          Add Integration
+        <Button onClick={() => setGalleryOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Connector
         </Button>
         <Button variant="outline" onClick={() => window.location.reload()}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -603,7 +735,7 @@ export function ConnectorsView({
         </Button>
       </div>
 
-      {/* Grid */}
+      {/* Connected services */}
       {totalConnectors === 0 ? (
         <div className="text-center py-16">
           <Plug className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
@@ -611,33 +743,26 @@ export function ConnectorsView({
             No connectors configured yet.
           </p>
           <p className="text-xs text-muted-foreground">
-            Add an integration or MCP server to get started.
+            Add an MCP server or API connection to get started.
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* API Integrations */}
-          {integrations.map((integration) => {
-            const meta = PROVIDER_META[integration.provider];
-            const integrationStatus: ConnectorStatus =
-              integration.status === "active" || integration.status === "connected"
-                ? "connected"
-                : integration.status === "error"
-                  ? "error"
-                  : "disconnected";
+        <div className="space-y-2">
+          {/* Credentials (API connections) */}
+          {credentials.map((cred) => {
+            const meta = PROVIDER_META[cred.provider];
+            const credStatus: ConnectorStatus =
+              cred.status === "active" ? "connected" : "disconnected";
 
             return (
               <ConnectorCard
-                key={integration.id}
-                id={integration.id}
-                name={meta?.label ?? integration.provider}
+                key={cred.id}
+                name={meta?.label ?? cred.provider}
                 icon={meta?.icon ?? Plug}
                 description={meta?.description}
-                status={integrationStatus}
+                status={credStatus}
                 type="API"
-                lastSync={integration.last_sync_at}
-                onConnect={handleConnectIntegration}
-                connecting={connectingId === "nango"}
+                lastActivity={cred.last_used_at}
               />
             );
           })}
@@ -653,17 +778,15 @@ export function ConnectorsView({
             return (
               <ConnectorCard
                 key={server.id}
-                id={server.id}
                 name={server.name}
                 icon={Server}
                 status={mcpStatus}
                 type="MCP"
-                lastSync={server.last_connected_at}
+                lastActivity={server.last_connected_at}
                 errorMessage={server.error_message}
                 toolCount={server.discovered_tools?.length ?? 0}
-                onConnect={() => handleReconnectMCP(server.id)}
                 onDisconnect={() => handleDisconnectMCP(server.id)}
-                connecting={connectingId === server.id}
+                onReconnect={() => handleReconnectMCP(server.id)}
               />
             );
           })}

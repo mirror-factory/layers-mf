@@ -1,3 +1,8 @@
+/**
+ * @deprecated Nango webhook handler — kept for existing Nango connections still
+ * sending sync events. New integrations use MCP servers with direct OAuth/bearer.
+ * This file can be removed once all Nango connections have been migrated.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/server";
