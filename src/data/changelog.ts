@@ -11,6 +11,95 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.5.0",
+    date: "2026-04-07",
+    title: "Mobile Optimization, Cost Tracking, MCP Gallery & Auto-Registry",
+    highlights: [
+      "Per-message cost tracking with prompt caching (90% savings on cached tokens)",
+      "Mobile-optimized chat with full-screen artifacts and consolidated toolbar",
+      "MCP gallery with 6,000+ servers from Smithery registry + auth type filters",
+      "Scheduling system with background chats, notifications, and date/time picker",
+      "Auto-registry system: convention-over-configuration for tools, docs, and tests",
+    ],
+    changes: [
+      // Cost & Tracking
+      { type: "feat", description: "Per-message cost tracking: model, TTFT, tokens, cache stats, cost per message" },
+      { type: "feat", description: "Prompt caching via AI Gateway (90% savings on Anthropic/Google, 50% on OpenAI)" },
+      { type: "feat", description: "Analytics dashboard: cost by provider, model usage, cache performance, top tools" },
+      { type: "feat", description: "Usage analytics API with period/group-by filters" },
+      { type: "feat", description: "Context tracker: expandable cost breakdown per LLM call" },
+
+      // Mobile
+      { type: "feat", description: "Mobile chat: consolidated prompt bar, small avatar dots, full-screen sidebar" },
+      { type: "feat", description: "Mobile artifacts: full-screen overlay with simplified toolbar and three-dot menu" },
+      { type: "feat", description: "iOS safe area support (edge-to-edge content, dark background in notch area)" },
+      { type: "feat", description: "Android platform added (Capacitor) with dark theme" },
+
+      // MCP & Connectors
+      { type: "feat", description: "MCP gallery: Smithery registry (6,000+ servers) + official registry + curated list" },
+      { type: "feat", description: "Auth type filters on MCP browse (OAuth, API Key, No Auth)" },
+      { type: "feat", description: "MCP protocol version fallback (tries 4 versions x 2 transports)" },
+      { type: "feat", description: "Connectors page redesign: tab-based layout, inline detail views" },
+      { type: "feat", description: "Nango removed: direct OAuth + API keys + MCP replace third-party dependency" },
+
+      // Scheduling & Notifications
+      { type: "feat", description: "Scheduling: date/time picker (no cron syntax), cron presets, validation" },
+      { type: "feat", description: "Background chat execution: AI runs prompts on schedule, creates conversations" },
+      { type: "feat", description: "Notification bell with desktop ping sound (Web Audio API)" },
+      { type: "feat", description: "Chat message queue: send messages while AI is still responding" },
+
+      // Local Models
+      { type: "feat", description: "Ollama/Gemma 4 26B: local model support with slim system prompt" },
+      { type: "feat", description: "Model warmup: keep_alive prevents 15-20s cold start on local models" },
+      { type: "feat", description: "Local models hidden on production, default on localhost" },
+
+      // Auto-Registry & Docs
+      { type: "feat", description: "Tool metadata registry (_metadata.ts) with auto-generated docs" },
+      { type: "feat", description: "Docs restructured into domain folders (chat/, artifacts/, library/, etc.)" },
+      { type: "feat", description: "Master roadmap with 19 priority areas" },
+      { type: "feat", description: "Cost observability architecture doc with per-provider caching details" },
+
+      // Pages
+      { type: "feat", description: "/overview: AI hero background, real component demos, analytics dashboard" },
+      { type: "feat", description: "/changelog: version timeline with collapsible changes" },
+      { type: "feat", description: "/tools: searchable tool registry with category tabs" },
+      { type: "feat", description: "Home page: Three.js particle animation background in mint" },
+      { type: "feat", description: "AgentSwarm animation component for parallel tool visualization" },
+
+      // Skills
+      { type: "feat", description: "Skills: all emojis replaced with Lucide icons (30+ icon mappings)" },
+      { type: "feat", description: "Skills create: 3-column layout, fixed redirects to chat" },
+      { type: "feat", description: "Skills + MCP: inline detail views (no drawers)" },
+
+      // Bug Fixes
+      { type: "fix", description: "Thinking indicator shows immediately after sending (not blank screen)" },
+      { type: "fix", description: "Chat persistence: auto-create conversation, await DB saves" },
+      { type: "fix", description: "Public share links work for non-logged-in users" },
+      { type: "fix", description: "Sandbox restart: correct column name (file_path), deterministic naming" },
+      { type: "fix", description: "Artifact panel open action fetches and displays artifact data" },
+      { type: "fix", description: "Circular JSON crash on tool output (error boundary + guarded stringify)" },
+      { type: "fix", description: "Schedule run_count was silently failing (missing error_message column)" },
+      { type: "fix", description: "daysBetween rounding issue in content lifecycle" },
+      { type: "fix", description: "MCP disconnect actually deletes server (was only toggling isActive)" },
+      { type: "fix", description: "Hydration mismatch from IS_LOCAL window check (moved to useEffect)" },
+      { type: "fix", description: "Model label tracks actual model used, not current selector" },
+      { type: "fix", description: "artifact_panel tool cards hidden (infrastructure, not user-facing)" },
+      { type: "fix", description: "65 emojis removed from codebase (Lucide icons + plain text)" },
+      { type: "fix", description: "Skills slash commands refresh after create_skill and create_tool_from_code" },
+      { type: "fix", description: "Perplexity: system prompt instructs model to include source URLs" },
+
+      // Docs
+      { type: "docs", description: "4 architecture research docs (org, ingestion, content, sharing)" },
+      { type: "docs", description: "Library hub + sharing architecture (product-level)" },
+      { type: "docs", description: "Cost observability doc: end-to-end flow, analytics dimensions, pricing" },
+      { type: "docs", description: "Local models doc: Ollama setup, performance, troubleshooting" },
+      { type: "docs", description: "Auto-registry strategy: convention-over-configuration plan" },
+      { type: "docs", description: "DB schema reference (40+ tables) + API reference (150+ endpoints)" },
+      { type: "docs", description: "Tool registry doc (43 tools with schemas and categories)" },
+      { type: "docs", description: "Notification event catalog (9 events, 5 delivery channels)" },
+    ],
+  },
+  {
     version: "0.4.0",
     date: "2026-04-06",
     title: "Content Organization, Sandbox Management & Product Overview",
