@@ -370,12 +370,17 @@ When ask_user returns { "_skipped": true }, the user chose to skip your question
 - Use review_compliance when asked to review/check/audit content against rules`;
 
 export async function POST(request: NextRequest) {
+  const _t = Date.now();
+  const _log = (label: string) => console.log(`[chat-timing] ${Date.now() - _t}ms | ${label}`);
+
   const supabase = await createClient();
+  _log("supabase client created");
 
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
+  _log("auth checked");
   if (authError || !user) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -385,6 +390,7 @@ export async function POST(request: NextRequest) {
     .select("org_id")
     .eq("user_id", user.id)
     .single();
+  _log("org member resolved");
 
   if (!member) {
     return new Response("No organization found", { status: 400 });
@@ -720,11 +726,13 @@ export async function POST(request: NextRequest) {
   } else {
     baseModel = gateway(modelId);
   }
+  _log("model created");
   // Skip compaction middleware for local models (smaller context, simpler pipeline)
   const compactedModel = isLocal ? baseModel : wrapLanguageModel({
     model: baseModel,
     middleware: createCompactionMiddleware(getContextWindow(modelId)),
   });
+  _log("middleware applied");
 
   const agent = new ToolLoopAgent({
     model: compactedModel,
@@ -874,14 +882,18 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  _log("agent created");
+
   // Prune old tool calls and reasoning to save tokens on long conversations
   const modelMessages = await convertToModelMessages(uiMessages);
+  _log("messages converted");
   const prunedMessages = pruneMessages({
     messages: modelMessages,
     reasoning: "before-last-message",         // keep only latest reasoning
     toolCalls: "before-last-2-messages",      // keep tool calls from last 2 turns only
     emptyMessages: "remove",                  // remove empty messages
   });
+  _log("messages pruned — starting stream");
 
   const response = await createAgentUIStreamResponse({
     agent,
