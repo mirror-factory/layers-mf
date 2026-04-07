@@ -101,23 +101,18 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
       // Fire desktop notifications + sound for genuinely new unread items
       // (skip on first fetch so we don't spam on page load)
       if (initialFetchDone.current) {
-        let hasNew = false;
-        for (const n of incoming) {
-          if (!n.is_read && !seenIdsRef.current.has(n.id)) {
-            hasNew = true;
-            sendDesktopNotification(
-              n.title,
-              n.body ?? "",
-              n.link ?? undefined,
-            );
-          }
-        }
-        if (hasNew) {
+        const newItems = incoming.filter(n => !n.is_read && !seenIdsRef.current.has(n.id));
+        if (newItems.length > 0) {
+          // Only send ONE desktop notification (not one per item)
+          const first = newItems[0];
+          const title = newItems.length === 1 ? first.title : `${newItems.length} new notifications`;
+          const body = newItems.length === 1 ? (first.body ?? "") : newItems.map(n => n.title).join(", ");
+          sendDesktopNotification(title, body, first.link ?? undefined);
           playNotificationPing();
         }
       }
 
-      // Track all seen IDs
+      // Track ALL IDs (read + unread) so we never re-notify
       for (const n of incoming) {
         seenIdsRef.current.add(n.id);
       }
