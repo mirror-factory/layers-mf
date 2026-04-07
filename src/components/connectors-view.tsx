@@ -306,16 +306,20 @@ export function ConnectorsView({
   const allServers = dedupedServers;
   const displayServers = browseFilter === "popular" ? popularServers : allServers;
 
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+
   const handleDisconnectMCP = async (id: string) => {
+    // Optimistic removal from UI
+    setRemovedIds((prev) => new Set(prev).add(id));
     try {
-      await fetch(`/api/mcp-servers/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: false }),
-      });
-      window.location.reload();
+      await fetch(`/api/mcp-servers/${id}`, { method: "DELETE" });
     } catch {
-      // silent
+      // Revert on failure
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -551,7 +555,7 @@ export function ConnectorsView({
                 );
               })}
 
-              {mcpServers.map((server) => {
+              {mcpServers.filter((s) => !removedIds.has(s.id)).map((server) => {
                 const mcpStatus: ConnectorStatus = server.error_message
                   ? "error"
                   : server.is_active

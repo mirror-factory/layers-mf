@@ -83,72 +83,42 @@ export async function connectMCPServer(options: {
     headers["Authorization"] = `Bearer ${options.apiKey}`;
   }
 
-  // Try connecting with the latest protocol version first, fall back to older versions
-  // Many MCP servers don't support the very latest spec yet
-  // Try both transport types — some servers respond as SSE even when using streamable-http
-  const requestedType = options.transportType ?? "http";
-  const transportConfig = {
-    type: requestedType as "http" | "sse",
-    url: options.url,
-    headers,
-  };
+  // Try all transport + protocol version combinations until one works
+  // Order: http (latest) → http (older versions) → sse (latest) → sse (older versions)
+  const transports: ("http" | "sse")[] = options.transportType
+    ? [options.transportType]
+    : ["http", "sse"];
+  const protocolVersions = [undefined, "2025-06-18", "2025-03-26", "2024-11-05"];
 
-  // Try connecting — if protocol version fails, retry with older versions
   let client;
   let lastError: Error | null = null;
+  const attempts: string[] = [];
 
-  // First try with default (latest) protocol version
-  try {
-    client = await createMCPClient({ transport: transportConfig });
-  } catch (err) {
-    lastError = err instanceof Error ? err : new Error(String(err));
-    const msg = lastError.message;
-
-    // If protocol version mismatch, try with explicit older versions
-    if (msg.includes("Unsupported protocol version") || msg.includes("protocol")) {
-      const olderVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
-      for (const version of olderVersions) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          client = await (createMCPClient as any)({
-            transport: transportConfig,
-            protocolVersion: version,
-          });
-          lastError = null;
-          break;
-        } catch (retryErr) {
-          lastError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-          if (!lastError.message.includes("protocol")) break; // different error
+  for (const transport of transports) {
+    for (const version of protocolVersions) {
+      const config = { type: transport, url: options.url, headers };
+      const label = `${transport}${version ? `@${version}` : "@latest"}`;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const opts: any = { transport: config };
+        if (version) opts.protocolVersion = version;
+        client = await createMCPClient(opts);
+        console.log(`[mcp] Connected via ${label} to ${options.url}`);
+        break;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        attempts.push(`${label}: ${lastError.message.slice(0, 80)}`);
+        // Only retry protocol versions if the error is about protocol
+        if (!lastError.message.includes("protocol") && !lastError.message.includes("Unsupported") && version) {
+          break; // non-protocol error on this transport, skip remaining versions
         }
       }
     }
-  }
-
-  // If HTTP transport failed, try SSE (many servers respond with SSE format)
-  if (!client && requestedType === "http") {
-    try {
-      const sseConfig = { type: "sse" as const, url: options.url, headers };
-      client = await createMCPClient({ transport: sseConfig });
-      lastError = null;
-    } catch (sseErr) {
-      // Also try SSE with older protocol versions
-      const olderVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
-      for (const version of olderVersions) {
-        try {
-          const sseConfig = { type: "sse" as const, url: options.url, headers };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          client = await (createMCPClient as any)({ transport: sseConfig, protocolVersion: version });
-          lastError = null;
-          break;
-        } catch (retryErr) {
-          lastError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-          if (!lastError.message.includes("protocol")) break;
-        }
-      }
-    }
+    if (client) break;
   }
 
   if (!client) {
+    console.error(`[mcp] All connection attempts failed for ${options.url}:`, attempts);
     throw lastError ?? new Error("Failed to connect to MCP server");
   }
 
