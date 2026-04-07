@@ -15,10 +15,15 @@ export function isValidCron(expression: string): boolean {
 /**
  * Calculate the next run time from a cron expression.
  * Returns an ISO string or null if the expression is invalid.
+ * Timezone defaults to America/New_York if not specified.
  */
-export function calculateNextCron(expression: string): string | null {
+export function calculateNextCron(expression: string, timezone?: string): string | null {
   try {
-    const job = new Cron(expression);
+    if (expression.startsWith("once:")) {
+      const date = new Date(expression.replace("once:", ""));
+      return date > new Date() ? date.toISOString() : null;
+    }
+    const job = new Cron(expression, { timezone: timezone ?? "America/New_York" });
     const next = job.nextRun();
     return next ? next.toISOString() : null;
   } catch {
