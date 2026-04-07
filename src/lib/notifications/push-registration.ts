@@ -5,32 +5,45 @@ import { PushNotifications } from "@capacitor/push-notifications";
 
 /**
  * Register for push notifications on iOS/Android via Capacitor.
- * Returns the device token or null if not on a native platform.
+ * Requests permission, registers with APNs/FCM, and sends
+ * the device token to our server for storage.
  */
 export async function registerPushNotifications(): Promise<string | null> {
-  // Only works on native platforms (not web)
   if (!Capacitor.isNativePlatform()) return null;
 
   try {
-    // Request permission
-    const permResult = await PushNotifications.requestPermissions();
-    if (permResult.receive !== "granted") {
-      console.log("[push] Permission not granted");
+    const permission = await PushNotifications.requestPermissions();
+    if (permission.receive !== "granted") {
+      console.log("[push] Permission denied");
       return null;
     }
 
-    // Register with APNs/FCM
     await PushNotifications.register();
 
-    // Wait for registration token
     return new Promise((resolve) => {
-      PushNotifications.addListener("registration", (token) => {
+      PushNotifications.addListener("registration", async (token) => {
         console.log("[push] Token:", token.value);
+
+        // Send token to our server for storage
+        try {
+          await fetch("/api/notifications/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: token.value,
+              platform: Capacitor.getPlatform(), // "ios" or "android"
+            }),
+          });
+          console.log("[push] Token registered with server");
+        } catch (err) {
+          console.error("[push] Failed to register token:", err);
+        }
+
         resolve(token.value);
       });
 
-      PushNotifications.addListener("registrationError", (error) => {
-        console.error("[push] Registration error:", error);
+      PushNotifications.addListener("registrationError", (err) => {
+        console.error("[push] Registration error:", err);
         resolve(null);
       });
 
@@ -38,26 +51,35 @@ export async function registerPushNotifications(): Promise<string | null> {
       setTimeout(() => resolve(null), 10_000);
     });
   } catch (err) {
-    console.error("[push] Failed:", err);
+    console.error("[push] Error:", err);
     return null;
   }
 }
 
 /**
- * Set up notification tap handler — navigates to the conversation.
+ * Set up push notification listeners for foreground and tap events.
  */
-export function setupNotificationHandlers(
-  onTap: (conversationId: string) => void
-) {
+export function setupPushListeners(
+  onNotificationTap?: (link: string) => void,
+): void {
   if (!Capacitor.isNativePlatform()) return;
 
+  // Foreground notification -- could show an in-app toast
+  PushNotifications.addListener("pushNotificationReceived", (notification) => {
+    console.log("[push] Received in foreground:", notification.title);
+  });
+
+  // Notification tap from background/killed state
   PushNotifications.addListener(
     "pushNotificationActionPerformed",
-    (notification) => {
-      const conversationId = notification.notification.data?.conversationId;
-      if (conversationId) {
-        onTap(conversationId);
+    (action) => {
+      const data = action.notification.data;
+      // Support both `link` (new) and `conversationId` (legacy) formats
+      if (data?.link && onNotificationTap) {
+        onNotificationTap(data.link);
+      } else if (data?.conversationId && onNotificationTap) {
+        onNotificationTap(`/chat?id=${data.conversationId}`);
       }
-    }
+    },
   );
 }

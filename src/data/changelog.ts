@@ -11,6 +11,24 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.5.1",
+    date: "2026-04-07",
+    title: "iOS Push Notifications",
+    highlights: [
+      "Native iOS push notifications via APNs with JWT authentication",
+      "Push notifications sent when scheduled tasks complete",
+      "Automatic cleanup of expired/invalid device tokens",
+    ],
+    changes: [
+      { type: "feat", description: "iOS push notifications: APNs integration with JWT-based (p8 key) authentication" },
+      { type: "feat", description: "Device token registration: stores tokens per user with auto-cleanup of invalid ones" },
+      { type: "feat", description: "Schedule executor now sends push notifications when background tasks complete" },
+      { type: "feat", description: "Push send API: internal endpoint for cron jobs to trigger push delivery" },
+      { type: "feat", description: "iOS entitlements and background modes configured for remote notifications" },
+      { type: "feat", description: "AppDelegate forwards APNs tokens to Capacitor Push Notifications plugin" },
+    ],
+  },
+  {
     version: "0.5.0",
     date: "2026-04-07",
     title: "Mobile Optimization, Cost Tracking, MCP Gallery & Auto-Registry",

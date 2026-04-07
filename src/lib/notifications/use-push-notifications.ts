@@ -2,11 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { registerPushNotifications, setupNotificationHandlers } from "./push-registration";
+import {
+  registerPushNotifications,
+  setupPushListeners,
+} from "./push-registration";
 
 /**
- * Hook to register push notifications and save device token.
+ * Hook to register push notifications and handle taps.
  * Call once in a top-level layout/component.
+ *
+ * registerPushNotifications() handles both APNs registration
+ * and sending the token to our server.
  */
 export function usePushNotifications() {
   const router = useRouter();
@@ -16,25 +22,12 @@ export function usePushNotifications() {
     if (registeredRef.current) return;
     registeredRef.current = true;
 
-    (async () => {
-      const token = await registerPushNotifications();
-      if (!token) return;
+    // Register for push + save token to server
+    registerPushNotifications();
 
-      // Save token to server
-      try {
-        await fetch("/api/notifications/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, platform: "ios" }),
-        });
-      } catch (err) {
-        console.error("[push] Failed to save token:", err);
-      }
-
-      // Handle notification taps
-      setupNotificationHandlers((conversationId) => {
-        router.push(`/chat?id=${conversationId}`);
-      });
-    })();
+    // Handle notification taps -- navigate to the linked page
+    setupPushListeners((link) => {
+      router.push(link);
+    });
   }, [router]);
 }

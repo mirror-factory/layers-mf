@@ -210,6 +210,19 @@ export async function GET(request: NextRequest) {
         metadata: { schedule_id: schedule.id, conversation_id: conversationId },
       });
 
+      // 7. Send push notification to the user's devices
+      try {
+        const { sendPushNotification } = await import("@/lib/notifications/send-push");
+        await sendPushNotification({
+          userId,
+          title: `Scheduled: ${schedule.name}`,
+          body: responseText.slice(0, 100),
+          link: `/chat?id=${conversationId}`,
+        });
+      } catch (pushErr) {
+        console.error("[schedule] Push notification failed:", pushErr);
+      }
+
       results.push({ id: schedule.id, status: "executed", conversationId });
     } catch (err) {
       // Mark schedule with error but don't stop processing others
