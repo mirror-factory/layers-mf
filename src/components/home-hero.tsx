@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MessageSquare, FileText } from "lucide-react";
 import { PixelCanvas } from "@/components/ui/pixel-canvas";
+import { NeuralDots } from "@/components/ui/neural-dots";
 
 interface HomeHeroProps {
   greeting: string;
@@ -21,12 +22,27 @@ export function HomeHero({ greeting, displayName, subtitle }: HomeHeroProps) {
         noFocus
       />
 
+      {/* Dot grid background pattern */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.06) 1px, transparent 0)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+
+      {/* NeuralDots background element */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
+        <NeuralDots size={400} dotCount={30} />
+      </div>
+
       <div className="relative z-10">
         <p className="text-xs font-medium text-primary/70 tracking-wide uppercase mb-2">
           Granger
         </p>
-        <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight">
-          {greeting}, {displayName}
+        <h1 className="text-3xl sm:text-5xl font-display font-extrabold tracking-tight">
+          <span className="text-primary">{greeting}, {displayName}</span>
         </h1>
         <p className="text-muted-foreground mt-2 max-w-lg text-sm">
           {subtitle}

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { SKILL_CATEGORIES, type SkillCategory } from "@/lib/skills/types";
 import { ArrowLeft, ArrowRight, Check, Code2, Loader2, MessageSquare, PenLine } from "lucide-react";
+import { SkillIcon, SKILL_ICON_MAP } from "@/components/skill-card";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -33,10 +34,8 @@ const AVAILABLE_TOOLS = [
   { name: "propose_action", label: "Propose Action" },
 ];
 
-const EMOJI_OPTIONS = [
-  "⚡", "📋", "✉️", "🎙️", "💻", "📊", "🎨", "🔍", "📝", "🤖",
-  "🧩", "🛠️", "📦", "🔧", "🚀", "💡", "📈", "🗂️", "🎯", "🔬",
-];
+const ICON_OPTIONS = Object.keys(SKILL_ICON_MAP);
+
 
 const STEPS = [
   { key: "name", label: "Name", question: "What should this skill be called?" },
@@ -53,7 +52,7 @@ const STEPS = [
   {
     key: "icon",
     label: "Icon",
-    question: "Choose an emoji icon for this skill.",
+    question: "Choose an icon for this skill.",
   },
   {
     key: "prompt",
@@ -91,7 +90,7 @@ export function SkillCreator({
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("⚡");
+  const [icon, setIcon] = useState("zap");
   const [category, setCategory] = useState<SkillCategory>("general");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [slashCommand, setSlashCommand] = useState("");
@@ -166,7 +165,7 @@ export function SkillCreator({
       // Reset form
       setName("");
       setDescription("");
-      setIcon("⚡");
+      setIcon("zap");
       setCategory("general");
       setSystemPrompt("");
       setSlashCommand("");
@@ -191,8 +190,7 @@ export function SkillCreator({
   const currentStep = STEPS[step];
 
   const handleStartAICreation = useCallback(() => {
-    // Navigate to chat with the /skill create command pre-loaded
-    router.push("/chat?prompt=%2Fskill%20create");
+    router.push("/chat?prompt=" + encodeURIComponent("I want to create a new skill. Please use the ask_user tool to interview me about what the skill should do, then create it with create_skill."));
   }, [router]);
 
   // Mode selection screen
@@ -200,7 +198,7 @@ export function SkillCreator({
     return (
       <div className="max-w-lg">
         <h3 className="text-sm font-medium mb-4">How would you like to create your skill?</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             onClick={handleStartAICreation}
             className={cn(
@@ -230,9 +228,9 @@ export function SkillCreator({
             </p>
           </button>
           <button
-            onClick={() => router.push("/?prompt=" + encodeURIComponent("I want to create a custom tool from code. Help me build and test it in the sandbox."))}
+            onClick={() => router.push("/chat?prompt=" + encodeURIComponent("I want to create a custom tool. Help me build it using the create_tool_from_code tool."))}
             className={cn(
-              "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/50 sm:col-span-2",
+              "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/50",
             )}
           >
             <div className="flex items-center gap-2 mb-2">
@@ -338,20 +336,21 @@ export function SkillCreator({
         )}
 
         {currentStep.key === "icon" && (
-          <div className="grid grid-cols-10 gap-1.5">
-            {EMOJI_OPTIONS.map((emoji) => (
+          <div className="grid grid-cols-9 gap-1.5">
+            {ICON_OPTIONS.map((iconKey) => (
               <button
-                key={emoji}
+                key={iconKey}
                 type="button"
-                onClick={() => setIcon(emoji)}
+                onClick={() => setIcon(iconKey)}
                 className={cn(
-                  "text-xl w-10 h-10 rounded-md flex items-center justify-center transition-colors border",
-                  icon === emoji
+                  "w-10 h-10 rounded-md flex items-center justify-center transition-colors border",
+                  icon === iconKey
                     ? "bg-primary/10 border-primary"
                     : "border-transparent hover:bg-accent"
                 )}
+                title={iconKey}
               >
-                {emoji}
+                <SkillIcon icon={iconKey} className="h-5 w-5 text-muted-foreground" />
               </button>
             ))}
           </div>
@@ -420,7 +419,9 @@ export function SkillCreator({
         {currentStep.key === "review" && (
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-start gap-3">
-              <span className="text-3xl shrink-0">{icon}</span>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <SkillIcon icon={icon} className="h-6 w-6 text-muted-foreground" />
+              </div>
               <div className="min-w-0 flex-1">
                 <h4 className="font-medium">{name || "Untitled Skill"}</h4>
                 <p className="text-sm text-muted-foreground mt-0.5">
