@@ -1494,7 +1494,7 @@ interface ChatInterfaceInnerProps {
 }
 
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages }: ChatInterfaceInnerProps) {
-  const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
+  const [model, setModel] = useState<string>(IS_LOCAL ? "ollama/gemma4:26b" : "google/gemini-3.1-flash-lite-preview");
   const [showContextBar, setShowContextBar] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [visualLevel, setVisualLevel] = useState<string>(() => {
