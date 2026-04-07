@@ -70,6 +70,11 @@ import {
   X,
   BarChart3,
   DollarSign,
+  Activity,
+  Timer,
+  Server,
+  Building2,
+  TrendingUp,
 } from "lucide-react";
 
 const SAMPLE_CODE = `import { Card, CardContent } from "@/components/ui/card";
@@ -656,134 +661,212 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
       <section>
         <SectionHeading
           title="Cost & Token Visibility"
-          subtitle="Full observability into every LLM call -- tokens, cache hits, cost, and timing -- per message and per conversation."
+          subtitle="Full observability into every LLM call -- tokens, cache hits, cost, and timing -- per message, per conversation, per user, per org."
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-            <p>
-              Every assistant message tracks the model used, input and output tokens,
-              prompt cache performance, cost in USD, and time to first token. Switching
-              models mid-conversation is tracked per-message so you can see exactly what
-              each response costs and why.
-            </p>
-            <p>
-              Prompt caching saves up to 90% on repeated context. The system prompt,
-              tool definitions, rules, and conversation history are all cacheable. On
-              Anthropic, cache is configured via the AI Gateway. On OpenAI and Google,
-              caching is fully automatic.
-            </p>
-            <ul className="space-y-2 mt-4">
-              {[
-                "Per-message cost breakdown with model, tokens, and cache stats",
-                "Prompt caching saves up to 90% on repeated context",
-                "Context window visualization with system/rules/tools/history breakdown",
-                "Model switching tracked per-message for accurate cost attribution",
-                "Full conversation cost rollup with per-model breakdown",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+
+        {/* --- What We Track (3x2 grid) --- */}
+        <div className="mb-10">
+          <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">What We Track</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {([
+              { icon: MessageSquare, title: "Per Message", items: ["Model used", "TTFT + total time", "Input / output tokens", "Cache hits + rate", "Cost in USD"] },
+              { icon: MessageSquareText, title: "Per Conversation", items: ["Total tokens", "Total cost", "Model breakdown", "Average TTFT", "Step count"] },
+              { icon: Users, title: "Per User", items: ["Total usage", "Most used model", "Total cost", "Conversation count", "Avg cost/request"] },
+              { icon: Building2, title: "Per Organization", items: ["Aggregate usage", "Cost by provider", "Credit balance", "Active users", "Budget tracking"] },
+              { icon: Server, title: "Per Provider", items: ["Requests", "Tokens in/out", "Total cost", "Avg latency", "Cache efficiency"] },
+              { icon: Cpu, title: "Per Model", items: ["Request count", "Avg tokens", "Cost efficiency", "Cache hit rate", "Avg TTFT"] },
+            ] as const).map((card) => (
+              <Card key={card.title} className="border-border/60 bg-zinc-950/80">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <card.icon className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">{card.title}</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {card.items.map((item) => (
+                      <li key={item} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full bg-primary/60 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* --- Simulated Analytics Dashboard --- */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Analytics Dashboard</h3>
+
+          {/* Summary cards row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {([
+              { label: "Total Requests", value: "1,247", sub: "past 7 days", icon: Activity },
+              { label: "Total Cost", value: "$12.45", sub: "across all providers", icon: DollarSign },
+              { label: "Cache Hit Rate", value: "72%", sub: "saves ~$30/week", icon: TrendingUp },
+              { label: "Avg TTFT", value: "380ms", sub: "time to first token", icon: Timer },
+            ] as const).map((card) => (
+              <Card key={card.label} className="border-border/60 bg-zinc-950/80">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{card.label}</span>
+                    <card.icon className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  </div>
+                  <div className="text-xl font-bold text-foreground font-mono tabular-nums">{card.value}</div>
+                  <span className="text-[10px] text-muted-foreground">{card.sub}</span>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Simulated context tracker + cost breakdown */}
-          <div className="space-y-4">
-            {/* Context Tracker Card */}
-            <Card className="border-border/60 bg-zinc-950/80 overflow-hidden">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-medium text-foreground">Context Window</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground font-mono">128K limit</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Cost by Provider — horizontal bar chart */}
+            <Card className="border-border/60 bg-zinc-950/80">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Cost by Provider</span>
                 </div>
+                <div className="space-y-3">
+                  {([
+                    { provider: "Anthropic", cost: 8.20, pct: 66, color: "bg-primary", isLocal: false },
+                    { provider: "OpenAI", cost: 3.15, pct: 25, color: "bg-blue-500", isLocal: false },
+                    { provider: "Google", cost: 1.10, pct: 9, color: "bg-amber-500", isLocal: false },
+                    { provider: "Ollama", cost: 0, pct: 0, color: "bg-zinc-700", isLocal: true },
+                  ] as const).map((row) => (
+                    <div key={row.provider} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-foreground/80">{row.provider}</span>
+                        <div className="flex items-center gap-2">
+                          {row.isLocal && (
+                            <Badge variant="outline" className="text-[8px] border-zinc-600 text-zinc-400 px-1.5 py-0">LOCAL</Badge>
+                          )}
+                          <span className="text-[11px] text-foreground font-mono tabular-nums">
+                            ${row.cost.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                        {row.pct > 0 && (
+                          <div
+                            className={cn("h-full rounded-full transition-all", row.color)}
+                            style={{ width: `${row.pct}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* Token breakdown bars */}
+            {/* Top Tools */}
+            <Card className="border-border/60 bg-zinc-950/80">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Top Tools</span>
+                </div>
                 <div className="space-y-2">
                   {([
-                    { label: "System", tokens: "1.1K", pct: 0.86, color: "bg-blue-500" },
-                    { label: "Rules", tokens: "38", pct: 0.03, color: "bg-purple-500" },
-                    { label: "Tools", tokens: "6.0K", pct: 4.7, color: "bg-amber-500" },
-                    { label: "History", tokens: "228", pct: 0.18, color: "bg-emerald-500" },
-                  ] as const).map((item) => (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <span className="text-[10px] text-muted-foreground w-12 text-right tabular-nums">{item.label}</span>
+                    { tool: "search_context", count: 456, pct: 100 },
+                    { tool: "write_code", count: 89, pct: 19 },
+                    { tool: "web_search", count: 67, pct: 15 },
+                    { tool: "get_document", count: 42, pct: 9 },
+                    { tool: "edit_code", count: 31, pct: 7 },
+                  ] as const).map((row) => (
+                    <div key={row.tool} className="flex items-center gap-3">
+                      <code className="text-[10px] text-foreground/70 font-mono w-28 truncate shrink-0">{row.tool}</code>
                       <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                         <div
-                          className={cn("h-full rounded-full", item.color)}
-                          style={{ width: `${Math.max(item.pct * 10, 2)}%` }}
+                          className="h-full rounded-full bg-primary/70"
+                          style={{ width: `${row.pct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-muted-foreground w-10 text-right tabular-nums font-mono">{item.tokens}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono tabular-nums w-10 text-right shrink-0">
+                        {row.count}
+                      </span>
                     </div>
                   ))}
-                </div>
-
-                {/* Summary row */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                  <span className="text-[10px] text-muted-foreground">
-                    5.7% used <span className="mx-1.5 text-border/60">|</span> 120.7K available
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-2.5 w-2.5 text-primary" />
-                    <span className="text-[10px] text-primary font-medium font-mono tabular-nums">$0.0258</span>
-                  </div>
-                </div>
-
-                {/* Message counts */}
-                <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
-                  <span>6 messages</span>
-                  <span>3 user</span>
-                  <span>3 assistant</span>
-                  <span>2 rules</span>
-                  <span>2 MCP servers</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cost Breakdown Card */}
-            <Card className="border-border/60 bg-zinc-950/80 overflow-hidden">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-medium text-foreground">Cost Breakdown</span>
-                </div>
-
-                {/* Step rows */}
-                <div className="space-y-1.5 font-mono">
-                  {([
-                    { step: 1, model: "Claude Sonnet 4.6", inTok: "1,234", outTok: "456", cost: "$0.0052", cacheTok: "890", cachePct: "72%" },
-                    { step: 2, model: "Claude Sonnet 4.6", inTok: "456", outTok: "1,023", cost: "$0.0168", cacheTok: "1,100", cachePct: "89%" },
-                    { step: 3, model: "Claude Sonnet 4.6", inTok: "678", outTok: "234", cost: "$0.0038", cacheTok: "1,100", cachePct: "95%" },
-                  ] as const).map((row) => (
-                    <div key={row.step} className="flex items-center gap-2 text-[10px]">
-                      <span className="text-muted-foreground w-10 shrink-0">Step {row.step}</span>
-                      <span className="text-foreground/70 w-28 shrink-0 truncate">{row.model}</span>
-                      <span className="text-muted-foreground tabular-nums w-16 text-right shrink-0">{row.inTok} in</span>
-                      <span className="text-muted-foreground mx-0.5 shrink-0">-&gt;</span>
-                      <span className="text-muted-foreground tabular-nums w-16 text-right shrink-0">{row.outTok} out</span>
-                      <span className="text-primary tabular-nums w-14 text-right shrink-0">{row.cost}</span>
-                      <Badge variant="outline" className="text-[8px] border-emerald-500/30 text-emerald-400 ml-auto shrink-0 px-1.5 py-0">
-                        {row.cachePct}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Total row */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                  <span className="text-[10px] text-muted-foreground">3 steps, 1 model</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground">Total:</span>
-                    <span className="text-xs text-primary font-medium font-mono tabular-nums">$0.0258</span>
-                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Model Usage table */}
+          <Card className="border-border/60 bg-zinc-950/80 mt-6">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Model Usage</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="border-b border-border/30">
+                      {["Model", "Requests", "Avg TTFT", "Tokens", "Cost", "Cache"].map((h) => (
+                        <th key={h} className="text-left text-muted-foreground font-medium py-2 px-2 first:pl-0 last:pr-0">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="font-mono">
+                    {([
+                      { model: "Claude Sonnet 4.6", requests: 420, ttft: "680ms", tokens: "2.1M", cost: "$8.20", cache: "78%" },
+                      { model: "Gemini Flash", requests: 380, ttft: "320ms", tokens: "1.8M", cost: "$0.95", cache: "82%" },
+                      { model: "GPT-5 Nano", requests: 200, ttft: "450ms", tokens: "890K", cost: "$0.15", cache: "65%" },
+                      { model: "Gemma 4 26B (Local)", requests: 247, ttft: "250ms", tokens: "1.2M", cost: "$0", cache: "N/A" },
+                    ] as const).map((row) => (
+                      <tr key={row.model} className="border-b border-border/20 last:border-0">
+                        <td className="py-2 px-2 pl-0 text-foreground/80 font-sans">{row.model}</td>
+                        <td className="py-2 px-2 tabular-nums text-foreground/70">{row.requests}</td>
+                        <td className="py-2 px-2 tabular-nums text-foreground/70">{row.ttft}</td>
+                        <td className="py-2 px-2 tabular-nums text-foreground/70">{row.tokens}</td>
+                        <td className="py-2 px-2 tabular-nums text-primary font-medium">{row.cost}</td>
+                        <td className="py-2 px-2 pr-0">
+                          {row.cache === "N/A" ? (
+                            <span className="text-muted-foreground">N/A</span>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 px-1.5 py-0">
+                              {row.cache}
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* What This Enables */}
+          <Card className="border-border/60 bg-zinc-950/80 mt-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Eye className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">What This Enables</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                {[
+                  "Track cost per user, per day, per provider",
+                  "Identify most expensive conversations",
+                  "Monitor cache hit rates (higher = cheaper)",
+                  "Compare model performance (TTFT, throughput)",
+                  "Set cost alerts and budgets",
+                  "Export usage data for billing",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-2">
+                    <CheckCircle2 className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                    <span className="text-[11px] text-muted-foreground">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
