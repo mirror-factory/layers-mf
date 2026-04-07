@@ -57,7 +57,7 @@ import { NeuralMorph } from "@/components/ui/neural-morph";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
 
-const MODELS = [
+const CLOUD_MODELS = [
   // Flagship
   { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", tier: "flagship" },
   { id: "openai/gpt-5.4", label: "GPT-5.4", tier: "flagship" },
@@ -70,9 +70,15 @@ const MODELS = [
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", tier: "fast" },
   { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "fast" },
   { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite", tier: "fast" },
-  // Local (requires Ollama running)
+] as const;
+
+const LOCAL_MODELS = [
   { id: "ollama/gemma4:26b", label: "Gemma 4 26B (Local)", tier: "local" },
 ] as const;
+
+// Only show local models in dev (Vercel sets NEXT_PUBLIC_VERCEL_ENV in production)
+const IS_LOCAL = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const MODELS = IS_LOCAL ? [...CLOUD_MODELS, ...LOCAL_MODELS] : CLOUD_MODELS;
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
   meeting_transcript: Mic,
