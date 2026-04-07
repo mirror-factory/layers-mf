@@ -488,9 +488,24 @@ export async function POST(request: NextRequest) {
   const toolCallCounts: Record<string, number> = {};
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let totalCacheReadTokens = 0;
+  let totalCacheWriteTokens = 0;
   let totalGatewayCost = 0;
   let runStepCount = 0;
   let assistantText = "";
+
+  interface StepStats {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    costUsd: number;
+    durationMs: number;
+    toolCalls: string[];
+  }
+  const stepStats: StepStats[] = [];
+  let stepStartTime = Date.now();
 
   const adminDb = createAdminClient();
   const orgId = member.org_id;
@@ -740,11 +755,20 @@ export async function POST(request: NextRequest) {
     tools: allTools,
     // Local models: smaller output cap. Cloud: max out.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prepareStep: () => ({ maxOutputTokens: isLocal ? 4096 : 128000 } as any),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepareStep: () => ({
+      maxOutputTokens: isLocal ? 4096 : 128000,
+      providerOptions: isLocal ? {} : {
+        gateway: { caching: "auto" },
+      },
+    } as any),
     stopWhen: stepCountIs(isLocal ? 5 : 20),
     // Note: providerOptions (gateway user/tags) are passed per-call, not on the agent.
     // TODO: pass via callOptions when ToolLoopAgent supports it.
     onStepFinish: ({ usage, toolCalls, text, providerMetadata }) => {
+      const stepDuration = Date.now() - stepStartTime;
+      stepStartTime = Date.now();
+
       // Capture gateway cost and generation ID for observability
       const gw = providerMetadata?.gateway as Record<string, unknown> | undefined;
       const generationId = gw?.generationId as string | undefined;
@@ -754,18 +778,45 @@ export async function POST(request: NextRequest) {
       if (generationId) {
         console.log(`[chat] gw=${generationId} cost=$${gatewayCost?.toFixed(6) ?? "?"} market=$${gatewayMarketCost?.toFixed(6) ?? "?"} model=${modelTier}`);
       }
+
+      // Cache stats from usage details
+      const cacheRead = (usage as { inputTokenDetails?: { cacheReadTokens?: number } })?.inputTokenDetails?.cacheReadTokens ?? 0;
+      const cacheWrite = (usage as { inputTokenDetails?: { cacheWriteTokens?: number } })?.inputTokenDetails?.cacheWriteTokens ?? 0;
+      totalCacheReadTokens += cacheRead;
+      totalCacheWriteTokens += cacheWrite;
+      if (cacheRead > 0 || cacheWrite > 0) {
+        console.log(`[chat] cache: read=${cacheRead} write=${cacheWrite}`);
+      }
+
       runStepCount++;
       if (text) assistantText += text;
+
+      const stepInput = usage?.inputTokens ?? 0;
+      const stepOutput = usage?.outputTokens ?? 0;
       if (usage) {
-        totalInputTokens += usage.inputTokens ?? 0;
-        totalOutputTokens += usage.outputTokens ?? 0;
+        totalInputTokens += stepInput;
+        totalOutputTokens += stepOutput;
       }
+
+      const stepToolNames: string[] = [];
       if (toolCalls) {
         for (const tc of toolCalls) {
           const name = tc.toolName ?? "unknown";
           toolCallCounts[name] = (toolCallCounts[name] ?? 0) + 1;
+          stepToolNames.push(name);
         }
       }
+
+      stepStats.push({
+        model: modelId,
+        inputTokens: stepInput,
+        outputTokens: stepOutput,
+        cacheReadTokens: cacheRead,
+        cacheWriteTokens: cacheWrite,
+        costUsd: gatewayCost ?? 0,
+        durationMs: stepDuration,
+        toolCalls: stepToolNames,
+      });
     },
     onFinish: () => {
       // === CHAT SUMMARY LOG ===
@@ -815,8 +866,13 @@ export async function POST(request: NextRequest) {
           finish_reason: "stop",
           total_input_tokens: totalInputTokens,
           total_output_tokens: totalOutputTokens,
+          cache_read_tokens: totalCacheReadTokens,
+          cache_write_tokens: totalCacheWriteTokens,
           duration_ms: Date.now() - startTime,
           tool_calls: toolCallsArray,
+          gateway_cost_usd: totalGatewayCost > 0 ? totalGatewayCost : 0,
+          conversation_id: conversationId,
+          step_details: stepStats,
           error: null,
         });
 

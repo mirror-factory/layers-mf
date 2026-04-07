@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronUp, Info, Zap, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, Info, Zap, DollarSign, Database, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   estimateMessageTokens,
@@ -17,6 +17,7 @@ function formatTokens(n: number): string {
 }
 
 function formatCost(n: number): string {
+  if (n <= 0) return "$0";
   if (n < 0.001) return "<$0.001";
   if (n < 0.01) return `$${n.toFixed(4)}`;
   return `$${n.toFixed(3)}`;
@@ -37,15 +38,52 @@ interface ServerStats {
   mcpServerCount: number;
 }
 
+interface AgentRunSummary {
+  model: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  gateway_cost_usd: string;
+  duration_ms: number;
+  created_at: string;
+}
+
+interface ConversationTotals {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costUsd: number;
+  durationMs: number;
+  cacheHitPct: number;
+}
+
 interface ContextWindowBarProps {
   messages: UIMessage[];
   modelId: string;
+  conversationId?: string | null;
   className?: string;
 }
 
-export function ContextWindowBar({ messages, modelId, className }: ContextWindowBarProps) {
+function getProviderIcon(modelId: string): string {
+  if (modelId.startsWith("anthropic/")) return "A";
+  if (modelId.startsWith("openai/")) return "O";
+  if (modelId.startsWith("google/")) return "G";
+  return "?";
+}
+
+function formatModelShort(modelId: string): string {
+  const parts = modelId.split("/");
+  return parts[parts.length - 1] ?? modelId;
+}
+
+export function ContextWindowBar({ messages, modelId, conversationId, className }: ContextWindowBarProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showCostBreakdown, setShowCostBreakdown] = useState(false);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
+  const [agentRuns, setAgentRuns] = useState<AgentRunSummary[]>([]);
+  const [totals, setTotals] = useState<ConversationTotals | null>(null);
 
   // Fetch server-side token stats when expanded (and on model change)
   useEffect(() => {
@@ -58,6 +96,20 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
       })
       .catch(() => {});
   }, [expanded, modelId]);
+
+  // Fetch conversation cost stats when cost breakdown is expanded
+  useEffect(() => {
+    if (!showCostBreakdown || !conversationId) return;
+    fetch(`/api/chat/stats?conversation_id=${conversationId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setAgentRuns(data.runs ?? []);
+          setTotals(data.totals ?? null);
+        }
+      })
+      .catch(() => {});
+  }, [showCostBreakdown, conversationId, messages.length]);
 
   // Estimate tokens from conversation history
   const historyTokens = messages.reduce(
@@ -81,6 +133,10 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
     (totalUsed / 1_000_000) * pricing.input +
     (500 / 1_000_000) * pricing.output;
 
+  // Use actual cost from stats if available, otherwise estimate
+  const actualTotalCost = totals?.costUsd ?? 0;
+  const cacheHitPct = totals?.cacheHitPct ?? 0;
+
   // Estimate cumulative conversation cost (all messages sent so far)
   const userMessages = messages.filter((m) => m.role === "user").length;
   const assistantTokens = messages
@@ -90,9 +146,10 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
         sum + estimateMessageTokens(msg as { role: string; parts?: { type: string; text?: string; input?: unknown; output?: unknown }[] }),
       0,
     );
-  const cumulativeCost =
+  const estimatedCumulativeCost =
     (historyTokens / 1_000_000) * pricing.input * (userMessages / Math.max(1, messages.length)) +
     (assistantTokens / 1_000_000) * pricing.output;
+  const cumulativeCost = actualTotalCost > 0 ? actualTotalCost : estimatedCumulativeCost;
 
   const segments: SegmentDef[] = [
     { key: "system", label: "System", tokens: systemTokens, color: "bg-blue-500" },
@@ -134,6 +191,12 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
         <span className="text-[10px] text-muted-foreground whitespace-nowrap">
           {formatTokens(totalUsed)} / {formatTokens(contextWindow)}
         </span>
+        {/* Cache hit badge */}
+        {cacheHitPct > 0 && (
+          <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium whitespace-nowrap">
+            {cacheHitPct}% cached
+          </span>
+        )}
         {expanded ? (
           <ChevronUp className="h-3 w-3 text-muted-foreground shrink-0" />
         ) : (
@@ -178,11 +241,26 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
               </div>
               {cumulativeCost > 0.0001 && (
                 <span className="text-[10px] border-l pl-2">
-                  ~{formatCost(cumulativeCost)} total
+                  {actualTotalCost > 0 ? "" : "~"}{formatCost(cumulativeCost)} total
                 </span>
               )}
             </div>
           </div>
+
+          {/* Cache stats */}
+          {totals && (totals.cacheReadTokens > 0 || totals.cacheWriteTokens > 0) && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Database className="h-3 w-3 text-emerald-400" />
+                <span className="text-emerald-400">{formatTokens(totals.cacheReadTokens)} cache hits</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Database className="h-3 w-3 text-amber-400" />
+                <span className="text-amber-400">{formatTokens(totals.cacheWriteTokens)} cached</span>
+              </div>
+              <span className="text-emerald-400 font-medium">{cacheHitPct}% hit rate</span>
+            </div>
+          )}
 
           {/* Conversation stats */}
           <div className="flex items-center gap-3 text-muted-foreground">
@@ -196,6 +274,79 @@ export function ContextWindowBar({ messages, modelId, className }: ContextWindow
               </>
             )}
           </div>
+
+          {/* Cost breakdown toggle */}
+          {conversationId && (
+            <button
+              onClick={() => setShowCostBreakdown(!showCostBreakdown)}
+              className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
+            >
+              <DollarSign className="h-3 w-3" />
+              <span>{showCostBreakdown ? "Hide" : "Show"} cost breakdown</span>
+              {showCostBreakdown ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+            </button>
+          )}
+
+          {/* Per-call cost breakdown */}
+          {showCostBreakdown && agentRuns.length > 0 && (
+            <div className="pt-1.5 border-t border-border/30 space-y-1.5">
+              <div className="text-[10px] text-muted-foreground font-medium mb-1">
+                LLM Calls ({agentRuns.length})
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {agentRuns.map((run, i) => {
+                  const runCost = parseFloat(run.gateway_cost_usd ?? "0");
+                  const runCacheRead = run.cache_read_tokens ?? 0;
+                  return (
+                    <div
+                      key={`run-${i}`}
+                      className="flex items-center gap-2 text-[10px] text-muted-foreground py-0.5"
+                    >
+                      <span className="inline-flex items-center justify-center h-4 w-4 rounded bg-muted text-[8px] font-bold shrink-0">
+                        {getProviderIcon(run.model)}
+                      </span>
+                      <span className="truncate flex-1 min-w-0" title={run.model}>
+                        {formatModelShort(run.model)}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="flex items-center gap-0.5">
+                          <Cpu className="h-2.5 w-2.5 text-blue-400" />
+                          {formatTokens(run.total_input_tokens ?? 0)}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <Cpu className="h-2.5 w-2.5 text-green-400" />
+                          {formatTokens(run.total_output_tokens ?? 0)}
+                        </span>
+                        {runCacheRead > 0 && (
+                          <span className="flex items-center gap-0.5 text-emerald-400">
+                            <Database className="h-2.5 w-2.5" />
+                            {formatTokens(runCacheRead)}
+                          </span>
+                        )}
+                        <span className="font-mono w-14 text-right text-emerald-400">
+                          {formatCost(runCost)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Running total */}
+              {totals && (
+                <div className="flex items-center justify-between pt-1.5 border-t border-border/30 text-[10px]">
+                  <span className="text-muted-foreground font-medium">Total</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground">
+                      {formatTokens(totals.inputTokens)} in / {formatTokens(totals.outputTokens)} out
+                    </span>
+                    <span className="font-mono font-medium text-emerald-400">
+                      {formatCost(totals.costUsd)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {utilizationPct > 80 && (
             <div className="flex items-start gap-2 rounded-md bg-amber-500/10 px-2.5 py-2 text-amber-600 dark:text-amber-400">

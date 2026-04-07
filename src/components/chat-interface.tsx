@@ -50,6 +50,7 @@ import {
 } from "@/components/ai-elements/tool";
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
 import { ContextWindowBar } from "@/components/chat/context-window-bar";
+import { MessageStats } from "@/components/chat/message-stats";
 import { ArtifactVersionHistory } from "@/components/artifact-version-history";
 import { Entropy } from "@/components/ui/entropy";
 import { ShareLinkButton } from "@/components/share-link-button";
@@ -1557,6 +1558,48 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     }
   }, [status, messageQueue, sendMessage]);
 
+  // Fetch per-message agent run stats for cost breakdown
+  interface AgentRunStats {
+    id: string;
+    model: string;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    cache_read_tokens: number;
+    cache_write_tokens: number;
+    duration_ms: number;
+    tool_calls: { tool: string; count: number }[];
+    gateway_cost_usd: string;
+    step_details: {
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheWriteTokens: number;
+      costUsd: number;
+      durationMs: number;
+      toolCalls: string[];
+    }[];
+    created_at: string;
+  }
+  const [agentRuns, setAgentRuns] = useState<AgentRunStats[]>([]);
+  const agentRunsFetchedRef = useRef<string | null>(null);
+
+  // Fetch stats when conversation finishes a response
+  useEffect(() => {
+    if (!conversationId || isLoading) return;
+    // Only re-fetch after each response completes (when status transitions to ready)
+    const key = `${conversationId}-${messages.length}`;
+    if (agentRunsFetchedRef.current === key) return;
+    agentRunsFetchedRef.current = key;
+
+    fetch(`/api/chat/stats?conversation_id=${conversationId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.runs) setAgentRuns(data.runs);
+      })
+      .catch(() => {});
+  }, [conversationId, isLoading, messages.length]);
+
   // Detect pending ask_user tool calls that need user interaction
   const pendingInterview = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -2328,7 +2371,30 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       {m.role === "assistant" && (
                         <>
                           <MessageFeedback messageId={m.id} conversationId={conversationId} />
-                          <span className="text-[10px] text-muted-foreground/40 ml-1">~${((text.length / 4 / 1_000_000) * (model?.includes("opus") ? 75 : model?.includes("sonnet") ? 15 : 1)).toFixed(4)}</span>
+                          {(() => {
+                            // Match agent run by index: count assistant messages up to this one
+                            const assistantIndex = messages.slice(0, idx + 1).filter((msg) => msg.role === "assistant").length - 1;
+                            const run = agentRuns[assistantIndex];
+                            const statsData = run ? {
+                              model: run.model,
+                              inputTokens: run.total_input_tokens,
+                              outputTokens: run.total_output_tokens,
+                              cacheReadTokens: run.cache_read_tokens ?? 0,
+                              cacheWriteTokens: run.cache_write_tokens ?? 0,
+                              costUsd: parseFloat(run.gateway_cost_usd ?? "0"),
+                              durationMs: run.duration_ms ?? 0,
+                              toolCalls: (run.tool_calls ?? []).flatMap((tc: { tool: string; count: number }) => Array(tc.count).fill(tc.tool)),
+                              stepDetails: run.step_details,
+                            } : null;
+                            return (
+                              <MessageStats
+                                model={model}
+                                text={text}
+                                stats={statsData}
+                                className="ml-1"
+                              />
+                            );
+                          })()}
                         </>
                       )}
                     </div>
@@ -2701,7 +2767,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           {showContextBar && messages.length > 0 && (
             <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
               <div className="max-w-5xl mx-auto">
-                <ContextWindowBar messages={messages} modelId={model} />
+                <ContextWindowBar messages={messages} modelId={model} conversationId={conversationId} />
               </div>
             </div>
           )}
