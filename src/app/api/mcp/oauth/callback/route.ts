@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/mcp?error=Missing+authorization+code+or+state", request.url)
+      new URL("/connectors?error=Missing+authorization+code+or+state", request.url)
     );
   }
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     stateData = JSON.parse(Buffer.from(padded, "base64").toString("utf-8"));
   } catch {
     return NextResponse.redirect(
-      new URL("/mcp?error=Invalid+OAuth+state", request.url)
+      new URL("/connectors?error=Invalid+OAuth+state", request.url)
     );
   }
 
@@ -112,6 +112,9 @@ export async function GET(request: NextRequest) {
         api_key_encrypted: accessToken,
         oauth_refresh_token: refreshToken,
         oauth_expires_at: expiresAt,
+        oauth_token_url: stateData.tokenUrl || undefined,
+        oauth_client_id: stateData.clientId || undefined,
+        oauth_client_secret: stateData.clientSecret || undefined,
         auth_type: "oauth",
         is_active: true,
         last_connected_at: new Date().toISOString(),
@@ -128,7 +131,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL("/mcp?success=OAuth+connected+successfully", request.url)
+      new URL("/connectors?success=OAuth+connected+successfully", request.url)
     );
   } catch (err) {
     console.error("OAuth callback error:", err);

@@ -2435,6 +2435,133 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
         }
       },
     }),
+
+    // === MCP Server Discovery & Connection ===
+    search_mcp_servers: tool({
+      description:
+        "Search for MCP (Model Context Protocol) tool servers that can be connected to expand your capabilities. " +
+        "Use when the user asks to find, connect, or install a tool/integration (e.g. 'connect to Canva', 'find a design tool', 'I need email tools'). " +
+        "Returns server name, description, URL, and auth type. After finding a match, use connect_mcp_server to set it up. " +
+        "If the user pastes a URL directly (like 'https://mcp.example.com/mcp'), skip the search and use connect_mcp_server directly.",
+      inputSchema: z.object({
+        query: z.string().describe("Search query (e.g. 'canva', 'email', 'design', 'github')"),
+      }),
+      execute: async ({ query }: { query: string }) => {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/mcp/registry?q=${encodeURIComponent(query)}`,
+            { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) }
+          );
+          if (!res.ok) return { error: `Registry search failed: ${res.status}`, query };
+          const data = await res.json();
+          const servers = (data.servers ?? []).slice(0, 8);
+          return {
+            query,
+            count: servers.length,
+            servers: servers.map((s: { name: string; description: string; url: string; auth: string; website: string }) => ({
+              name: s.name,
+              description: s.description,
+              url: s.url,
+              auth: s.auth,
+              website: s.website,
+            })),
+            hint: servers.length > 0
+              ? "Present these options to the user. When they choose one, use connect_mcp_server with the server's name and url."
+              : "No servers found. Try a different search term or ask the user for the MCP server URL directly.",
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Search failed", query };
+        }
+      },
+    }),
+
+    connect_mcp_server: tool({
+      description:
+        "Add an MCP server to the user's connected tools. This saves the server and returns connection instructions. " +
+        "For OAuth servers, the user will need to click the 'Connect with OAuth' button to authorize. " +
+        "For bearer token servers, the user needs to provide their API key. " +
+        "Use after search_mcp_servers finds a matching server, OR when the user pastes an MCP server URL directly. " +
+        "If the user provides just a URL, auto-detect the auth type by probing the server. Set auth to 'oauth' if unsure.",
+      inputSchema: z.object({
+        name: z.string().describe("Display name of the MCP server (e.g. 'Canva', 'GitHub'). If unknown, derive from the URL domain."),
+        url: z.string().describe("The MCP server URL (e.g. 'https://mcp.canva.com/mcp')"),
+        auth: z.enum(["oauth", "bearer", "none"]).describe("Authentication type. Use 'oauth' if unsure — the system will auto-detect."),
+      }),
+      execute: async ({ name, url, auth }: { name: string; url: string; auth: "oauth" | "bearer" | "none" }) => {
+        try {
+          // Save the server to the database
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: existing } = await (supabase as any)
+            .from("mcp_servers")
+            .select("id, is_active, error_message")
+            .eq("org_id", orgId)
+            .eq("url", url)
+            .maybeSingle();
+
+          if (existing) {
+            if (existing.is_active && !existing.error_message) {
+              return {
+                status: "already_connected",
+                name,
+                message: `${name} is already connected and active. You can use its tools right away.`,
+              };
+            }
+            // Server exists but needs reconnection
+            return {
+              status: "needs_reconnect",
+              serverId: existing.id,
+              name,
+              auth,
+              message: auth === "oauth"
+                ? `${name} needs to be reconnected. The user should go to the Connectors page and click "Reconnect" on ${name} to complete OAuth authorization.`
+                : `${name} needs to be reconnected with a valid API key.`,
+              action: { type: "mcp_connect", serverId: existing.id, name, url, auth },
+            };
+          }
+
+          // Create new server entry
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: newServer, error: insertError } = await (supabase as any)
+            .from("mcp_servers")
+            .insert({
+              org_id: orgId,
+              name,
+              url,
+              auth_type: auth,
+              is_active: auth === "none", // auto-activate if no auth needed
+              transport_type: "http",
+            })
+            .select("id")
+            .single();
+
+          if (insertError) {
+            return { error: `Failed to save server: ${insertError.message}` };
+          }
+
+          if (auth === "none") {
+            return {
+              status: "connected",
+              serverId: newServer.id,
+              name,
+              message: `${name} has been connected successfully. Its tools will be available in your next message.`,
+            };
+          }
+
+          return {
+            status: "pending_auth",
+            serverId: newServer.id,
+            name,
+            auth,
+            message: auth === "oauth"
+              ? `${name} has been added. The user needs to authorize it by clicking the "Connect with OAuth" button below.`
+              : `${name} has been added. The user needs to provide their API key to activate it.`,
+            action: { type: "mcp_connect", serverId: newServer.id, name, url, auth },
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Connection failed" };
+        }
+      },
+    }),
   };
 
   return applyPermissions(allTools, permissions);

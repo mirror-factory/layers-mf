@@ -68,7 +68,7 @@ export function useKeyboardShortcuts({ onToggleShortcutsPanel }: ShortcutOptions
           h: "/home",
           c: "/chat",
           l: "/context",
-          i: "/inbox",
+          n: "/notifications",
           a: "/approvals",
           s: "/settings",
         };

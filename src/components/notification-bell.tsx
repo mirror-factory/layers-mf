@@ -12,6 +12,7 @@ import {
   Check,
   AlertTriangle,
   CreditCard,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,6 +39,7 @@ interface Notification {
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   chat_mention: MessageSquare,
   share: Share2,
+  schedule_started: Loader2,
   schedule_complete: Calendar,
   approval_needed: Shield,
   library_update: FileText,
@@ -320,7 +322,7 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
             className="h-auto w-full px-2 py-1.5 text-xs text-muted-foreground"
             onClick={() => {
               setOpen(false);
-              router.push("/inbox");
+              router.push("/notifications");
             }}
           >
             View all

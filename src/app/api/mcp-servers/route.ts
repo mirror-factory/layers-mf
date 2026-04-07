@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { testMCPConnection } from "@/lib/mcp/connect";
+import { testMCPConnection, probeOAuthRequired } from "@/lib/mcp/connect";
 
 /**
  * GET /api/mcp-servers
@@ -99,20 +99,36 @@ export async function POST(request: NextRequest) {
   }
 
   // For OAuth servers, skip testing — save first, auth later
-  const isOAuth = authType === "oauth";
+  let isOAuth = authType === "oauth";
   let discoveredTools: string[] = [];
   let toolCount = 0;
+  let detectedOAuth: { authorizeUrl?: string; tokenUrl?: string; registrationEndpoint?: string } | null = null;
 
   if (!isOAuth) {
     const testResult = await testMCPConnection(url, apiKey, transportType);
     if (!testResult.success) {
-      return NextResponse.json(
-        { error: `Connection failed: ${testResult.error}` },
-        { status: 422 }
-      );
+      // If the server requires OAuth, auto-detect it and save as OAuth server
+      if (testResult.requiresOAuth) {
+        const probe = await probeOAuthRequired(url);
+        if (probe.requiresOAuth) {
+          isOAuth = true;
+          detectedOAuth = probe;
+        } else {
+          return NextResponse.json(
+            { error: `Connection failed: ${testResult.error}` },
+            { status: 422 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: `Connection failed: ${testResult.error}` },
+          { status: 422 }
+        );
+      }
+    } else {
+      discoveredTools = testResult.toolNames;
+      toolCount = testResult.toolCount;
     }
-    discoveredTools = testResult.toolNames;
-    toolCount = testResult.toolCount;
   }
 
   // Insert server record (use admin to bypass RLS)
@@ -126,15 +142,15 @@ export async function POST(request: NextRequest) {
       name,
       url,
       api_key_encrypted: apiKey || null,
-      auth_type: authType ?? (apiKey ? "bearer" : "none"),
+      auth_type: isOAuth ? "oauth" : (authType ?? (apiKey ? "bearer" : "none")),
       transport_type: transportType ?? "http",
       is_active: !isOAuth, // OAuth servers start inactive until authenticated
       discovered_tools: discoveredTools.map((t) => ({ name: t })),
       last_connected_at: isOAuth ? null : new Date().toISOString(),
       error_message: isOAuth ? "OAuth authentication required" : null,
       ...(isOAuth ? {
-        oauth_authorize_url: oauthAuthorizeUrl || null,
-        oauth_token_url: oauthTokenUrl || null,
+        oauth_authorize_url: oauthAuthorizeUrl || detectedOAuth?.authorizeUrl || null,
+        oauth_token_url: oauthTokenUrl || detectedOAuth?.tokenUrl || null,
         oauth_client_id: oauthClientId || null,
         oauth_client_secret: oauthClientSecret || null,
       } : {}),
@@ -149,5 +165,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ server: data, toolCount }, { status: 201 });
+  return NextResponse.json({
+    server: data,
+    toolCount,
+    ...(detectedOAuth ? { requiresOAuth: true, oauthConfig: detectedOAuth } : {}),
+  }, { status: 201 });
 }

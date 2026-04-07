@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
-import { NeuralDots } from "@/components/ui/neural-dots";
+import { NeuralMorph } from "@/components/ui/neural-morph";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -48,7 +48,7 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/analytics/costs", label: "Analytics", icon: BarChart3 },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/org", label: "Organization", icon: Building2 },
-  { href: "/settings/notifications", label: "Notifications", icon: BellIcon },
+  { href: "/notifications", label: "Notifications", icon: BellIcon },
 ];
 
 function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { pathname: string; collapsed?: boolean }) {
@@ -156,7 +156,7 @@ export function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <NeuralDots size={24} dotCount={6} />
+        <NeuralMorph size={28} dotCount={8} formation="orbit" />
         <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
       </div>
 
@@ -181,7 +181,7 @@ export function SidebarNav({
         {/* Logo + collapse toggle */}
         <div className={cn("flex items-center border-b", isVisuallyCollapsed ? "justify-center px-1 py-5" : "justify-between px-4 py-5")}>
           <div className="flex items-center gap-2">
-            <NeuralDots size={24} dotCount={6} />
+            <NeuralMorph size={28} dotCount={8} formation="orbit" />
             {!isVisuallyCollapsed && (
               <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
             )}

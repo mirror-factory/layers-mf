@@ -26,7 +26,7 @@ export default function DashboardNotFound() {
         <CardContent />
         <CardFooter className="justify-center">
           <Button asChild>
-            <Link href="/inbox">Go to Inbox</Link>
+            <Link href="/chat">Go to Chat</Link>
           </Button>
         </CardFooter>
       </Card>

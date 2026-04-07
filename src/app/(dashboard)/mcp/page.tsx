@@ -184,14 +184,21 @@ export default function MCPSettingsPage() {
     setDiscovering(true);
     setFormError("");
     try {
-      const serverOrigin = new URL(url.trim()).origin;
-      const res = await fetch(`${serverOrigin}/.well-known/oauth-authorization-server`, {
-        headers: { Accept: "application/json" },
+      // Use server-side proxy to avoid CORS issues
+      const res = await fetch("/api/mcp/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverUrl: url.trim(),
+          appName: name.trim() || "Granger",
+          callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+        }),
       });
       if (res.ok) {
-        const meta = await res.json();
-        if (meta.authorization_endpoint) setOauthAuthorizeUrl(meta.authorization_endpoint);
-        if (meta.token_endpoint) setOauthTokenUrl(meta.token_endpoint);
+        const discovered = await res.json();
+        if (discovered.authorizeUrl) setOauthAuthorizeUrl(discovered.authorizeUrl);
+        if (discovered.tokenUrl) setOauthTokenUrl(discovered.tokenUrl);
+        if (discovered.clientId) setOauthClientId(discovered.clientId);
       } else {
         setFormError("OAuth discovery not available — enter endpoints manually");
       }
@@ -219,6 +226,10 @@ export default function MCPSettingsPage() {
       const data = await res.json();
       if (data.success) {
         setTestState({ status: "success", toolCount: data.toolCount, toolNames: data.toolNames });
+      } else if (data.requiresOAuth) {
+        // Server requires OAuth — auto-switch auth type so user can connect
+        setAuthType("oauth");
+        setTestState({ status: "error", message: "This server requires OAuth. Auth type switched — click \"Save & Connect with OAuth\" to authorize." });
       } else {
         setTestState({ status: "error", message: data.error || "Connection failed" });
       }
@@ -344,6 +355,83 @@ export default function MCPSettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
+        // Server saved — check if it was auto-detected as OAuth
+        if (data.requiresOAuth && data.oauthConfig) {
+          // Auto-initiate OAuth PKCE flow for the newly saved server
+          const { authorizeUrl: detectedAuthUrl, tokenUrl: detectedTokenUrl } = data.oauthConfig;
+
+          // Try dynamic client registration via server-side proxy
+          let clientId = "";
+          try {
+            const discoverRes = await fetch("/api/mcp/discover", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                serverUrl: url.trim(),
+                appName: name.trim() || "Granger",
+                callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+              }),
+            });
+            if (discoverRes.ok) {
+              const discovered = await discoverRes.json();
+              clientId = discovered.clientId ?? "";
+            }
+          } catch {
+            // Discovery failed
+          }
+
+          if (!clientId) {
+            clientId = window.location.origin;
+          }
+
+          // Save OAuth config to the server record
+          try {
+            await fetch(`/api/mcp-servers/${data.server.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                oauth_authorize_url: detectedAuthUrl,
+                oauth_token_url: detectedTokenUrl,
+                oauth_client_id: clientId,
+              }),
+            });
+          } catch {
+            // Best effort
+          }
+
+          // Generate PKCE and redirect
+          const codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map((b) => b.toString(16).padStart(2, "0")).join("");
+          const codeChallenge = btoa(
+            String.fromCharCode(...new Uint8Array(
+              await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))
+            ))
+          ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+          const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+          const stateObj = {
+            serverId: data.server.id,
+            tokenUrl: detectedTokenUrl,
+            clientId,
+            codeVerifier,
+          };
+          const state = btoa(JSON.stringify(stateObj))
+            .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+          const params = new URLSearchParams({
+            response_type: "code",
+            client_id: clientId,
+            redirect_uri: callbackUrl,
+            state,
+            code_challenge: codeChallenge,
+            code_challenge_method: "S256",
+            scope: "openid profile email offline_access",
+          });
+
+          window.location.href = `${detectedAuthUrl}?${params}`;
+          return;
+        }
+
         setName("");
         setUrl("");
         setApiKey("");

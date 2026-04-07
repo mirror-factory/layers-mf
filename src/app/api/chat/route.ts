@@ -310,6 +310,15 @@ EDITING EXISTING ARTIFACTS — NEVER recreate when you can edit:
 - create_skill — create a new custom skill. ALWAYS use ask_user first to interview the user, then call create_skill with the gathered info.
 - create_tool_from_code — create a custom tool by writing code, testing it in sandbox, and saving as a skill with the code attached
 - search_skills_marketplace — search the skills.sh marketplace
+- search_mcp_servers — search MCP registries (official, Smithery, curated) for tool servers to connect. Use when the user wants to add integrations.
+- connect_mcp_server — add an MCP server to the user's connected tools. Works with registry results OR direct URLs pasted by the user. Returns an OAuth/API key button for the user to complete setup.
+
+When the user asks to connect a tool, integration, or MCP server:
+1. If they provide a URL directly, use connect_mcp_server immediately (derive name from domain)
+2. If they describe what they need, use search_mcp_servers to find options
+3. Present the results and let the user choose
+4. Use connect_mcp_server for the chosen server
+5. The UI will render a "Connect with OAuth" or "Enter API Key" button automatically
 
 When asked to create a custom tool or automation:
 1. Use ask_user to gather requirements (what the tool does, inputs it needs, expected output format)
@@ -592,25 +601,28 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: mcpServers } = await (adminDb as any)
       .from("mcp_servers")
-      .select("id, name, url, api_key_encrypted, transport_type, auth_type, oauth_refresh_token, oauth_expires_at, token_url, client_id, client_secret, discovered_tools")
+      .select("id, name, url, api_key_encrypted, transport_type, auth_type, oauth_refresh_token, oauth_expires_at, oauth_token_url, oauth_client_id, oauth_client_secret, discovered_tools")
       .eq("org_id", orgId)
       .eq("is_active", true);
 
     if (mcpServers?.length) {
+      console.log(`[chat] Loading ${mcpServers.length} MCP server(s): ${mcpServers.map((s: { name: string }) => s.name).join(", ")}`);
       const { getConnection, ensureAuth } = await import("@/lib/mcp/connection-manager");
 
       const results = await Promise.allSettled(
         mcpServers.map(async (server: {
           id: string;
+          name: string;
           url: string;
           api_key_encrypted: string | null;
           transport_type: "http" | "sse";
           auth_type?: string;
           oauth_refresh_token?: string;
           oauth_expires_at?: string;
-          token_url?: string;
-          client_id?: string;
-          client_secret?: string;
+          oauth_token_url?: string;
+          oauth_client_id?: string;
+          oauth_client_secret?: string;
+          discovered_tools?: { name: string }[];
         }) => {
           // Refresh expired OAuth tokens before connecting
           const authResult = await ensureAuth({
@@ -618,9 +630,9 @@ export async function POST(request: NextRequest) {
             apiKey: server.api_key_encrypted ?? undefined,
             oauthRefreshToken: server.oauth_refresh_token,
             oauthExpiresAt: server.oauth_expires_at,
-            tokenUrl: server.token_url,
-            clientId: server.client_id,
-            clientSecret: server.client_secret,
+            tokenUrl: server.oauth_token_url,
+            clientId: server.oauth_client_id,
+            clientSecret: server.oauth_client_secret,
           });
 
           // Persist refreshed tokens back to DB
@@ -646,9 +658,20 @@ export async function POST(request: NextRequest) {
         })
       );
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const server = mcpServers[i];
         if (result.status === "fulfilled") {
+          const toolNames = Object.keys(result.value.tools);
+          console.log(`[chat] MCP "${server.name}" loaded ${toolNames.length} tools: ${toolNames.slice(0, 5).join(", ")}${toolNames.length > 5 ? "..." : ""}`);
           Object.assign(mcpTools, result.value.tools);
+        } else {
+          console.error(`[chat] MCP "${server.name}" failed to connect:`, result.reason?.message ?? result.reason);
+          // Mark server as having an error so user sees it in the UI
+          await (adminDb as any)
+            .from("mcp_servers")
+            .update({ error_message: result.reason?.message?.slice(0, 200) ?? "Connection failed" })
+            .eq("id", server.id);
         }
       }
     }

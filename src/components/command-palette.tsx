@@ -50,7 +50,7 @@ const NAVIGATION: CommandEntry[] = [
   { href: "/home", label: "Home", icon: Home, keywords: "dashboard overview greeting", shortcut: "G H" },
   { href: "/chat", label: "Chat", icon: MessageSquare, keywords: "conversation ai assistant ask", shortcut: "G C" },
   { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge search", shortcut: "G L" },
-  { href: "/inbox", label: "Inbox", icon: Inbox, keywords: "action items decisions mentions", shortcut: "G I" },
+  { href: "/notifications", label: "Notifications", icon: Inbox, keywords: "notifications alerts schedule mentions", shortcut: "G N" },
   { href: "/approvals", label: "Approvals", icon: CheckSquare, keywords: "review queue pending", shortcut: "G A" },
   { href: "/schedules", label: "Schedules", icon: Clock, keywords: "cron recurring tasks automation" },
   { href: "/skills", label: "Skills", icon: Puzzle, keywords: "capabilities agent tools" },

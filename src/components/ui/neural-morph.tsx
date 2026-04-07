@@ -319,11 +319,22 @@ function getFormationPositions(formation: Formation, count: number, cx: number, 
   return positions;
 }
 
+/** Parse hex color to RGB tuple */
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ];
+}
+
 export function NeuralMorph({
   size = 120,
   dotCount = 16,
   formation: externalFormation,
   customPoints,
+  color = "#34d399",
   className = "",
   onFormationChange,
 }: {
@@ -332,6 +343,8 @@ export function NeuralMorph({
   formation?: Formation;
   /** Custom dot positions (0-1 normalized coordinates). Overrides formation. */
   customPoints?: { x: number; y: number }[];
+  /** Hex color for dots and connections (default: mint green #34d399) */
+  color?: string;
   className?: string;
   onFormationChange?: (f: Formation) => void;
 }) {
@@ -419,6 +432,9 @@ export function NeuralMorph({
     canvas.style.height = `${size}px`;
     ctx.scale(dpr, dpr);
 
+    const [cr, cg, cb] = hexToRgb(color);
+    const rgba = (a: number | string) => `rgba(${cr},${cg},${cb},${a})`;
+
     function draw() {
       ctx.clearRect(0, 0, size, size);
       timeRef.current += 0.016;
@@ -452,7 +468,7 @@ export function NeuralMorph({
         const d1 = Math.hypot(dot.x - next.x, dot.y - next.y);
         if (d1 < size * 0.5) {
           const alpha = 0.12 * (1 - d1 / (size * 0.5));
-          ctx.strokeStyle = `rgba(52,211,153,${alpha})`;
+          ctx.strokeStyle = rgba(alpha);
           ctx.lineWidth = 0.4;
           ctx.beginPath();
           ctx.moveTo(dot.x, dot.y);
@@ -463,7 +479,7 @@ export function NeuralMorph({
         const d2 = Math.hypot(dot.x - skip.x, dot.y - skip.y);
         if (d2 < size * 0.4) {
           const alpha = 0.06 * (1 - d2 / (size * 0.4));
-          ctx.strokeStyle = `rgba(52,211,153,${alpha})`;
+          ctx.strokeStyle = rgba(alpha);
           ctx.lineWidth = 0.2;
           ctx.beginPath();
           ctx.moveTo(dot.x, dot.y);
@@ -475,7 +491,7 @@ export function NeuralMorph({
         const dc = Math.hypot(dot.x - cx, dot.y - cy);
         if (dc < size * 0.45) {
           const alpha = 0.04 * (1 - dc / (size * 0.45));
-          ctx.strokeStyle = `rgba(52,211,153,${alpha})`;
+          ctx.strokeStyle = rgba(alpha);
           ctx.lineWidth = 0.15;
           ctx.beginPath();
           ctx.moveTo(dot.x, dot.y);
@@ -489,13 +505,13 @@ export function NeuralMorph({
         const pulse = Math.sin(timeRef.current * 2 + i * 0.5) * 0.15;
 
         // Glow
-        ctx.fillStyle = `rgba(52,211,153,${(dot.opacity * 0.2 + pulse * 0.1).toFixed(3)})`;
+        ctx.fillStyle = rgba((dot.opacity * 0.2 + pulse * 0.1).toFixed(3));
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.size * 3, 0, Math.PI * 2);
         ctx.fill();
 
         // Core
-        ctx.fillStyle = `rgba(52,211,153,${(dot.opacity + pulse).toFixed(3)})`;
+        ctx.fillStyle = rgba((dot.opacity + pulse).toFixed(3));
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.size + pulse * 0.5, 0, Math.PI * 2);
         ctx.fill();
@@ -503,7 +519,7 @@ export function NeuralMorph({
 
       // Center node
       const centerPulse = Math.sin(timeRef.current * 1.5) * 0.15;
-      ctx.fillStyle = `rgba(52,211,153,${(0.5 + centerPulse).toFixed(3)})`;
+      ctx.fillStyle = rgba((0.5 + centerPulse).toFixed(3));
       ctx.beginPath();
       ctx.arc(cx, cy, 2.5 + centerPulse, 0, Math.PI * 2);
       ctx.fill();
@@ -513,7 +529,7 @@ export function NeuralMorph({
 
     draw();
     return () => cancelAnimationFrame(animRef.current);
-  }, [size, cx, cy]);
+  }, [size, cx, cy, color]);
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>

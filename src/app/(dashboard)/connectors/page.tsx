@@ -50,7 +50,7 @@ export default async function ConnectorsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (admin as any)
       .from("mcp_servers")
-      .select("id, name, url, is_active, last_connected_at, error_message, discovered_tools")
+      .select("id, name, url, is_active, auth_type, oauth_authorize_url, oauth_token_url, oauth_client_id, last_connected_at, error_message, discovered_tools")
       .eq("org_id", member.org_id)
       .order("created_at", { ascending: false });
     mcpServers = data ?? [];

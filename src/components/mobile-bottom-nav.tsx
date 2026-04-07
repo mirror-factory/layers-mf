@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/context", label: "Context", icon: Library },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/notifications", label: "Alerts", icon: Inbox },
 ] as const;
 
 export function MobileBottomNav() {

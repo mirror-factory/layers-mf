@@ -139,7 +139,23 @@ export async function GET(request: NextRequest) {
 
       const conversationId = conv.id as string;
 
-      // 2. Save the user message
+      // 2. Notify user that execution has started
+      try {
+        const { notify } = await import("@/lib/notifications/notify");
+        await notify({
+          userId,
+          orgId,
+          type: "schedule_started",
+          title: `Executing: ${schedule.name}`,
+          body: `Running scheduled task...`,
+          link: `/chat?id=${conversationId}`,
+          metadata: { schedule_id: schedule.id, conversation_id: conversationId },
+        });
+      } catch (notifyErr) {
+        console.error("[schedule] Start notification failed:", notifyErr);
+      }
+
+      // 3. Save the user message
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("chat_messages").insert({
         org_id: orgId,
@@ -150,7 +166,7 @@ export async function GET(request: NextRequest) {
         channel: "schedule",
       });
 
-      // 3. Run AI with generateText
+      // 4. Run AI with generateText
       const tools = createScheduleTools(supabase, orgId);
       const scheduleModel = (schedule.payload?.model as string) ?? DEFAULT_SCHEDULE_MODEL;
 
@@ -164,7 +180,7 @@ export async function GET(request: NextRequest) {
 
       const responseText = text || "Schedule executed but produced no output.";
 
-      // 4. Save the AI response
+      // 5. Save the AI response
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("chat_messages").insert({
         org_id: orgId,
@@ -175,7 +191,7 @@ export async function GET(request: NextRequest) {
         channel: "schedule",
       });
 
-      // 5. Update schedule metadata
+      // 6. Update schedule metadata
       const newRunCount = (schedule.run_count ?? 0) + 1;
       const isCompleted = schedule.max_runs && newRunCount >= schedule.max_runs;
       const isOneShot = typeof schedule.schedule === "string" && schedule.schedule.startsWith("once:");
@@ -199,7 +215,7 @@ export async function GET(request: NextRequest) {
         console.error(`[schedule] Failed to update schedule ${schedule.id}:`, updateErr.message);
       }
 
-      // 6. Notify user (in-app + push + email based on preferences)
+      // 7. Notify user of completion (in-app + push + email based on preferences)
       try {
         const { notify } = await import("@/lib/notifications/notify");
         await notify({

@@ -35,5 +35,6 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await testMCPConnection(body.url, body.apiKey, body.transportType);
+  // Include requiresOAuth in response so the client can suggest switching to OAuth
   return NextResponse.json(result);
 }

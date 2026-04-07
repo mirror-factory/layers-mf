@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
   const validTypes = [
     "chat_mention",
     "share",
+    "schedule_started",
     "schedule_complete",
     "approval_needed",
     "library_update",

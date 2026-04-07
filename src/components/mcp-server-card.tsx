@@ -72,40 +72,22 @@ export function MCPServerCard({
     setDiscovering(true);
     setAutoDiscoveryFailed(false);
     try {
-      const origin = new URL(server.url).origin;
-      const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
-        headers: { Accept: "application/json" },
+      // Use server-side proxy to avoid CORS issues with direct browser fetch
+      const discoverRes = await fetch("/api/mcp/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverUrl: server.url,
+          appName: "Granger",
+          callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+        }),
       });
-      if (res.ok) {
-        const meta = await res.json();
-        const authorizeUrl = meta.authorization_endpoint ?? "";
-        const tokenUrl = meta.token_endpoint ?? "";
-        const registrationEndpoint = meta.registration_endpoint ?? "";
-        let clientId = meta.client_id ?? "";
 
-        // Dynamic Client Registration: if a registration_endpoint is provided
-        // and we don't already have a clientId, register a new client
-        if (registrationEndpoint && !clientId) {
-          try {
-            const regRes = await fetch(registrationEndpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                client_name: "Granger",
-                redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
-                grant_types: ["authorization_code", "refresh_token"],
-                response_types: ["code"],
-                token_endpoint_auth_method: "none",
-              }),
-            });
-            if (regRes.ok) {
-              const regData = await regRes.json();
-              clientId = regData.client_id ?? "";
-            }
-          } catch {
-            // Registration failed — fall back to origin as clientId
-          }
-        }
+      if (discoverRes.ok) {
+        const discovered = await discoverRes.json();
+        const authorizeUrl = discovered.authorizeUrl ?? "";
+        const tokenUrl = discovered.tokenUrl ?? "";
+        let clientId = discovered.clientId ?? "";
 
         if (!clientId) {
           clientId = window.location.origin;
@@ -116,7 +98,7 @@ export function MCPServerCard({
             ...prev,
             authorizeUrl,
             tokenUrl: tokenUrl || prev.tokenUrl,
-            clientId: clientId || prev.clientId,  // Prefer freshly registered clientId
+            clientId: clientId || prev.clientId,
           }));
           setAutoDiscoveryDone(true);
 

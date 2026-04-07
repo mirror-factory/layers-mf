@@ -38,6 +38,10 @@ interface MCPServer {
   name: string;
   url: string;
   is_active: boolean;
+  auth_type?: string;
+  oauth_authorize_url?: string;
+  oauth_token_url?: string;
+  oauth_client_id?: string;
   last_connected_at: string | null;
   error_message: string | null;
   discovered_tools: { name: string }[];
@@ -327,15 +331,64 @@ export function ConnectorsView({
   };
 
   const handleReconnectMCP = async (id: string) => {
+    const server = mcpServers.find((s) => s.id === id);
+    if (!server) return;
+
     try {
+      // Mark as active first
       await fetch(`/api/mcp-servers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: true }),
       });
+
+      // If OAuth server, trigger the OAuth flow instead of just reloading
+      if (server.auth_type === "oauth") {
+        const registryServer: RegistryServer = {
+          name: server.name,
+          url: server.url,
+          auth: "oauth",
+          description: "",
+          type: "mcp",
+          website: "",
+        };
+
+        // If we already have OAuth config, use it directly
+        if (server.oauth_authorize_url && server.oauth_client_id) {
+          const codeVerifier = generateCodeVerifier();
+          const codeChallenge = await generateCodeChallenge(codeVerifier);
+          const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
+          const stateObj = {
+            serverId: id,
+            tokenUrl: server.oauth_token_url ?? "",
+            clientId: server.oauth_client_id,
+            codeVerifier,
+          };
+          const state = btoa(JSON.stringify(stateObj))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+
+          const params = new URLSearchParams({
+            response_type: "code",
+            client_id: server.oauth_client_id,
+            redirect_uri: callbackUrl,
+            state,
+            code_challenge: codeChallenge,
+            code_challenge_method: "S256",
+          });
+          window.location.href = `${server.oauth_authorize_url}?${params}`;
+          return;
+        }
+
+        // Otherwise discover OAuth and start flow
+        await startOAuthFlow(id, registryServer);
+        return;
+      }
+
       window.location.reload();
-    } catch {
-      // silent
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "Reconnect failed");
     }
   };
 
@@ -401,37 +454,22 @@ export function ConnectorsView({
 
   const startOAuthFlow = async (serverId: string, server: RegistryServer) => {
     try {
-      const origin = new URL(server.url).origin;
-      const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
-        headers: { Accept: "application/json" },
+      // Use server-side proxy to avoid CORS on OAuth discovery
+      const res = await fetch("/api/mcp/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverUrl: server.url,
+          appName: "Layers",
+          callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
+        }),
       });
       if (!res.ok) throw new Error("OAuth discovery failed");
       const meta = await res.json();
 
-      const authorizeUrl = meta.authorization_endpoint ?? "";
-      const tokenUrl = meta.token_endpoint ?? "";
-      const registrationEndpoint = meta.registration_endpoint ?? "";
-      let clientId = meta.client_id ?? "";
-
-      if (registrationEndpoint && !clientId) {
-        const regRes = await fetch(registrationEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_name: "Layers",
-            redirect_uris: [`${window.location.origin}/api/mcp/oauth/callback`],
-            grant_types: ["authorization_code", "refresh_token"],
-            response_types: ["code"],
-            token_endpoint_auth_method: "none",
-          }),
-        });
-        if (regRes.ok) {
-          const regData = await regRes.json();
-          clientId = regData.client_id ?? "";
-        }
-      }
-
-      if (!clientId) clientId = window.location.origin;
+      const authorizeUrl = meta.authorizeUrl ?? "";
+      const tokenUrl = meta.tokenUrl ?? "";
+      const clientId = meta.clientId || window.location.origin;
 
       await fetch(`/api/mcp-servers/${serverId}`, {
         method: "PATCH",

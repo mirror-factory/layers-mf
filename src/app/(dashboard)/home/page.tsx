@@ -134,7 +134,7 @@ export default async function HomePage() {
       {/* Stats row */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         <StatCard title="Pending Approvals" value={pendingApprovals} icon={CheckCircle} href="/approvals" highlight={pendingApprovals > 0} />
-        <StatCard title="Unread Inbox" value={unreadInbox} icon={Inbox} href="/inbox" highlight={unreadInbox > 0} />
+        <StatCard title="Notifications" value={unreadInbox} icon={Inbox} href="/notifications" highlight={unreadInbox > 0} />
         <StatCard title="Context Items" value={totalDocs} icon={FileText} href="/context" />
         <StatCard title="Integrations" value={totalIntegrations} icon={Plug} href="/integrations" />
       </div>

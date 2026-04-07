@@ -260,7 +260,18 @@
 - Guest view portal — lightweight read-only UI for recipients who don't have Layers accounts
 - QR code sharing — generate QR codes for sandbox previews and shared documents
 
-**19. Advanced features**
+**19. Browser Automation (Browserbase)**
+- Browserbase integration ($20/mo Developer plan — 100 browser hours)
+- `browse_web` tool: navigate, click, type, screenshot, extract
+- Live view embedded in artifact panel (iframe with debuggerFullscreenUrl)
+- Session per conversation, heartbeat every 5min (10-min CDP timeout)
+- Browserbase Contexts for persistent auth (log in once, reuse cookies)
+- Model routing: Gemini Flash or Claude Sonnet for browser tasks (Ollama/local won't work)
+- Packages: @browserbasehq/sdk + playwright-core (skip Stagehand, ToolLoopAgent handles reasoning)
+- Screenshots as base64 JPEG inline in chat messages
+- Env: BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID
+
+**20. Advanced features**
 - Version diff (side-by-side comparison)
 - Artifact search (across all artifacts + versions)
 - Sandbox cost tracking UI (live timer, cumulative cost)

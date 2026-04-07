@@ -92,14 +92,14 @@ export function getActiveFormation(activeTools: string[]): Formation {
  * Based on what tools were used in that message.
  */
 export function getDoneFormation(toolsUsed: string[]): Formation {
-  if (toolsUsed.length === 0) return "done";
+  if (toolsUsed.length === 0) return "orbit";
 
   // Check if any tool has a specific done formation
   for (const tool of toolsUsed.reverse()) {
     if (TOOL_DONE_FORMATIONS[tool]) return TOOL_DONE_FORMATIONS[tool];
   }
 
-  return "done";
+  return "orbit";
 }
 
 /**
@@ -107,7 +107,7 @@ export function getDoneFormation(toolsUsed: string[]): Formation {
  * Simpler, calmer formations.
  */
 export function getOldFormation(): Formation {
-  return "idle";
+  return "orbit";
 }
 
 /**

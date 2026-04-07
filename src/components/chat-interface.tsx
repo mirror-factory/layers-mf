@@ -5,7 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, User, Square,
+  Send, Loader2, Square,
   FileText, Mic, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
@@ -15,7 +15,6 @@ import {
   Headphones, FolderOpen, CalendarClock, CheckCircle2, Puzzle, Wrench,
   BookOpen, Search, HelpCircle, ArrowDownToLine, ChevronLeft,
 } from "lucide-react";
-import { NeuralDots } from "@/components/ui/neural-dots";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
 import { CodeBlock } from "@/components/ai-elements/code-block";
@@ -649,6 +648,91 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         </div>
       );
     }
+    return null;
+  }
+
+  // connect_mcp_server tool: render OAuth connect button
+  if (part.type === "tool-connect_mcp_server") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Setting up MCP server...</span>
+        </div>
+      );
+    }
+    const result = output as { status?: string; name?: string; auth?: string; serverId?: string; message?: string; action?: { type: string; serverId: string; name: string; url: string; auth: string } } | undefined;
+    if (!result) return null;
+
+    if (result.status === "already_connected") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm my-1">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span>{result.name} is already connected</span>
+        </div>
+      );
+    }
+
+    if (result.action?.auth === "oauth") {
+      return (
+        <div className="rounded-lg border bg-card p-3 my-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <Plug className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{result.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">OAuth</span>
+          </div>
+          <p className="text-xs text-muted-foreground">{result.message}</p>
+          <a
+            href={`/connectors?connect=${result.action.serverId}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Connect with OAuth
+          </a>
+        </div>
+      );
+    }
+
+    if (result.action?.auth === "bearer") {
+      return (
+        <div className="rounded-lg border bg-card p-3 my-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <Plug className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{result.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">API Key</span>
+          </div>
+          <p className="text-xs text-muted-foreground">{result.message}</p>
+          <a
+            href={`/connectors?connect=${result.action.serverId}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Enter API Key
+          </a>
+        </div>
+      );
+    }
+
+    // No-auth server — auto-connected
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm my-1">
+        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+        <span>{result.name} connected — tools available next message</span>
+      </div>
+    );
+  }
+
+  // search_mcp_servers tool: render compact results
+  if (part.type === "tool-search_mcp_servers") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Search className="h-3.5 w-3.5 animate-pulse" />
+          <span>Searching MCP registries...</span>
+        </div>
+      );
+    }
+    // Let the AI format results in its response text — hide the raw tool output
     return null;
   }
 
@@ -1644,15 +1728,16 @@ interface ChatInterfaceInnerProps {
 function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
-  const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
-
-  // Switch to local model once we detect localhost (after hydration)
-  useEffect(() => {
-    if (isLocal && model === "google/gemini-3.1-flash-lite-preview") {
-      // Keep flash lite as default — local models are optional
-      // setModel("ollama/qwen3:8b");
+  const [model, setModelState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("granger-model") || "google/gemini-3.1-flash-lite-preview";
     }
-  }, [isLocal]); // eslint-disable-line react-hooks/exhaustive-deps
+    return "google/gemini-3.1-flash-lite-preview";
+  });
+  const setModel = useCallback((m: string) => {
+    setModelState(m);
+    localStorage.setItem("granger-model", m);
+  }, []);
   const [showContextBar, setShowContextBar] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [visualLevel, setVisualLevel] = useState<string>(() => {
@@ -2416,12 +2501,15 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            {shareOpen && conversationId && (
-              <SharePanel
-                conversationId={conversationId!}
-                onClose={() => setShareOpen(false)}
-              />
-            )}
+          </div>
+        )}
+        {/* Share panel — rendered as overlay when triggered from header */}
+        {shareOpen && conversationId && (
+          <div className="relative z-20 border-b">
+            <SharePanel
+              conversationId={conversationId!}
+              onClose={() => setShareOpen(false)}
+            />
           </div>
         )}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
@@ -2476,8 +2564,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             return (
               <div key={m.id} className={cn("flex gap-2 sm:gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 {m.role === "user" ? (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-                    <User className="h-4 w-4" />
+                  <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
+                    <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
                   </div>
                 ) : (
                   <>
@@ -2505,18 +2593,17 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                         return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
                       })() : (
-                        /* Older messages: lightweight pulsating dot to save CPU */
-                        <div className="flex items-center justify-center w-full h-full">
-                          <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/30" />
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60" />
-                          </span>
-                        </div>
+                        /* Older messages: small orbit avatar to save CPU */
+                        <NeuralMorph size={36} dotCount={8} formation="orbit" />
                       )}
                     </div>
-                    {/* Mobile: small colored dot instead of full avatar */}
-                    <div className="sm:hidden shrink-0 mt-1.5">
-                      <span className={cn("inline-block h-2 w-2 rounded-full", isStreaming ? "bg-primary animate-pulse" : "bg-primary/60")} />
+                    {/* Mobile: small NeuralMorph instead of plain dot */}
+                    <div className="sm:hidden shrink-0 mt-0.5">
+                      {isLastAssistant && isStreaming ? (
+                        <NeuralMorph size={20} dotCount={8} formation="active" />
+                      ) : (
+                        <NeuralMorph size={20} dotCount={6} formation="orbit" />
+                      )}
                     </div>
                   </>
                 )}
@@ -2537,7 +2624,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       .filter(p => p.type === "file");
                     if (fileParts.length === 0) return null;
                     return (
-                      <div className="flex flex-wrap gap-2 mb-1">
+                      <div className={cn("flex flex-wrap gap-2 mb-1", m.role === "user" && "justify-end")}>
                         {fileParts.map((fp, fi) => (
                           fp.mediaType?.startsWith("image/") ? (
                             <img

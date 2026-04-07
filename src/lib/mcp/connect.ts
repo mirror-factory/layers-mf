@@ -128,6 +128,38 @@ export async function connectMCPServer(options: {
   return { client, tools, toolNames };
 }
 
+/**
+ * Probe whether a server requires OAuth by checking for
+ * /.well-known/oauth-authorization-server at the server origin.
+ * Runs server-side so CORS is not an issue.
+ */
+export async function probeOAuthRequired(url: string): Promise<{
+  requiresOAuth: boolean;
+  authorizeUrl?: string;
+  tokenUrl?: string;
+  registrationEndpoint?: string;
+}> {
+  try {
+    const origin = new URL(url).origin;
+    const res = await fetch(`${origin}/.well-known/oauth-authorization-server`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { requiresOAuth: false };
+    const meta = await res.json();
+    const authorizeUrl = meta.authorization_endpoint;
+    if (!authorizeUrl) return { requiresOAuth: false };
+    return {
+      requiresOAuth: true,
+      authorizeUrl,
+      tokenUrl: meta.token_endpoint ?? undefined,
+      registrationEndpoint: meta.registration_endpoint ?? undefined,
+    };
+  } catch {
+    return { requiresOAuth: false };
+  }
+}
+
 export async function testMCPConnection(
   url: string,
   apiKey?: string,
@@ -137,6 +169,7 @@ export async function testMCPConnection(
   toolCount: number;
   toolNames: string[];
   error?: string;
+  requiresOAuth?: boolean;
 }> {
   try {
     const conn = await connectMCPServer({ url, apiKey, transportType });
@@ -148,11 +181,28 @@ export async function testMCPConnection(
     await conn.client.close();
     return result;
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const is401 = message.includes("401") || message.includes("Unauthorized") || message.includes("unauthorized");
+
+    // If we got a 401, probe the server for OAuth metadata
+    if (is401) {
+      const probe = await probeOAuthRequired(url);
+      if (probe.requiresOAuth) {
+        return {
+          success: false,
+          toolCount: 0,
+          toolNames: [],
+          error: "This server requires OAuth authentication. Click \"Connect with OAuth\" to authorize.",
+          requiresOAuth: true,
+        };
+      }
+    }
+
     return {
       success: false,
       toolCount: 0,
       toolNames: [],
-      error: err instanceof Error ? err.message : String(err),
+      error: message,
     };
   }
 }
