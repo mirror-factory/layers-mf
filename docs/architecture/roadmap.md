@@ -215,7 +215,52 @@
 - Test any new feature/variation automatically
 - CI pipeline: typecheck + unit + integration + e2e on every push
 
-**15. Advanced features**
+**15. Parallel Agents & AI SDK Advanced Features**
+- Parallel tool calling (multiple tools in one step, AI SDK v6 native)
+- Agent orchestration — spawn sub-agents from the main chat for complex tasks
+- Agent handoff — one agent delegates to another with context transfer
+- Background agents — long-running agents that work asynchronously and notify on completion
+- Agent memory — persistent memory across conversations (vector store + summarization)
+- Agent profiles — different system prompts for different task types (research, coding, PM)
+- Multi-model routing — use different models for different tools (fast model for search, flagship for code gen)
+
+**16. Image Generation & Media Tools**
+- Image generation via AI Gateway (DALL-E, Stable Diffusion, Flux, Recraft)
+- Image editing tools (inpaint, outpaint, upscale, background removal)
+- Image-to-text (describe images, extract text from screenshots)
+- Audio transcription (Whisper via Gateway)
+- Text-to-speech (ElevenLabs, OpenAI TTS via Gateway)
+- Video generation (when available via Gateway providers)
+- Media artifacts — images, audio, video stored alongside code/document artifacts
+- Gallery view in artifact panel for image collections
+
+**17. Content Authoring & Publishing**
+- In-chat content creation — ask AI to draft docs, then publish directly
+- Guided content authoring wizard (step-by-step doc creation with AI assist)
+- Publish to multiple destinations from one source:
+  - Public shareable link (already built for conversations)
+  - Shareable markdown/HTML docs with passcode or token auth
+  - Email sharing with token-protected links (Resend/SendGrid)
+  - SMS sharing with short links + passcodes (Twilio)
+  - Export to PDF, DOCX, or static HTML site
+- Sandbox publishing — snapshot a sandbox as a static site, deploy to Vercel
+- Content versioning with diff view (track all changes, restore any version)
+
+**18. Cross-Platform Sharing & Connectors**
+- Share Layers content TO other platforms:
+  - ChatGPT — share as a custom GPT knowledge file or conversation context
+  - Claude — share via MCP server (Layers as an MCP provider others connect to)
+  - Slack — post artifacts, documents, or chat summaries to channels
+  - Notion — sync documents bidirectionally (not just import)
+  - Email — send formatted content with token-protected view links
+  - Discord — bot that posts updates and allows queries
+- Layers as an MCP Server — expose your org's knowledge as an MCP endpoint that other tools can connect to
+- Guided connector setup — step-by-step wizard for connecting Layers to ChatGPT, Claude, Cursor, etc.
+- Token/passcode sharing — generate time-limited access tokens for specific content without requiring a Layers account
+- Guest view portal — lightweight read-only UI for recipients who don't have Layers accounts
+- QR code sharing — generate QR codes for sandbox previews and shared documents
+
+**19. Advanced features**
 - Version diff (side-by-side comparison)
 - Artifact search (across all artifacts + versions)
 - Sandbox cost tracking UI (live timer, cumulative cost)
@@ -223,6 +268,8 @@
 - Content marketplace (publish collections as knowledge packs)
 - Voice/live transcription (Gemini Live API)
 - Vertical templates (HR, customer support, research)
+- Canvas/whiteboard — visual collaboration space with AI assist
+- Workflow builder — visual tool for creating multi-step automations
 
 ---
 
