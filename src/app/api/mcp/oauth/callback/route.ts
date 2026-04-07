@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   // Parse state — contains serverId and the MCP server's token endpoint
   // Accept both standard base64 and base64url encoding
-  let stateData: { serverId: string; tokenUrl: string; clientId: string; clientSecret?: string; codeVerifier?: string };
+  let stateData: { serverId: string; tokenUrl: string; clientId: string; clientSecret?: string; codeVerifier?: string; returnTo?: string };
   try {
     // Normalize base64url to standard base64 before decoding
     const normalized = state.replace(/-/g, "+").replace(/_/g, "/");
@@ -130,8 +130,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const returnTo = stateData.returnTo || "/connectors";
     return NextResponse.redirect(
-      new URL("/connectors?success=OAuth+connected+successfully", request.url)
+      new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}mcp_connected=${encodeURIComponent(stateData.serverId)}`, request.url)
     );
   } catch (err) {
     console.error("OAuth callback error:", err);

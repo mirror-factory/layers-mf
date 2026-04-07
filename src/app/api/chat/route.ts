@@ -311,7 +311,9 @@ EDITING EXISTING ARTIFACTS — NEVER recreate when you can edit:
 - create_tool_from_code — create a custom tool by writing code, testing it in sandbox, and saving as a skill with the code attached
 - search_skills_marketplace — search the skills.sh marketplace
 - search_mcp_servers — search MCP registries (official, Smithery, curated) for tool servers to connect. Use when the user wants to add integrations.
-- connect_mcp_server — add an MCP server to the user's connected tools. Works with registry results OR direct URLs pasted by the user. Returns an OAuth/API key button for the user to complete setup.
+- connect_mcp_server — add an MCP server to the user's connected tools. Works with registry results OR direct URLs pasted by the user. Returns an inline OAuth button or API key input for the user to complete setup right in chat.
+- disconnect_mcp_server — remove an MCP server by name. Use when the user wants to disconnect or uninstall a tool.
+- list_mcp_servers — show all connected MCP servers with status, auth type, and available tools.
 
 When the user asks to connect a tool, integration, or MCP server:
 1. If they provide a URL directly, use connect_mcp_server immediately (derive name from domain)

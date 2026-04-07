@@ -655,7 +655,7 @@ function MCPOAuthCard({ name, serverId, url }: { name: string; serverId: string;
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
       const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
       const callbackUrl = `${window.location.origin}/api/mcp/oauth/callback`;
-      const stateObj = { serverId, tokenUrl, clientId, codeVerifier: verifier };
+      const stateObj = { serverId, tokenUrl, clientId, codeVerifier: verifier, returnTo: window.location.pathname + window.location.search };
       const state = btoa(JSON.stringify(stateObj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
       const params = new URLSearchParams({
@@ -821,7 +821,7 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     );
   }
 
-  // search_mcp_servers tool: render compact results
+  // search_mcp_servers tool: compact loading state
   if (part.type === "tool-search_mcp_servers") {
     if (!isDone) {
       return (
@@ -831,7 +831,41 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         </div>
       );
     }
-    // Let the AI format results in its response text — hide the raw tool output
+    return null;
+  }
+
+  // disconnect_mcp_server tool: show result
+  if (part.type === "tool-disconnect_mcp_server") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Disconnecting...</span>
+        </div>
+      );
+    }
+    const result = output as { status?: string; name?: string; message?: string } | undefined;
+    if (result?.status === "disconnected") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm my-1">
+          <X className="h-4 w-4 text-amber-500 shrink-0" />
+          <span>{result.name} disconnected</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // list_mcp_servers tool: hide (AI formats in text)
+  if (part.type === "tool-list_mcp_servers") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Checking connected tools...</span>
+        </div>
+      );
+    }
     return null;
   }
 

@@ -2559,6 +2559,88 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
         }
       },
     }),
+
+    disconnect_mcp_server: tool({
+      description:
+        "Disconnect and remove an MCP server from the user's workspace. " +
+        "Use when the user asks to disconnect, remove, or uninstall an MCP tool/integration. " +
+        "Accepts either the server name or ID.",
+      inputSchema: z.object({
+        name: z.string().describe("Name of the MCP server to disconnect (e.g. 'GitHub', 'Canva')"),
+      }),
+      execute: async ({ name }: { name: string }) => {
+        try {
+          // Find the server by name (case-insensitive)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: servers } = await (supabase as any)
+            .from("mcp_servers")
+            .select("id, name, url")
+            .eq("org_id", orgId)
+            .ilike("name", name);
+
+          if (!servers || servers.length === 0) {
+            return { error: `No MCP server named "${name}" found. Check the name and try again.` };
+          }
+
+          const server = servers[0];
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: deleteError } = await (supabase as any)
+            .from("mcp_servers")
+            .delete()
+            .eq("id", server.id);
+
+          if (deleteError) {
+            return { error: `Failed to disconnect: ${deleteError.message}` };
+          }
+
+          return {
+            status: "disconnected",
+            name: server.name,
+            message: `${server.name} has been disconnected and removed. Its tools will no longer be available.`,
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Disconnect failed" };
+        }
+      },
+    }),
+
+    list_mcp_servers: tool({
+      description:
+        "List all currently connected MCP servers in the user's workspace. " +
+        "Shows name, status, auth type, and available tools. " +
+        "Use when the user asks what tools/integrations are connected, or to check MCP status.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: servers } = await (supabase as any)
+            .from("mcp_servers")
+            .select("id, name, url, is_active, auth_type, error_message, discovered_tools, last_connected_at")
+            .eq("org_id", orgId)
+            .order("created_at", { ascending: false });
+
+          if (!servers || servers.length === 0) {
+            return { count: 0, servers: [], message: "No MCP servers connected. Use search_mcp_servers to find and connect tools." };
+          }
+
+          return {
+            count: servers.length,
+            servers: servers.map((s: { id: string; name: string; url: string; is_active: boolean; auth_type: string; error_message: string | null; discovered_tools: { name: string }[] | null; last_connected_at: string | null }) => ({
+              name: s.name,
+              status: s.error_message ? "error" : s.is_active ? "connected" : "disconnected",
+              auth: s.auth_type ?? "none",
+              error: s.error_message,
+              tools: (s.discovered_tools ?? []).map(t => t.name),
+              toolCount: (s.discovered_tools ?? []).length,
+              lastConnected: s.last_connected_at,
+            })),
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Failed to list servers" };
+        }
+      },
+    }),
   };
 
   return applyPermissions(allTools, permissions);
