@@ -225,14 +225,17 @@ export default function ChatPage() {
         </div>
       </aside>
 
+      {/* Hide global mobile header when chat is showing its own */}
+      <style>{`@media (max-width: 767px) { .sidebar-mobile-header { display: none !important; } }`}</style>
+
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="border-b px-3 py-1.5 shrink-0">
+        {/* Chat header — includes safe-top on mobile since global header is hidden */}
+        <div className="border-b px-3 py-1.5 shrink-0 safe-top">
           <div className="flex items-center gap-1.5">
-            {/* Sidebar toggle — always visible */}
+            {/* Mobile: hamburger / Desktop: panel toggle */}
             <button
               onClick={() => {
-                // Mobile: toggle sidebar overlay. Desktop: toggle panel
                 if (window.innerWidth < 768) setSidebarOpen(true);
                 else togglePanel();
               }}
@@ -242,12 +245,23 @@ export default function ChatPage() {
                   ? "text-muted-foreground hover:text-foreground hover:bg-muted"
                   : "text-primary hover:bg-primary/10"
               )}
-              aria-label={panelVisible ? "Hide conversations" : "Show conversations"}
+              aria-label="Menu"
               title={panelVisible ? "Hide conversations" : "Show conversations"}
             >
               {panelVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
-            {/* New chat — always visible, accent color */}
+
+            {/* Chat title -- conversation name on mobile, "Chat with Granger" on desktop */}
+            <span className="flex-1 text-xs text-muted-foreground truncate text-center md:text-left">
+              <span className="md:hidden">
+                {activeId
+                  ? (conversations.find((c) => c.id === activeId)?.title ?? "New conversation")
+                  : "New chat"}
+              </span>
+              <span className="hidden md:inline">Chat with Granger</span>
+            </span>
+
+            {/* New chat -- always visible */}
             <button
               onClick={createConversation}
               className="inline-flex items-center justify-center rounded-md p-1.5 text-primary hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
@@ -256,15 +270,11 @@ export default function ChatPage() {
             >
               <Plus className="h-4 w-4" />
             </button>
-            <div className="flex-1" />
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Chat with Granger
-            </span>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
           {activeId ? (
-            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} />
+            <ChatInterface key={activeId} conversationId={activeId} initialTemplateId={templateParam} initialPrompt={initialPrompt} onConversationUpdated={fetchConversations} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mb-2" />
