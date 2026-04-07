@@ -56,6 +56,8 @@ const ALLOWED_MODELS = new Set([
   "google/gemini-3.1-flash-lite-preview", // legacy ID
   "openai/gpt-5-nano",
   "google/gemini-3.1-flash-lite-preview",
+  // Local (Ollama — dev only, requires Ollama running on localhost:11434)
+  "ollama/gemma4:26b",
   // Legacy (in case old conversations reference these)
   "openai/gpt-4o-mini",
   "openai/gpt-4o",
@@ -63,6 +65,11 @@ const ALLOWED_MODELS = new Set([
   "google/gemini-pro",
   "anthropic/claude-sonnet-4.5",
 ]);
+
+/** Check if a model ID is a local Ollama model */
+function isOllamaModel(modelId: string): boolean {
+  return modelId.startsWith("ollama/");
+}
 
 
 function getVisualInstructions(level: string): string {
@@ -681,8 +688,15 @@ export async function POST(request: NextRequest) {
   // Derive model tier for observability logging
   const modelTier = modelId.split("/").pop()?.split("-")[1] ?? "unknown";
 
-  // Wrap the model with compaction middleware to auto-summarize long conversations
-  const baseModel = gateway(modelId);
+  // Select model: Ollama for local models, AI Gateway for cloud models
+  let baseModel;
+  if (isOllamaModel(modelId)) {
+    const { ollama } = await import("ollama-ai-provider-v2");
+    const ollamaModelName = modelId.replace("ollama/", "");
+    baseModel = ollama(ollamaModelName);
+  } else {
+    baseModel = gateway(modelId);
+  }
   const compactedModel = wrapLanguageModel({
     model: baseModel,
     middleware: createCompactionMiddleware(getContextWindow(modelId)),
