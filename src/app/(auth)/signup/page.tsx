@@ -47,16 +47,31 @@ export default function SignupPage() {
     setGoogleLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const siteUrl = "https://layers.hustletogether.com";
+    let isNative = false;
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      isNative = Capacitor.isNativePlatform();
+    } catch { /* not in Capacitor */ }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://layers.hustletogether.com"}/auth/callback?next=/onboarding`,
+        redirectTo: isNative ? "granger://auth/callback?next=/onboarding" : `${siteUrl}/auth/callback?next=/onboarding`,
+        skipBrowserRedirect: isNative,
+        queryParams: isNative ? { prompt: "select_account" } : undefined,
       },
     });
 
     if (error) {
       setError(error.message);
       setGoogleLoading(false);
+      return;
+    }
+
+    if (isNative && data?.url) {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url: data.url, presentationStyle: "popover" });
     }
   }
 
