@@ -853,38 +853,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      const toolCallsArray = Object.entries(toolCallCounts).map(([tool, count]) => ({ tool, count }));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const agentRunInsert = {
-        org_id: orgId,
-        user_id: userId,
-        model: modelId,
-        query,
-        step_count: runStepCount,
-        finish_reason: "stop",
-        total_input_tokens: totalInputTokens,
-        total_output_tokens: totalOutputTokens,
-        cache_read_tokens: totalCacheReadTokens ?? 0,
-        cache_write_tokens: totalCacheWriteTokens ?? 0,
-        duration_ms: Date.now() - startTime,
-        tool_calls: toolCallsArray,
-        gateway_cost_usd: totalGatewayCost > 0 ? totalGatewayCost : 0,
-        conversation_id: conversationId,
-        step_details: stepStats.length > 0 ? stepStats : null,
-        error: null,
-      };
-      console.log(`[chat] Saving agent_run: model=${modelId} conv=${conversationId} dur=${agentRunInsert.duration_ms}ms in=${totalInputTokens} out=${totalOutputTokens} cache_r=${totalCacheReadTokens} steps=${stepStats.length}`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (adminDb as any)
-        .from("agent_runs")
-        .insert(agentRunInsert)
-        .then(({ error: insertErr }: { error: { message: string } | null }) => {
-          if (insertErr) {
-            console.error("[chat] agent_run insert FAILED:", insertErr.message);
-          } else {
-            console.log("[chat] agent_run saved successfully");
-          }
-        });
+      // agent_run insert happens in createAgentUIStreamResponse onFinish (below)
+      // to avoid duplicate inserts
 
       // Compound loop: store substantial AI responses as searchable context items
       if (assistantText.length > 200) {
