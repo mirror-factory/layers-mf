@@ -43,8 +43,6 @@
     "@json-render/react": "^0.16.0",
     "@json-render/shadcn": "^0.16.0",
     "@linear/sdk": "^80.0.0",
-    "@nangohq/frontend": "^0.69.40",
-    "@nangohq/node": "^0.69.40",
     "@notionhq/client": "^5.16.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

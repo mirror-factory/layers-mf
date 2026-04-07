@@ -31,9 +31,6 @@
     "src/app/api/ingest/upload/route.ts": {
       "maxDuration": 30
     },
-    "src/app/api/integrations/*/sync/route.ts": {
-      "maxDuration": 30
-    },
     "src/app/api/webhooks/*/route.ts": {
       "maxDuration": 30
     },
@@ -46,20 +43,8 @@
     "src/app/api/cron/credit-reset/route.ts": {
       "maxDuration": 300
     },
-    "src/app/api/cron/drive-watch-renewal/route.ts": {
-      "maxDuration": 300
-    },
-    "src/app/api/cron/discord-alerts/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/ingest/route.ts": {
-      "maxDuration": 60
-    },
     "src/app/api/cron/synthesis/route.ts": {
       "maxDuration": 60
-    },
-    "src/app/api/cron/linear-check/route.ts": {
-      "maxDuration": 30
     },
     "src/app/api/cron/execute-schedules/route.ts": {
       "maxDuration": 60
