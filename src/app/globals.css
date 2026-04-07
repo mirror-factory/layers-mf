@@ -3,13 +3,19 @@
 @tailwind utilities;
 
 /* Safe area insets for iOS notch/home indicator */
-@layer utilities {
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
+/* Using plain classes (not @layer utilities) so CSS env() is guaranteed to work
+   even when Tailwind's JIT compiler strips or mishandles arbitrary env() values. */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Mobile viewport fix for Capacitor — extend into safe areas */

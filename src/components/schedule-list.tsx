@@ -72,7 +72,7 @@ type Frequency = "once" | "daily" | "weekly" | "interval";
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const DAY_CRON_VALUES = [1, 2, 3, 4, 5, 6, 0] as const;
 
-const MINUTE_OPTIONS = ["00", "15", "30", "45"] as const;
+// MINUTE_OPTIONS removed -- replaced by native time input
 
 const STATUS_BADGE_STYLES: Record<string, string> = {
   active: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
@@ -376,35 +376,19 @@ function SchedulePicker({ value, onChange }: SchedulePickerProps) {
       {(frequency === "once" || frequency === "daily" || frequency === "weekly") && (
         <div>
           <label className="block text-[11px] text-muted-foreground mb-1">Time</label>
-          <div className="flex items-center gap-2">
-            <select
-              value={hour}
-              onChange={(e) => setHour(parseInt(e.target.value, 10))}
-              className="rounded-md border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-            <span className="text-muted-foreground">:</span>
-            <select
-              value={minute}
-              onChange={(e) => setMinute(e.target.value)}
-              className="rounded-md border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {MINUTE_OPTIONS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as "AM" | "PM")}
-              className="rounded-md border bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
+          <input
+            type="time"
+            value={`${String(hour === 12 ? (period === "AM" ? 0 : 12) : period === "PM" ? hour + 12 : hour).padStart(2, "0")}:${minute}`}
+            onChange={(e) => {
+              const [hStr, mStr] = e.target.value.split(":");
+              const h24 = parseInt(hStr ?? "0", 10);
+              const m = mStr ?? "00";
+              setHour(h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24);
+              setMinute(m);
+              setPeriod(h24 >= 12 ? "PM" : "AM");
+            }}
+            className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
       )}
 
@@ -478,11 +462,20 @@ function SchedulePicker({ value, onChange }: SchedulePickerProps) {
 
 // ── Schedule Form (used in Dialog for create, inline for edit) ──
 
+const SCHEDULE_MODEL_OPTIONS = [
+  { value: "google/gemini-3-flash", label: "Gemini 3 Flash (fast, cheapest)" },
+  { value: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6 (balanced)" },
+  { value: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6 (best quality)" },
+  { value: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini (balanced)" },
+  { value: "google/gemini-3.1-flash-lite-preview", label: "Gemini Flash Lite (fastest)" },
+] as const;
+
 function ScheduleForm({
   mode,
   initialName,
   initialPrompt,
   initialSchedule,
+  initialModel,
   onSubmit,
   onCancel,
   submitting,
@@ -491,13 +484,15 @@ function ScheduleForm({
   initialName: string;
   initialPrompt: string;
   initialSchedule: string;
-  onSubmit: (data: { name: string; prompt: string; schedule: string }) => void;
+  initialModel?: string;
+  onSubmit: (data: { name: string; prompt: string; schedule: string; model: string }) => void;
   onCancel: () => void;
   submitting: boolean;
 }) {
   const [name, setName] = useState(initialName);
   const [prompt, setPrompt] = useState(initialPrompt);
   const [cronValue, setCronValue] = useState(initialSchedule);
+  const [scheduleModel, setScheduleModel] = useState(initialModel ?? "google/gemini-3-flash");
   const [, setHumanLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -522,7 +517,7 @@ function ScheduleForm({
       return;
     }
     setError(null);
-    onSubmit({ name: name.trim(), prompt: prompt.trim(), schedule: cronValue.trim() });
+    onSubmit({ name: name.trim(), prompt: prompt.trim(), schedule: cronValue.trim(), model: scheduleModel });
   };
 
   return (
@@ -556,6 +551,19 @@ function ScheduleForm({
       </div>
 
       <SchedulePicker value={cronValue} onChange={handleScheduleChange} />
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Model</label>
+        <select
+          value={scheduleModel}
+          onChange={(e) => setScheduleModel(e.target.value)}
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          {SCHEDULE_MODEL_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
 
       {error && (
         <p className="text-xs text-destructive flex items-center gap-1">
@@ -602,7 +610,7 @@ function ScheduleRow({
   onToggleStatus: () => void;
   onDelete: () => void;
   onRunNow: () => void;
-  onSubmitEdit: (data: { name: string; prompt: string; schedule: string }) => void;
+  onSubmitEdit: (data: { name: string; prompt: string; schedule: string; model: string }) => void;
   editSubmitting: boolean;
 }) {
   const promptPreview = getPromptFromSchedule(schedule);
@@ -733,6 +741,7 @@ function ScheduleRow({
             initialName={schedule.name}
             initialPrompt={getPromptFromSchedule(schedule)}
             initialSchedule={schedule.schedule}
+            initialModel={(schedule.payload as Record<string, unknown> | null)?.model as string | undefined}
             onSubmit={onSubmitEdit}
             onCancel={onCancelEdit}
             submitting={editSubmitting}
@@ -1188,7 +1197,7 @@ export function ScheduleList({
     }
   };
 
-  const handleCreate = async (data: { name: string; prompt: string; schedule: string }) => {
+  const handleCreate = async (data: { name: string; prompt: string; schedule: string; model: string }) => {
     setSubmitting(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -1198,6 +1207,7 @@ export function ScheduleList({
           name: data.name,
           prompt: data.prompt,
           schedule: data.schedule,
+          model: data.model,
         }),
       });
       if (res.ok) {
@@ -1211,7 +1221,7 @@ export function ScheduleList({
     }
   };
 
-  const handleEdit = async (scheduleId: string, data: { name: string; prompt: string; schedule: string }) => {
+  const handleEdit = async (scheduleId: string, data: { name: string; prompt: string; schedule: string; model: string }) => {
     setEditSubmitting(true);
     try {
       const res = await fetch(`/api/schedules/${scheduleId}`, {
@@ -1221,6 +1231,7 @@ export function ScheduleList({
           name: data.name,
           prompt: data.prompt,
           schedule: data.schedule,
+          model: data.model,
         }),
       });
       if (res.ok) {

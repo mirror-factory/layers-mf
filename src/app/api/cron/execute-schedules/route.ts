@@ -9,7 +9,7 @@ import { searchContext, searchContextChunks } from "@/lib/db/search";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-const SCHEDULE_MODEL = "google/gemini-3-flash";
+const DEFAULT_SCHEDULE_MODEL = "google/gemini-3-flash";
 
 const SYSTEM_PROMPT = `You are Granger, an AI assistant running a scheduled background task.
 You have access to a knowledge base via search_context. Use it when the user's prompt requires looking up information.
@@ -152,9 +152,10 @@ export async function GET(request: NextRequest) {
 
       // 3. Run AI with generateText
       const tools = createScheduleTools(supabase, orgId);
+      const scheduleModel = (schedule.payload?.model as string) ?? DEFAULT_SCHEDULE_MODEL;
 
       const { text } = await generateText({
-        model: gateway(SCHEDULE_MODEL),
+        model: gateway(scheduleModel),
         system: SYSTEM_PROMPT,
         prompt,
         tools,

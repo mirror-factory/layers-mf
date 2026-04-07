@@ -24,7 +24,7 @@ export async function PATCH(
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const body = await request.json();
-  const { status, name, prompt, schedule } = body;
+  const { status, name, prompt, schedule, model } = body;
 
   // Build update object with only provided fields
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,6 +61,24 @@ export async function PATCH(
 
     const existingPayload = (current?.payload as Record<string, unknown>) ?? {};
     updates.payload = { ...existingPayload, prompt: prompt.trim() };
+  }
+
+  if (model !== undefined) {
+    // Merge model into payload (may already have been set by prompt block above)
+    if (updates.payload) {
+      updates.payload = { ...updates.payload, model };
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: current } = await (supabase as any)
+        .from("scheduled_actions")
+        .select("payload")
+        .eq("id", id)
+        .eq("org_id", member.org_id)
+        .single();
+
+      const existingPayload = (current?.payload as Record<string, unknown>) ?? {};
+      updates.payload = { ...existingPayload, model };
+    }
   }
 
   if (schedule !== undefined) {

@@ -516,6 +516,9 @@ const INLINE_LIBS = [
   "https://cdn.jsdelivr.net/npm/roughjs@4/bundled/rough.js",
   "https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js",
   "https://cdn.jsdelivr.net/npm/canvas-confetti@1/dist/confetti.browser.js",
+  "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
+  "https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js",
+  "https://cdn.jsdelivr.net/npm/three@0.170/build/three.min.js",
 ];
 
 /**
@@ -561,17 +564,44 @@ function InlineHtmlBlock({ html }: { html: string }) {
     // Set HTML
     container.innerHTML = htmlOnly;
 
+    // Post-process iframes: allow YouTube/Vimeo embeds with sandboxing
+    const iframes = container.querySelectorAll("iframe");
+    for (const iframe of iframes) {
+      const src = iframe.getAttribute("src") || "";
+      if (src.includes("youtube.com") || src.includes("youtu.be") || src.includes("vimeo.com")) {
+        iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
+        iframe.style.width = "100%";
+        iframe.style.aspectRatio = "16/9";
+        iframe.style.borderRadius = "8px";
+      }
+    }
+
     // Execute scripts after a delay (let CDN libs load)
     const timer = setTimeout(() => {
       for (const code of scripts) {
         try {
           // Set Chart.js dark defaults before each script
-          if (typeof (window as unknown as Record<string, unknown>).Chart !== "undefined") {
-            const C = (window as unknown as Record<string, { defaults: Record<string, unknown> }>).Chart;
-            C.defaults.color = "#9ca3af";
-            C.defaults.borderColor = "rgba(255,255,255,0.06)";
-            C.defaults.responsive = true;
-            C.defaults.maintainAspectRatio = false;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ChartJS = (window as any).Chart;
+          if (typeof ChartJS !== "undefined") {
+            ChartJS.defaults.color = "#9ca3af";
+            ChartJS.defaults.borderColor = "rgba(255,255,255,0.06)";
+            ChartJS.defaults.responsive = true;
+            ChartJS.defaults.maintainAspectRatio = false;
+            ChartJS.defaults.plugins = ChartJS.defaults.plugins || {};
+            ChartJS.defaults.plugins.legend = ChartJS.defaults.plugins.legend || {};
+            ChartJS.defaults.plugins.legend.labels = ChartJS.defaults.plugins.legend.labels || {};
+            ChartJS.defaults.plugins.legend.labels.usePointStyle = true;
+            ChartJS.defaults.plugins.legend.labels.pointStyleWidth = 8;
+            ChartJS.defaults.font = ChartJS.defaults.font || {};
+            ChartJS.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+          }
+          // Initialize Mermaid if available
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mermaidLib = (window as any).mermaid;
+          if (typeof mermaidLib !== "undefined") {
+            mermaidLib.initialize({ theme: "dark", startOnLoad: true });
+            mermaidLib.run();
           }
           const fn = new Function(code);
           fn();
