@@ -26,7 +26,7 @@ function parseDate(date: Date | string | null | undefined): Date | null {
 /** Calculate days between two dates */
 function daysBetween(a: Date, b: Date): number {
   const ms = Math.abs(b.getTime() - a.getTime());
-  return ms / (1000 * 60 * 60 * 24);
+  return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
 /** Check if an item is stale based on its content_type and last update */
