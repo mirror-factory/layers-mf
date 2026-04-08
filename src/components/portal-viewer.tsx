@@ -23,6 +23,7 @@ import {
   FileText,
   BookOpen,
   X,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -239,6 +240,143 @@ function formatTime(seconds: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Presentation Overlay — fullscreen slide-by-slide PDF view
+// ---------------------------------------------------------------------------
+
+interface PresentationOverlayProps {
+  pdfUrl: string | null;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onExit: () => void;
+  brandColor: string;
+}
+
+function PresentationOverlay({ pdfUrl, currentPage, totalPages, onPageChange, onExit, brandColor }: PresentationOverlayProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Measure container
+  useEffect(() => {
+    const measure = () => {
+      setContainerSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onExit();
+      } else if (e.key === "ArrowRight" || e.key === " ") {
+        e.preventDefault();
+        if (currentPage < totalPages) onPageChange(currentPage + 1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (currentPage > 1) onPageChange(currentPage - 1);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [currentPage, totalPages, onPageChange, onExit]);
+
+  // Click to advance
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // Don't advance if clicking on controls
+    if (target.closest("button")) return;
+    if (currentPage < totalPages) onPageChange(currentPage + 1);
+  }, [currentPage, totalPages, onPageChange]);
+
+  // Lazy-load react-pdf for presentation
+  const PresentationPage = useMemo(() => {
+    if (!pdfUrl) return null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Document, Page, pdfjs } = require("react-pdf");
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+    // Calculate page dimensions to fit viewport with padding
+    const padding = 64;
+    const maxWidth = containerSize.width - padding * 2;
+    const maxHeight = containerSize.height - padding * 2 - 48; // 48px for page indicator
+
+    return (
+      <Document file={pdfUrl} loading={null} error={null}>
+        <Page
+          pageNumber={currentPage}
+          width={maxWidth}
+          height={maxHeight}
+          renderTextLayer={false}
+          renderAnnotationLayer={false}
+          className="shadow-2xl"
+        />
+      </Document>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfUrl, currentPage, containerSize.width, containerSize.height]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black cursor-pointer"
+      onClick={handleClick}
+    >
+      {/* Navigation buttons — left/right edges */}
+      <button
+        onClick={(e) => { e.stopPropagation(); if (currentPage > 1) onPageChange(currentPage - 1); }}
+        disabled={currentPage <= 1}
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/10 p-3 text-white/60 hover:bg-white/20 hover:text-white transition-all disabled:opacity-0 disabled:pointer-events-none backdrop-blur-sm"
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); if (currentPage < totalPages) onPageChange(currentPage + 1); }}
+        disabled={currentPage >= totalPages}
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/10 p-3 text-white/60 hover:bg-white/20 hover:text-white transition-all disabled:opacity-0 disabled:pointer-events-none backdrop-blur-sm"
+        aria-label="Next slide"
+      >
+        <ChevronRight className="h-6 w-6" />
+      </button>
+
+      {/* Exit button — top right */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onExit(); }}
+        className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white/60 hover:bg-white/20 hover:text-white transition-all backdrop-blur-sm"
+        aria-label="Exit presentation (Esc)"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* PDF Page — centered */}
+      <div className="flex items-center justify-center">
+        {PresentationPage}
+      </div>
+
+      {/* Page indicator — bottom center */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+        <span className="text-sm font-medium text-white/80 tabular-nums">
+          {currentPage} / {totalPages}
+        </span>
+        {/* Progress bar */}
+        <div className="h-1 w-24 rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{
+              width: totalPages > 0 ? `${(currentPage / totalPages) * 100}%` : "0%",
+              backgroundColor: brandColor,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PortalViewer
 // ---------------------------------------------------------------------------
 
@@ -257,6 +395,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [totalPages, setTotalPages] = useState(portal.page_count ?? 0);
   const [chatOpen, setChatOpen] = useState(false);
   const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
+  const [presentationMode, setPresentationMode] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef<HTMLDivElement | null>(null);
 
@@ -385,9 +524,20 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, []);
 
   // ---- Text action from bubble menu ----
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+
   const handleTextAction = useCallback(
     (action: TextAction, text: string) => {
-      addContextTag(text);
+      const truncated = text.length > 200 ? text.slice(0, 200) + "..." : text;
+      if (action === "send_to_chat") {
+        addContextTag(text);
+      } else if (action === "explain") {
+        setPendingPrompt(`Explain this section: "${truncated}"`);
+      } else if (action === "visualize") {
+        setPendingPrompt(`Visualize this data as a chart: "${truncated}"`);
+      } else if (action === "research") {
+        setPendingPrompt(`Research and fact-check this claim: "${truncated}"`);
+      }
       setChatOpen(true);
     },
     [addContextTag]
@@ -428,45 +578,70 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // ---------------------------------------------------------------------------
   // TOC sidebar panel
   // ---------------------------------------------------------------------------
-  const tocPanel = showToc && tocEntries.length > 0 ? (
-    <div className="w-64 shrink-0 overflow-y-auto border-r border-white/5 bg-[hsl(168,14%,5%)]/60 backdrop-blur-xl">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[hsl(168,14%,5%)]/80 px-3 py-2 backdrop-blur-xl">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowToc(false)}
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+  const tocContent = tocEntries.length > 0 ? (
+    <nav className="p-2">
+      {tocEntries.map((entry) => (
+        <button
+          key={entry.id}
+          onClick={() => { handleTocNavigate(entry.estimatedPage); if (typeof window !== "undefined" && window.innerWidth < 768) setShowToc(false); }}
+          className={cn(
+            "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/5",
+            entry.estimatedPage === currentPage
+              ? "bg-white/5 text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+          style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      <nav className="p-2">
-        {tocEntries.map((entry) => (
-          <button
-            key={entry.id}
-            onClick={() => handleTocNavigate(entry.estimatedPage)}
-            className={cn(
-              "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/5",
-              entry.estimatedPage === currentPage
-                ? "bg-white/5 text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
+          <span className="shrink-0 tabular-nums text-muted-foreground/50" style={{ minWidth: "20px" }}>
+            {entry.estimatedPage}
+          </span>
+          <span className={cn(
+            "line-clamp-2",
+            entry.level === 1 && "font-medium"
+          )}>
+            {entry.title}
+          </span>
+        </button>
+      ))}
+    </nav>
+  ) : null;
+
+  // Desktop: sidebar TOC panel
+  const tocPanel = showToc && tocEntries.length > 0 ? (
+    <>
+      {/* Mobile: fullscreen overlay */}
+      <div className="fixed inset-0 z-[100] flex flex-col bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl md:hidden">
+        <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+          <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowToc(false)}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
-            <span className="shrink-0 tabular-nums text-muted-foreground/50" style={{ minWidth: "20px" }}>
-              {entry.estimatedPage}
-            </span>
-            <span className={cn(
-              "line-clamp-2",
-              entry.level === 1 && "font-medium"
-            )}>
-              {entry.title}
-            </span>
-          </button>
-        ))}
-      </nav>
-    </div>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {tocContent}
+        </div>
+      </div>
+      {/* Desktop: sidebar */}
+      <div className="hidden md:block w-64 shrink-0 overflow-y-auto border-r border-white/5 bg-[hsl(168,14%,5%)]/60 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[hsl(168,14%,5%)]/80 px-3 py-2 backdrop-blur-xl">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowToc(false)}
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {tocContent}
+      </div>
+    </>
   ) : null;
 
   // ---------------------------------------------------------------------------
@@ -500,6 +675,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     </div>
   ) : null;
 
+  const handlePresentationPageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
   return (
     <div
       className={cn(
@@ -507,6 +686,18 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         distractionFree && "portal-distraction-free"
       )}
     >
+      {/* Presentation mode overlay */}
+      {presentationMode && (
+        <PresentationOverlay
+          pdfUrl={activePdfUrl}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePresentationPageChange}
+          onExit={() => setPresentationMode(false)}
+          brandColor={brandColor}
+        />
+      )}
+
       {/* Audio element (hidden) */}
       {portal.audio_url && (
         <audio
@@ -596,9 +787,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               </div>
             )}
 
-            {/* Zoom controls — merged into header */}
+            {/* Zoom controls — merged into header, hidden on mobile */}
             {pdfControls && pdfControls.numPages > 0 && (
-              <div className="flex items-center gap-0.5 mr-2 border-r border-white/10 pr-2">
+              <div className="hidden md:flex items-center gap-0.5 mr-2 border-r border-white/10 pr-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -691,6 +882,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               )}
             </Button>
 
+            {/* Presentation mode — only when PDF is loaded */}
+            {activePdfUrl && totalPages > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setPresentationMode(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Presentation mode"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -761,6 +965,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               apiEndpoint="/api/chat/portal"
               extraHeaders={extraHeaders}
               portalMode
+              portalTitle={activeDoc?.title || portal.title}
+              portalClientName={portal.client_name ?? undefined}
+              initialPrompt={pendingPrompt}
             />
           </div>
         </div>
@@ -787,9 +994,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               />
             </div>
 
-            {/* Floating chat popup — centered, narrow, collapsible */}
+            {/* Floating chat popup — centered, narrow, collapsible; full-width on mobile */}
             <div className={cn(
-              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-4",
+              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-2 md:px-4",
               distractionFree && "opacity-80 hover:opacity-100 transition-opacity"
             )}>
               <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -834,6 +1041,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                       apiEndpoint="/api/chat/portal"
                       extraHeaders={extraHeaders}
                       portalMode
+                      portalBrandColor={brandColor}
+                      portalTitle={activeDoc?.title || portal.title}
                     />
                   </div>
                 </div>

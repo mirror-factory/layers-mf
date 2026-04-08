@@ -1674,9 +1674,15 @@ interface ChatInterfaceProps {
   extraHeaders?: Record<string, string>;
   /** Hide features not needed in embedded/portal mode */
   portalMode?: boolean;
+  /** Portal branding — document title for empty state */
+  portalTitle?: string;
+  /** Portal branding — client name */
+  portalClientName?: string;
+  /** Portal branding — brand color for send button and accents */
+  portalBrandColor?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1726,6 +1732,9 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       apiEndpoint={apiEndpoint}
       extraHeaders={extraHeaders}
       portalMode={portalMode}
+      portalTitle={portalTitle}
+      portalClientName={portalClientName}
+      portalBrandColor={portalBrandColor}
     />
   );
 }
@@ -1740,9 +1749,12 @@ interface ChatInterfaceInnerProps {
   apiEndpoint?: string;
   extraHeaders?: Record<string, string>;
   portalMode?: boolean;
+  portalTitle?: string;
+  portalClientName?: string;
+  portalBrandColor?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2542,20 +2554,37 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div className="max-w-4xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <div className="mb-3 opacity-60">
-                <NeuralMorph size={48} dotCount={14} formation="bloom" />
-              </div>
-              <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
-              <p className="text-xs mt-1">Granger searches your documents, meetings, and notes to answer.</p>
+              {!portalMode && (
+                <div className="mb-3 opacity-60">
+                  <NeuralMorph size={48} dotCount={14} formation="bloom" />
+                </div>
+              )}
+              <p className="text-sm font-medium text-foreground">
+                {portalMode && portalTitle
+                  ? `Ask about ${portalTitle}`
+                  : "Ask anything about your team\u2019s knowledge"}
+              </p>
+              <p className="text-xs mt-1">
+                {portalMode && portalClientName
+                  ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
+                  : "Granger searches your documents, meetings, and notes to answer."}
+              </p>
               <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
-                {[
+                {(portalMode ? [
+                  { text: "Give me a summary of this document", accent: true },
+                  { text: "What are the key milestones and timeline?", accent: false },
+                  { text: "What's the total budget and payment structure?", accent: false },
+                  { text: "Visualize the project phases as a chart", accent: true },
+                  { text: "What are the main risks or concerns?", accent: false },
+                  { text: "Compare the two documents", accent: true },
+                ] : [
                   { text: "Chart my overdue Linear tasks by priority", accent: true },
                   { text: "Research competitor pricing and write a brief", accent: false },
                   { text: "Summarize my last Granola meeting into action items", accent: false },
                   { text: "Build a dashboard app from our recent metrics", accent: true },
                   { text: "Look up our brand guidelines and create a landing page", accent: false },
                   { text: "Show my week ahead — tasks, meetings, deadlines", accent: true },
-                ].map(({ text: prompt, accent }) => (
+                ]).map(({ text: prompt, accent }) => (
                   <button
                     key={prompt}
                     onClick={() => sendMessage({ text: prompt })}
