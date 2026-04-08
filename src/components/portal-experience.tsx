@@ -558,21 +558,97 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
   title: string; clientName: string; brandColor: string; logoUrl: string | null; subtitle: string | null;
 }) {
-  const { ref, isVisible } = useScrollAnimation();
   return (
-    <div ref={ref} className="relative flex min-h-[75vh] flex-col items-center justify-center overflow-hidden px-6 py-20">
-      <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 80% 60% at 50% 40%, ${brandColor}15 0%, transparent 70%)` }} />
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(${brandColor}60 1px, transparent 1px), linear-gradient(90deg, ${brandColor}60 1px, transparent 1px)`, backgroundSize: "80px 80px" }} />
-      <div className={cn("relative z-10 flex max-w-4xl flex-col items-center gap-6 text-center transition-all duration-1000", isVisible ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0")}>
-        {logoUrl && <img src={logoUrl} alt={clientName} className="h-12 w-auto opacity-90" />}
-        <div className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] font-medium tracking-widest uppercase" style={{ borderColor: `${brandColor}30`, color: brandColor, backgroundColor: `${brandColor}06` }}>
+    <div className="relative flex min-h-[85vh] flex-col items-center justify-center overflow-hidden px-6 py-24">
+      {/* Animated gradient background */}
+      <style>{`
+        @keyframes hero-glow {
+          0%, 100% { opacity: 0.12; transform: scale(1) translate(0, 0); }
+          33% { opacity: 0.22; transform: scale(1.1) translate(2%, -3%); }
+          66% { opacity: 0.16; transform: scale(0.95) translate(-2%, 2%); }
+        }
+        @keyframes hero-grid-drift {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(80px, 80px); }
+        }
+        @keyframes hero-title-gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes hero-fade-up {
+          0% { opacity: 0; transform: translateY(30px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hero-fade-up-delayed {
+          0%, 30% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hero-scale-in {
+          0% { opacity: 0; transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+
+      {/* Animated radial glow — pulses and drifts */}
+      <div className="absolute inset-0" style={{
+        background: `radial-gradient(ellipse 90% 70% at 50% 40%, ${brandColor}20 0%, transparent 65%)`,
+        animation: "hero-glow 8s ease-in-out infinite",
+      }} />
+      {/* Second glow layer offset */}
+      <div className="absolute inset-0" style={{
+        background: `radial-gradient(ellipse 50% 40% at 60% 50%, ${brandColor}10 0%, transparent 60%)`,
+        animation: "hero-glow 12s ease-in-out infinite reverse",
+      }} />
+      {/* Animated grid — drifts diagonally */}
+      <div className="absolute inset-0 opacity-[0.04]" style={{
+        backgroundImage: `linear-gradient(${brandColor}60 1px, transparent 1px), linear-gradient(90deg, ${brandColor}60 1px, transparent 1px)`,
+        backgroundSize: "80px 80px",
+        animation: "hero-grid-drift 20s linear infinite",
+      }} />
+      {/* Bottom edge glow line */}
+      <div className="absolute bottom-0 left-0 right-0 h-px" style={{
+        background: `linear-gradient(90deg, transparent 10%, ${brandColor}50, transparent 90%)`,
+      }} />
+
+      <div className="relative z-10 flex max-w-5xl flex-col items-center gap-8 text-center">
+        {/* Logo — scale in */}
+        {logoUrl && (
+          <img src={logoUrl} alt={clientName} className="h-14 w-auto"
+            style={{ animation: "hero-scale-in 0.8s ease-out both" }} />
+        )}
+
+        {/* Badge — fade up */}
+        <div className="inline-flex items-center gap-2 rounded-full border px-5 py-2 text-[10px] font-medium tracking-[0.2em] uppercase"
+          style={{
+            borderColor: `${brandColor}30`, color: brandColor, backgroundColor: `${brandColor}06`,
+            animation: "hero-fade-up 0.8s ease-out 0.2s both",
+          }}>
           <Sparkles className="h-3 w-3" /> Interactive Experience
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl" style={{ background: `linear-gradient(135deg, #fff 40%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+
+        {/* Title — BIG, animated gradient */}
+        <h1 className="text-6xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
+          style={{
+            background: `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`,
+            backgroundSize: "300% 300%",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            animation: "hero-title-gradient 6s ease-in-out infinite, hero-fade-up 1s ease-out 0.4s both",
+          }}>
           {title.replace(/Scope of Work —\s*/i, "").replace(/Proposal —\s*/i, "")}
         </h1>
-        <p className="max-w-xl text-base text-white/35">{subtitle || `Prepared for ${clientName}`}</p>
-        <ChevronDown className="mt-6 h-5 w-5 animate-bounce" style={{ color: `${brandColor}40` }} />
+
+        {/* Subtitle */}
+        <p className="max-w-xl text-lg text-white/40"
+          style={{ animation: "hero-fade-up-delayed 1.2s ease-out 0.5s both" }}>
+          {subtitle || `Prepared for ${clientName}`}
+        </p>
+
+        {/* Scroll indicator */}
+        <div style={{ animation: "hero-fade-up-delayed 1.5s ease-out 0.8s both" }}>
+          <ChevronDown className="mt-8 h-6 w-6 animate-bounce" style={{ color: `${brandColor}50` }} />
+        </div>
       </div>
     </div>
   );
