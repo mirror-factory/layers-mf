@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
-  BarChart3, BookOpen, CheckCircle2, ChevronDown, ChevronRight,
-  Clock, DollarSign, Download, List, MessageSquare, Sparkles,
+  ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronRight,
+  Clock, DollarSign, Download, Layers, List, MessageSquare, Sparkles,
   Target, X, Zap, RefreshCw, Lightbulb, Loader2, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,12 @@ import { ChatInterface } from "@/components/chat-interface";
 
 interface DocSection {
   id: string;
-  type: "hero" | "heading" | "paragraph" | "list" | "data-table" | "phase-timeline" | "budget-table" | "milestone-timeline" | "divider";
+  type:
+    | "hero" | "heading" | "paragraph" | "list" | "data-table"
+    | "phase-timeline" | "budget-table" | "milestone-timeline"
+    | "divider" | "comparison-table" | "architecture-diagram"
+    | "jtbd-list" | "feature-spec" | "acceptance-criteria"
+    | "priority-matrix";
   level?: number;
   title?: string;
   content: string;
@@ -27,6 +32,12 @@ interface DocSection {
   phases?: { name: string; timeline: string; description: string; investment?: string }[];
   budgetRows?: { phase: string; timeline: string; investment: string }[];
   milestones?: { phase: string; dates: string; milestones: string }[];
+  // New fields for enhanced section types
+  comparisons?: { label: string; current: string; target: string }[];
+  architectureLayers?: { layer: string; owner: string; contains: string }[];
+  jtbdItems?: { when: string; want: string; soThat: string }[];
+  featureSpecs?: { name: string; priority: string; description: string; acceptance: string[] }[];
+  priorityRows?: { feature: string; must: string; should: string; could: string; deferred: string }[];
 }
 
 interface TocEntry { id: string; title: string; level: number; }
@@ -40,7 +51,6 @@ function cleanBold(s: string): string { return s.replace(/\*\*/g, "").replace(/\
 function parseMarkdownTable(lines: string[], startIdx: number): { headers: string[]; rows: string[][]; endIdx: number } {
   const headers = lines[startIdx].split("|").map(c => cleanBold(c.trim())).filter(Boolean);
   let j = startIdx + 1;
-  // Skip separator row (| --- | --- |)
   if (j < lines.length && /^[|\s:-]+$/.test(lines[j].trim())) j++;
   const rows: string[][] = [];
   while (j < lines.length && lines[j].trim().startsWith("|")) {
@@ -68,7 +78,7 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
     const raw = lines[i].trim();
     if (!raw) { i++; continue; }
     // Skip metadata
-    if (/^(\*\*)?!?\[/.test(raw)) { i++; continue; } // image refs
+    if (/^(\*\*)?!?\[/.test(raw)) { i++; continue; }
     if (/^(Prepared (by|for)|Date:|Revision:|\*\*Prepared|\*\*Date|\*\*Revision)/i.test(cleanBold(raw))) { i++; continue; }
     if (/\bx\b/.test(cleanBold(raw)) && raw.length < 80 && i < 15) { i++; continue; }
 
@@ -77,6 +87,59 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
       const { headers, rows, endIdx } = parseMarkdownTable(lines, i);
       if (headers.length >= 2 && rows.length > 0) {
         idx++;
+
+        // Detect comparison table (Current State / Target State)
+        const currentCol = headers.findIndex(h => /current\s*state/i.test(h));
+        const targetCol = headers.findIndex(h => /target\s*state/i.test(h));
+        const outcomeCol = headers.findIndex(h => /outcome|metric|kpi/i.test(h));
+        if (currentCol >= 0 && targetCol >= 0) {
+          const labelCol = outcomeCol >= 0 ? outcomeCol : 0;
+          sections.push({
+            id: `s-${idx}`, type: "comparison-table", content: "",
+            comparisons: rows.map(r => ({
+              label: r[labelCol] || "",
+              current: r[currentCol] || "",
+              target: r[targetCol] || "",
+            })),
+          });
+          i = endIdx; continue;
+        }
+
+        // Detect architecture table (Layer/Owner/Contains)
+        const layerCol = headers.findIndex(h => /layer/i.test(h));
+        const ownerCol = headers.findIndex(h => /owner/i.test(h));
+        const containsCol = headers.findIndex(h => /contains|components?|includes?/i.test(h));
+        if (layerCol >= 0 && ownerCol >= 0 && containsCol >= 0 && rows.length >= 2) {
+          sections.push({
+            id: `s-${idx}`, type: "architecture-diagram", content: "",
+            architectureLayers: rows.map(r => ({
+              layer: r[layerCol] || "",
+              owner: r[ownerCol] || "",
+              contains: r[containsCol] || "",
+            })),
+          });
+          i = endIdx; continue;
+        }
+
+        // Detect priority matrix (Must/Should/Could columns)
+        const mustCol = headers.findIndex(h => /^must$/i.test(h.trim()));
+        const shouldCol = headers.findIndex(h => /^should$/i.test(h.trim()));
+        const couldCol = headers.findIndex(h => /^could$/i.test(h.trim()));
+        const deferCol = headers.findIndex(h => /^deferred?$/i.test(h.trim()));
+        const featureCol = headers.findIndex(h => /feature|group|category/i.test(h));
+        if (mustCol >= 0 && shouldCol >= 0 && featureCol >= 0) {
+          sections.push({
+            id: `s-${idx}`, type: "priority-matrix", content: "",
+            priorityRows: rows.map(r => ({
+              feature: r[featureCol] || "",
+              must: r[mustCol] || "",
+              should: r[shouldCol] || "",
+              could: couldCol >= 0 ? (r[couldCol] || "") : "",
+              deferred: deferCol >= 0 ? (r[deferCol] || "") : "",
+            })),
+          });
+          i = endIdx; continue;
+        }
 
         // Detect budget table (has Investment/Cost column)
         const investCol = headers.findIndex(h => /investment|cost|price/i.test(h));
@@ -139,7 +202,7 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
       if (phases.length >= 2) { idx++; sections.push({ id: `s-${idx}`, type: "phase-timeline", content: "", phases }); i = j; continue; }
     }
 
-    // Budget triplet format (Phase / Timeline / Investment as 3 separate lines)
+    // Budget triplet format
     if (/^Phase$/i.test(cleanBold(raw)) && i + 1 < lines.length && /timeline/i.test(cleanBold(lines[i + 1])) && i + 2 < lines.length && /investment/i.test(cleanBold(lines[i + 2]))) {
       const budgetRows: DocSection["budgetRows"] = [];
       let j = i + 3;
@@ -165,6 +228,16 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
       if (milestones.length > 0) { idx++; sections.push({ id: `s-${idx}`, type: "milestone-timeline", content: "", milestones }); i = j; continue; }
     }
 
+    // Numbered headings with sub-numbering: **5.1.2 Title** or 5.1 Title
+    const subNumHeading = cleanBold(raw).match(/^(\d+(?:\.\d+)+)\.?\s+(.{2,100})/);
+    if (subNumHeading && raw.length < 120) {
+      idx++;
+      const depth = subNumHeading[1].split(".").length;
+      const level = Math.min(depth, 3);
+      sections.push({ id: `s-${idx}`, type: "heading", level, title: cleanBold(subNumHeading[2]), content: "" });
+      i++; continue;
+    }
+
     // Numbered headings: **1. Title** or 1. Title
     const numHeading = cleanBold(raw).match(/^(\d+)\\?\.\s+(.{2,100})/);
     if (numHeading && raw.length < 120) {
@@ -185,14 +258,14 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
     const mdHeading = raw.match(/^(#{1,4})\s+(.+)/);
     if (mdHeading) { idx++; sections.push({ id: `s-${idx}`, type: "heading", level: mdHeading[1].length, title: cleanBold(mdHeading[2]), content: "" }); i++; continue; }
 
-    // Short title-like lines (no period, starts uppercase, under 60 chars)
+    // Short title-like lines
     const cleaned = cleanBold(raw);
     if (cleaned.length >= 3 && cleaned.length < 60 && !cleaned.includes(". ") && !cleaned.endsWith(".") && /^[A-Z]/.test(cleaned)
       && !/^(Phase|The |A |An |In |On |At |By |To |If |No |When |Every |Full |Mirror |Swell |Blue|Charlie|This )/.test(cleaned)) {
       idx++; sections.push({ id: `s-${idx}`, type: "heading", level: 3, title: cleaned, content: "" }); i++; continue;
     }
 
-    // List items (- or * or JTBD-style "* **bold** — text")
+    // List items — detect JTBD pattern and feature spec pattern
     if (raw.startsWith("- ") || raw.startsWith("* ")) {
       const items: string[] = [];
       while (i < lines.length) {
@@ -202,20 +275,74 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
         } else break;
         i++;
       }
+
+      // Check for JTBD pattern: "When..., I want..., so that..."
+      const jtbdItems: DocSection["jtbdItems"] = [];
+      for (const item of items) {
+        const jtbdMatch = item.match(/^When\s+(.+?),?\s+I want\s+(.+?),?\s+so that\s+(.+)$/i);
+        if (jtbdMatch) {
+          jtbdItems.push({ when: jtbdMatch[1].trim(), want: jtbdMatch[2].trim(), soThat: jtbdMatch[3].trim() });
+        }
+      }
+      if (jtbdItems.length >= 2) {
+        idx++; sections.push({ id: `s-${idx}`, type: "jtbd-list", content: "", jtbdItems }); continue;
+      }
+
+      // Check for acceptance criteria pattern (all items look like testable criteria)
+      const allCriteria = items.length >= 2 && items.every(it =>
+        /^(Given|When|Then|User can|System (should|must|shall)|The |It |Must |Should |Shall )/i.test(it) ||
+        /\b(displays?|shows?|returns?|validates?|creates?|updates?|deletes?|sends?|receives?|stores?|loads?)\b/i.test(it)
+      );
+      if (allCriteria) {
+        idx++; sections.push({ id: `s-${idx}`, type: "acceptance-criteria", content: "", items }); continue;
+      }
+
       idx++; sections.push({ id: `s-${idx}`, type: "list", content: "", items }); continue;
     }
 
     // Divider
     if (raw.match(/^[-=_*]{3,}$/)) { sections.push({ id: `div-${idx}`, type: "divider", content: "" }); i++; continue; }
 
-    // Paragraph
+    // Paragraph — detect feature spec blocks (Priority: X / Description: Y / Acceptance Criteria: ...)
     const paraLines: string[] = [];
-    while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith("#") && !lines[i].trim().startsWith("- ") && !lines[i].trim().startsWith("* ") && !lines[i].trim().startsWith("|") && !cleanBold(lines[i]).match(/^\d+\\?\.\s+[A-Z]/) && !/^\*\*[^*]+\*\*$/.test(lines[i].trim())) {
+    while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith("#") && !lines[i].trim().startsWith("- ") && !lines[i].trim().startsWith("* ") && !lines[i].trim().startsWith("|") && !cleanBold(lines[i]).match(/^\d+(?:\.\d+)*\\?\.\s+[A-Z]/) && !/^\*\*[^*]+\*\*$/.test(lines[i].trim())) {
       paraLines.push(cleanBold(lines[i])); i++;
     }
     if (paraLines.length > 0) { idx++; sections.push({ id: `s-${idx}`, type: "paragraph", content: paraLines.join(" ") }); }
   }
-  return sections;
+
+  // Post-process: merge consecutive heading + paragraph with Priority/Description into feature-spec
+  const merged: DocSection[] = [];
+  for (let si = 0; si < sections.length; si++) {
+    const s = sections[si];
+    // Detect feature spec: heading followed by paragraph containing "Priority:" and "Description:"
+    if (s.type === "paragraph" && /Priority:\s*(Must|Should|Could|Deferred|Won't)/i.test(s.content)) {
+      const priorityMatch = s.content.match(/Priority:\s*(Must|Should|Could|Deferred|Won't)/i);
+      const descMatch = s.content.match(/Description:\s*(.+?)(?=Acceptance Criteria:|$)/i);
+      const acMatch = s.content.match(/Acceptance Criteria:\s*(.+)/i);
+      if (priorityMatch) {
+        // Look for the heading right before this paragraph
+        const prevSection = merged[merged.length - 1];
+        const featureName = prevSection && prevSection.type === "heading" ? prevSection.title || "" : "";
+        if (featureName) merged.pop(); // remove the heading, we'll incorporate it
+
+        const acceptance = acMatch ? acMatch[1].split(/[;.]/).map(a => a.trim()).filter(Boolean) : [];
+        merged.push({
+          id: s.id, type: "feature-spec", content: "",
+          featureSpecs: [{
+            name: featureName,
+            priority: priorityMatch[1],
+            description: descMatch ? descMatch[1].trim() : s.content,
+            acceptance,
+          }],
+        });
+        continue;
+      }
+    }
+    merged.push(s);
+  }
+
+  return merged;
 }
 
 function buildToc(sections: DocSection[]): TocEntry[] {
@@ -235,6 +362,56 @@ function useScrollAnimation(delay = 0) {
     obs.observe(el); return () => obs.disconnect();
   }, [delay]);
   return { ref, isVisible: vis };
+}
+
+// ---------------------------------------------------------------------------
+// Shared UI helpers
+// ---------------------------------------------------------------------------
+
+function GlassCard({ children, className, brandColor, glowOnHover = false, style }: {
+  children: React.ReactNode; className?: string; brandColor?: string; glowOnHover?: boolean; style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative rounded-2xl border border-white/[0.06] bg-white/[0.018] backdrop-blur-sm",
+        "transition-all duration-300",
+        glowOnHover && "hover:border-white/[0.12] hover:bg-white/[0.03]",
+        className,
+      )}
+      style={style}
+    >
+      {brandColor && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          style={{ boxShadow: `inset 0 1px 0 0 ${brandColor}15, 0 0 20px ${brandColor}05` }}
+        />
+      )}
+      {children}
+    </div>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  const p = priority.toLowerCase().trim();
+  const config = p === "must"
+    ? { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/25" }
+    : p === "should"
+    ? { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/25" }
+    : p === "could"
+    ? { bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" }
+    : { bg: "bg-red-500/10", text: "text-red-400/70", border: "border-red-500/20" };
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", config.bg, config.text, config.border)}>
+      {priority}
+    </span>
+  );
+}
+
+// Render inline bold markers with <strong> styling
+function RichText({ text, className }: { text: string; className?: string }) {
+  // The cleanBold already stripped **, but let's handle em-dashes, colons nicely
+  return <span className={className}>{text}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,7 +456,7 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
 }
 
 // ---------------------------------------------------------------------------
-// Interactive Chart Wrapper — Chart.js in iframe with AI overlay
+// Interactive Chart Wrapper
 // ---------------------------------------------------------------------------
 
 function InteractiveChart({ config, brandColor, shareToken, title }: {
@@ -322,7 +499,6 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
   return (
     <div className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden">
       <iframe srcDoc={html} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title={title || "Chart"} />
-      {/* AI overlay on hover */}
       <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button onClick={reExplain} disabled={loading}
           className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[10px] font-medium text-white/60 backdrop-blur-xl transition-all hover:bg-black/90 hover:text-white disabled:opacity-50">
@@ -374,26 +550,50 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
   const { ref, isVisible } = useScrollAnimation();
   const lv = section.level ?? 1;
   return (
-    <div ref={ref} id={section.id} className={cn("scroll-mt-16 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0", lv === 1 && "mb-5 mt-20", lv === 2 && "mb-4 mt-14", lv >= 3 && "mb-3 mt-8")}>
-      {lv === 1 && <div className="mb-5 flex items-center gap-4"><div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} /><img src="/bluewave-icon.svg" alt="" className="h-7 w-7 opacity-70" /><div className="h-px flex-1" style={{ background: `linear-gradient(270deg, ${brandColor}30, transparent)` }} /></div>}
-      {lv === 1 ? <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">{section.title}</h2>
-        : lv === 2 ? <h3 className="text-xl font-semibold text-white/90">{section.title}</h3>
-        : <h4 className="text-sm font-semibold tracking-wider uppercase" style={{ color: `${brandColor}bb` }}>{section.title}</h4>}
+    <div ref={ref} id={section.id} className={cn(
+      "scroll-mt-20 transition-all duration-600",
+      isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+      lv === 1 && "mb-6 mt-24",
+      lv === 2 && "mb-5 mt-16",
+      lv >= 3 && "mb-4 mt-10",
+    )}>
+      {lv === 1 && (
+        <div className="mb-6 flex items-center gap-4">
+          <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} />
+          <img src="/bluewave-icon.svg" alt="" className="h-7 w-7 opacity-70" />
+          <div className="h-px flex-1" style={{ background: `linear-gradient(270deg, ${brandColor}30, transparent)` }} />
+        </div>
+      )}
+      {lv === 1 ? (
+        <h2 className="text-center text-3xl font-bold tracking-tight text-white sm:text-4xl">{section.title}</h2>
+      ) : lv === 2 ? (
+        <h3 className="text-2xl font-semibold text-white/90">{section.title}</h3>
+      ) : (
+        <h4 className="text-sm font-semibold tracking-wider uppercase" style={{ color: `${brandColor}bb` }}>{section.title}</h4>
+      )}
     </div>
   );
 }
 
-function ParagraphSection({ section }: { section: DocSection }) {
+function ParagraphSection({ section, brandColor }: { section: DocSection; brandColor?: string }) {
   const { ref, isVisible } = useScrollAnimation();
   const isLong = section.content.length > 200;
+
+  // Detect Priority: pattern in paragraph text for inline badges
+  const priorityMatch = section.content.match(/Priority:\s*(Must|Should|Could|Deferred|Won't)/i);
+
   return (
-    <div ref={ref} className={cn("my-3 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+    <div ref={ref} className={cn("my-4 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
       {isLong ? (
-        <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-5">
-          <p className="text-[14px] leading-[1.75] text-white/50">{section.content}</p>
-        </div>
+        <GlassCard className="p-6" brandColor={brandColor}>
+          {priorityMatch && <div className="mb-3"><PriorityBadge priority={priorityMatch[1]} /></div>}
+          <p className="text-[15px] leading-[1.8] text-white/55">{section.content}</p>
+        </GlassCard>
       ) : (
-        <p className="text-[14px] leading-[1.75] text-white/50">{section.content}</p>
+        <div>
+          {priorityMatch && <div className="mb-2"><PriorityBadge priority={priorityMatch[1]} /></div>}
+          <p className="text-[15px] leading-[1.8] text-white/55">{section.content}</p>
+        </div>
       )}
     </div>
   );
@@ -402,27 +602,376 @@ function ParagraphSection({ section }: { section: DocSection }) {
 function ListSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
   const items = section.items ?? [];
-  // Long items (JTBD-style) → single column cards; short items → 2 col
   const isLong = items.some(it => it.length > 120);
+
+  // Detect if items contain "Priority: X" patterns
+  const hasPriority = items.some(it => /Priority:\s*(Must|Should|Could)/i.test(it));
+
   return (
-    <div ref={ref} className={cn("my-5 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0", !isLong && "grid gap-2.5 sm:grid-cols-2")}>
-      {items.map((item, i) => (
-        <div key={i} className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.012] p-4 transition-all hover:border-white/[0.08] hover:bg-white/[0.025]"
-          style={{ transitionDelay: isVisible ? `${i * 40}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(6px)" }}>
-          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: brandColor }} />
-          <span className="text-[13px] leading-relaxed text-white/55">{item}</span>
+    <div ref={ref} className={cn(
+      "my-6 transition-all duration-600",
+      isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+      !isLong && !hasPriority && "grid gap-3 sm:grid-cols-2",
+    )}>
+      {items.map((item, i) => {
+        const priMatch = item.match(/Priority:\s*(Must|Should|Could|Deferred)/i);
+        return (
+          <div key={i}
+            className={cn(
+              "group flex items-start gap-3.5 rounded-xl border border-white/[0.05] bg-white/[0.015] p-5",
+              "transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.03]",
+            )}
+            style={{
+              transitionDelay: isVisible ? `${i * 50}ms` : "0ms",
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateY(0)" : "translateY(8px)",
+            }}
+          >
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
+            <div className="flex-1 min-w-0">
+              {priMatch && <div className="mb-1.5"><PriorityBadge priority={priMatch[1]} /></div>}
+              <span className="text-[13px] leading-relaxed text-white/55">{item}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: Comparison Table (Current State -> Target State)
+// ---------------------------------------------------------------------------
+
+function ComparisonSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const comparisons = section.comparisons ?? [];
+
+  return (
+    <div ref={ref} className={cn("my-8 space-y-4 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      {comparisons.map((comp, i) => (
+        <div
+          key={i}
+          className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.01] transition-all duration-500 hover:border-white/[0.1]"
+          style={{
+            transitionDelay: isVisible ? `${i * 120}ms` : "0ms",
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(12px)",
+          }}
+        >
+          {/* Label bar */}
+          <div className="border-b border-white/[0.04] px-6 py-3">
+            <span className="text-[13px] font-semibold text-white/80">{comp.label}</span>
+          </div>
+
+          {/* Before -> After cards */}
+          <div className="grid grid-cols-[1fr,auto,1fr] items-stretch gap-0">
+            {/* Current State */}
+            <div className="p-6">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/25">Current State</div>
+              <p className="text-[14px] leading-relaxed text-white/40">{comp.current}</p>
+            </div>
+
+            {/* Arrow transition */}
+            <div className="flex flex-col items-center justify-center px-2">
+              <div className="h-full w-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}20, transparent)` }} />
+              <div
+                className="my-2 flex h-8 w-8 items-center justify-center rounded-full transition-transform duration-500 group-hover:scale-110"
+                style={{ backgroundColor: `${brandColor}15`, border: `1px solid ${brandColor}30` }}
+              >
+                <ArrowRight className="h-3.5 w-3.5" style={{ color: brandColor }} />
+              </div>
+              <div className="h-full w-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}20, transparent)` }} />
+            </div>
+
+            {/* Target State */}
+            <div className="p-6" style={{ background: `linear-gradient(135deg, ${brandColor}06 0%, transparent 60%)` }}>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>Target State</div>
+              <p className="text-[14px] leading-relaxed font-medium" style={{ color: `${brandColor}cc` }}>{comp.target}</p>
+            </div>
+          </div>
+
+          {/* Bottom glow line on hover */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            style={{ background: `linear-gradient(90deg, transparent, ${brandColor}40, transparent)` }}
+          />
         </div>
       ))}
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// NEW: Architecture Diagram
+// ---------------------------------------------------------------------------
+
+function ArchitectureDiagram({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const layers = section.architectureLayers ?? [];
+
+  // Alternate colors for visual layer separation
+  const layerColors = [
+    { bg: `${brandColor}08`, border: `${brandColor}25`, accent: brandColor },
+    { bg: "rgba(255,255,255,0.02)", border: "rgba(255,255,255,0.08)", accent: "rgba(255,255,255,0.5)" },
+    { bg: `${brandColor}05`, border: `${brandColor}18`, accent: `${brandColor}aa` },
+  ];
+
+  return (
+    <div ref={ref} className={cn("my-10 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      <div className="relative space-y-0">
+        {layers.map((layer, i) => {
+          const colors = layerColors[i % layerColors.length];
+          const isFirst = i === 0;
+          const isLast = i === layers.length - 1;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "relative overflow-hidden border border-b-0 last:border-b transition-all duration-500",
+                isFirst && "rounded-t-2xl",
+                isLast && "rounded-b-2xl border-b",
+              )}
+              style={{
+                backgroundColor: colors.bg,
+                borderColor: colors.border,
+                transitionDelay: isVisible ? `${i * 200}ms` : "0ms",
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? "translateY(0)" : "translateY(12px)",
+              }}
+            >
+              {/* Layer content */}
+              <div className="relative z-10 flex items-start gap-6 px-6 py-6 sm:px-8">
+                <div className="flex flex-col items-center gap-2 pt-1">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border"
+                    style={{ borderColor: colors.border, backgroundColor: `${colors.bg}` }}
+                  >
+                    <Layers className="h-4.5 w-4.5" style={{ color: colors.accent }} />
+                  </div>
+                  {!isLast && (
+                    <div className="h-4 w-px" style={{ backgroundColor: colors.border }} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-base font-bold text-white">{layer.layer}</span>
+                    <span
+                      className="rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                      style={{ borderColor: colors.border, color: colors.accent, backgroundColor: colors.bg }}
+                    >
+                      {layer.owner}
+                    </span>
+                  </div>
+                  <p className="text-[14px] leading-relaxed text-white/45">{layer.contains}</p>
+                </div>
+              </div>
+
+              {/* Subtle gradient overlay */}
+              <div
+                className="pointer-events-none absolute inset-0 opacity-30"
+                style={{ background: `linear-gradient(135deg, transparent 40%, ${colors.bg})` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: JTBD Cards
+// ---------------------------------------------------------------------------
+
+function JtbdSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const items = section.jtbdItems ?? [];
+
+  return (
+    <div ref={ref} className={cn("my-8 space-y-4 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      {items.map((jtbd, i) => (
+        <div
+          key={i}
+          className="group overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] transition-all duration-300 hover:border-white/[0.1]"
+          style={{
+            transitionDelay: isVisible ? `${i * 100}ms` : "0ms",
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(10px)",
+          }}
+        >
+          <div className="grid gap-0 sm:grid-cols-3">
+            {/* When — context */}
+            <div className="border-b border-white/[0.04] p-5 sm:border-b-0 sm:border-r">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-400/60">When</div>
+              <p className="text-[13px] leading-relaxed text-white/50">{jtbd.when}</p>
+            </div>
+            {/* I want — action */}
+            <div className="border-b border-white/[0.04] p-5 sm:border-b-0 sm:border-r" style={{ backgroundColor: `${brandColor}04` }}>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>I want</div>
+              <p className="text-[13px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
+            </div>
+            {/* So that — outcome */}
+            <div className="p-5">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-400/60">So that</div>
+              <p className="text-[13px] leading-relaxed text-emerald-400/70">{jtbd.soThat}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: Feature Spec Cards
+// ---------------------------------------------------------------------------
+
+function FeatureSpecSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const specs = section.featureSpecs ?? [];
+
+  return (
+    <div ref={ref} className={cn("my-6 space-y-4 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      {specs.map((spec, i) => (
+        <GlassCard
+          key={i}
+          className="group overflow-hidden p-0"
+          brandColor={brandColor}
+          glowOnHover
+          style={{
+            transitionDelay: isVisible ? `${i * 100}ms` : "0ms",
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? "translateY(0)" : "translateY(10px)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4">
+            <span className="text-[15px] font-semibold text-white">{spec.name}</span>
+            <PriorityBadge priority={spec.priority} />
+          </div>
+          {/* Description */}
+          <div className="px-6 py-4">
+            <p className="text-[14px] leading-[1.75] text-white/50">{spec.description}</p>
+          </div>
+          {/* Acceptance Criteria */}
+          {spec.acceptance.length > 0 && (
+            <div className="border-t border-white/[0.04] px-6 py-4" style={{ backgroundColor: `${brandColor}03` }}>
+              <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-white/25">Acceptance Criteria</div>
+              <div className="space-y-2">
+                {spec.acceptance.map((ac, ai) => (
+                  <div key={ai} className="flex items-start gap-2.5">
+                    <div
+                      className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border"
+                      style={{ borderColor: `${brandColor}30`, backgroundColor: `${brandColor}08` }}
+                    >
+                      <Check className="h-2.5 w-2.5" style={{ color: `${brandColor}90` }} />
+                    </div>
+                    <span className="text-[13px] leading-relaxed text-white/45">{ac}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </GlassCard>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: Acceptance Criteria list
+// ---------------------------------------------------------------------------
+
+function AcceptanceCriteriaSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const items = section.items ?? [];
+
+  return (
+    <div ref={ref} className={cn("my-6 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+      <GlassCard className="p-6" brandColor={brandColor}>
+        <div className="space-y-2.5">
+          {items.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 transition-all duration-300"
+              style={{
+                transitionDelay: isVisible ? `${i * 60}ms` : "0ms",
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? "translateX(0)" : "translateX(-8px)",
+              }}
+            >
+              <div
+                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-300"
+                style={{ borderColor: `${brandColor}35`, backgroundColor: `${brandColor}10` }}
+              >
+                <Check className="h-3 w-3" style={{ color: `${brandColor}` }} />
+              </div>
+              <span className="text-[13px] leading-relaxed text-white/50">{item}</span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: Priority Matrix
+// ---------------------------------------------------------------------------
+
+function PriorityMatrixSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { ref, isVisible } = useScrollAnimation();
+  const rows = section.priorityRows ?? [];
+
+  return (
+    <div ref={ref} className={cn("my-8 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr style={{ backgroundColor: `${brandColor}06` }}>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">Feature Group</th>
+                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-emerald-400/60">Must</th>
+                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-amber-400/60">Should</th>
+                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-white/30">Could</th>
+                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-red-400/40">Deferred</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => (
+                <tr
+                  key={ri}
+                  className="border-t border-white/[0.04] transition-colors hover:bg-white/[0.02]"
+                  style={{
+                    transitionDelay: isVisible ? `${ri * 60}ms` : "0ms",
+                    opacity: isVisible ? 1 : 0,
+                  }}
+                >
+                  <td className="px-5 py-4 font-medium text-white/70">{row.feature}</td>
+                  <td className="px-5 py-4 text-center">{row.must ? <span className="inline-block rounded-md bg-emerald-500/15 px-2 py-0.5 text-[12px] text-emerald-400">{row.must}</span> : <span className="text-white/10">-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.should ? <span className="inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[12px] text-amber-400">{row.should}</span> : <span className="text-white/10">-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.could ? <span className="inline-block rounded-md bg-white/[0.05] px-2 py-0.5 text-[12px] text-white/40">{row.could}</span> : <span className="text-white/10">-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.deferred ? <span className="inline-block rounded-md bg-red-500/10 px-2 py-0.5 text-[12px] text-red-400/60">{row.deferred}</span> : <span className="text-white/10">-</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Existing renderers (improved)
+// ---------------------------------------------------------------------------
+
 function DataTableSection({ section, brandColor, shareToken }: { section: DocSection; brandColor: string; shareToken: string }) {
   const { ref, isVisible } = useScrollAnimation();
   const headers = section.tableHeaders ?? [];
   const rows = section.tableRows ?? [];
 
-  // Auto-generate chart for tables with numeric data
   const numericCol = headers.findIndex((_, ci) => rows.filter(r => /[\d.]+/.test(r[ci]?.replace(/[$,~%<>]/g, "") ?? "")).length >= 2);
   const labelCol = 0;
   const chartConfig = useMemo(() => {
@@ -442,25 +991,23 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
   }, [headers, rows, numericCol, brandColor]);
 
   return (
-    <div ref={ref} className={cn("my-6 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
-      {/* Card-style table */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+    <div ref={ref} className={cn("my-8 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+      <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
-              {headers.map((h, hi) => <th key={hi} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
+              {headers.map((h, hi) => <th key={hi} className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
             </tr></thead>
             <tbody>{rows.map((row, ri) => (
               <tr key={ri} className="border-t border-white/[0.04] transition-colors hover:bg-white/[0.02]">
-                {row.map((cell, ci) => <td key={ci} className={cn("px-4 py-3", ci === 0 ? "font-medium text-white/70" : "text-white/50")}>{cell}</td>)}
+                {row.map((cell, ci) => <td key={ci} className={cn("px-5 py-4", ci === 0 ? "font-medium text-white/70" : "text-white/50")}>{cell}</td>)}
               </tr>
             ))}</tbody>
           </table>
         </div>
       </div>
-      {/* Auto-chart */}
       {chartConfig && (
-        <div className="mt-4">
+        <div className="mt-5">
           <InteractiveChart config={chartConfig} brandColor={brandColor} shareToken={shareToken} title={headers.join(" / ")} />
         </div>
       )}
@@ -473,25 +1020,48 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
   const phases = section.phases ?? [];
   const icons = [Target, Zap, Sparkles, BarChart3];
   return (
-    <div ref={ref} className={cn("my-10 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+    <div ref={ref} className={cn("my-12 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
       <div className="relative">
-        <div className="absolute left-6 top-0 bottom-0 w-px sm:left-1/2" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}35, ${brandColor}35, transparent)` }} />
-        <div className="space-y-6">
+        {/* Connecting line with progress fill */}
+        <div className="absolute left-7 top-0 bottom-0 w-[2px] sm:left-1/2 sm:-translate-x-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}12, ${brandColor}12, transparent)` }} />
+        <div
+          className="absolute left-7 top-0 w-[2px] sm:left-1/2 sm:-translate-x-px transition-all duration-[2000ms] ease-out"
+          style={{
+            background: `linear-gradient(180deg, ${brandColor}60, ${brandColor}30, transparent)`,
+            height: isVisible ? "100%" : "0%",
+          }}
+        />
+        <div className="space-y-8">
           {phases.map((phase, i) => {
-            const Icon = icons[i % icons.length]; const isLeft = i % 2 === 0;
+            const Icon = icons[i % icons.length];
+            const isLeft = i % 2 === 0;
             return (
-              <div key={i} className="relative transition-all duration-700" style={{ transitionDelay: isVisible ? `${i * 180}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(16px)" }}>
-                <div className="absolute left-6 top-5 z-10 -translate-x-1/2 sm:left-1/2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2" style={{ borderColor: brandColor, backgroundColor: `${brandColor}12` }}>
-                    <Icon className="h-4 w-4" style={{ color: brandColor }} />
+              <div key={i} className="relative transition-all duration-700" style={{ transitionDelay: isVisible ? `${i * 200}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(20px)" }}>
+                {/* Timeline node */}
+                <div className="absolute left-7 top-6 z-10 -translate-x-1/2 sm:left-1/2">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full border-2 shadow-lg transition-transform duration-300 hover:scale-110"
+                    style={{ borderColor: brandColor, backgroundColor: `${brandColor}15`, boxShadow: `0 0 20px ${brandColor}20` }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: brandColor }} />
                   </div>
                 </div>
-                <div className={cn("ml-14 sm:ml-0 sm:w-[calc(50%-36px)]", isLeft ? "sm:mr-auto" : "sm:ml-auto")}>
-                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-5 transition-all hover:border-white/[0.1] hover:bg-white/[0.025]">
-                    <div className="mb-1 text-base font-bold text-white">{phase.name}</div>
-                    <div className="mb-3 flex items-center gap-2 text-[11px]" style={{ color: `${brandColor}bb` }}><Clock className="h-3 w-3" />{phase.timeline}</div>
-                    <p className="text-[13px] leading-relaxed text-white/45">{phase.description.length > 250 ? phase.description.slice(0, 250) + "..." : phase.description}</p>
-                  </div>
+
+                {/* Card */}
+                <div className={cn("ml-16 sm:ml-0 sm:w-[calc(50%-44px)]", isLeft ? "sm:mr-auto" : "sm:ml-auto")}>
+                  <GlassCard className="p-6 group" brandColor={brandColor} glowOnHover>
+                    <div className="mb-2 text-lg font-bold text-white">{phase.name}</div>
+                    <div className="mb-4 flex items-center gap-2 text-[12px]" style={{ color: `${brandColor}cc` }}>
+                      <Clock className="h-3.5 w-3.5" />
+                      {phase.timeline}
+                    </div>
+                    <p className="text-[14px] leading-[1.75] text-white/45">{phase.description}</p>
+                    {/* Bottom accent */}
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ background: `linear-gradient(90deg, transparent, ${brandColor}40, transparent)` }}
+                    />
+                  </GlassCard>
                 </div>
               </div>
             );
@@ -523,21 +1093,21 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
   }, [rows, brandColor]);
 
   return (
-    <div ref={ref} className={cn("my-8 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
-      <div className="grid gap-3 sm:grid-cols-3">
+    <div ref={ref} className={cn("my-10 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+      <div className="grid gap-4 sm:grid-cols-3">
         {rows.map((row, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] p-5 transition-all hover:border-white/[0.1] hover:bg-white/[0.025]"
-            style={{ transitionDelay: isVisible ? `${i * 120}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "scale(1)" : "scale(0.97)" }}>
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-white/25">{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
-            <p className="mb-1.5 text-2xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: "rgba(255,255,255,0.7)" }}>
+          <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.03]"
+            style={{ transitionDelay: isVisible ? `${i * 120}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "scale(1)" : "scale(0.96)" }}>
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/25">{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
+            <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: "rgba(255,255,255,0.7)" }}>
               {row.investment}
             </p>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/35"><Clock className="h-3 w-3" />{row.timeline}</div>
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 transition-opacity group-hover:opacity-100" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}50, transparent)` }} />
+            <div className="flex items-center gap-1.5 text-[12px] text-white/35"><Clock className="h-3 w-3" />{row.timeline}</div>
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}50, transparent)` }} />
           </div>
         ))}
       </div>
-      {chartConfig && <div className="mt-4"><InteractiveChart config={chartConfig} brandColor={brandColor} shareToken={shareToken} title="Budget by Phase" /></div>}
+      {chartConfig && <div className="mt-5"><InteractiveChart config={chartConfig} brandColor={brandColor} shareToken={shareToken} title="Budget by Phase" /></div>}
     </div>
   );
 }
@@ -546,20 +1116,20 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
   const { ref, isVisible } = useScrollAnimation();
   const ms = section.milestones ?? [];
   return (
-    <div ref={ref} className={cn("my-8 space-y-3 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+    <div ref={ref} className={cn("my-10 space-y-4 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
       {ms.map((m, i) => (
-        <div key={i} className="group flex gap-3 rounded-xl border border-white/[0.05] bg-white/[0.012] p-4 transition-all hover:border-white/[0.08] hover:bg-white/[0.02]"
+        <div key={i} className="group flex gap-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.025]"
           style={{ transitionDelay: isVisible ? `${i * 100}ms` : "0ms", opacity: isVisible ? 1 : 0 }}>
-          <div className="flex flex-col items-center gap-1 pt-1">
-            <div className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: brandColor, backgroundColor: `${brandColor}30` }} />
-            {i < ms.length - 1 && <div className="flex-1 w-px" style={{ backgroundColor: `${brandColor}15` }} />}
+          <div className="flex flex-col items-center gap-1.5 pt-1">
+            <div className="h-3 w-3 rounded-full border-2 transition-transform duration-300 group-hover:scale-125" style={{ borderColor: brandColor, backgroundColor: `${brandColor}35` }} />
+            {i < ms.length - 1 && <div className="flex-1 w-px" style={{ backgroundColor: `${brandColor}18` }} />}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-semibold text-white">{m.phase}</span>
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}10`, color: `${brandColor}bb` }}>{m.dates}</span>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-[15px] font-semibold text-white">{m.phase}</span>
+              <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}12`, color: `${brandColor}cc` }}>{m.dates}</span>
             </div>
-            <p className="text-[13px] text-white/40 leading-relaxed">{m.milestones}</p>
+            <p className="text-[14px] text-white/40 leading-relaxed">{m.milestones}</p>
           </div>
         </div>
       ))}
@@ -624,17 +1194,23 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
           switch (section.type) {
             case "hero": return <HeroSection key={section.id} title={section.title ?? portal.title} clientName={section.content} brandColor={brandColor} logoUrl={portal.logo_url} subtitle={portal.subtitle} />;
             case "heading": return <HeadingSection key={section.id} section={section} brandColor={brandColor} />;
-            case "paragraph": return <ParagraphSection key={section.id} section={section} />;
+            case "paragraph": return <ParagraphSection key={section.id} section={section} brandColor={brandColor} />;
             case "list": return <ListSection key={section.id} section={section} brandColor={brandColor} />;
             case "data-table": return <DataTableSection key={section.id} section={section} brandColor={brandColor} shareToken={portal.share_token} />;
             case "phase-timeline": return <PhaseTimeline key={section.id} section={section} brandColor={brandColor} />;
             case "budget-table": return <BudgetSection key={section.id} section={section} brandColor={brandColor} shareToken={portal.share_token} />;
             case "milestone-timeline": return <MilestoneTimeline key={section.id} section={section} brandColor={brandColor} />;
-            case "divider": return <div key={section.id} className="my-12"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}15, transparent)` }} /></div>;
+            case "comparison-table": return <ComparisonSection key={section.id} section={section} brandColor={brandColor} />;
+            case "architecture-diagram": return <ArchitectureDiagram key={section.id} section={section} brandColor={brandColor} />;
+            case "jtbd-list": return <JtbdSection key={section.id} section={section} brandColor={brandColor} />;
+            case "feature-spec": return <FeatureSpecSection key={section.id} section={section} brandColor={brandColor} />;
+            case "acceptance-criteria": return <AcceptanceCriteriaSection key={section.id} section={section} brandColor={brandColor} />;
+            case "priority-matrix": return <PriorityMatrixSection key={section.id} section={section} brandColor={brandColor} />;
+            case "divider": return <div key={section.id} className="my-16"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}15, transparent)` }} /></div>;
             default: return null;
           }
         })}
-        <footer className="flex flex-col items-center gap-4 py-20">
+        <footer className="flex flex-col items-center gap-4 py-24">
           <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}25, transparent)` }} />
           {portal.logo_url && <img src={portal.logo_url} alt="" className="h-6 w-auto opacity-30" />}
           <p className="text-[11px] text-white/15">Prepared by Mirror Factory</p>
