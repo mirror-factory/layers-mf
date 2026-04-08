@@ -2599,10 +2599,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     onClick={() => sendMessage({ text: prompt })}
                     className={cn(
                       "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                      accent
-                        ? "border-primary/30 text-primary hover:bg-primary/10"
-                        : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      !portalMode && accent && "border-primary/30 text-primary hover:bg-primary/10",
+                      !portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
+                    style={portalMode && accent ? { borderColor: `${portalBrandColor || "#34d399"}40`, color: portalBrandColor || "#34d399" } : undefined}
                   >
                     {prompt}
                   </button>
@@ -2629,8 +2630,30 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               <div key={m.id} className={cn("flex gap-2 sm:gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 {m.role === "user" ? (
                   <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
-                    <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
+                    {portalMode ? (
+                      <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-white/10">
+                        <span className="inline-block h-2 w-2 rounded-full bg-white/60" />
+                      </span>
+                    ) : (
+                      <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
+                    )}
                   </div>
+                ) : portalMode ? (
+                  <>
+                    {/* Portal mode: brand-colored dot avatar */}
+                    <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 36, height: 36, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
+                      <span
+                        className={cn("inline-block h-2.5 w-2.5 rounded-full", isStreaming && "animate-pulse")}
+                        style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                      />
+                    </div>
+                    <div className="sm:hidden shrink-0 mt-0.5">
+                      <span
+                        className={cn("inline-block h-2 w-2 rounded-full", isStreaming && "animate-pulse")}
+                        style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <>
                     {/* Desktop: full NeuralMorph avatar */}
@@ -2780,12 +2803,25 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             return !hasText && !hasTools; // Hide thinking once content streams in
           })() && (
             <div className="flex gap-3 max-w-4xl">
-              <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
-                <NeuralMorph size={40} dotCount={16} formation="active" />
-              </div>
-              <div className="sm:hidden shrink-0 mt-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
-              </div>
+              {portalMode ? (
+                <>
+                  <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 36, height: 36, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
+                    <span className="inline-block h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                  </div>
+                  <div className="sm:hidden shrink-0 mt-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                    <NeuralMorph size={40} dotCount={16} formation="active" />
+                  </div>
+                  <div className="sm:hidden shrink-0 mt-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  </div>
+                </>
+              )}
               <span className="text-xs text-muted-foreground pt-3">Thinking…</span>
             </div>
           )}
@@ -3174,6 +3210,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   data-testid={isLoading ? "chat-stop" : "chat-submit"}
                   aria-label={isLoading ? "Stop generation" : "Send message"}
                   className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground p-2.5 shrink-0 transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none"
+                  style={portalMode && portalBrandColor ? { backgroundColor: portalBrandColor } : undefined}
                 >
                   {isLoading ? (
                     <Square className="h-4 w-4 fill-current" />

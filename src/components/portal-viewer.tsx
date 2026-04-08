@@ -830,7 +830,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   })
                 );
               }}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
               title="Search in document (Cmd+F)"
             >
               <Search className="h-4 w-4" />
@@ -872,7 +872,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               variant="ghost"
               size="icon"
               onClick={() => setDistractionFree(!distractionFree)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
               title="Toggle distraction-free mode"
             >
               {distractionFree ? (
@@ -965,6 +965,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               apiEndpoint="/api/chat/portal"
               extraHeaders={extraHeaders}
               portalMode
+              portalBrandColor={brandColor}
               portalTitle={activeDoc?.title || portal.title}
               portalClientName={portal.client_name ?? undefined}
               initialPrompt={pendingPrompt}
@@ -994,22 +995,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               />
             </div>
 
-            {/* Floating chat popup — centered, narrow, collapsible; full-width on mobile */}
+            {/* Floating chat popup — centered, wider on desktop, collapsible */}
             <div className={cn(
-              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-2 md:px-4",
+              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl z-40 px-2 md:px-4",
               distractionFree && "opacity-80 hover:opacity-100 transition-opacity"
             )}>
               <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
                 {/* Context tags */}
                 <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
 
-                {/* Tool toggles — shown above the toggle bar */}
-                {toolTogglesBar}
-
                 {/* Toggle bar */}
                 <button
                   onClick={() => setChatOpen(!chatOpen)}
-                  className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex w-full items-center justify-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {chatOpen ? (
                     <>
@@ -1032,17 +1030,18 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 <div
                   className={cn(
                     "transition-all duration-300 ease-in-out",
-                    chatOpen ? "max-h-[50vh]" : "max-h-0"
+                    chatOpen ? "max-h-[40vh]" : "max-h-0"
                   )}
                   style={{ overflow: "hidden" }}
                 >
-                  <div className="h-[50vh] overflow-hidden">
+                  <div className="h-[40vh] overflow-hidden">
                     <ChatInterface
                       apiEndpoint="/api/chat/portal"
                       extraHeaders={extraHeaders}
                       portalMode
                       portalBrandColor={brandColor}
                       portalTitle={activeDoc?.title || portal.title}
+                      portalClientName={portal.client_name ?? undefined}
                     />
                   </div>
                 </div>

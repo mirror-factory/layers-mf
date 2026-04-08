@@ -258,7 +258,7 @@ function clearHighlightsInDom(container: HTMLElement) {
 // ---------------------------------------------------------------------------
 
 /** Number of pages to render beyond the visible page in each direction */
-const PAGE_BUFFER = 2;
+const PAGE_BUFFER = 5;
 
 function PdfDocumentInner({
   pdfUrl,
