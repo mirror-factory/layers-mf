@@ -303,7 +303,8 @@ export function ConnectorsView({
     setRemovedIds((prev) => new Set(prev).add(id));
     try {
       const res = await fetch(`/api/mcp-servers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`Remove failed: ${res.status}`);
+      // 404 = already gone, treat as success
+      if (!res.ok && res.status !== 404) throw new Error(`Remove failed: ${res.status}`);
     } catch (err) {
       console.error("[mcp] Remove failed:", err);
       setMcpError(err instanceof Error ? err.message : "Failed to remove");
