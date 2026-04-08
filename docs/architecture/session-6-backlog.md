@@ -7,6 +7,9 @@
 ### Zoom not working
 PDF viewer zoom buttons (+/-/reset) exist in the header but pages don't resize. The `pageWidth` calculation depends on `zoom` state but the zoom buttons may not be connected to the PDF viewer's controls properly. Check `PdfControls.zoomIn/zoomOut` wiring.
 
+### Search/highlight goes to wrong position
+PDF search and highlight_text tool highlights appear at incorrect positions (top-left corner of page instead of at the matching text). The `highlightTextInDom` function finds text spans in the react-pdf text layer but the mark elements aren't positioned correctly. Need to verify TextLayer.css is working and that mark elements inherit the span's absolute positioning within the text layer.
+
 ### Chat state still resets on mode switch
 Despite single ChatInterface instance, mode switching may cause remount. Needs React DevTools verification.
 
