@@ -1040,31 +1040,42 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               )
         )}
       >
-        {!expanded && (
+        {!expanded && !chatOpen && (
+          /* Floating prompt bar — just the input + expand button */
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl px-4 py-2.5">
+            <button
+              onClick={() => setChatOpen(true)}
+              className="flex-1 text-left text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
+            >
+              Ask about this document...
+            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {toolTogglesDropdown}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatOpen(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Open chat"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        {!expanded && chatOpen && (
+          /* Expanded floating chat — full toggle bar */
           <div className="rounded-t-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
             <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
-            <div className="flex items-center">
+            <div className="flex items-center justify-between px-3 py-1">
               <button
-                onClick={() => setChatOpen(!chatOpen)}
-                className="flex flex-1 items-center justify-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setChatOpen(false)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {chatOpen ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    <span>Collapse chat</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    <span>
-                      {contextTags.length > 0
-                        ? `Ask about ${contextTags.length} selected text${contextTags.length > 1 ? "s" : ""}`
-                        : "Ask about this document"}
-                    </span>
-                  </>
-                )}
+                <ChevronDown className="h-3.5 w-3.5" />
+                <span>Collapse</span>
               </button>
-              <div className="flex items-center gap-0.5 pr-2">
+              <div className="flex items-center gap-0.5">
                 {toolTogglesDropdown}
                 <Button
                   variant="ghost"
