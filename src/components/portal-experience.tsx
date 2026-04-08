@@ -490,8 +490,8 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 
   const html = useMemo(() => showChart ? `<!DOCTYPE html>
 <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
-<style>body{margin:0;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui}</style>
-</head><body><canvas id="c" style="max-height:280px"></canvas>
+<style>body{margin:0;padding:16px;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
+</head><body><canvas id="c"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(config)})<\/script>
 </body></html>` : "", [config, showChart]);
 
@@ -560,8 +560,18 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
 }) {
   return (
     <div className="relative flex min-h-[85vh] flex-col items-center justify-center overflow-hidden px-6 py-24">
-      {/* Animated gradient background */}
+      {/* Animated gradient background + global section animations */}
       <style>{`
+        @keyframes section-fade-in {
+          0% { opacity: 0; transform: translateY(16px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes card-scale-in {
+          0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-section { animation: section-fade-in 0.6s ease-out both; }
+        .animate-card { animation: card-scale-in 0.5s ease-out both; }
         @keyframes hero-glow {
           0%, 100% { opacity: 0.12; transform: scale(1) translate(0, 0); }
           33% { opacity: 0.22; transform: scale(1.1) translate(2%, -3%); }
@@ -1076,7 +1086,6 @@ function PriorityMatrixSection({ section, brandColor }: { section: DocSection; b
 // ---------------------------------------------------------------------------
 
 function DataTableSection({ section, brandColor, shareToken }: { section: DocSection; brandColor: string; shareToken: string }) {
-  const { ref, isVisible } = useScrollAnimation();
   const headers = section.tableHeaders ?? [];
   const rows = section.tableRows ?? [];
 
@@ -1099,7 +1108,7 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
   }, [headers, rows, numericCol, brandColor]);
 
   return (
-    <div ref={ref} className={cn("my-8 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+    <div className="my-8 animate-section">
       <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -1181,7 +1190,6 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
 }
 
 function BudgetSection({ section, brandColor, shareToken }: { section: DocSection; brandColor: string; shareToken: string }) {
-  const { ref, isVisible } = useScrollAnimation();
   const rows = section.budgetRows ?? [];
 
   const chartConfig = useMemo(() => {
@@ -1200,12 +1208,15 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
     };
   }, [rows, brandColor]);
 
+  // Budget chart auto-shows (it's the key visual for this section)
+  const [chartReady] = useState(true);
+
   return (
-    <div ref={ref} className={cn("my-10 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
+    <div className="my-10 animate-section">
       <div className="grid gap-4 sm:grid-cols-3">
         {rows.map((row, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.03]"
-            style={{ transitionDelay: isVisible ? `${i * 120}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "scale(1)" : "scale(0.96)" }}>
+          <div key={i} className="animate-card group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.03]"
+            style={{ animationDelay: `${i * 0.1}s` }}>
             <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/25">{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
             <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: "rgba(255,255,255,0.7)" }}>
               {row.investment}
@@ -1215,19 +1226,27 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
           </div>
         ))}
       </div>
-      {chartConfig && <div className="mt-5"><InteractiveChart config={chartConfig} brandColor={brandColor} shareToken={shareToken} title="Budget by Phase" /></div>}
+      {/* Budget chart auto-displays */}
+      {chartConfig && chartReady && (
+        <div className="mt-5 animate-card overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015]" style={{ animationDelay: "0.3s" }}>
+          <iframe srcDoc={`<!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
+<style>body{margin:0;padding:16px;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
+</head><body><canvas id="c"></canvas>
+<script>new Chart(document.getElementById('c'),${JSON.stringify(chartConfig)})<\/script>
+</body></html>`} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title="Budget chart" />
+        </div>
+      )}
     </div>
   );
 }
 
 function MilestoneTimeline({ section, brandColor }: { section: DocSection; brandColor: string }) {
-  const { ref, isVisible } = useScrollAnimation();
   const ms = section.milestones ?? [];
   return (
-    <div ref={ref} className={cn("my-10 space-y-4 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0")}>
+    <div className="my-10 space-y-4 animate-section">
       {ms.map((m, i) => (
-        <div key={i} className="group flex gap-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.025]"
-          style={{ transitionDelay: isVisible ? `${i * 100}ms` : "0ms", opacity: isVisible ? 1 : 0 }}>
+        <div key={i} className="animate-card group flex gap-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.025]"
+          style={{ animationDelay: `${i * 0.08}s` }}>
           <div className="flex flex-col items-center gap-1.5 pt-1">
             <div className="h-3 w-3 rounded-full border-2 transition-transform duration-300 group-hover:scale-125" style={{ borderColor: brandColor, backgroundColor: `${brandColor}35` }} />
             {i < ms.length - 1 && <div className="flex-1 w-px" style={{ backgroundColor: `${brandColor}18` }} />}
