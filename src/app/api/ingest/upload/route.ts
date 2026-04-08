@@ -112,14 +112,15 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ id: item.id, status: "ready" });
     } catch (err) {
-      console.error("Demo mode processing failed:", err);
+      console.error("Upload processing failed (extraction/embedding):", err);
+      // Still mark as ready — content is saved and text-searchable even without embeddings
       await supabase
         .from("context_items")
-        .update({ status: "error" })
+        .update({ status: "ready", processed_at: new Date().toISOString() })
         .eq("id", item.id);
       return NextResponse.json(
-        { id: item.id, status: "error", error: "Processing failed" },
-        { status: 207 }
+        { id: item.id, status: "ready", warning: "Uploaded but AI extraction failed — content is still searchable" },
+        { status: 200 }
       );
     }
   }
