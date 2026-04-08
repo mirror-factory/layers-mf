@@ -158,6 +158,7 @@ function parseContent(text: string): Section[] {
       para.push(clean(lines[i])); i++;
     }
     if (para.length > 0) { idx++; sections.push({ id: `s${idx}`, type: "paragraph", content: para.join(" ") }); }
+    else { i++; } // SAFETY: always advance to prevent infinite loop on unmatched lines
   }
   return sections;
 }

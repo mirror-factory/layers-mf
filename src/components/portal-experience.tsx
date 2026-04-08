@@ -309,6 +309,7 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
       paraLines.push(cleanBold(lines[i])); i++;
     }
     if (paraLines.length > 0) { idx++; sections.push({ id: `s-${idx}`, type: "paragraph", content: paraLines.join(" ") }); }
+    else { i++; } // SAFETY: always advance to prevent infinite loop on unmatched lines
   }
 
   // Post-process: merge consecutive heading + paragraph with Priority/Description into feature-spec
