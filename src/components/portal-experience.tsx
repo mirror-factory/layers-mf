@@ -672,12 +672,12 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
 
       {/* Animated radial glow — pulses and drifts */}
       <div className="absolute inset-0" style={{
-        background: `radial-gradient(ellipse 90% 70% at 50% 40%, ${brandColor}20 0%, transparent 65%)`,
+        background: `radial-gradient(ellipse 90% 70% at 50% 40%, ${brandColor}${isDark ? "20" : "0c"} 0%, transparent 65%)`,
         animation: "hero-glow 8s ease-in-out infinite",
       }} />
       {/* Second glow layer offset */}
       <div className="absolute inset-0" style={{
-        background: `radial-gradient(ellipse 50% 40% at 60% 50%, ${brandColor}10 0%, transparent 60%)`,
+        background: `radial-gradient(ellipse 50% 40% at 60% 50%, ${brandColor}${isDark ? "10" : "06"} 0%, transparent 60%)`,
         animation: "hero-glow 12s ease-in-out infinite reverse",
       }} />
       {/* Animated grid — drifts diagonally */}
@@ -1691,28 +1691,45 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         </footer>
       </main>
 
-      {/* Chat — bottom-right floating panel */}
+      {/* Chat — mobile: bottom sheet, desktop: floating panel */}
       {chatOpen && (
-        <div className={cn("fixed bottom-4 right-4 z-[60] w-[400px] max-w-[calc(100vw-32px)] h-[520px] max-h-[70vh] rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 flex flex-col",
-          isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95")}>
-          <div className={cn("flex items-center justify-between border-b px-4 py-2.5 shrink-0",
-            isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
-            <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-black/60")}>Ask about this proposal</span>
-            <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3.5 w-3.5" /></button>
+        <>
+          {/* Mobile backdrop */}
+          <div className="fixed inset-0 z-[55] bg-black/30 md:hidden" onClick={() => setChatOpen(false)} />
+
+          {/* Chat container — responsive */}
+          <div className={cn(
+            "fixed z-[60] flex flex-col overflow-hidden border shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-300",
+            // Mobile: bottom sheet, full width, 60% height
+            "inset-x-0 bottom-0 h-[65vh] rounded-t-2xl md:rounded-2xl",
+            // Desktop: floating panel, fixed size
+            "md:inset-auto md:bottom-4 md:right-4 md:w-[400px] md:h-[520px] md:max-h-[70vh]",
+            isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95"
+          )}>
+            {/* Drag handle (mobile) */}
+            <div className="flex justify-center pt-2 pb-1 md:hidden">
+              <div className={cn("h-1 w-10 rounded-full", isDark ? "bg-white/20" : "bg-black/15")} />
+            </div>
+
+            <div className={cn("flex items-center justify-between border-b px-4 py-2.5 shrink-0",
+              isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
+              <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-black/60")}>Ask about this proposal</span>
+              <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ChatInterface
+                apiEndpoint="/api/chat/portal"
+                extraHeaders={extraHeaders}
+                portalMode
+                portalTitle={activeDoc?.title || portal.title}
+                portalClientName={portal.client_name ?? undefined}
+                portalBrandColor={brandColor}
+                compactMode
+                hideContextBar
+              />
+            </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <ChatInterface
-              apiEndpoint="/api/chat/portal"
-              extraHeaders={extraHeaders}
-              portalMode
-              portalTitle={activeDoc?.title || portal.title}
-              portalClientName={portal.client_name ?? undefined}
-              portalBrandColor={brandColor}
-              compactMode
-              hideContextBar
-            />
-          </div>
-        </div>
+        </>
       )}
 
       {/* Chat FAB */}
@@ -1720,7 +1737,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         <button onClick={() => setChatOpen(true)}
           className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
           style={{ backgroundColor: brandColor, boxShadow: `0 6px 24px ${brandColor}40` }}>
-          <MessageSquare className="h-4.5 w-4.5 text-white" />
+          <MessageSquare className="h-5 w-5 text-white" />
         </button>
       )}
     </div>

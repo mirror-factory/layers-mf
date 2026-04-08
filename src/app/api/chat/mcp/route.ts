@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: gateway(MODEL_ID),
-    system: MCP_SYSTEM_PROMPT,
+    system: MCP_SYSTEM_PROMPT + `\n\nCurrent date/time: ${new Date().toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}.`,
     messages: modelMessages,
     tools: mcpTools,
     stopWhen: stepCountIs(5),
