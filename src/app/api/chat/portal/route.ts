@@ -364,21 +364,27 @@ function buildSystemPrompt(
   return `You are a document assistant for ${portal.client_name ?? "the client"}. You are helping the reader understand "${portal.title}".
 
 You have access to the full document content. When answering questions:
-1. Always reference specific pages and sections
-2. Quote relevant text when helpful
-3. If asked to find something, use search_document to find it
-4. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart configs as JSON in your text response. The render_chart tool renders an interactive chart inline. Always use it.
-5. Be concise but thorough — this is a professional document review
-6. Do NOT call the same tool more than once per response. Do NOT loop between switch_document and search_document.
-7. You already have the full document content in this prompt — use search_document only when the user asks to find specific text. For general questions, just read the content below and answer directly.
-8. The document content is already loaded — you do NOT need to call get_page_content or switch_document to read it. Just answer from the content provided.
+1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
+2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF).
+3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
+4. Always reference specific sections and quote relevant text.
+5. Be concise but thorough.
+6. NEVER call more than 3 tools per response.
 
 Document: ${portal.title}
 Client: ${portal.client_name ?? "Unknown"}
 Pages: ${pageCount}${docList}
 
 Full document content:
-${portal.document_content ?? "(no content loaded)"}`;
+${portal.document_content ?? "(no content loaded)"}
+
+${(() => {
+    // Include all documents' content so AI never needs to switch
+    const docs = (portal.documents ?? []) as { title: string; content?: string; is_active?: boolean }[];
+    const otherDocs = docs.filter(d => !d.is_active && d.content);
+    if (otherDocs.length === 0) return "";
+    return otherDocs.map(d => `\n--- Additional Document: ${d.title} ---\n${d.content}`).join("\n");
+  })()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -485,7 +491,7 @@ export async function POST(request: NextRequest) {
     model: gateway(modelId),
     instructions: systemPrompt,
     tools: portalTools,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(3),
   });
 
   const response = await createAgentUIStreamResponse({
