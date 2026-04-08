@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
 import {
   ChevronDown,
   ChevronLeft,
@@ -409,11 +408,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chatKey, setChatKey] = useState(0);
   const progressRef = useRef<HTMLDivElement | null>(null);
-  // Single chat container — portal renders into whichever container is visible
-  const expandedChatRef = useRef<HTMLDivElement | null>(null);
-  const compactChatRef = useRef<HTMLDivElement | null>(null);
-  const [chatMounted, setChatMounted] = useState(false);
-  useEffect(() => setChatMounted(true), []);
 
   // Context tags state
   const [contextTags, setContextTags] = useState<ContextTag[]>([]);
@@ -989,27 +983,33 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       )}
 
-      {/* Main content */}
-      {expanded ? (
-        /* Expanded: TOC sidebar + 65/35 split (Bug 1 & 4: fixed height, independent scroll) */
-        <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 3rem)' }}>
-          {tocPanel}
-          <div className={cn("border-r border-white/5 overflow-y-auto h-full", showToc && tocEntries.length > 0 ? "flex-1" : "w-[65%]")}>
-            <PortalPdfViewer
-              pdfUrl={activePdfUrl}
-              textContent={portal.document_content}
-              spread={false}
-              currentPage={currentPage}
-              onPageChange={handlePageChange}
-              onTotalPages={handleTotalPages}
-              onControlsReady={handleControlsReady}
-              onTextAction={handleTextAction}
-              highlightText={highlightText}
-            />
-          </div>
-          {/* Bug 1: chat column fills height; Bug 2: no tool toggles; Bug 7: new chat button */}
-          <div className="flex w-[35%] flex-col h-full min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-white/5 px-3 py-1.5">
+      {/* PDF viewer area */}
+      <div className="flex flex-1 overflow-hidden" style={{ height: distractionFree ? '100vh' : 'calc(100vh - 3rem)' }}>
+        {tocPanel}
+        <div className={cn(
+          "overflow-y-auto h-full transition-all duration-300",
+          expanded ? "w-[65%] border-r border-white/5" : "flex-1 pb-20"
+        )}>
+          <PortalPdfViewer
+            pdfUrl={activePdfUrl}
+            textContent={portal.document_content}
+            spread={!expanded}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+            onTotalPages={handleTotalPages}
+            onControlsReady={handleControlsReady}
+            onTextAction={handleTextAction}
+            highlightText={highlightText}
+          />
+        </div>
+
+        {/* Chat sidebar — only visible when expanded, animates in */}
+        <div className={cn(
+          "flex flex-col h-full min-h-0 overflow-hidden border-l border-white/5 transition-all duration-300",
+          expanded ? "w-[35%]" : "w-0"
+        )}>
+          {expanded && (
+            <div className="flex items-center justify-between border-b border-white/5 px-3 py-1.5 shrink-0">
               <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
               <div className="flex items-center gap-1 shrink-0">
                 {toolTogglesDropdown}
@@ -1024,100 +1024,70 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 </Button>
               </div>
             </div>
-            <div ref={expandedChatRef} className="flex-1 min-h-0 overflow-hidden" />
-          </div>
+          )}
         </div>
-      ) : (
-        /* Compact: TOC sidebar + full-width PDF + floating chat popup at bottom */
-        <div className="relative flex flex-1 min-h-0">
-          {tocPanel}
-          <div className="flex flex-1 flex-col min-h-0">
-            {/* PDF viewer — takes full height, scrollable with bottom padding for chat bar */}
-            <div className={cn(
-              "flex-1 overflow-auto pb-20",
-              distractionFree && "pb-16"
-            )}>
-              <PortalPdfViewer
-                pdfUrl={activePdfUrl}
-                textContent={portal.document_content}
-                spread={true}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-                onTotalPages={handleTotalPages}
-                onControlsReady={handleControlsReady}
-                onTextAction={handleTextAction}
-                highlightText={highlightText}
-              />
-            </div>
+      </div>
 
-            {/* Floating chat popup — centered, wider on desktop, collapsible */}
-            <div className={cn(
-              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl z-40 px-2 md:px-4",
-              distractionFree && "opacity-80 hover:opacity-100 transition-opacity"
-            )}>
-              <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-                {/* Context tags */}
-                <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
-
-                {/* Toggle bar with tool dropdown + new chat (Bug 7 & 8) */}
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setChatOpen(!chatOpen)}
-                    className="flex flex-1 items-center justify-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {chatOpen ? (
-                      <>
-                        <ChevronDown className="h-3.5 w-3.5" />
-                        <span>Collapse chat</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp className="h-3.5 w-3.5" />
-                        <span>
-                          {contextTags.length > 0
-                            ? `Ask about ${contextTags.length} selected text${contextTags.length > 1 ? "s" : ""}`
-                            : "Ask about this document"}
-                        </span>
-                      </>
-                    )}
-                  </button>
-                  <div className="flex items-center gap-0.5 pr-2">
-                    {toolTogglesDropdown}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setChatKey((k) => k + 1)}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      title="New chat"
-                    >
-                      <MessageSquarePlus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Collapsible chat messages + input area */}
-                <div
-                  className={cn(
-                    "transition-all duration-300 ease-in-out",
-                    chatOpen ? "max-h-[40vh]" : "max-h-0"
-                  )}
-                  style={{ overflow: "hidden" }}
+      {/* SINGLE ChatInterface — always mounted, positioned via CSS */}
+      <div
+        className={cn(
+          "fixed z-40 transition-all duration-300 ease-in-out flex flex-col",
+          expanded
+            ? "right-0 top-12 w-[35%] bottom-0 bg-[hsl(168,14%,5%)]"
+            : cn(
+                "bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl px-2 md:px-4",
+                distractionFree && "opacity-80 hover:opacity-100"
+              )
+        )}
+      >
+        {!expanded && (
+          <div className="rounded-t-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+            <div className="flex items-center">
+              <button
+                onClick={() => setChatOpen(!chatOpen)}
+                className="flex flex-1 items-center justify-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {chatOpen ? (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    <span>Collapse chat</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>
+                      {contextTags.length > 0
+                        ? `Ask about ${contextTags.length} selected text${contextTags.length > 1 ? "s" : ""}`
+                        : "Ask about this document"}
+                    </span>
+                  </>
+                )}
+              </button>
+              <div className="flex items-center gap-0.5 pr-2">
+                {toolTogglesDropdown}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setChatKey((k) => k + 1)}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  title="New chat"
                 >
-                  <div ref={compactChatRef} className="h-[40vh] overflow-hidden" />
-                </div>
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Single ChatInterface — portaled into whichever container is active */}
-      {chatMounted && (() => {
-        const target = expanded
-          ? expandedChatRef.current
-          : compactChatRef.current;
-        if (!target) return null;
-        return createPortal(
+        )}
+        <div className={cn(
+          "overflow-hidden transition-all duration-300",
+          expanded
+            ? "flex-1"
+            : cn(
+                "rounded-b-2xl border-x border-b border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl",
+                chatOpen ? "h-[40vh]" : "h-0"
+              )
+        )}>
           <ChatInterface
             key={`portal-chat-${chatKey}`}
             apiEndpoint="/api/chat/portal"
@@ -1126,10 +1096,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             portalTitle={activeDoc?.title || portal.title}
             portalClientName={portal.client_name ?? undefined}
             initialPrompt={pendingPrompt ?? undefined}
-          />,
-          target
-        );
-      })()}
+          />
+        </div>
+      </div>
+
     </div>
   );
 }
