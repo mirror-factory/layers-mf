@@ -1,14 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export interface PdfControls {
+  goToPrev: () => void;
+  goToNext: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
+  zoom: number;
+  numPages: number;
+  currentPage: number;
+  showSpread: boolean;
+}
 
 interface PortalPdfViewerProps {
   pdfUrl: string | null;
@@ -17,6 +22,8 @@ interface PortalPdfViewerProps {
   currentPage: number;
   onPageChange: (page: number) => void;
   onTotalPages: (pages: number) => void;
+  /** Callback to expose controls to parent so it can render them in the header */
+  onControlsReady?: (controls: PdfControls) => void;
 }
 
 // Lazy-loaded react-pdf inner component
@@ -122,6 +129,7 @@ export function PortalPdfViewer({
   currentPage,
   onPageChange,
   onTotalPages,
+  onControlsReady,
 }: PortalPdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [zoom, setZoom] = useState(1);
@@ -186,6 +194,21 @@ export function PortalPdfViewer({
   );
   const resetZoom = useCallback(() => setZoom(1), []);
 
+  // Expose controls to parent for rendering in the header
+  useEffect(() => {
+    onControlsReady?.({
+      goToPrev,
+      goToNext,
+      zoomIn,
+      zoomOut,
+      resetZoom,
+      zoom,
+      numPages,
+      currentPage,
+      showSpread,
+    });
+  }, [onControlsReady, goToPrev, goToNext, zoomIn, zoomOut, resetZoom, zoom, numPages, currentPage, showSpread]);
+
   // If no PDF URL, render text content
   if (!pdfUrl) {
     return (
@@ -240,66 +263,9 @@ export function PortalPdfViewer({
     );
   }
 
-  // PDF Viewer
+  // PDF Viewer — controls are rendered by the parent (portal-viewer header)
   return (
     <div ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
-      {/* PDF Controls */}
-      <div className="flex items-center justify-between border-b border-white/5 px-3 py-1.5">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToPrev}
-            disabled={currentPage <= 1}
-            className="h-7 w-7 text-muted-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[80px] text-center text-xs text-muted-foreground">
-            {showSpread && currentPage + 1 <= numPages
-              ? `${currentPage}-${currentPage + 1}`
-              : currentPage}{" "}
-            / {numPages || "..."}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToNext}
-            disabled={currentPage >= numPages}
-            className="h-7 w-7 text-muted-foreground"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={zoomOut}
-            disabled={zoom <= 0.5}
-            className="h-7 w-7 text-muted-foreground"
-          >
-            <ZoomOut className="h-3.5 w-3.5" />
-          </Button>
-          <button
-            onClick={resetZoom}
-            className="min-w-[44px] rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-white/5"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={zoomIn}
-            disabled={zoom >= 3}
-            className="h-7 w-7 text-muted-foreground"
-          >
-            <ZoomIn className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
       {/* PDF Document */}
       <div className="flex-1 overflow-auto bg-[hsl(168,14%,3%)] p-6">
         <div className="flex items-start justify-center">

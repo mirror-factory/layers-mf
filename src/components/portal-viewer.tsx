@@ -2,19 +2,24 @@
 
 import { useState, useRef, useCallback } from "react";
 import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
   Expand,
   Shrink,
   Volume2,
   List,
   Pause,
-  Play,
   Eye,
   EyeOff,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PortalData } from "@/app/portal/[token]/page";
-import { PortalPdfViewer } from "@/components/portal-pdf-viewer";
+import { PortalPdfViewer, type PdfControls } from "@/components/portal-pdf-viewer";
 import { ChatInterface } from "@/components/chat-interface";
 
 interface PortalViewerProps {
@@ -28,6 +33,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [showToc, setShowToc] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(portal.page_count ?? 0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Multi-document switching
@@ -57,6 +64,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setTotalPages(pages);
   }, []);
 
+  const handleControlsReady = useCallback((controls: PdfControls) => {
+    setPdfControls(controls);
+  }, []);
+
   const brandColor = portal.brand_color || "#34d399";
 
   return (
@@ -76,9 +87,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         />
       )}
 
-      {/* Header */}
+      {/* Unified Header — includes PDF page nav + zoom controls */}
       {!distractionFree && (
-        <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/5 bg-[hsl(168,14%,5%)]/80 px-4 py-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/5 bg-[hsl(168,14%,5%)]/80 px-4 py-2 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             {portal.logo_url && (
               <img
@@ -125,6 +136,66 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           </div>
 
           <div className="flex items-center gap-1">
+            {/* PDF page navigation — merged into header */}
+            {pdfControls && pdfControls.numPages > 0 && (
+              <div className="flex items-center gap-0.5 mr-2 border-r border-white/10 pr-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={pdfControls.goToPrev}
+                  disabled={currentPage <= 1}
+                  className="h-7 w-7 text-muted-foreground"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="min-w-[60px] text-center text-xs text-muted-foreground tabular-nums">
+                  {pdfControls.showSpread && currentPage + 1 <= pdfControls.numPages
+                    ? `${currentPage}-${currentPage + 1}`
+                    : currentPage}{" "}
+                  / {pdfControls.numPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={pdfControls.goToNext}
+                  disabled={currentPage >= pdfControls.numPages}
+                  className="h-7 w-7 text-muted-foreground"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Zoom controls — merged into header */}
+            {pdfControls && pdfControls.numPages > 0 && (
+              <div className="flex items-center gap-0.5 mr-2 border-r border-white/10 pr-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={pdfControls.zoomOut}
+                  disabled={pdfControls.zoom <= 0.5}
+                  className="h-7 w-7 text-muted-foreground"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <button
+                  onClick={pdfControls.resetZoom}
+                  className="min-w-[40px] rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-white/5 tabular-nums"
+                >
+                  {Math.round(pdfControls.zoom * 100)}%
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={pdfControls.zoomIn}
+                  disabled={pdfControls.zoom >= 3}
+                  className="h-7 w-7 text-muted-foreground"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+
             {portal.audio_url && (
               <Button
                 variant="ghost"
@@ -222,6 +293,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               currentPage={currentPage}
               onPageChange={handlePageChange}
               onTotalPages={handleTotalPages}
+              onControlsReady={handleControlsReady}
             />
           </div>
           <div className="flex w-[35%] flex-col h-full">
@@ -233,10 +305,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           </div>
         </div>
       ) : (
-        /* Compact: stacked with sticky chat at bottom */
+        /* Compact: full-width PDF + floating chat popup at bottom */
         <div className="relative flex flex-1 flex-col min-h-0">
-          {/* PDF viewer — takes remaining space, scrollable */}
-          <div className="flex-1 overflow-auto pb-[280px]">
+          {/* PDF viewer — takes full height, scrollable with bottom padding for chat bar */}
+          <div className="flex-1 overflow-auto pb-20">
             <PortalPdfViewer
               pdfUrl={activePdfUrl}
               textContent={portal.document_content}
@@ -244,25 +316,47 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               currentPage={currentPage}
               onPageChange={handlePageChange}
               onTotalPages={handleTotalPages}
+              onControlsReady={handleControlsReady}
             />
           </div>
 
-          {/* Sticky chat at bottom */}
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl max-h-[50vh] flex flex-col">
-            {/* Page indicator */}
-            {totalPages > 0 && (
-              <div className="flex justify-center py-1 shrink-0">
-                <span className="text-[10px] text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </span>
+          {/* Floating chat popup — centered, narrow, collapsible */}
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-4">
+            <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+              {/* Toggle bar */}
+              <button
+                onClick={() => setChatOpen(!chatOpen)}
+                className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {chatOpen ? (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    <span>Collapse chat</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>Ask about this document</span>
+                  </>
+                )}
+              </button>
+
+              {/* Collapsible chat messages + input area */}
+              <div
+                className={cn(
+                  "transition-all duration-300 ease-in-out",
+                  chatOpen ? "max-h-[50vh]" : "max-h-0"
+                )}
+                style={{ overflow: "hidden" }}
+              >
+                <div className="h-[50vh] overflow-hidden">
+                  <ChatInterface
+                    apiEndpoint="/api/chat/portal"
+                    extraHeaders={{ "x-portal-token": portal.share_token }}
+                    portalMode
+                  />
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <ChatInterface
-                apiEndpoint="/api/chat/portal"
-                extraHeaders={{ "x-portal-token": portal.share_token }}
-                portalMode
-              />
             </div>
           </div>
         </div>
