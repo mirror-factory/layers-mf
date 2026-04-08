@@ -25,6 +25,7 @@ import {
   BookOpen,
   X,
   Play,
+  Download,
   Settings2,
   MessageSquarePlus,
 } from "lucide-react";
@@ -512,8 +513,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, [audioDuration]);
 
   const handlePageChange = useCallback((page: number) => {
+    // Don't let the PDF viewer's IntersectionObserver override during presentation
+    if (presentationMode) return;
     setCurrentPage(page);
-  }, []);
+  }, [presentationMode]);
 
   const handleTotalPages = useCallback((pages: number) => {
     setTotalPages(pages);
@@ -540,6 +543,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // ---- Text action from bubble menu ----
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+
+  // Clear pending prompt after a short delay so ChatInterface picks it up then it's gone
+  useEffect(() => {
+    if (pendingPrompt) {
+      const timer = setTimeout(() => setPendingPrompt(null), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingPrompt]);
 
   const handleTextAction = useCallback(
     (action: TextAction, text: string) => {
@@ -902,7 +913,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               )}
             </Button>
 
-            {/* Presentation mode — only when PDF is loaded */}
+            {/* Presentation mode */}
             {activePdfUrl && totalPages > 0 && (
               <Button
                 variant="ghost"
@@ -912,6 +923,24 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 title="Presentation mode"
               >
                 <Play className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Download PDF */}
+            {activePdfUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = activePdfUrl;
+                  a.download = (activeDoc?.title || portal.title) + ".pdf";
+                  a.click();
+                }}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Download PDF"
+              >
+                <Download className="h-4 w-4" />
               </Button>
             )}
 
@@ -1096,7 +1125,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             portalMode
             portalTitle={activeDoc?.title || portal.title}
             portalClientName={portal.client_name ?? undefined}
-            initialPrompt={pendingPrompt}
+            initialPrompt={pendingPrompt ?? undefined}
           />,
           target
         );
