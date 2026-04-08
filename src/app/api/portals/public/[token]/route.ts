@@ -38,11 +38,13 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     if (!pathOrUrl) return null;
     // Already a full URL — return as-is
     if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
-    // Treat as a Supabase storage path: "bucket/...rest" or just "file.pdf"
+    // Strip leading slashes to normalize
+    const cleaned = pathOrUrl.replace(/^\/+/, "");
+    if (!cleaned) return null;
     // Split on first slash to separate bucket from file path
-    const slashIdx = pathOrUrl.indexOf("/");
-    const bucket = slashIdx !== -1 ? pathOrUrl.slice(0, slashIdx) : "portals";
-    const filePath = slashIdx !== -1 ? pathOrUrl.slice(slashIdx + 1) : pathOrUrl;
+    const slashIdx = cleaned.indexOf("/");
+    const bucket = slashIdx !== -1 ? cleaned.slice(0, slashIdx) : "portals";
+    const filePath = slashIdx !== -1 ? cleaned.slice(slashIdx + 1) : cleaned;
     const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return data?.publicUrl ?? null;
   }

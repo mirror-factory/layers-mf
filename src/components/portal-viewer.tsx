@@ -550,7 +550,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     return idx >= 0 ? idx : 0;
   });
   const activeDoc = documents[activeDocIndex];
-  const activePdfUrl = activeDoc?.pdf_path || portal.pdf_url;
+  const [pdfFailed, setPdfFailed] = useState(false);
+  const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
+  // If PDF loading failed or no URL, fall back to text rendering (pass null to viewer)
+  const activePdfUrl = pdfFailed ? null : rawPdfUrl;
 
   // Feature 1: TOC — rebuild when switching documents
   const activeDocContent = useMemo(() => {
@@ -1204,7 +1207,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           )}
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
-            textContent={portal.document_content}
+            textContent={activeDocContent || portal.document_content}
             spread={!expanded}
             currentPage={currentPage}
             onPageChange={handlePageChange}
@@ -1212,6 +1215,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             onControlsReady={handleControlsReady}
             onTextAction={handleTextAction}
             highlightText={highlightText}
+            onLoadError={() => setPdfFailed(true)}
           />
           {/* Annotation overlay — rendered on top of PDF pages */}
           <AnnotationOverlay

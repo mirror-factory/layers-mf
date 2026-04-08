@@ -46,6 +46,8 @@ interface PortalPdfViewerProps {
   onTextAction?: (action: TextAction, text: string) => void;
   /** Text to highlight in the PDF (from chat tool or search) */
   highlightText?: string;
+  /** Called when PDF loading fails — parent can fall back to text view */
+  onLoadError?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -286,6 +288,7 @@ function PdfDocumentInner({
   containerWidth,
   zoom,
   scrollContainerRef,
+  onLoadError,
 }: {
   pdfUrl: string;
   spread: boolean;
@@ -295,6 +298,7 @@ function PdfDocumentInner({
   isMobile: boolean;
   containerWidth: number;
   zoom: number;
+  onLoadError?: () => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -485,9 +489,10 @@ function PdfDocumentInner({
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
         </div>
       }
+      onLoadError={() => onLoadError?.()}
       error={
-        <div className="flex items-center justify-center py-24 text-sm text-red-400">
-          Failed to load PDF. Please try again.
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-sm text-muted-foreground">
+          <p>PDF not available — showing document text below.</p>
         </div>
       }
     >
@@ -545,6 +550,7 @@ export function PortalPdfViewer({
   onControlsReady,
   onTextAction,
   highlightText: highlightTextProp,
+  onLoadError,
 }: PortalPdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [zoom, setZoom] = useState(1);
@@ -913,6 +919,7 @@ export function PortalPdfViewer({
               containerWidth={containerWidth}
               zoom={zoom}
               scrollContainerRef={pdfAreaRef}
+              onLoadError={onLoadError}
             />
           )}
         </div>
