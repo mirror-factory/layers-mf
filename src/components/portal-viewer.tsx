@@ -702,7 +702,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   return (
     <div
       className={cn(
-        "flex min-h-screen flex-col",
+        "flex h-screen flex-col overflow-hidden",
         distractionFree && "portal-distraction-free"
       )}
     >
