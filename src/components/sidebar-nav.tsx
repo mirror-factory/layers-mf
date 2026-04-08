@@ -26,6 +26,7 @@ import {
   Users,
   Building2,
   Bell as BellIcon,
+  BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
@@ -49,6 +50,7 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/org", label: "Organization", icon: Building2 },
   { href: "/notifications", label: "Notifications", icon: BellIcon },
+  { href: "/docs", label: "Docs", icon: BookOpen },
 ];
 
 function NavLink({ href, label, icon: Icon, pathname, collapsed }: NavItem & { pathname: string; collapsed?: boolean }) {
