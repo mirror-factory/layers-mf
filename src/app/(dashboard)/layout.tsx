@@ -10,7 +10,7 @@ import { NotificationProvider } from "@/components/notification-provider";
 import { PushNotificationProvider } from "@/components/push-notification-provider";
 
 // Pages within the dashboard route group that should be publicly accessible
-const PUBLIC_DASHBOARD_PATHS = ["/features"];
+const PUBLIC_DASHBOARD_PATHS = ["/features", "/docs"];
 
 export default async function DashboardLayout({
   children,

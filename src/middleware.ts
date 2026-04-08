@@ -38,7 +38,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/s/") ||
     pathname.startsWith("/sprint-progress") ||
     pathname.startsWith("/features") ||
-    pathname.startsWith("/pricing");
+    pathname.startsWith("/pricing") ||
+    pathname.startsWith("/docs");
 
   const isAuthPath =
     pathname.startsWith("/login") ||
