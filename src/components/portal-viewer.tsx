@@ -906,7 +906,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   {documents.map((doc, i) => (
                     <button
                       key={doc.id}
-                      onClick={() => { setActiveDocIndex(i); setCurrentPage(1); }}
+                      onClick={() => { setActiveDocIndex(i); setCurrentPage(1); setPdfFailed(false); }}
                       className={cn(
                         "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
                         i === activeDocIndex
