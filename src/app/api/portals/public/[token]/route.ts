@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   const { data: portal, error } = await (supabase as any)
     .from("document_portals")
     .select(
-      "id, title, subtitle, client_name, brand_color, brand_secondary_color, logo_url, audio_storage_path, pdf_storage_path, documents, enabled_tools, model, hide_chrome, default_expanded, share_token, is_public, context_item_id, document_content, view_count, created_at"
+      "id, title, subtitle, client_name, brand_color, brand_secondary_color, logo_url, audio_storage_path, pdf_storage_path, documents, enabled_tools, model, hide_chrome, default_expanded, share_token, is_public, context_item_id, document_content, client_context, view_count, created_at"
     )
     .eq("share_token", token)
     .eq("is_public", true)

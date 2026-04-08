@@ -428,12 +428,37 @@ function buildSystemPrompt(
 ): string {
   if (portal.system_prompt) return portal.system_prompt;
 
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  });
+  const dateStr = formatter.format(now);
+
   const documents = (portal.documents as { title: string; is_active: boolean }[]) ?? [];
   const docList = documents.length > 1
     ? `\n\nAvailable documents (user can switch between them):\n${documents.map(d => `- ${d.title}${d.is_active ? " (currently viewing)" : ""}`).join("\n")}\nUse switch_document to change which document is displayed.`
     : "";
 
-  return `You are a document assistant for ${portal.client_name ?? "the client"}. You are helping the reader understand "${portal.title}".
+  const clientContext: string = portal.client_context ?? "A valued prospective client.";
+
+  return `You are the AI document assistant for Mirror Factory, presenting this proposal to ${portal.client_name ?? "the client"}.
+Today is ${dateStr} (Eastern Time).
+
+You represent Mirror Factory and are excited about the opportunity to work with ${portal.client_name ?? "the client"}.
+Be warm, professional, and enthusiastic. When discussing the proposal, emphasize the value and partnership.
+Help the reader understand, navigate, and annotate the proposal and scope of work.
+You can create charts, highlight text, add annotations, and guide them through the document.
+
+About ${portal.client_name ?? "the client"}:
+${clientContext}
+
+You are helping the reader understand "${portal.title}".
 
 You have access to the full document content. When answering questions:
 1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.

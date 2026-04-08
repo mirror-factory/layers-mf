@@ -48,6 +48,7 @@ import type { PortalData } from "@/app/portal/[token]/page";
 import { PortalPdfViewer, type PdfControls, type TextAction } from "@/components/portal-pdf-viewer";
 import { ChatInterface } from "@/components/chat-interface";
 import { AnnotationOverlay, type Annotation } from "@/components/portal-annotation-overlay";
+import { PortalWelcomeModal } from "@/components/portal-welcome-modal";
 
 // ---------------------------------------------------------------------------
 // Context Tag type
@@ -845,6 +846,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         distractionFree && "portal-distraction-free"
       )}
     >
+      {/* Welcome modal */}
+      <PortalWelcomeModal
+        clientName={portal.client_name ?? "Guest"}
+        brandColor={brandColor}
+        logoUrl={portal.logo_url}
+      />
+
       {/* Presentation mode overlay */}
       {presentationMode && (
         <PresentationOverlay
