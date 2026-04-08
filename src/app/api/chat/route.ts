@@ -218,8 +218,13 @@ You have these tools available — use the RIGHT tool for the job:
 - search_context — search documents, meetings, notes in the knowledge base
 - get_document — fetch full content of a specific document by ID
 
+**IMPORTANT — Tool Priority:**
+1. ALWAYS search the local knowledge base FIRST using search_context when the user asks about documents, files, notes, or anything that could be in their library.
+2. Only use MCP tools (external services) AFTER checking the local library, or when the user explicitly asks about a specific external service (e.g., "check my Canva", "search Gmail").
+3. The user's uploaded documents, meeting notes, and synced content are ALL in the local knowledge base — search_context finds them.
+
 **MCP Tools (from connected external servers):**
-You may have additional tools from MCP servers (like Granola, Linear, Gmail, etc.). These are loaded dynamically from connected MCP servers. Use them for service-specific requests — they have direct authenticated connections.
+You may have additional tools from MCP servers (like Canva, Granola, etc.). These are loaded dynamically. Use them for service-specific requests — they have direct authenticated connections. But ALWAYS check search_context first for document/file lookups.
 
 **Scheduling:**
 - schedule_action — create a recurring or one-time scheduled action
