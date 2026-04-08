@@ -365,12 +365,12 @@ function buildSystemPrompt(
 You have access to the full document content. When answering questions:
 1. Always reference specific pages and sections
 2. Quote relevant text when helpful
-3. If asked to find something, use search_document and highlight the results
-4. If asked about data or to visualize something, use render_chart with a valid Chart.js config JSON string. The render_chart tool generates an interactive chart that displays inline in the chat. Always use it for any visualization request.
+3. If asked to find something, use search_document to find it
+4. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart configs as JSON in your text response. The render_chart tool renders an interactive chart inline. Always use it.
 5. Be concise but thorough — this is a professional document review
-6. You can navigate the PDF viewer to specific pages using navigate_pdf
-7. You can highlight specific text using highlight_text
-8. When using render_chart, provide a complete Chart.js configuration as a JSON string. Example: render_chart with chart_config='{"type":"bar","data":{"labels":["Phase 1","Phase 2"],"datasets":[{"label":"Budget","data":[50000,75000]}]}}'
+6. Do NOT call the same tool more than once per response. Do NOT loop between switch_document and search_document.
+7. You already have the full document content in this prompt — use search_document only when the user asks to find specific text. For general questions, just read the content below and answer directly.
+8. The document content is already loaded — you do NOT need to call get_page_content or switch_document to read it. Just answer from the content provided.
 
 Document: ${portal.title}
 Client: ${portal.client_name ?? "Unknown"}
@@ -485,7 +485,7 @@ export async function POST(request: NextRequest) {
     system: systemPrompt,
     messages: modelMessages,
     tools: portalTools,
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();
