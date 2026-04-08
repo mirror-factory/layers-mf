@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const body = await request.json();
-  const { name, description, prompt, action_type, target_service, payload, schedule, max_runs, model } = body;
+  const { name, description, prompt, action_type, target_service, payload, schedule, max_runs, model, email_recipients, email_template } = body;
 
   if (!name || !schedule) {
     return NextResponse.json(
@@ -63,11 +63,13 @@ export async function POST(request: NextRequest) {
     ? schedule.replace("once:", "")
     : calculateNextCron(schedule);
 
-  // Merge prompt into payload so the cron executor can find it
+  // Merge prompt + email config into payload so the cron executor can find them
   const mergedPayload = {
     ...(payload ?? {}),
     ...(prompt ? { prompt } : {}),
     ...(model ? { model } : {}),
+    ...(email_recipients?.length ? { email_recipients } : {}),
+    ...(email_template ? { email_template } : {}),
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

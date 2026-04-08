@@ -113,10 +113,16 @@ export async function GET(request: NextRequest) {
       const userId = schedule.created_by as string;
 
       // Build the prompt from description or payload.prompt
-      const prompt =
+      const basePrompt =
         schedule.payload?.prompt ??
         schedule.description ??
         `Execute scheduled action: ${schedule.name}`;
+
+      // If email template instructions exist, append them so the AI formats output for email
+      const emailTemplate = schedule.payload?.email_template as string | undefined;
+      const prompt = emailTemplate
+        ? `${basePrompt}\n\nIMPORTANT — Format your response for email delivery using these instructions: ${emailTemplate}`
+        : basePrompt;
 
       // 1. Create a conversation
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,6 +196,25 @@ export async function GET(request: NextRequest) {
         content: [{ type: "text", text: responseText }],
         channel: "schedule",
       });
+
+      // 5b. Send email to configured recipients
+      const emailRecipients = (schedule.payload?.email_recipients ?? []) as string[];
+      if (emailRecipients.length > 0) {
+        try {
+          const { sendEmail } = await import("@/lib/notifications/send-email");
+          const emailSubject = `Scheduled: ${schedule.name}`;
+          const emailPromises = emailRecipients.map((to) =>
+            sendEmail({
+              to,
+              subject: emailSubject,
+              text: responseText,
+            })
+          );
+          await Promise.allSettled(emailPromises);
+        } catch (emailErr) {
+          console.error("[schedule] Email send failed:", emailErr);
+        }
+      }
 
       // 6. Update schedule metadata
       const newRunCount = (schedule.run_count ?? 0) + 1;

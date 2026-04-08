@@ -219,11 +219,26 @@ export function createTools(supabase: AnySupabase, orgId: string, userId?: strin
           .number()
           .optional()
           .describe("Max executions. 1 for one-shot, omit for unlimited"),
+        email_recipients: z
+          .array(z.string().email())
+          .optional()
+          .describe("Email addresses to send the AI result to after each execution"),
+        email_template: z
+          .string()
+          .optional()
+          .describe("Instructions for how the AI should format the email output, e.g. '3 bullet points, include links'"),
       }),
       execute: async (input) => {
         const nextRun = input.schedule.startsWith("once:")
           ? input.schedule.replace("once:", "")
           : calculateNextCron(input.schedule);
+
+        // Merge email config into payload
+        const mergedPayload = {
+          ...input.payload,
+          ...(input.email_recipients?.length ? { email_recipients: input.email_recipients } : {}),
+          ...(input.email_template ? { email_template: input.email_template } : {}),
+        };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase as any)
@@ -235,7 +250,7 @@ export function createTools(supabase: AnySupabase, orgId: string, userId?: strin
             description: input.description ?? null,
             action_type: input.action_type,
             target_service: input.target_service ?? null,
-            payload: input.payload,
+            payload: mergedPayload,
             schedule: input.schedule,
             next_run_at: nextRun,
             max_runs: input.max_runs ?? null,

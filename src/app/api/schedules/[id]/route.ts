@@ -24,7 +24,7 @@ export async function PATCH(
     return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const body = await request.json();
-  const { status, name, prompt, schedule, model } = body;
+  const { status, name, prompt, schedule, model, email_recipients, email_template } = body;
 
   // Build update object with only provided fields
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,6 +78,27 @@ export async function PATCH(
 
       const existingPayload = (current?.payload as Record<string, unknown>) ?? {};
       updates.payload = { ...existingPayload, model };
+    }
+  }
+
+  // Handle email_recipients and email_template — merge into payload
+  if (email_recipients !== undefined || email_template !== undefined) {
+    if (!updates.payload) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: current } = await (supabase as any)
+        .from("scheduled_actions")
+        .select("payload")
+        .eq("id", id)
+        .eq("org_id", member.org_id)
+        .single();
+
+      updates.payload = { ...((current?.payload as Record<string, unknown>) ?? {}) };
+    }
+    if (email_recipients !== undefined) {
+      updates.payload = { ...updates.payload, email_recipients: email_recipients.length ? email_recipients : undefined };
+    }
+    if (email_template !== undefined) {
+      updates.payload = { ...updates.payload, email_template: email_template || undefined };
     }
   }
 

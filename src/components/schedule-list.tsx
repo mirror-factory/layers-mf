@@ -19,6 +19,7 @@ import {
   ChevronRight,
   List,
   CalendarDays,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cronToHuman, isValidCron } from "@/lib/cron";
@@ -476,6 +477,8 @@ function ScheduleForm({
   initialPrompt,
   initialSchedule,
   initialModel,
+  initialEmailRecipients,
+  initialEmailTemplate,
   onSubmit,
   onCancel,
   submitting,
@@ -485,7 +488,9 @@ function ScheduleForm({
   initialPrompt: string;
   initialSchedule: string;
   initialModel?: string;
-  onSubmit: (data: { name: string; prompt: string; schedule: string; model: string }) => void;
+  initialEmailRecipients?: string[];
+  initialEmailTemplate?: string;
+  onSubmit: (data: { name: string; prompt: string; schedule: string; model: string; email_recipients: string[]; email_template: string }) => void;
   onCancel: () => void;
   submitting: boolean;
 }) {
@@ -495,6 +500,33 @@ function ScheduleForm({
   const [scheduleModel, setScheduleModel] = useState(initialModel ?? "google/gemini-3-flash");
   const [, setHumanLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailRecipients, setEmailRecipients] = useState<string[]>(initialEmailRecipients ?? []);
+  const [emailTemplate, setEmailTemplate] = useState(initialEmailTemplate ?? "");
+  const [showEmailSection, setShowEmailSection] = useState(
+    (initialEmailRecipients?.length ?? 0) > 0 || !!initialEmailTemplate
+  );
+
+  const addEmailRecipient = () => {
+    const email = emailInput.trim().toLowerCase();
+    if (!email) return;
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Invalid email address.");
+      return;
+    }
+    if (emailRecipients.includes(email)) {
+      setError("Email already added.");
+      return;
+    }
+    setEmailRecipients((prev) => [...prev, email]);
+    setEmailInput("");
+    setError(null);
+  };
+
+  const removeEmailRecipient = (email: string) => {
+    setEmailRecipients((prev) => prev.filter((e) => e !== email));
+  };
 
   const handleScheduleChange = (cron: string, humanReadable: string) => {
     setCronValue(cron);
@@ -517,7 +549,7 @@ function ScheduleForm({
       return;
     }
     setError(null);
-    onSubmit({ name: name.trim(), prompt: prompt.trim(), schedule: cronValue.trim(), model: scheduleModel });
+    onSubmit({ name: name.trim(), prompt: prompt.trim(), schedule: cronValue.trim(), model: scheduleModel, email_recipients: emailRecipients, email_template: emailTemplate.trim() });
   };
 
   return (
@@ -565,6 +597,80 @@ function ScheduleForm({
         </select>
       </div>
 
+      {/* Email notifications (optional, collapsible) */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowEmailSection((v) => !v)}
+          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Email Notifications
+          {emailRecipients.length > 0 && (
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{emailRecipients.length}</Badge>
+          )}
+          <span className="text-[10px]">{showEmailSection ? "−" : "+"}</span>
+        </button>
+
+        {showEmailSection && (
+          <div className="space-y-3 pl-0.5">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Email Recipients
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addEmailRecipient();
+                    }
+                  }}
+                  placeholder="name@example.com"
+                  className="flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addEmailRecipient}>
+                  Add
+                </Button>
+              </div>
+              {emailRecipients.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {emailRecipients.map((email) => (
+                    <Badge key={email} variant="secondary" className="text-xs gap-1 pr-1">
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => removeEmailRecipient(email)}
+                        className="hover:text-destructive transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="sched-email-template" className="block text-xs font-medium text-muted-foreground mb-1">
+                Email Template Instructions
+              </label>
+              <textarea
+                id="sched-email-template"
+                value={emailTemplate}
+                onChange={(e) => setEmailTemplate(e.target.value)}
+                placeholder="e.g. 3 bullet points, include links, sign as Layers AI"
+                rows={2}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && (
         <p className="text-xs text-destructive flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -610,7 +716,7 @@ function ScheduleRow({
   onToggleStatus: () => void;
   onDelete: () => void;
   onRunNow: () => void;
-  onSubmitEdit: (data: { name: string; prompt: string; schedule: string; model: string }) => void;
+  onSubmitEdit: (data: { name: string; prompt: string; schedule: string; model: string; email_recipients: string[]; email_template: string }) => void;
   editSubmitting: boolean;
 }) {
   const promptPreview = getPromptFromSchedule(schedule);
@@ -742,6 +848,8 @@ function ScheduleRow({
             initialPrompt={getPromptFromSchedule(schedule)}
             initialSchedule={schedule.schedule}
             initialModel={(schedule.payload as Record<string, unknown> | null)?.model as string | undefined}
+            initialEmailRecipients={(schedule.payload as Record<string, unknown> | null)?.email_recipients as string[] | undefined}
+            initialEmailTemplate={(schedule.payload as Record<string, unknown> | null)?.email_template as string | undefined}
             onSubmit={onSubmitEdit}
             onCancel={onCancelEdit}
             submitting={editSubmitting}
@@ -1197,7 +1305,7 @@ export function ScheduleList({
     }
   };
 
-  const handleCreate = async (data: { name: string; prompt: string; schedule: string; model: string }) => {
+  const handleCreate = async (data: { name: string; prompt: string; schedule: string; model: string; email_recipients: string[]; email_template: string }) => {
     setSubmitting(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -1208,6 +1316,8 @@ export function ScheduleList({
           prompt: data.prompt,
           schedule: data.schedule,
           model: data.model,
+          email_recipients: data.email_recipients,
+          email_template: data.email_template,
         }),
       });
       if (res.ok) {
@@ -1221,7 +1331,7 @@ export function ScheduleList({
     }
   };
 
-  const handleEdit = async (scheduleId: string, data: { name: string; prompt: string; schedule: string; model: string }) => {
+  const handleEdit = async (scheduleId: string, data: { name: string; prompt: string; schedule: string; model: string; email_recipients: string[]; email_template: string }) => {
     setEditSubmitting(true);
     try {
       const res = await fetch(`/api/schedules/${scheduleId}`, {
@@ -1232,6 +1342,8 @@ export function ScheduleList({
           prompt: data.prompt,
           schedule: data.schedule,
           model: data.model,
+          email_recipients: data.email_recipients,
+          email_template: data.email_template,
         }),
       });
       if (res.ok) {
