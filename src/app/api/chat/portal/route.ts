@@ -441,7 +441,23 @@ export async function POST(request: NextRequest) {
     "navigate_pdf",
     "render_chart",
   ];
-  const portalTools = createPortalTools(documentContent, enabledTools, portal);
+
+  // If the client sends x-active-tools, only build those tools (intersection with enabled)
+  let activeToolsList = enabledTools;
+  const activeToolsHeader = request.headers.get("x-active-tools");
+  if (activeToolsHeader) {
+    try {
+      const clientTools = JSON.parse(activeToolsHeader) as string[];
+      if (Array.isArray(clientTools) && clientTools.length > 0) {
+        const enabledSet = new Set(enabledTools);
+        activeToolsList = clientTools.filter((t) => enabledSet.has(t));
+      }
+    } catch {
+      // Ignore malformed header, use all enabled tools
+    }
+  }
+
+  const portalTools = createPortalTools(documentContent, activeToolsList, portal);
 
   const pages = splitPages(documentContent);
   const systemPrompt = buildSystemPrompt(portal, pages.length);

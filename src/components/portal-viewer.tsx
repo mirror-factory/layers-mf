@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -15,12 +15,232 @@ import {
   EyeOff,
   ZoomIn,
   ZoomOut,
+  Search,
+  Navigation,
+  BarChart3,
+  Globe,
+  Highlighter,
+  FileText,
+  BookOpen,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PortalData } from "@/app/portal/[token]/page";
-import { PortalPdfViewer, type PdfControls } from "@/components/portal-pdf-viewer";
+import { PortalPdfViewer, type PdfControls, type TextAction } from "@/components/portal-pdf-viewer";
 import { ChatInterface } from "@/components/chat-interface";
+
+// ---------------------------------------------------------------------------
+// Context Tag type
+// ---------------------------------------------------------------------------
+
+interface ContextTag {
+  id: string;
+  text: string;
+}
+
+const MAX_CONTEXT_TAGS = 5;
+
+function truncateText(text: string, maxLength = 40): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
+}
+
+// ---------------------------------------------------------------------------
+// Context Tags Bar
+// ---------------------------------------------------------------------------
+
+function ContextTagsBar({
+  tags,
+  onRemove,
+}: {
+  tags: ContextTag[];
+  onRemove: (id: string) => void;
+}) {
+  if (tags.length === 0) return null;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-white/5">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mr-1">
+          Context
+        </span>
+        {tags.map((tag) => (
+          <Tooltip key={tag.id}>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/15">
+                <span className="max-w-[160px] truncate">
+                  {truncateText(tag.text)}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(tag.id);
+                  }}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-emerald-500/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              className="max-w-xs text-xs"
+            >
+              {tag.text}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tool config (mirrors portal-chat.tsx TOOL_CONFIG)
+// ---------------------------------------------------------------------------
+
+const TOOL_CONFIG: Record<
+  string,
+  { label: string; icon: React.ElementType; description: string }
+> = {
+  search_document: {
+    label: "Search",
+    icon: Search,
+    description: "Search within the document",
+  },
+  navigate_pdf: {
+    label: "Navigate",
+    icon: Navigation,
+    description: "Navigate to pages/sections",
+  },
+  render_chart: {
+    label: "Charts",
+    icon: BarChart3,
+    description: "Generate visualizations",
+  },
+  web_search: {
+    label: "Web",
+    icon: Globe,
+    description: "Search the web",
+  },
+  highlight_text: {
+    label: "Highlight",
+    icon: Highlighter,
+    description: "Highlight text in document",
+  },
+  get_page_content: {
+    label: "Page",
+    icon: FileText,
+    description: "Get full page content",
+  },
+  summarize_section: {
+    label: "Summarize",
+    icon: BookOpen,
+    description: "Summarize a section",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// TOC extraction
+// ---------------------------------------------------------------------------
+
+interface TocEntry {
+  id: string;
+  title: string;
+  level: number;
+  estimatedPage: number;
+}
+
+function extractToc(content: string | null, totalPages: number): TocEntry[] {
+  if (!content) return [];
+
+  const lines = content.split("\n");
+  const entries: TocEntry[] = [];
+  const totalChars = content.length;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    let match: RegExpMatchArray | null = null;
+    let level = 1;
+    let title = "";
+
+    // Markdown headings: # Heading, ## Heading, ### Heading
+    match = line.match(/^(#{1,4})\s+(.+)/);
+    if (match) {
+      level = match[1].length;
+      title = match[2].trim();
+    }
+
+    // Numbered sections: 1. Title, 2.1 Title, 1.2.3 Title
+    if (!title) {
+      match = line.match(/^(\d+(?:\.\d+)*)[.\s)\-]+\s*(.{3,80})/);
+      if (match) {
+        const numbering = match[1];
+        const dots = (numbering.match(/\./g) || []).length;
+        level = dots + 1;
+        title = match[2].trim();
+      }
+    }
+
+    // Lines starting with "Section", "Chapter", "Part"
+    if (!title) {
+      match = line.match(/^(Section|Chapter|Part)\s+(\d+[.:]\s*)?(.{3,80})/i);
+      if (match) {
+        level = match[1].toLowerCase() === "part" ? 1 : match[1].toLowerCase() === "chapter" ? 1 : 2;
+        title = match[3]?.trim() || line;
+      }
+    }
+
+    // ALL-CAPS lines (likely section headers) — at least 4 chars, no lowercase
+    if (!title && line.length >= 4 && line.length <= 80 && /^[A-Z][A-Z\s\d&:,\-]+$/.test(line)) {
+      level = 1;
+      title = line;
+    }
+
+    if (title) {
+      // Remove trailing punctuation like colons
+      title = title.replace(/[:]+$/, "").trim();
+      // Estimate page based on character offset
+      const charOffset = lines.slice(0, i).join("\n").length;
+      const estimatedPage = totalPages > 0
+        ? Math.max(1, Math.round((charOffset / totalChars) * totalPages))
+        : 1;
+
+      entries.push({
+        id: `toc-${i}`,
+        title,
+        level: Math.min(level, 4),
+        estimatedPage,
+      });
+    }
+  }
+
+  return entries;
+}
+
+// ---------------------------------------------------------------------------
+// Audio progress helper
+// ---------------------------------------------------------------------------
+
+function formatTime(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ---------------------------------------------------------------------------
+// PortalViewer
+// ---------------------------------------------------------------------------
 
 interface PortalViewerProps {
   portal: PortalData;
@@ -30,12 +250,50 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [expanded, setExpanded] = useState(portal.default_expanded);
   const [distractionFree, setDistractionFree] = useState(portal.hide_chrome);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [showToc, setShowToc] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(portal.page_count ?? 0);
   const [chatOpen, setChatOpen] = useState(false);
   const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressRef = useRef<HTMLDivElement | null>(null);
+
+  // Context tags state
+  const [contextTags, setContextTags] = useState<ContextTag[]>([]);
+
+  // Highlight text from chat tools
+  const [highlightText, setHighlightText] = useState<string | undefined>(undefined);
+
+  // Feature 3: Tool toggles
+  const [activeTools, setActiveTools] = useState<Set<string>>(
+    () => new Set(portal.enabled_tools ?? [])
+  );
+
+  const toggleTool = useCallback((toolId: string) => {
+    setActiveTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolId)) {
+        next.delete(toolId);
+      } else {
+        next.add(toolId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Build extra headers including active tools and context tags
+  const extraHeaders = useMemo(
+    () => ({
+      "x-portal-token": portal.share_token,
+      "x-active-tools": JSON.stringify([...activeTools]),
+      ...(contextTags.length > 0 && {
+        "x-portal-context": JSON.stringify(contextTags.map((t) => t.text)),
+      }),
+    }),
+    [portal.share_token, activeTools, contextTags]
+  );
 
   // Multi-document switching
   const documents = portal.documents ?? [];
@@ -46,6 +304,20 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const activeDoc = documents[activeDocIndex];
   const activePdfUrl = activeDoc?.pdf_path || portal.pdf_url;
 
+  // Feature 1: TOC
+  const tocEntries = useMemo(
+    () => extractToc(portal.document_content, totalPages),
+    [portal.document_content, totalPages]
+  );
+
+  const handleTocNavigate = useCallback((page: number) => {
+    if (pdfControls) {
+      pdfControls.goToPage?.(page);
+    }
+    setCurrentPage(page);
+  }, [pdfControls]);
+
+  // Feature 2: Audio
   const toggleAudio = useCallback(() => {
     if (!audioRef.current) return;
     if (audioPlaying) {
@@ -55,6 +327,35 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
     setAudioPlaying(!audioPlaying);
   }, [audioPlaying]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setAudioCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setAudioDuration(audio.duration);
+    const handleDurationChange = () => setAudioDuration(audio.duration);
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("durationchange", handleDurationChange);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("durationchange", handleDurationChange);
+    };
+  }, [portal.audio_url]);
+
+  const handleAudioSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    const bar = progressRef.current;
+    if (!audio || !bar || !audioDuration) return;
+
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * audioDuration;
+  }, [audioDuration]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -68,7 +369,136 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setPdfControls(controls);
   }, []);
 
+  // ---- Context tag management ----
+  const addContextTag = useCallback((text: string) => {
+    setContextTags((prev) => {
+      if (prev.some((t) => t.text === text)) return prev;
+      if (prev.length >= MAX_CONTEXT_TAGS) {
+        return [...prev.slice(1), { id: crypto.randomUUID(), text }];
+      }
+      return [...prev, { id: crypto.randomUUID(), text }];
+    });
+  }, []);
+
+  const removeContextTag = useCallback((id: string) => {
+    setContextTags((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // ---- Text action from bubble menu ----
+  const handleTextAction = useCallback(
+    (action: TextAction, text: string) => {
+      addContextTag(text);
+      setChatOpen(true);
+    },
+    [addContextTag]
+  );
+
   const brandColor = portal.brand_color || "#34d399";
+
+  // ---------------------------------------------------------------------------
+  // Tool toggles bar — rendered above chat popup
+  // ---------------------------------------------------------------------------
+  const toolTogglesBar = (portal.enabled_tools ?? []).length > 0 ? (
+    <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-white/5">
+      {(portal.enabled_tools ?? []).map((toolId) => {
+        const config = TOOL_CONFIG[toolId];
+        if (!config) return null;
+        const Icon = config.icon;
+        const isActive = activeTools.has(toolId);
+        return (
+          <button
+            key={toolId}
+            onClick={() => toggleTool(toolId)}
+            title={config.description}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all",
+              isActive
+                ? "bg-white/10 text-foreground"
+                : "text-muted-foreground/60 hover:bg-white/5 hover:text-muted-foreground"
+            )}
+          >
+            <Icon className="h-3 w-3" />
+            {config.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
+  // ---------------------------------------------------------------------------
+  // TOC sidebar panel
+  // ---------------------------------------------------------------------------
+  const tocPanel = showToc && tocEntries.length > 0 ? (
+    <div className="w-64 shrink-0 overflow-y-auto border-r border-white/5 bg-[hsl(168,14%,5%)]/60 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[hsl(168,14%,5%)]/80 px-3 py-2 backdrop-blur-xl">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowToc(false)}
+          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <nav className="p-2">
+        {tocEntries.map((entry) => (
+          <button
+            key={entry.id}
+            onClick={() => handleTocNavigate(entry.estimatedPage)}
+            className={cn(
+              "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/5",
+              entry.estimatedPage === currentPage
+                ? "bg-white/5 text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
+          >
+            <span className="shrink-0 tabular-nums text-muted-foreground/50" style={{ minWidth: "20px" }}>
+              {entry.estimatedPage}
+            </span>
+            <span className={cn(
+              "line-clamp-2",
+              entry.level === 1 && "font-medium"
+            )}>
+              {entry.title}
+            </span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  ) : null;
+
+  // ---------------------------------------------------------------------------
+  // Audio progress bar (inline in header, shown when audio is playing)
+  // ---------------------------------------------------------------------------
+  const audioProgressBar = portal.audio_url && audioPlaying ? (
+    <div className="flex items-center gap-2 mr-2 border-r border-white/10 pr-2">
+      <span className="text-[10px] tabular-nums text-muted-foreground">{formatTime(audioCurrentTime)}</span>
+      <div
+        ref={progressRef}
+        onClick={handleAudioSeek}
+        className="group relative h-1.5 w-24 cursor-pointer rounded-full bg-white/10"
+        title="Click to seek"
+      >
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-all"
+          style={{
+            width: audioDuration > 0 ? `${(audioCurrentTime / audioDuration) * 100}%` : "0%",
+            backgroundColor: brandColor,
+          }}
+        />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{
+            left: audioDuration > 0 ? `calc(${(audioCurrentTime / audioDuration) * 100}% - 6px)` : "0",
+            backgroundColor: brandColor,
+          }}
+        />
+      </div>
+      <span className="text-[10px] tabular-nums text-muted-foreground">{formatTime(audioDuration)}</span>
+    </div>
+  ) : null;
 
   return (
     <div
@@ -196,6 +626,28 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               </div>
             )}
 
+            {/* Search button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                document.dispatchEvent(
+                  new KeyboardEvent("keydown", {
+                    key: "f",
+                    metaKey: true,
+                    bubbles: true,
+                  })
+                );
+              }}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Search in document (Cmd+F)"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Audio progress bar — shown when playing */}
+            {audioProgressBar}
+
             {portal.audio_url && (
               <Button
                 variant="ghost"
@@ -216,7 +668,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               variant="ghost"
               size="icon"
               onClick={() => setShowToc(!showToc)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className={cn(
+                "h-8 w-8 text-muted-foreground hover:text-foreground",
+                showToc && "bg-white/10 text-foreground"
+              )}
               title="Table of contents"
             >
               <List className="h-4 w-4" />
@@ -283,9 +738,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
       {/* Main content */}
       {expanded ? (
-        /* Expanded: 65/35 split */
+        /* Expanded: TOC sidebar + 65/35 split */
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-[65%] border-r border-white/5 overflow-auto">
+          {tocPanel}
+          <div className={cn("border-r border-white/5 overflow-auto", showToc && tocEntries.length > 0 ? "flex-1" : "w-[65%]")}>
             <PortalPdfViewer
               pdfUrl={activePdfUrl}
               textContent={portal.document_content}
@@ -294,67 +750,92 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               onPageChange={handlePageChange}
               onTotalPages={handleTotalPages}
               onControlsReady={handleControlsReady}
+              onTextAction={handleTextAction}
+              highlightText={highlightText}
             />
           </div>
           <div className="flex w-[35%] flex-col h-full">
+            <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+            {toolTogglesBar}
             <ChatInterface
               apiEndpoint="/api/chat/portal"
-              extraHeaders={{ "x-portal-token": portal.share_token }}
+              extraHeaders={extraHeaders}
               portalMode
             />
           </div>
         </div>
       ) : (
-        /* Compact: full-width PDF + floating chat popup at bottom */
-        <div className="relative flex flex-1 flex-col min-h-0">
-          {/* PDF viewer — takes full height, scrollable with bottom padding for chat bar */}
-          <div className="flex-1 overflow-auto pb-20">
-            <PortalPdfViewer
-              pdfUrl={activePdfUrl}
-              textContent={portal.document_content}
-              spread={true}
-              currentPage={currentPage}
-              onPageChange={handlePageChange}
-              onTotalPages={handleTotalPages}
-              onControlsReady={handleControlsReady}
-            />
-          </div>
+        /* Compact: TOC sidebar + full-width PDF + floating chat popup at bottom */
+        <div className="relative flex flex-1 min-h-0">
+          {tocPanel}
+          <div className="flex flex-1 flex-col min-h-0">
+            {/* PDF viewer — takes full height, scrollable with bottom padding for chat bar */}
+            <div className={cn(
+              "flex-1 overflow-auto pb-20",
+              distractionFree && "pb-16"
+            )}>
+              <PortalPdfViewer
+                pdfUrl={activePdfUrl}
+                textContent={portal.document_content}
+                spread={true}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+                onTotalPages={handleTotalPages}
+                onControlsReady={handleControlsReady}
+                onTextAction={handleTextAction}
+                highlightText={highlightText}
+              />
+            </div>
 
-          {/* Floating chat popup — centered, narrow, collapsible */}
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-4">
-            <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-              {/* Toggle bar */}
-              <button
-                onClick={() => setChatOpen(!chatOpen)}
-                className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {chatOpen ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    <span>Collapse chat</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    <span>Ask about this document</span>
-                  </>
-                )}
-              </button>
+            {/* Floating chat popup — centered, narrow, collapsible */}
+            <div className={cn(
+              "fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl z-40 px-4",
+              distractionFree && "opacity-80 hover:opacity-100 transition-opacity"
+            )}>
+              <div className="rounded-2xl border border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+                {/* Context tags */}
+                <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
 
-              {/* Collapsible chat messages + input area */}
-              <div
-                className={cn(
-                  "transition-all duration-300 ease-in-out",
-                  chatOpen ? "max-h-[50vh]" : "max-h-0"
-                )}
-                style={{ overflow: "hidden" }}
-              >
-                <div className="h-[50vh] overflow-hidden">
-                  <ChatInterface
-                    apiEndpoint="/api/chat/portal"
-                    extraHeaders={{ "x-portal-token": portal.share_token }}
-                    portalMode
-                  />
+                {/* Tool toggles — shown above the toggle bar */}
+                {toolTogglesBar}
+
+                {/* Toggle bar */}
+                <button
+                  onClick={() => setChatOpen(!chatOpen)}
+                  className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {chatOpen ? (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                      <span>Collapse chat</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      <span>
+                        {contextTags.length > 0
+                          ? `Ask about ${contextTags.length} selected text${contextTags.length > 1 ? "s" : ""}`
+                          : "Ask about this document"}
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                {/* Collapsible chat messages + input area */}
+                <div
+                  className={cn(
+                    "transition-all duration-300 ease-in-out",
+                    chatOpen ? "max-h-[50vh]" : "max-h-0"
+                  )}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className="h-[50vh] overflow-hidden">
+                    <ChatInterface
+                      apiEndpoint="/api/chat/portal"
+                      extraHeaders={extraHeaders}
+                      portalMode
+                    />
+                  </div>
                 </div>
               </div>
             </div>
