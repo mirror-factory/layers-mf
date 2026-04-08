@@ -5,7 +5,7 @@ import { Plug, Loader2, ExternalLink, Check, CheckCircle2 } from "lucide-react";
 
 /** Inline OAuth connect card — triggers OAuth flow directly from chat */
 export function MCPOAuthCard({ name, serverId, url }: { name: string; serverId: string; url: string }) {
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "no-oauth">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async () => {
@@ -17,12 +17,22 @@ export function MCPOAuthCard({ name, serverId, url }: { name: string; serverId: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serverUrl: url, appName: "Layers", callbackUrl: `${window.location.origin}/api/mcp/oauth/callback` }),
       });
-      if (!res.ok) throw new Error("OAuth discovery failed");
+
+      if (!res.ok) {
+        // Server doesn't support OAuth discovery — try connecting without auth
+        setStatus("no-oauth");
+        return;
+      }
+
       const meta = await res.json();
       const authorizeUrl = meta.authorizeUrl ?? "";
       const tokenUrl = meta.tokenUrl ?? "";
       const clientId = meta.clientId || window.location.origin;
-      if (!authorizeUrl) throw new Error("No authorization endpoint found");
+
+      if (!authorizeUrl) {
+        setStatus("no-oauth");
+        return;
+      }
 
       // Save OAuth config to server record
       await fetch(`/api/mcp-servers/${serverId}`, {
@@ -49,6 +59,26 @@ export function MCPOAuthCard({ name, serverId, url }: { name: string; serverId: 
       setStatus("error");
     }
   };
+
+  const handleTryNoAuth = async () => {
+    setStatus("loading");
+    try {
+      await fetch(`/api/mcp-servers/${serverId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth_type: "none", is_active: true, error_message: null }),
+      });
+      window.location.reload();
+    } catch {
+      setError("Failed to connect");
+      setStatus("error");
+    }
+  };
+
+  // Fallback: OAuth not available — offer no-auth or API key
+  if (status === "no-oauth") {
+    return <MCPFallbackCard name={name} serverId={serverId} onTryNoAuth={handleTryNoAuth} />;
+  }
 
   return (
     <div className="rounded-lg border bg-card p-3 my-1 space-y-2">
@@ -128,6 +158,42 @@ export function MCPBearerCard({ name, serverId }: { name: string; serverId: stri
         >
           {status === "saving" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
           Connect
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Fallback card when OAuth discovery fails — try no-auth or enter API key */
+function MCPFallbackCard({ name, serverId, onTryNoAuth }: { name: string; serverId: string; onTryNoAuth: () => void }) {
+  const [showKey, setShowKey] = useState(false);
+
+  if (showKey) {
+    return <MCPBearerCard name={name} serverId={serverId} />;
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-3 my-1 space-y-2">
+      <div className="flex items-center gap-2">
+        <Plug className="h-4 w-4 text-primary" />
+        <span className="text-sm font-medium">{name}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        This server doesn&apos;t support OAuth directly. Try connecting without auth, or provide an API key if required.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={onTryNoAuth}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Plug className="h-3 w-3" />
+          Connect without auth
+        </button>
+        <button
+          onClick={() => setShowKey(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+        >
+          Enter API key instead
         </button>
       </div>
     </div>
