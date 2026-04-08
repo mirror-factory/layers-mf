@@ -30,6 +30,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [totalPages, setTotalPages] = useState(portal.page_count ?? 0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Multi-document switching
+  const documents = portal.documents ?? [];
+  const [activeDocIndex, setActiveDocIndex] = useState(() => {
+    const idx = documents.findIndex(d => d.is_active);
+    return idx >= 0 ? idx : 0;
+  });
+  const activeDoc = documents[activeDocIndex];
+  const activePdfUrl = activeDoc?.pdf_path || portal.pdf_url;
+
   const toggleAudio = useCallback(() => {
     if (!audioRef.current) return;
     if (audioPlaying) {
@@ -78,17 +87,39 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 className="h-7 w-7 rounded-md object-contain"
               />
             )}
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold tracking-tight">
-                {portal.title}
-              </h1>
-              {portal.client_name && (
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: brandColor }}
-                >
-                  {portal.client_name}
-                </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-semibold tracking-tight">
+                  {activeDoc?.title || portal.title}
+                </h1>
+                {portal.client_name && (
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: brandColor }}
+                  >
+                    {portal.client_name}
+                  </span>
+                )}
+              </div>
+              {/* Document switcher tabs */}
+              {documents.length > 1 && (
+                <div className="flex gap-1 mt-1">
+                  {documents.map((doc, i) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => { setActiveDocIndex(i); setCurrentPage(1); }}
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                        i === activeDocIndex
+                          ? "text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      )}
+                      style={i === activeDocIndex ? { backgroundColor: brandColor } : undefined}
+                    >
+                      {doc.title}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -185,7 +216,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         <div className="flex flex-1 overflow-hidden">
           <div className="w-[65%] border-r border-white/5">
             <PortalPdfViewer
-              pdfUrl={portal.pdf_url}
+              pdfUrl={activePdfUrl}
               textContent={portal.document_content}
               spread={false}
               currentPage={currentPage}
@@ -210,7 +241,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           {/* PDF viewer — takes remaining space, scrollable */}
           <div className="flex-1 overflow-auto pb-[280px]">
             <PortalPdfViewer
-              pdfUrl={portal.pdf_url}
+              pdfUrl={activePdfUrl}
               textContent={portal.document_content}
               spread={true}
               currentPage={currentPage}

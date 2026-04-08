@@ -5,6 +5,14 @@ import { useParams } from "next/navigation";
 import { PortalViewer } from "@/components/portal-viewer";
 import { Loader2 } from "lucide-react";
 
+export interface PortalDocument {
+  id: string;
+  title: string;
+  context_item_id: string;
+  is_active: boolean;
+  pdf_path?: string;
+}
+
 export interface PortalData {
   id: string;
   title: string;
@@ -14,8 +22,11 @@ export interface PortalData {
   brand_secondary_color: string | null;
   logo_url: string | null;
   pdf_url: string | null;
+  pdf_storage_path: string | null;
   document_content: string | null;
+  documents: PortalDocument[];
   audio_url: string | null;
+  audio_storage_path: string | null;
   system_prompt: string | null;
   enabled_tools: string[];
   model: string;
@@ -44,7 +55,13 @@ export default function PortalPage() {
           return;
         }
         const data = await res.json();
-        setPortal(data.portal ?? data);
+        const p = data.portal ?? data;
+        // Map storage paths to URLs
+        p.pdf_url = p.pdf_url || p.pdf_storage_path || null;
+        p.audio_url = p.audio_url || p.audio_storage_path || null;
+        p.documents = p.documents ?? [];
+        p.enabled_tools = p.enabled_tools ?? [];
+        setPortal(p);
       } catch {
         setError("Failed to load portal.");
       } finally {
