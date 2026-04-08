@@ -37,7 +37,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     })
     .eq("id", p.id);
 
-  // If no document_content but has context_item_id, load it
+  // Load content for the active document
   let documentContent = p.document_content;
   if (!documentContent && p.context_item_id) {
     const { data: contextItem } = await supabase
@@ -50,9 +50,27 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
   }
 
+  // Load content for ALL documents so TOC works when switching
+  const docs = (p.documents ?? []) as { id: string; title: string; context_item_id: string; is_active: boolean; pdf_path?: string }[];
+  if (docs.length > 0) {
+    const contextIds = docs.map(d => d.context_item_id).filter(Boolean);
+    if (contextIds.length > 0) {
+      const { data: items } = await supabase
+        .from("context_items")
+        .select("id, raw_content")
+        .in("id", contextIds);
+
+      const contentMap = new Map((items ?? []).map((i: { id: string; raw_content: string }) => [i.id, i.raw_content]));
+      for (const doc of docs) {
+        (doc as Record<string, unknown>).content = contentMap.get(doc.context_item_id) ?? null;
+      }
+    }
+  }
+
   return NextResponse.json({
     portal: {
       ...p,
+      documents: docs,
       document_content: documentContent,
     },
   });
