@@ -301,6 +301,46 @@ ${title ? `<h3 style="text-align:center;margin-bottom:8px">${title}</h3>` : ""}
     });
   }
 
+  // Animated annotations — AI can add visual callouts on the PDF
+  if (enabled.has("add_annotation")) {
+    tools.add_annotation = tool({
+      description:
+        "Add a visual annotation/callout to the PDF at a specific location. Use this to highlight and explain specific parts of the document visually. The annotation appears as an animated callout on the PDF.",
+      inputSchema: z.object({
+        page: z
+          .number()
+          .describe("Page number where the annotation should appear"),
+        text: z
+          .string()
+          .describe("The text in the document to annotate (used to find position)"),
+        note: z
+          .string()
+          .describe("The explanation or note to show in the callout"),
+        type: z
+          .enum(["info", "highlight", "warning", "tip"])
+          .optional()
+          .describe("Type of annotation (default: info)"),
+      }),
+      execute: async ({
+        page,
+        text,
+        note,
+        type,
+      }: {
+        page: number;
+        text: string;
+        note: string;
+        type?: "info" | "highlight" | "warning" | "tip";
+      }) => ({
+        action: "add_annotation",
+        page,
+        text,
+        note,
+        type: type ?? "info",
+      }),
+    });
+  }
+
   // Document switching — works with the portal's documents array
   const documents = (portal.documents as { id: string; title: string; context_item_id: string; is_active: boolean }[]) ?? [];
   if (documents.length > 1) {
@@ -365,7 +405,7 @@ function buildSystemPrompt(
 
 You have access to the full document content. When answering questions:
 1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
-2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF).
+2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF), add_annotation (to add visual callouts on the PDF).
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
 4. Always reference specific sections and quote relevant text.
 5. Be concise but thorough.

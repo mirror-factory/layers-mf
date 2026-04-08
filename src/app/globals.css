@@ -261,3 +261,31 @@ mark.portal-pdf-highlight-active {
   outline: 2px solid rgba(250, 204, 21, 0.9);
   outline-offset: 1px;
 }
+
+/* Portal annotation animations */
+@keyframes annotation-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.4); opacity: 0.8; }
+}
+
+@keyframes annotation-expand {
+  from { transform: scale(0.85) translateX(4px); opacity: 0; }
+  to { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+@keyframes annotation-enter {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.annotation-pulse {
+  animation: annotation-pulse 2s ease-in-out infinite;
+}
+
+.annotation-expand {
+  animation: annotation-expand 0.25s ease-out forwards;
+}
+
+.annotation-enter {
+  animation: annotation-enter 0.3s ease-out both;
+}
