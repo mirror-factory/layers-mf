@@ -4,11 +4,14 @@
 
 ## Portal Issues
 
-### Zoom not working
-PDF viewer zoom buttons (+/-/reset) exist in the header but pages don't resize. The `pageWidth` calculation depends on `zoom` state but the zoom buttons may not be connected to the PDF viewer's controls properly. Check `PdfControls.zoomIn/zoomOut` wiring.
+### ~~Zoom not working~~ ✅ Fixed (April 8)
+`pageWidth` was capped at 700px with `Math.min(available, 700)` — zoom had no effect past that cap. Fixed by computing `baseWidth` at zoom=1 then multiplying: `return baseWidth * zoom`.
 
-### Search/highlight goes to wrong position
-PDF search and highlight_text tool highlights appear at incorrect positions (top-left corner of page instead of at the matching text). The `highlightTextInDom` function finds text spans in the react-pdf text layer but the mark elements aren't positioned correctly. Need to verify TextLayer.css is working and that mark elements inherit the span's absolute positioning within the text layer.
+### ~~Search/highlight goes to wrong position~~ ✅ Fixed (April 8)
+Root cause: `scrollIntoView()` doesn't work reliably inside custom `overflow-auto` divs when react-pdf's CSS `transform: scaleX()` is applied on text layer spans. Fixed with `scrollElementIntoContainer()` — a manual scroll calculation using `getBoundingClientRect()` relative to the scroll container.
+
+### ~~Table of contents inaccurate~~ ✅ Fixed (April 8)
+TOC was picking up too many false positives from label-style patterns (`^[A-Z]...:`) and ALL-CAPS lines. Removed both patterns. Tightened numbered-section regex to require uppercase start and max 80 chars. Added deduplication and 40-entry cap.
 
 ### Chat state still resets on mode switch
 Despite single ChatInterface instance, mode switching may cause remount. Needs React DevTools verification.

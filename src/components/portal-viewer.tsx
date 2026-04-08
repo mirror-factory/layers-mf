@@ -208,14 +208,16 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
     }
 
     // Numbered sections: 1. Title, 2.1 Title, 1.2.3 Title
-    // Also match "5.1 " (number then space), "5.1. ", "5.1) ", "5.1- "
+    // Require title ≤80 chars and starting with uppercase to reduce body-text false positives
     if (!title) {
-      match = line.match(/^(\d+(?:\.\d+)*)\s*[.)\-:]?\s+(.{2,120})/);
+      match = line.match(/^(\d+(?:\.\d+)*)\s*[.)\-:]?\s+([A-Z].{1,78})/);
       if (match) {
         const numbering = match[1];
         const dots = (numbering.match(/\./g) || []).length;
         level = dots + 1;
         title = match[2].trim();
+        // Skip if it looks like a sentence (contains a verb-like word mid-text with comma/period patterns)
+        if (title.includes(". ") || title.endsWith(".")) title = "";
       }
     }
 
@@ -226,21 +228,6 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
         level = match[1].toLowerCase() === "part" ? 1 : match[1].toLowerCase() === "chapter" ? 1 : 2;
         title = match[3]?.trim() || line;
       }
-    }
-
-    // Label-style headings: "Priority:", "Description:", "Overview:", etc.
-    if (!title) {
-      match = line.match(/^([A-Z][a-zA-Z\s]{2,30}):\s*(.*)$/);
-      if (match && /^(Priority|Description|Overview|Summary|Requirements|Scope|Goals|Objectives|Background|Introduction|Conclusion|References|Appendix|Notes|Details|Deliverables|Timeline|Budget|Risks|Dependencies|Assumptions|Constraints|Architecture|Design|Implementation|Testing|Deployment|Maintenance|Security|Performance|Scalability|Integration|Configuration|Setup|Installation|Usage|API|Database|Schema|Migration|Workflow|Process|Procedure|Policy|Standard|Guideline|Specification|Definition|Glossary|FAQ|Contact|Support|Status|Phase|Stage|Step|Task|Action|Item|Issue|Feature|Module|Component|Service|Endpoint|Route|Model|View|Controller|Handler|Provider|Factory|Adapter|Bridge|Proxy|Decorator|Observer|Strategy)$/i.test(match[1].trim())) {
-        level = 3;
-        title = match[1].trim();
-      }
-    }
-
-    // ALL-CAPS lines (likely section headers) — at least 4 chars, no lowercase
-    if (!title && line.length >= 4 && line.length <= 80 && /^[A-Z][A-Z\s\d&:,\-]+$/.test(line)) {
-      level = 1;
-      title = line;
     }
 
     if (title) {
@@ -262,7 +249,17 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
     }
   }
 
-  return entries;
+  // Deduplicate: skip entries with the same title as a previous one
+  const seen = new Set<string>();
+  const deduped = entries.filter((e) => {
+    const key = e.title.toLowerCase().slice(0, 40);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Cap at 40 entries — beyond that the sidebar becomes unusable
+  return deduped.slice(0, 40);
 }
 
 // ---------------------------------------------------------------------------

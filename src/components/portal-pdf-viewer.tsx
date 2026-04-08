@@ -201,6 +201,22 @@ function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches,
 }
 
 // ---------------------------------------------------------------------------
+// Scroll an element into view within a specific scroll container.
+// Native scrollIntoView() doesn't reliably work inside custom overflow-auto
+// divs when CSS transforms are involved (react-pdf text layer uses scaleX).
+// ---------------------------------------------------------------------------
+
+function scrollElementIntoContainer(el: HTMLElement, scrollContainer: HTMLElement) {
+  const elRect = el.getBoundingClientRect();
+  const containerRect = scrollContainer.getBoundingClientRect();
+  // Position of el top relative to scroll container viewport top
+  const relTop = elRect.top - containerRect.top + scrollContainer.scrollTop;
+  // Center vertically
+  const target = relTop - scrollContainer.clientHeight / 2 + elRect.height / 2;
+  scrollContainer.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+}
+
+// ---------------------------------------------------------------------------
 // Highlight helper: marks matching text spans in the PDF text layer
 // ---------------------------------------------------------------------------
 
@@ -297,12 +313,15 @@ function PdfDocumentInner({
 
   const pageWidth = useMemo(() => {
     const padding = 64;
-    const available = (containerWidth - padding) * zoom;
+    const baseAvailable = containerWidth - padding;
     if (showSpread) {
-      return Math.min((available - 24) / 2, 550);
+      // Base width per page at zoom=1, then scale
+      const baseWidth = Math.min((baseAvailable - 24) / 2, 550);
+      return baseWidth * zoom;
     }
-    // Single page: max 700px for a document-like feel, not full width
-    return Math.min(available, 700);
+    // Base width at zoom=1 (max 700px), then scale — this lets zoom go past 100%
+    const baseWidth = Math.min(baseAvailable, 700);
+    return baseWidth * zoom;
   }, [containerWidth, zoom, showSpread]);
 
   const onLoadSuccess = useCallback(
@@ -721,10 +740,10 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match
+      // Scroll to first match using manual calculation (scrollIntoView unreliable in overflow-auto + CSS transforms)
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollElementIntoContainer(matches[0], pdfAreaRef.current);
       }
     },
     []
@@ -746,7 +765,9 @@ export function PortalPdfViewer({
 
       setSearchMatchIndex(newIndex);
       searchMatches[newIndex]?.classList.add("portal-pdf-highlight-active");
-      searchMatches[newIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (searchMatches[newIndex] && pdfAreaRef.current) {
+        scrollElementIntoContainer(searchMatches[newIndex], pdfAreaRef.current);
+      }
     },
     [searchMatches, searchMatchIndex]
   );
@@ -773,7 +794,7 @@ export function PortalPdfViewer({
         setSearchMatches(matches);
         setSearchMatchIndex(0);
         matches[0].classList.add("portal-pdf-highlight-active");
-        matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
+        if (container) scrollElementIntoContainer(matches[0], container);
         setSearchVisible(true);
         return true;
       }

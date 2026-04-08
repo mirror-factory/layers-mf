@@ -256,7 +256,16 @@
 - Export: JSON format for both portal sessions and chat sessions, importable for playback
 - Apply to both: main chat page replay + portal page replay
 
-**20. Advanced Features**
+**20. Portal as Universal Artifact + Review Platform**
+- Portals are currently created ad-hoc (one URL per client). Idea: portals become a first-class artifact type that lives in the context library alongside notes, code, charts.
+- Each portal artifact holds: multiple documents/PDFs, enabled tools, branding, access rules, and a full annotation state.
+- Versioning: each annotation session or document revision creates a new version (like Git commits for documents). Client edits and comments create separate states you can diff.
+- Review workflow: client leaves annotations/comments → you reply → iterations tracked as version history → final version marked approved.
+- This mirrors how design review works (Figma comments, PR reviews) but for documents and proposals.
+- "Portal tab" in the sidebar would list all portal artifacts, let you create new ones, set rules, and view engagement metrics per version.
+- Pre-requisite: artifact system needs to support non-text artifact types (portal config JSON + attached PDFs).
+
+**21. Advanced Features**
 - Voice/live transcription (Gemini Live API)
 - Canvas/whiteboard with AI assist
 - Workflow builder (visual multi-step automations)
