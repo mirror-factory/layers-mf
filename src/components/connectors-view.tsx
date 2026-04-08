@@ -14,11 +14,13 @@ import {
   Wrench,
   ArrowLeft,
   ChevronRight,
+  CheckCircle2,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MCPChat } from "@/components/mcp-chat";
 
@@ -189,7 +191,25 @@ interface ConnectorsViewProps {
 export function ConnectorsView({
   mcpServers,
 }: ConnectorsViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [oauthSuccess, setOauthSuccess] = useState<string | null>(null);
   const [tab, setTab] = useState<ConnectorTab>("connected");
+
+  // Handle mcp_connected search param from OAuth callback
+  useEffect(() => {
+    const connectedId = searchParams.get("mcp_connected");
+    if (connectedId) {
+      const server = mcpServers.find((s) => s.id === connectedId);
+      setOauthSuccess(server?.name ?? "MCP Server");
+      // Clean the URL without triggering navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete("mcp_connected");
+      window.history.replaceState({}, "", url.toString());
+      // Refresh server component data
+      router.refresh();
+    }
+  }, [searchParams, mcpServers, router]);
 
   /* MCP gallery state */
   const [query, setQuery] = useState("");
@@ -292,7 +312,7 @@ export function ConnectorsView({
         body: JSON.stringify({ is_active: false }),
       });
       if (!res.ok) throw new Error(`Disconnect failed: ${res.status}`);
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       setMcpError(err instanceof Error ? err.message : "Failed to disconnect");
     }
@@ -372,7 +392,7 @@ export function ConnectorsView({
         return;
       }
 
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       setMcpError(err instanceof Error ? err.message : "Reconnect failed");
     }
@@ -404,7 +424,7 @@ export function ConnectorsView({
         setBearerToken("");
         setSelectedServer(null);
         setTab("connected");
-        window.location.reload();
+        router.refresh();
       }
     } catch (err) {
       setMcpError(err instanceof Error ? err.message : "Connection failed");
@@ -430,7 +450,7 @@ export function ConnectorsView({
       setCustomName("");
       setCustomUrl("");
       setTab("connected");
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       setMcpError(err instanceof Error ? err.message : "Connection failed");
     } finally {
@@ -517,6 +537,20 @@ export function ConnectorsView({
           )}
         </p>
       </div>
+
+      {/* OAuth success banner */}
+      {oauthSuccess && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span>{oauthSuccess} connected successfully</span>
+          <button
+            onClick={() => setOauthSuccess(null)}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* MCP Chat Assistant */}
       <div className="mb-6">

@@ -2,7 +2,8 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Send, Loader2, Calendar, CheckCircle2, Trash2, Pencil, Bot, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -101,8 +102,12 @@ function ScheduleToolCard({ part }: { part: ToolPart }) {
   return null;
 }
 
+const SCHEDULE_SUCCESS_STATUSES = new Set(["created", "updated", "deleted"]);
+
 export function ScheduleChat() {
   const [input, setInput] = useState("");
+  const router = useRouter();
+  const lastRefreshedToolRef = useRef<string | null>(null);
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -114,6 +119,31 @@ export function ScheduleChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Refresh page data when a tool call completes with a success status
+  const checkForSuccessfulToolOutputs = useCallback(() => {
+    for (const message of messages) {
+      if (message.role !== "assistant") continue;
+      for (const part of message.parts ?? []) {
+        if (!part.type.startsWith("tool-")) continue;
+        const toolPart = part as ToolPart;
+        if (toolPart.state !== "output-available") continue;
+        const output = toolPart.output as { status?: string } | undefined;
+        if (output?.status && SCHEDULE_SUCCESS_STATUSES.has(output.status)) {
+          const key = `${message.id}-${part.type}-${output.status}`;
+          if (lastRefreshedToolRef.current !== key) {
+            lastRefreshedToolRef.current = key;
+            setTimeout(() => router.refresh(), 500);
+            return;
+          }
+        }
+      }
+    }
+  }, [messages, router]);
+
+  useEffect(() => {
+    checkForSuccessfulToolOutputs();
+  }, [checkForSuccessfulToolOutputs]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
