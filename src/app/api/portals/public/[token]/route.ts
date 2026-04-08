@@ -60,7 +60,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         .select("id, raw_content")
         .in("id", contextIds);
 
-      const contentMap = new Map((items ?? []).map((i: { id: string; raw_content: string }) => [i.id, i.raw_content]));
+      const contentMap = new Map((items ?? []).map((i: { id: string; raw_content: string | null }) => [i.id, i.raw_content ?? ""]));
+
       for (const doc of docs) {
         (doc as Record<string, unknown>).content = contentMap.get(doc.context_item_id) ?? null;
       }
