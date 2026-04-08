@@ -1,9 +1,10 @@
 # Layers Roadmap — What's Built, What's Next
 
 > Single source of truth for implementation status and priorities.
-> Last updated: 2026-04-06
-> Session count: 4 (Apr 1-6, 2026)
-> Total commits: ~130
+> Last updated: 2026-04-07
+> Session count: 5 (Apr 1-7, 2026)
+> Total commits: ~150
+> Version: 0.6.0
 
 ---
 
@@ -15,11 +16,34 @@
 - ✅ Inline HTML visuals (Chart.js, GSAP, anime.js, etc.)
 - ✅ Error handling with smart messages + Retry button
 - ✅ Chat persistence (auto-create conversation, await saves)
-- ✅ Auto-title generation (Gemini Flash)
+- ✅ Auto-title generation (Gemini Flash, in stream onFinish)
 - ✅ Slash commands, visual frequency control
-- ✅ NeuralDots/NeuralMorph avatar with emotions
-- ✅ Context window bar (token counter)
+- ✅ NeuralMorph avatar with orbit formation (white user, green AI)
+- ✅ Context window bar (token counter, cost breakdown, cache stats)
 - ✅ sendAutomaticallyWhen for client-side tools (ask_user, artifact_panel)
+- ✅ Model selection persists to localStorage
+- ✅ Chat auto-focus on mount and conversation switch
+- ✅ Per-message cost tracking with TTFB, tokens, cache hit rate
+- ✅ Prompt caching via AI Gateway (90% savings Anthropic/Google)
+- ✅ Share panel (inline in header actions dropdown)
+
+### Mini-Chats (Focused AI Assistants)
+- ✅ MCP Assistant on /connectors — search, connect, disconnect MCP servers
+- ✅ Schedule Assistant on /schedules — create, edit, delete scheduled tasks
+- 🔨 Skills Assistant on /skills — create skills, search marketplace (building)
+- All use Gemini Flash, focused system prompts, maxSteps: 5
+
+### MCP Integration (v0.6.0 — All Integrations Are MCP)
+- ✅ 5 MCP chat tools: search_mcp_servers, connect_mcp_server, disconnect_mcp_server, list_mcp_servers
+- ✅ 3 registry sources: official MCP registry, Smithery (6K+ servers), curated list
+- ✅ Inline OAuth card — PKCE flow directly from chat (no redirect to connectors page)
+- ✅ Inline API key card — paste token in chat, connects immediately
+- ✅ OAuth fallback — when discovery fails, offers "connect without auth" or "enter API key"
+- ✅ OAuth callback returns to /chat (not /connectors)
+- ✅ MCP ConnectionManager with 10-min cache, auto token refresh
+- ✅ Per-server error logging in chat route, error_message surfaced in UI
+- ✅ Disconnect (deactivate, can reconnect) vs Remove (permanent delete)
+- ✅ Nango fully removed — 67 files, 12,800 lines deleted
 
 ### Artifacts & Sandboxes
 - ✅ write_code, edit_code, run_project, run_code tools
@@ -30,257 +54,203 @@
 - ✅ Deterministic sandbox naming (layers-{org}-{artifact})
 - ✅ Auto-open artifact panel on tool completion
 - ✅ artifact_panel tool (open/close from AI)
-- ✅ artifact_get, artifact_delete tools
-- ✅ Sandbox health check polling
 
 ### Knowledge Library
-- ✅ Context items from 8+ sources (Drive, GitHub, Slack, Linear, Notion, Gmail, Granola, uploads)
+- ✅ Context items from uploads + MCP tool results
 - ✅ Hybrid search (vector + BM25 with RRF)
 - ✅ Collections (folders, 3-level nesting, multi-assign)
-- ✅ Tags (user-created, org-scoped, usage count)
-- ✅ Pins (user-scoped quick access)
-- ✅ Archive (soft delete with restore)
-- ✅ Collections sidebar with system sections (All, Pinned, Recent, Archived)
-- ✅ Tag chips on items (clickable to filter)
-- ✅ File upload (PDF, DOCX, TXT, MD)
-- ✅ AI classification endpoint (manual trigger)
+- ✅ Tags, Pins, Archive
+- ✅ File upload (PDF, DOCX, TXT, MD, images)
+
+### Notifications
+- ✅ Consolidated /notifications page (same data as bell dropdown)
+- ✅ Desktop browser notifications (batched, deduped)
+- ✅ Schedule notifications: started + complete dual notifications
+- ✅ Email notifications via Resend (notifications@mirrorfactory.ai)
+- ✅ 7-day notification window, clear-old endpoint
+- ✅ iOS push notification pipeline (needs APNs credentials)
 
 ### Sharing
 - ✅ Conversation sharing (user-to-user within org)
 - ✅ Public share links for conversations (/share/[token])
-- ✅ Share page works for non-logged-in users (middleware + admin client fix)
-- ✅ Read-only share view (no sidebar, no input, no nav)
+- ✅ Share page works for non-logged-in users
 
-### Integrations
-- ✅ Nango OAuth for 6 services (Drive, GitHub, Slack, Linear, Gmail, Notion)
-- ✅ MCP server connections with PKCE OAuth
-- ✅ Connector status page
-- ✅ ConnectionManager singleton with auto-refresh
+### Scheduling
+- ✅ Schedule creation with cron expressions + timezone
+- ✅ Background chat execution with notifications
+- ✅ Schedule management (create, edit, pause, delete, history)
+- ⚠️ Vercel Hobby limits cron to daily — need Pro for per-minute
 
 ### Skills
 - ✅ Skill creation (via chat interview or direct API)
 - ✅ Skill activation via slash commands
-- ✅ .skill/.json file upload
 - ✅ Skills marketplace search
+- ✅ .skill/.json file upload
 
 ### Infrastructure
-- ✅ System prompt caching (5-min TTL)
-- ✅ Message pruning/compaction middleware
+- ✅ All 49 tests passing
+- ✅ Deployed to Vercel production
+- ✅ Capacitor iOS app shell with safe areas (contentInset: never)
 - ✅ Credit system with rate limiting
-- ✅ Usage logging (per-request cost tracking)
-- ✅ Capacitor iOS app shell
+- ✅ System prompt caching (5-min TTL)
+
+### UI/UX (v0.6.0)
+- ✅ Sidebar: 5 main items + collapsible More, no jitter on load
+- ✅ NeuralMorph orbit logo in sidebar
+- ✅ Single header bar with actions dropdown
+- ✅ Glass effect prompt bar with gradient fade
+- ✅ Single send/stop toggle button
+- ✅ Image attachments right-aligned for user messages
 
 ---
 
-## What's Partially Built (API exists, needs UI or testing)
+## Known Issues (Fix Before New Features)
 
-- ⚠️ Context item/artifact sharing (API at /api/sharing, ShareDialog may work but untested)
-- ⚠️ Smart collections (DB schema + API accepts smart_filter JSONB, no query engine or UI)
-- ⚠️ AI auto-classification (classifyContent() works, no background cron running)
-- ⚠️ Priority docs management (API at /api/priority-docs, no UI)
-- ⚠️ Bulk operations in library (API at /api/context/bulk, UI partially wired)
-
----
-
-## Known Bugs (Fix Before New Features)
-
-| Bug | Area | Details |
-|-----|------|---------|
-| Skills slash commands not appearing | Skills/Chat | Newly added skills don't show in slash command menu until page refresh |
-| Connectors "Add Integration" button broken | Connectors | Button opens nothing — no modal/page showing available integrations |
-| Scheduling not working end-to-end | Scheduling | Cron triggers but doesn't create background chats or send notifications |
-| Skill editor not using TipTap | Skills | Editor needs same TipTap editor as chat/documents with save capability |
-| MCP server connection not discoverable | Connectors | Users can't find or add MCP servers easily |
+| Issue | Area | Details |
+|-------|------|---------|
+| MCP tools not loading in chat | MCP/Chat | OAuth token refresh may fail for some servers; connection errors swallowed |
+| Canva MCP connected but tools may not load | MCP | Needs verification — may be protocol version or timeout |
+| iOS safe areas untested on device | Mobile | contentInset: never set, needs Xcode build + device test |
+| APNs credentials not configured | Push | Pipeline built, needs .p8 key from Apple Developer |
+| Vercel cron limited to daily on Hobby | Scheduling | Execute-schedules runs once/day at 6am; need Pro or external cron |
+| Skills slash commands delayed | Skills | New skills don't appear in menu until page refresh |
 
 ---
 
-## What's Not Built (Prioritized)
+## Current Phase — What's Being Built Now
 
-### P0 — Next Up (Current Sprint)
+### 1. Mini-Chats on Every Page (In Progress)
+- ✅ Connectors page — MCP Assistant
+- ✅ Scheduling page — Schedule Assistant
+- 🔨 Skills page — Skills Assistant
+- Each has its own API route, focused tools, Gemini Flash, maxSteps: 5
 
-**1. /overview showcase page**
-- Full product overview at `/overview` showing all capabilities
-- Live mini-component demos: chat, sandbox, TipTap, interview tool, web search
-- Simulated multi-user chat, artifact tabs (code/document/sandbox)
-- NeuralDots animation throughout
-- Scheduling vision, MCP connectors, sharing, organizations
-- Current status + roadmap narrative (positive framing, not "broken" list)
-- Story of what the platform is and where it's going
+### 2. Tool Chaining & Reliability
+- Ensure AI calls all required tools in multi-step workflows
+- Example: "Search knowledge base → email summary via Resend MCP"
+- maxSteps controls how many tool calls the AI can chain
+- System prompt instructs AI to complete full workflows, not partial
 
-**2. Context library polish**
-- Content detail view (full content, metadata, tags, related items on click)
+### 3. MCP Connection Verification
+- Test end-to-end: connect Granola/Canva from chat → verify tools load
+- Verify tool discovery + execution in main chat
+- Fix any remaining OAuth token refresh issues
+
+---
+
+## What's Next (Prioritized)
+
+### P0 — Immediate (This Week)
+
+**1. Verify & Polish MCP Tool Loading**
+- Test Granola + Canva tools load and work in main chat
+- Test connect → use → disconnect cycle end-to-end
+- Fix any protocol version or timeout issues
+- Add MCP tool count to chat header or status bar
+
+**2. iOS Build & Test**
+- Build in Xcode with contentInset: never
+- Test safe areas on physical device
+- Configure APNs credentials (.p8 key)
+- Test push notifications end-to-end
+
+**3. Vercel Pro or External Cron**
+- Upgrade to Pro for per-minute schedule execution, OR
+- Set up cron-job.org to ping /api/cron/execute-schedules every minute
+
+**4. Context Library Polish**
+- Content detail view (full content on click)
 - Inline preview (hover card or side panel)
-- Bulk actions (select multiple → tag, move, archive, delete)
-- Empty states for collections, tags, search
-- Filter persistence (remember last state)
-- Visual polish (card sizing, spacing, responsive)
-- Consistent content type icons across library, chat, search
+- Bulk actions (select multiple → tag, move, archive)
+- Empty states, filter persistence
 
-**3. Connectors & ingestion overhaul**
-- Fix "Add Integration" button — modal showing all available integrations (Nango + MCP)
-- Connector status page: sync history, error details, last sync time
-- Break monolithic sync route (1,285 lines) into queue-based pipeline
-- Semantic chunking (recursive 400-512 tokens, not 12K truncation)
-- Incremental sync (delta detection, not full re-sync)
-- Webhook listeners (Drive, Slack, Linear push events)
-- Retry/dead-letter queue for failed items
-- Content deduplication across sources
+### P1 — Important (Next 2 Weeks)
 
-**4. Sharing for all content types**
-- Public share links for artifacts (like conversation shares)
-- Public share links for context items/documents
-- Share dialog wired up for artifacts + context items (API exists)
-- "Shared with me" sidebar section
-- Download/export (individual items, bulk ZIP, artifact project ZIP)
-- Sharing flow diagrams in docs (between people, between orgs)
+**5. Ingestion Pipeline Refactor**
+- Break monolithic sync into queue-based pipeline
+- Semantic chunking (400-512 tokens, not 12K truncation)
+- Incremental sync (delta detection)
+- MCP-based ingestion (servers push data via tools)
 
-**5. Organization management**
-- Org dashboard: member count, content stats, usage, costs
-- Org-level rules & priorities (like personal rules but for all members)
-- Org activity feed: who added what, shared what, who's active
-- Org library view (what the org collectively knows)
-- "See all shared things" view
-- Proper member management polish (role UI, invite flow)
+**6. Skills System Polish**
+- Skills as artifacts (TipTap editor, versioning, subfolders)
+- Fix slash commands appearing immediately for new skills
+- Skill templates from marketplace
 
-### P1 — Important
+**7. Sharing for All Content Types**
+- Public share links for artifacts and context items
+- "Shared with me" section
+- Download/export (individual, bulk ZIP)
 
-**6. Scheduling system (rebuild)**
-- Scheduling = start a background chat with a prompt on a cron
-- Chat runs autonomously, generates artifacts, stores results
-- Notify user via desktop (macOS) + iOS push (Capacitor)
-- Notification includes link to chat + any sandbox/artifact created
-- Visual flow preview: show the scheduled process as an artifact
-- Schedule management page: create, edit, pause, delete, view history
-- Example: "Every day 9am: news + weather → sandbox dashboard → notify me"
+**8. Organization Management**
+- Org dashboard with member count, content stats, usage
+- Org-level rules and priorities
+- Activity feed
 
-**7. Notifications & inbox system**
-- Desktop notifications (macOS Notification Center)
-- iOS push notifications (Capacitor plugin)
-- Notification types: scheduled tasks, chat mentions, library changes, sharing, approvals
-- Inbox page: unified feed of all notifications
-- Notification preferences (which types, which channels)
-- Unread badges on sidebar
+### P2 — Platform Features (Next Month)
 
-**8. Skills system polish**
-- Fix slash commands not appearing for new skills
-- Skill creator modeled after skills.sh
-- TipTap editor for skill content (same editor as chat/documents)
-- Save/edit capability in skill editor
-- Skill templates and marketplace integration
+**9. Browser Automation (Browserbase)**
+- $20/mo Developer plan — 100 browser hours
+- browse_web tool: navigate, click, screenshot, extract
+- Live view in artifact panel (iframe)
+- Session per conversation, heartbeat every 5min
+- Model routing: Gemini Flash for browser tasks
 
-**9. Smart collections & AI features**
-- JSONB filter execution engine for smart collections
-- UI to create/edit smart collections
-- Built-in smart collections (Needs Review, Added This Week, Untagged, Stale)
-- Background cron for auto-classification on ingestion
-- Staleness scoring (content-type-specific decay)
-- Related items precomputation (embedding similarity)
-
-**10. Multi-user collaborative chat**
+**10. Multi-User Collaborative Chat**
 - Multiple users in one conversation
-- @mention users → they get notified and can respond in the chat
-- @mention AI → responds when tagged
-- "AI watching" toggle → AI monitors and jumps in when relevant
-- Real-time presence (who's online, typing indicator)
-- Conversation roles (owner, participant, viewer)
+- @mention users and AI
+- Real-time presence and typing indicators
 
-### P2 — Future / Platform
+**11. Parallel Agents & Advanced AI**
+- Parallel tool calling (AI SDK v6 native)
+- Agent orchestration — spawn sub-agents
+- Multi-model routing (fast for search, flagship for code gen)
+- Agent memory across conversations
 
-**11. Per-resource permissions & approvals**
+**12. Image Generation & Media**
+- Image generation via AI Gateway (DALL-E, Flux, Recraft)
+- Audio transcription (Whisper)
+- Text-to-speech
+- Media artifacts
+
+**13. Content Authoring & Publishing**
+- Draft → publish workflow
+- Export to PDF, DOCX, static HTML
+- Sandbox publishing to Vercel
+- Email sharing with Resend
+
+### P3 — Future Vision
+
+**14. Testing Suite**
+- Playwright/Expect for critical flows
+- Promptfoo for AI quality testing
+- CI pipeline: typecheck + unit + integration + e2e
+
+**15. API/SDK Layer**
+- Public API with documentation
+- TypeScript/Python SDKs
+- Rate limiting, API keys per consumer
+
+**16. Layers as MCP Server**
+- Expose org knowledge as an MCP endpoint
+- Other AI tools (Claude Desktop, Cursor) connect to Layers
+- Guided setup wizard
+
+**17. Per-Resource Permissions**
 - View/Comment/Edit/Admin per item
-- Permission inheritance (org default → collection → item)
-- Approval workflows for document edits, scheduled tasks
-- Pending approvals in inbox/notifications
-- Hierarchy-based approval routing
-- Admin controls (disable public sharing, audit log)
+- Approval workflows
+- Permission inheritance
 
-**12. Multi-org support**
-- Users join multiple orgs
-- Org switcher
-- Guest accounts (free, access only shared items)
+**18. Multi-Org Support**
+- Org switcher, guest accounts
 - Cross-org sharing
-- Org-to-org content sharing
 
-**13. API/SDK layer**
-- All features accessible via documented API
-- API-first architecture (frontend is just one consumer)
-- SDK packages (TypeScript, Python) for building on Layers
-- API documentation + playground
-- Rate limiting, API keys, usage tracking per consumer
-
-**14. Testing suite**
-- Comprehensive test coverage: frontend, API, chat routes
-- Integration tests with real Supabase
-- Browser tests (Playwright/Expect) for critical flows
-- Test any new feature/variation automatically
-- CI pipeline: typecheck + unit + integration + e2e on every push
-
-**15. Parallel Agents & AI SDK Advanced Features**
-- Parallel tool calling (multiple tools in one step, AI SDK v6 native)
-- Agent orchestration — spawn sub-agents from the main chat for complex tasks
-- Agent handoff — one agent delegates to another with context transfer
-- Background agents — long-running agents that work asynchronously and notify on completion
-- Agent memory — persistent memory across conversations (vector store + summarization)
-- Agent profiles — different system prompts for different task types (research, coding, PM)
-- Multi-model routing — use different models for different tools (fast model for search, flagship for code gen)
-
-**16. Image Generation & Media Tools**
-- Image generation via AI Gateway (DALL-E, Stable Diffusion, Flux, Recraft)
-- Image editing tools (inpaint, outpaint, upscale, background removal)
-- Image-to-text (describe images, extract text from screenshots)
-- Audio transcription (Whisper via Gateway)
-- Text-to-speech (ElevenLabs, OpenAI TTS via Gateway)
-- Video generation (when available via Gateway providers)
-- Media artifacts — images, audio, video stored alongside code/document artifacts
-- Gallery view in artifact panel for image collections
-
-**17. Content Authoring & Publishing**
-- In-chat content creation — ask AI to draft docs, then publish directly
-- Guided content authoring wizard (step-by-step doc creation with AI assist)
-- Publish to multiple destinations from one source:
-  - Public shareable link (already built for conversations)
-  - Shareable markdown/HTML docs with passcode or token auth
-  - Email sharing with token-protected links (Resend/SendGrid)
-  - SMS sharing with short links + passcodes (Twilio)
-  - Export to PDF, DOCX, or static HTML site
-- Sandbox publishing — snapshot a sandbox as a static site, deploy to Vercel
-- Content versioning with diff view (track all changes, restore any version)
-
-**18. Cross-Platform Sharing & Connectors**
-- Share Layers content TO other platforms:
-  - ChatGPT — share as a custom GPT knowledge file or conversation context
-  - Claude — share via MCP server (Layers as an MCP provider others connect to)
-  - Slack — post artifacts, documents, or chat summaries to channels
-  - Notion — sync documents bidirectionally (not just import)
-  - Email — send formatted content with token-protected view links
-  - Discord — bot that posts updates and allows queries
-- Layers as an MCP Server — expose your org's knowledge as an MCP endpoint that other tools can connect to
-- Guided connector setup — step-by-step wizard for connecting Layers to ChatGPT, Claude, Cursor, etc.
-- Token/passcode sharing — generate time-limited access tokens for specific content without requiring a Layers account
-- Guest view portal — lightweight read-only UI for recipients who don't have Layers accounts
-- QR code sharing — generate QR codes for sandbox previews and shared documents
-
-**19. Browser Automation (Browserbase)**
-- Browserbase integration ($20/mo Developer plan — 100 browser hours)
-- `browse_web` tool: navigate, click, type, screenshot, extract
-- Live view embedded in artifact panel (iframe with debuggerFullscreenUrl)
-- Session per conversation, heartbeat every 5min (10-min CDP timeout)
-- Browserbase Contexts for persistent auth (log in once, reuse cookies)
-- Model routing: Gemini Flash or Claude Sonnet for browser tasks (Ollama/local won't work)
-- Packages: @browserbasehq/sdk + playwright-core (skip Stagehand, ToolLoopAgent handles reasoning)
-- Screenshots as base64 JPEG inline in chat messages
-- Env: BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID
-
-**20. Advanced features**
-- Version diff (side-by-side comparison)
-- Artifact search (across all artifacts + versions)
-- Sandbox cost tracking UI (live timer, cumulative cost)
-- Sandbox console (terminal for dev server logs)
-- Content marketplace (publish collections as knowledge packs)
+**19. Advanced Features**
 - Voice/live transcription (Gemini Live API)
-- Vertical templates (HR, customer support, research)
-- Canvas/whiteboard — visual collaboration space with AI assist
-- Workflow builder — visual tool for creating multi-step automations
+- Canvas/whiteboard with AI assist
+- Workflow builder (visual multi-step automations)
+- Content marketplace (publish knowledge packs)
+- Vertical templates (HR, support, research)
 
 ---
 
@@ -289,18 +259,20 @@
 | Doc | Status | What It Covers |
 |-----|--------|---------------|
 | **roadmap.md** (this doc) | Active | Master status + priorities |
-| **library-hub-and-sharing.md** | Active | Product vision — library as central hub |
-| **content-organization.md** | Active | Collections, tags, smart filters, AI classification (technical) |
+| **chat/media-types.md** | Active | File support matrix per model |
+| **chat/cost-observability.md** | Active | Per-message cost tracking, TTFT, cache |
+| **chat/context-engineering.md** | Active | System prompt caching, compaction |
+| **chat/local-models.md** | Active | Ollama integration, model detection |
+| **integrations/connector-persistence.md** | Active | MCP ConnectionManager, OAuth refresh |
+| **notifications/notification-events.md** | Active | Notification types and delivery |
+| **platform/brand-guide.md** | Active | Colors, fonts, NeuralMorph, patterns |
+| **platform/mobile-app.md** | Active | Capacitor iOS/Android setup |
+| **platform/tool-result-cards.md** | Active | Tool output card component |
+| **registries/tool-registry.md** | Active | Built-in tool catalog + MCP |
+| **registries/db-schema-reference.md** | Active | Database tables and relationships |
+| **library-hub-and-sharing.md** | Active | Library as central hub vision |
+| **content-organization.md** | Active | Collections, tags, smart filters |
+| **universal-artifact-system.md** | Active | Artifact storage, versioning, sandbox |
 | **ingestion-pipeline.md** | RFC | Queue-based ingestion redesign |
 | **sharing-permissions.md** | RFC | Per-resource permissions model |
 | **org-permissions-system.md** | Proposal | Multi-org, roles, guests |
-| **universal-artifact-system.md** | Active | Artifact storage, versioning, sandbox management |
-| **artifact-system-v2.md** | Active | Artifact types, tool registry, missing tools |
-| **context-engineering.md** | Active | System prompt caching, compaction, priority docs |
-| **brand-guide.md** | Active | Colors, fonts, animation, component patterns |
-| **tool-result-cards.md** | Active | Tool output card component |
-| **connector-persistence.md** | Active | MCP connection management |
-| **mobile-app.md** | Active | Capacitor iOS/Android setup |
-| **execution-plan.md** | Historical | Sessions 1-2 epic tracking (complete) |
-
-**Archived:** knowledge-library-system.md, knowledge-library-system-v2.md, accounts-orgs-sharing.md, sharing-system.md, diagrams.md
