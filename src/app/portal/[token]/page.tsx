@@ -57,9 +57,7 @@ export default function PortalPage() {
         }
         const data = await res.json();
         const p = data.portal ?? data;
-        // Map storage paths to URLs
-        p.pdf_url = p.pdf_url || p.pdf_storage_path || null;
-        p.audio_url = p.audio_url || p.audio_storage_path || null;
+        // pdf_url and audio_url are resolved server-side in the public API
         p.documents = p.documents ?? [];
         p.enabled_tools = p.enabled_tools ?? [];
         setPortal(p);

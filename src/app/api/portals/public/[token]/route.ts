@@ -27,6 +27,31 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   const p = portal as PortalRow;
 
+  // ---------------------------------------------------------------------------
+  // Resolve storage paths → public URLs
+  // pdf_storage_path / documents[].pdf_path may be a raw storage path
+  // (e.g. "portals/uuid.pdf") rather than a full https:// URL.
+  // Resolve them here using getPublicUrl so the client always gets a URL.
+  // ---------------------------------------------------------------------------
+
+  function resolveStorageUrl(pathOrUrl: string | null | undefined): string | null {
+    if (!pathOrUrl) return null;
+    // Already a full URL — return as-is
+    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
+    // Treat as a Supabase storage path: "bucket/...rest" or just "file.pdf"
+    // Split on first slash to separate bucket from file path
+    const slashIdx = pathOrUrl.indexOf("/");
+    const bucket = slashIdx !== -1 ? pathOrUrl.slice(0, slashIdx) : "portals";
+    const filePath = slashIdx !== -1 ? pathOrUrl.slice(slashIdx + 1) : pathOrUrl;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return data?.publicUrl ?? null;
+  }
+
+  // Resolve portal-level PDF
+  if (p.pdf_storage_path) {
+    p.pdf_url = resolveStorageUrl(p.pdf_storage_path);
+  }
+
   // Increment view_count (good enough for analytics — no race concern)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
@@ -53,6 +78,13 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   // Load content for ALL documents so TOC works when switching
   const docs = (p.documents ?? []) as { id: string; title: string; context_item_id: string; is_active: boolean; pdf_path?: string }[];
   if (docs.length > 0) {
+    // Resolve each document's pdf_path to a full URL
+    for (const doc of docs) {
+      if (doc.pdf_path) {
+        (doc as Record<string, unknown>).pdf_path = resolveStorageUrl(doc.pdf_path);
+      }
+    }
+
     const contextIds = docs.map(d => d.context_item_id).filter(Boolean);
     if (contextIds.length > 0) {
       const { data: items } = await supabase
@@ -71,6 +103,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   return NextResponse.json({
     portal: {
       ...p,
+      pdf_url: p.pdf_url ?? null,
       documents: docs,
       document_content: documentContent,
     },
