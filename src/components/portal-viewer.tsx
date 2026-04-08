@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   ChevronLeft,
@@ -405,9 +406,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
   const [presentationMode, setPresentationMode] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Bug 7: key to remount ChatInterface for "new chat"
   const [chatKey, setChatKey] = useState(0);
   const progressRef = useRef<HTMLDivElement | null>(null);
+  // Single chat container — portal renders into whichever container is visible
+  const expandedChatRef = useRef<HTMLDivElement | null>(null);
+  const compactChatRef = useRef<HTMLDivElement | null>(null);
+  const [chatMounted, setChatMounted] = useState(false);
+  useEffect(() => setChatMounted(true), []);
 
   // Context tags state
   const [contextTags, setContextTags] = useState<ContextTag[]>([]);
@@ -990,18 +995,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <ChatInterface
-                key={`portal-chat-${chatKey}`}
-                apiEndpoint="/api/chat/portal"
-                extraHeaders={extraHeaders}
-                portalMode
-                portalBrandColor={brandColor}
-                portalTitle={activeDoc?.title || portal.title}
-                portalClientName={portal.client_name ?? undefined}
-                initialPrompt={pendingPrompt}
-              />
-            </div>
+            <div ref={expandedChatRef} className="flex-1 min-h-0 overflow-hidden" />
           </div>
         </div>
       ) : (
@@ -1080,23 +1074,33 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   )}
                   style={{ overflow: "hidden" }}
                 >
-                  <div className="h-[40vh] overflow-hidden">
-                    <ChatInterface
-                      key={`portal-chat-${chatKey}`}
-                      apiEndpoint="/api/chat/portal"
-                      extraHeaders={extraHeaders}
-                      portalMode
-                      portalBrandColor={brandColor}
-                      portalTitle={activeDoc?.title || portal.title}
-                      portalClientName={portal.client_name ?? undefined}
-                    />
-                  </div>
+                  <div ref={compactChatRef} className="h-[40vh] overflow-hidden" />
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Single ChatInterface — portaled into whichever container is active */}
+      {chatMounted && (() => {
+        const target = expanded
+          ? expandedChatRef.current
+          : compactChatRef.current;
+        if (!target) return null;
+        return createPortal(
+          <ChatInterface
+            key={`portal-chat-${chatKey}`}
+            apiEndpoint="/api/chat/portal"
+            extraHeaders={extraHeaders}
+            portalMode
+            portalTitle={activeDoc?.title || portal.title}
+            portalClientName={portal.client_name ?? undefined}
+            initialPrompt={pendingPrompt}
+          />,
+          target
+        );
+      })()}
     </div>
   );
 }
