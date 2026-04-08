@@ -196,7 +196,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <div className="flex w-[35%] flex-col">
             <PortalChat
               shareToken={portal.share_token}
-              enabledTools={portal.enabled_tools}
+              enabledTools={portal.enabled_tools ?? []}
               brandColor={brandColor}
               expanded={true}
               clientName={portal.client_name}
@@ -231,7 +231,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <div className="border-t border-white/5">
             <PortalChat
               shareToken={portal.share_token}
-              enabledTools={portal.enabled_tools}
+              enabledTools={portal.enabled_tools ?? []}
               brandColor={brandColor}
               expanded={false}
               clientName={portal.client_name}

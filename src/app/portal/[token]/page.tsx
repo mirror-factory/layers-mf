@@ -44,7 +44,7 @@ export default function PortalPage() {
           return;
         }
         const data = await res.json();
-        setPortal(data);
+        setPortal(data.portal ?? data);
       } catch {
         setError("Failed to load portal.");
       } finally {
