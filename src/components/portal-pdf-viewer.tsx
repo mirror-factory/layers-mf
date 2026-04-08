@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import "react-pdf/dist/Page/TextLayer.css";
 import { cn } from "@/lib/utils";
 import {
   MessageSquarePlus,
@@ -330,7 +331,7 @@ function PdfDocumentInner({
               pageNumber={currentPage}
               width={pageWidth}
               renderTextLayer={true}
-              renderAnnotationLayer={true}
+              renderAnnotationLayer={false}
             />
           </div>
           {showSpread && currentPage + 1 <= numPages && (
@@ -339,7 +340,7 @@ function PdfDocumentInner({
                 pageNumber={currentPage + 1}
                 width={pageWidth}
                 renderTextLayer={true}
-                renderAnnotationLayer={true}
+                renderAnnotationLayer={false}
               />
             </div>
           )}

@@ -2822,8 +2822,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </div>
             )}
 
-            {/* Slash command autocomplete menu — positioned above input */}
-            {slashMenuFiltered.length > 0 && (
+            {/* Slash command autocomplete menu — positioned above input (hidden in portal mode) */}
+            {!portalMode && slashMenuFiltered.length > 0 && (
               <div className="absolute bottom-full left-0 right-0 mb-1 z-20 px-3 sm:px-4">
                 <div className="max-w-5xl mx-auto">
                   <div className="border rounded-lg bg-background shadow-lg max-h-[calc(8*2.5rem)] overflow-y-auto">
@@ -2937,8 +2937,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
-                  {/* Mobile-only three-dot menu — combines chat actions + attach/chart/settings */}
-                  <div className="md:hidden">
+                  {/* Mobile-only three-dot menu — combines chat actions + attach/chart/settings (hidden in portal mode) */}
+                  <div className={cn("md:hidden", portalMode && "hidden")}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="More options">
@@ -3031,8 +3031,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </DropdownMenu>
                   </div>
 
-                  {/* Desktop-only buttons — hidden on mobile */}
-                  <div className="hidden md:flex items-center gap-0.5">
+                  {/* Desktop-only buttons — hidden on mobile and in portal mode */}
+                  <div className={cn("hidden md:flex items-center gap-0.5", portalMode && "!hidden")}>
                     <Button
                       type="button"
                       size="icon"
@@ -3171,9 +3171,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
       </div>
 
-      {/* Right panel — Artifact viewer with file tree (mini IDE) */}
+      {/* Right panel — Artifact viewer with file tree (mini IDE) — hidden in portal mode */}
       {/* Mobile: full-screen overlay; Desktop: side panel */}
-      {activeArtifact ? (
+      {!portalMode && activeArtifact ? (
         <aside className="fixed inset-0 z-50 flex flex-col bg-background md:static md:z-auto md:flex-row md:w-[50%] md:min-w-[400px] md:shrink-0 md:border-l md:bg-card">
           {(() => {
             // Build file tree from multi-file project or single file
@@ -3870,7 +3870,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             );
           })()}
         </aside>
-      ) : (
+      ) : !portalMode ? (
         <>
           {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
           {!contextPanelOpen && (
@@ -3949,7 +3949,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </aside>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }
