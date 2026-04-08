@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "react-pdf/dist/Page/TextLayer.css";
 import { cn } from "@/lib/utils";
+import { RichTextContent } from "@/components/portal-rich-content";
 import {
   MessageSquarePlus,
   Lightbulb,
@@ -48,6 +49,8 @@ interface PortalPdfViewerProps {
   highlightText?: string;
   /** Called when PDF loading fails — parent can fall back to text view */
   onLoadError?: () => void;
+  /** Brand color for rich text rendering */
+  brandColor?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +554,7 @@ export function PortalPdfViewer({
   onTextAction,
   highlightText: highlightTextProp,
   onLoadError,
+  brandColor,
 }: PortalPdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [zoom, setZoom] = useState(1);
@@ -838,50 +842,13 @@ export function PortalPdfViewer({
     };
   }, [highlightTextProp]);
 
-  // If no PDF URL, render text content
+  // If no PDF URL, render rich text content with charts, tables, timelines
   if (!pdfUrl) {
     return (
       <div ref={containerRef} className="flex flex-1 flex-col overflow-auto">
         <div className="mx-auto max-w-3xl px-6 py-8">
           {textContent ? (
-            <div className="prose prose-invert prose-sm max-w-none">
-              {textContent.split("\n").map((line, i) => {
-                if (!line.trim()) return <br key={i} />;
-                if (line.startsWith("# ")) {
-                  return (
-                    <h1 key={i} className="mb-4 mt-8 text-2xl font-bold">
-                      {line.slice(2)}
-                    </h1>
-                  );
-                }
-                if (line.startsWith("## ")) {
-                  return (
-                    <h2 key={i} className="mb-3 mt-6 text-xl font-semibold">
-                      {line.slice(3)}
-                    </h2>
-                  );
-                }
-                if (line.startsWith("### ")) {
-                  return (
-                    <h3 key={i} className="mb-2 mt-4 text-lg font-medium">
-                      {line.slice(4)}
-                    </h3>
-                  );
-                }
-                if (line.startsWith("- ") || line.startsWith("* ")) {
-                  return (
-                    <li key={i} className="ml-4">
-                      {line.slice(2)}
-                    </li>
-                  );
-                }
-                return (
-                  <p key={i} className="mb-2 leading-relaxed text-gray-300">
-                    {line}
-                  </p>
-                );
-              })}
-            </div>
+            <RichTextContent content={textContent} brandColor={brandColor} />
           ) : (
             <div className="flex items-center justify-center py-24 text-muted-foreground">
               No document content available.

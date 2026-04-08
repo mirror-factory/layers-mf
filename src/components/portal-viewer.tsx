@@ -1216,6 +1216,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             onTextAction={handleTextAction}
             highlightText={highlightText}
             onLoadError={() => setPdfFailed(true)}
+            brandColor={brandColor}
           />
           {/* Annotation overlay — rendered on top of PDF pages */}
           <AnnotationOverlay
