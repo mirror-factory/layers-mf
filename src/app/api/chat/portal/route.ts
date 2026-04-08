@@ -460,7 +460,20 @@ export async function POST(request: NextRequest) {
   const portalTools = createPortalTools(documentContent, activeToolsList, portal);
 
   const pages = splitPages(documentContent);
-  const systemPrompt = buildSystemPrompt(portal, pages.length);
+  let systemPrompt = buildSystemPrompt(portal, pages.length);
+
+  // Read context tags from header and append to system prompt
+  const portalContextHeader = request.headers.get("x-portal-context");
+  if (portalContextHeader) {
+    try {
+      const contextTexts = JSON.parse(portalContextHeader) as string[];
+      if (Array.isArray(contextTexts) && contextTexts.length > 0) {
+        systemPrompt += `\n\n--- User-Highlighted Context ---\nThe user has highlighted the following text from the document. Reference these selections when relevant to the conversation:\n${contextTexts.map((t, i) => `${i + 1}. "${t}"`).join("\n")}`;
+      }
+    } catch {
+      // Ignore malformed context header
+    }
+  }
 
   const modelMessages = await convertToModelMessages(uiMessages);
 

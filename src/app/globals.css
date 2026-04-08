@@ -244,3 +244,20 @@ body {
 .tiptap ::selection {
   background-color: hsl(var(--primary) / 0.2);
 }
+
+/* Portal PDF text highlights (search & chat tool highlights) */
+mark.portal-pdf-highlight {
+  background-color: rgba(250, 204, 21, 0.4);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+mark.portal-pdf-highlight-active {
+  background-color: rgba(250, 204, 21, 0.7);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  outline: 2px solid rgba(250, 204, 21, 0.9);
+  outline-offset: 1px;
+}
