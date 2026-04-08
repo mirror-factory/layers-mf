@@ -296,12 +296,13 @@ function PdfDocumentInner({
   const showSpread = spread && !isMobile;
 
   const pageWidth = useMemo(() => {
-    const padding = 48;
+    const padding = 64;
     const available = (containerWidth - padding) * zoom;
     if (showSpread) {
-      return Math.min((available - 16) / 2, 600);
+      return Math.min((available - 24) / 2, 550);
     }
-    return Math.min(available, 800);
+    // Single page: max 700px for a document-like feel, not full width
+    return Math.min(available, 700);
   }, [containerWidth, zoom, showSpread]);
 
   const onLoadSuccess = useCallback(

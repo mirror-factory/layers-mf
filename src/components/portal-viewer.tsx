@@ -309,10 +309,10 @@ function PresentationOverlay({ pdfUrl, currentPage, totalPages, onPageChange, on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Page fills viewport width (small padding for nav buttons)
-  const padding = 16;
-  const maxWidth = containerSize.width - padding * 2;
-  const maxHeight = containerSize.height - 80; // 80px for page indicator + padding
+  // Page sized for presentation — landscape-friendly, max 900px wide
+  const padding = 48;
+  const maxWidth = Math.min(containerSize.width - padding * 2, 900);
+  const maxHeight = containerSize.height - 100;
 
   return (
     <div
