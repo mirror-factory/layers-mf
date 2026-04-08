@@ -3,6 +3,7 @@ export const metadata = { title: "Schedules" };
 import { createClient } from "@/lib/supabase/server";
 import { ScheduleList } from "@/components/schedule-list";
 import { PageExplainer } from "@/components/page-explainer";
+import { ScheduleChat } from "@/components/schedule-chat";
 
 export default async function SchedulesPage() {
   const supabase = await createClient();
@@ -61,6 +62,9 @@ export default async function SchedulesPage() {
           },
         ]}
       />
+      <div className="mb-6">
+        <ScheduleChat />
+      </div>
       <ScheduleList initialSchedules={schedules ?? []} />
     </div>
   );
