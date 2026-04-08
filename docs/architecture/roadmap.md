@@ -245,7 +245,18 @@
 - Org switcher, guest accounts
 - Cross-org sharing
 
-**19. Advanced Features**
+**19. Analytics & Session Replay**
+- Portal analytics: time on page, scroll depth, heatmap of viewed sections
+- Activity log: every action (page turn, chat message, tool toggle, doc switch) as JSON events
+- Session replay: record all portal interactions as a JSON timeline, play back in a viewer
+- Chat replay: export chat JSON with timestamps, play back to simulate real conversations
+- Replay player component: scrubber, play/pause, speed controls, renders both portal and chat sessions
+- Heatmap overlay: show which PDF sections got most attention
+- Engagement metrics: time per page, questions asked, tools used, docs switched
+- Export: JSON format for both portal sessions and chat sessions, importable for playback
+- Apply to both: main chat page replay + portal page replay
+
+**20. Advanced Features**
 - Voice/live transcription (Gemini Live API)
 - Canvas/whiteboard with AI assist
 - Workflow builder (visual multi-step automations)
