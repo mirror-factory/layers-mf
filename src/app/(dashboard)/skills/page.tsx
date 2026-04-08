@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, ChevronDown, ExternalLink, Loader2, Puzzle, Search, Upload, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkillsEditor } from "@/components/skills-editor";
+import { SkillsChat } from "@/components/skills-chat";
 
 type SkillRow = {
   id: string;
@@ -248,6 +249,11 @@ export default function SkillsPage() {
             {uploadMessage}
           </p>
         )}
+      </div>
+
+      {/* Skills Chat */}
+      <div className="mb-6">
+        <SkillsChat />
       </div>
 
       {/* Guide */}
