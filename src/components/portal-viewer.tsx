@@ -29,6 +29,8 @@ import {
   MessageSquarePlus,
   StickyNote,
   SkipForward,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -700,6 +702,29 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   const brandColor = portal.brand_color || "#34d399";
 
+  // Theme toggle — toggles dark class on <html>
+  const [portalDark, setPortalDark] = useState(true);
+  useEffect(() => {
+    const saved = localStorage.getItem("portal-theme");
+    if (saved === "light") {
+      setPortalDark(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+  const togglePortalTheme = useCallback(() => {
+    setPortalDark(prev => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("portal-theme", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("portal-theme", "light");
+      }
+      return next;
+    });
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Tool toggles dropdown menu (Bug 8)
   // ---------------------------------------------------------------------------
@@ -1079,6 +1104,17 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 <Download className="h-4 w-4" />
               </Button>
             )}
+
+            {/* Theme toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={togglePortalTheme}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title={portalDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {portalDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
 
             <Button
               variant="ghost"

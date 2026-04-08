@@ -1,16 +1,26 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, createContext, useContext } from "react";
 import {
   ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock, DollarSign, Download, Layers, List, MessageSquare, Sparkles,
   Target, X, Zap, RefreshCw, Lightbulb, Loader2, Send,
   Phone, Users, Briefcase, FileText, Bell, GitBranch, Search as SearchIcon,
+  Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PortalData, PortalDocument } from "@/app/portal/[token]/page";
 import { ChatInterface } from "@/components/chat-interface";
+
+// ---------------------------------------------------------------------------
+// Theme context
+// ---------------------------------------------------------------------------
+
+type PortalTheme = "dark" | "light";
+const ThemeContext = createContext<{ isDark: boolean; theme: PortalTheme }>({ isDark: true, theme: "dark" });
+function usePortalTheme() { return useContext(ThemeContext); }
+
 
 // ---------------------------------------------------------------------------
 // Types
@@ -392,12 +402,18 @@ function useScrollAnimation(_delay = 0) {
 function GlassCard({ children, className, brandColor, glowOnHover = false, style }: {
   children: React.ReactNode; className?: string; brandColor?: string; glowOnHover?: boolean; style?: React.CSSProperties;
 }) {
+  const { isDark } = usePortalTheme();
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-white/[0.06] bg-white/[0.018] backdrop-blur-sm",
+        "relative rounded-2xl border backdrop-blur-sm",
         "transition-all duration-300",
-        glowOnHover && "hover:border-white/[0.12] hover:bg-white/[0.03]",
+        isDark
+          ? "border-white/[0.06] bg-white/[0.018]"
+          : "border-black/[0.08] bg-black/[0.02]",
+        glowOnHover && (isDark
+          ? "hover:border-white/[0.12] hover:bg-white/[0.03]"
+          : "hover:border-black/[0.15] hover:bg-black/[0.04]"),
         className,
       )}
       style={style}
@@ -442,6 +458,7 @@ function RichText({ text, className }: { text: string; className?: string }) {
 function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { isDark } = usePortalTheme();
 
   useEffect(() => {
     if (!open) return;
@@ -455,19 +472,23 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
   return (
     <div ref={ref} className="fixed left-4 top-16 z-[60]">
       <button onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#0a0a0f]/90 px-3 py-1.5 text-xs text-white/50 backdrop-blur-xl transition-all hover:bg-white/[0.05] hover:text-white/80">
+        className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-xl transition-all",
+          isDark ? "border-white/[0.08] bg-[#0a0a0f]/90 text-white/50 hover:bg-white/[0.05] hover:text-white/80"
+            : "border-black/[0.1] bg-white/90 text-black/50 hover:bg-black/[0.05] hover:text-black/80")}>
         <BookOpen className="h-3.5 w-3.5" style={{ color: brandColor }} />
         Contents
         <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-72 max-h-[60vh] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0a0a0f]/95 p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150">
+        <div className={cn("absolute left-0 top-full mt-1 w-72 max-h-[60vh] overflow-y-auto rounded-xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
+          isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95")}>
           {entries.map(e => (
             <button key={e.id} onClick={() => { document.getElementById(e.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); setOpen(false); }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-white/50 transition-all hover:bg-white/[0.05] hover:text-white/80"
+              className={cn("flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-all",
+                isDark ? "text-white/50 hover:bg-white/[0.05] hover:text-white/80" : "text-black/50 hover:bg-black/[0.05] hover:text-black/80")}
               style={{ paddingLeft: `${(e.level - 1) * 12 + 12}px` }}>
               <ChevronRight className="h-2.5 w-2.5 shrink-0" style={{ color: brandColor }} />
-              <span className={cn("line-clamp-1", e.level === 1 && "font-medium text-white/60")}>{e.title}</span>
+              <span className={cn("line-clamp-1", e.level === 1 && (isDark ? "font-medium text-white/60" : "font-medium text-black/60"))}>{e.title}</span>
             </button>
           ))}
         </div>
@@ -519,30 +540,39 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
     finally { setLoading(false); }
   }, [shareToken, title]);
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { isDark } = usePortalTheme();
+
   if (!showChart) {
     return (
       <button onClick={() => setShowChart(true)}
-        className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white/60">
+        className={cn("mt-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] transition-colors",
+          isDark ? "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+            : "border-black/[0.08] bg-black/[0.02] text-black/40 hover:bg-black/[0.04] hover:text-black/60")}>
         <BarChart3 className="h-3 w-3" /> Show chart
       </button>
     );
   }
 
   return (
-    <div className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden">
+    <div className={cn("group relative rounded-2xl border overflow-hidden",
+      isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-black/[0.08] bg-black/[0.015]")}>
       <iframe srcDoc={html} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title={title || "Chart"} />
       <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button onClick={reExplain} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/80 px-2.5 py-1.5 text-[10px] font-medium text-white/60 backdrop-blur-xl transition-all hover:bg-black/90 hover:text-white disabled:opacity-50">
+          className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-medium backdrop-blur-xl transition-all disabled:opacity-50",
+            isDark ? "border-white/10 bg-black/80 text-white/60 hover:bg-black/90 hover:text-white"
+              : "border-black/10 bg-white/80 text-black/60 hover:bg-white/90 hover:text-black")}>
           {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
           {loading ? "Thinking..." : "Explain this"}
         </button>
       </div>
       {aiResult && (
-        <div className="border-t border-white/[0.06] px-4 py-3 text-xs leading-relaxed text-white/50">
+        <div className={cn("border-t px-4 py-3 text-xs leading-relaxed",
+          isDark ? "border-white/[0.06] text-white/50" : "border-black/[0.08] text-black/50")}>
           <div className="flex items-center justify-between mb-1">
             <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
-            <button onClick={() => setAiResult(null)} className="text-white/30 hover:text-white/60"><X className="h-3 w-3" /></button>
+            <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3 w-3" /></button>
           </div>
           {aiResult}
         </div>
@@ -558,6 +588,7 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
   title: string; clientName: string; brandColor: string; logoUrl: string | null; subtitle: string | null;
 }) {
+  const { isDark } = usePortalTheme();
   return (
     <div className="relative flex min-h-[85vh] flex-col items-center justify-center overflow-hidden px-6 py-24">
       {/* Animated gradient background + global section animations */}
@@ -598,7 +629,45 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
           0% { opacity: 0; transform: scale(0.9); }
           100% { opacity: 1; transform: scale(1); }
         }
+        @keyframes gradient-swirl-1 {
+          0% { transform: rotate(0deg) scale(1); }
+          33% { transform: rotate(120deg) scale(1.1); }
+          66% { transform: rotate(240deg) scale(0.95); }
+          100% { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes gradient-swirl-2 {
+          0% { transform: rotate(0deg) scale(1.05); }
+          50% { transform: rotate(-180deg) scale(0.9); }
+          100% { transform: rotate(-360deg) scale(1.05); }
+        }
+        @keyframes gradient-swirl-3 {
+          0% { transform: rotate(60deg) scale(0.95); }
+          40% { transform: rotate(200deg) scale(1.15); }
+          100% { transform: rotate(420deg) scale(0.95); }
+        }
       `}</style>
+
+      {/* Animated gradient mesh — multiple rotating blurred ellipses */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-1/4 -left-1/4 h-[150%] w-[150%]"
+          style={{
+            background: `radial-gradient(ellipse 50% 40% at 40% 40%, ${brandColor}${isDark ? "18" : "12"} 0%, transparent 70%)`,
+            animation: "gradient-swirl-1 25s ease-in-out infinite",
+            filter: "blur(60px)",
+          }} />
+        <div className="absolute -top-1/4 -right-1/4 h-[150%] w-[150%]"
+          style={{
+            background: `radial-gradient(ellipse 45% 35% at 60% 55%, ${brandColor}${isDark ? "14" : "0a"} 0%, transparent 65%)`,
+            animation: "gradient-swirl-2 30s ease-in-out infinite",
+            filter: "blur(80px)",
+          }} />
+        <div className="absolute -bottom-1/4 left-1/4 h-[120%] w-[120%]"
+          style={{
+            background: `radial-gradient(ellipse 40% 50% at 50% 50%, ${brandColor}${isDark ? "10" : "08"} 0%, transparent 60%)`,
+            animation: "gradient-swirl-3 35s ease-in-out infinite",
+            filter: "blur(70px)",
+          }} />
+      </div>
 
       {/* Animated radial glow — pulses and drifts */}
       <div className="absolute inset-0" style={{
@@ -611,7 +680,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         animation: "hero-glow 12s ease-in-out infinite reverse",
       }} />
       {/* Animated grid — drifts diagonally */}
-      <div className="absolute inset-0 opacity-[0.04]" style={{
+      <div className={cn("absolute inset-0", isDark ? "opacity-[0.04]" : "opacity-[0.06]")} style={{
         backgroundImage: `linear-gradient(${brandColor}60 1px, transparent 1px), linear-gradient(90deg, ${brandColor}60 1px, transparent 1px)`,
         backgroundSize: "80px 80px",
         animation: "hero-grid-drift 20s linear infinite",
@@ -619,6 +688,13 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
       {/* Bottom edge glow line */}
       <div className="absolute bottom-0 left-0 right-0 h-px" style={{
         background: `linear-gradient(90deg, transparent 10%, ${brandColor}50, transparent 90%)`,
+      }} />
+
+      {/* Gradient fade-out below hero — transitions into page background */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none" style={{
+        background: isDark
+          ? "linear-gradient(to bottom, transparent, #050508)"
+          : "linear-gradient(to bottom, transparent, #ffffff)",
       }} />
 
       <div className="relative z-10 flex max-w-5xl flex-col items-center gap-8 text-center">
@@ -640,7 +716,9 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         {/* Title — BIG, animated gradient */}
         <h1 className="text-6xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
           style={{
-            background: `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`,
+            background: isDark
+              ? `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`
+              : `linear-gradient(135deg, #1a1a2e 0%, ${brandColor} 40%, #1a1a2e 60%, ${brandColor} 100%)`,
             backgroundSize: "300% 300%",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
@@ -650,7 +728,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-xl text-lg text-white/40"
+        <p className={cn("max-w-xl text-lg", isDark ? "text-white/40" : "text-black/40")}
           style={{ animation: "hero-fade-up-delayed 1.2s ease-out 0.5s both" }}>
           {subtitle || `Prepared for ${clientName}`}
         </p>
@@ -666,6 +744,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
 
 function HeadingSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const lv = section.level ?? 1;
   return (
     <div ref={ref} id={section.id} className={cn(
@@ -683,9 +762,9 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
         </div>
       )}
       {lv === 1 ? (
-        <h2 className="text-center text-3xl font-bold tracking-tight text-white sm:text-4xl">{section.title}</h2>
+        <h2 className={cn("text-center text-3xl font-bold tracking-tight sm:text-4xl", isDark ? "text-white" : "text-gray-900")}>{section.title}</h2>
       ) : lv === 2 ? (
-        <h3 className="text-2xl font-semibold text-white/90">{section.title}</h3>
+        <h3 className={cn("text-2xl font-semibold", isDark ? "text-white/90" : "text-gray-800")}>{section.title}</h3>
       ) : (
         <h4 className="text-sm font-semibold tracking-wider uppercase" style={{ color: `${brandColor}bb` }}>{section.title}</h4>
       )}
@@ -695,6 +774,7 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
 
 function ParagraphSection({ section, brandColor }: { section: DocSection; brandColor?: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const isLong = section.content.length > 200;
 
   // Detect Priority: pattern in paragraph text for inline badges
@@ -705,12 +785,12 @@ function ParagraphSection({ section, brandColor }: { section: DocSection; brandC
       {isLong ? (
         <GlassCard className="p-6" brandColor={brandColor}>
           {priorityMatch && <div className="mb-3"><PriorityBadge priority={priorityMatch[1]} /></div>}
-          <p className="text-[15px] leading-[1.8] text-white/55">{section.content}</p>
+          <p className={cn("text-[15px] leading-[1.8]", isDark ? "text-white/55" : "text-gray-600")}>{section.content}</p>
         </GlassCard>
       ) : (
         <div>
           {priorityMatch && <div className="mb-2"><PriorityBadge priority={priorityMatch[1]} /></div>}
-          <p className="text-[15px] leading-[1.8] text-white/55">{section.content}</p>
+          <p className={cn("text-[15px] leading-[1.8]", isDark ? "text-white/55" : "text-gray-600")}>{section.content}</p>
         </div>
       )}
     </div>
@@ -719,6 +799,7 @@ function ParagraphSection({ section, brandColor }: { section: DocSection; brandC
 
 function ListSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const items = section.items ?? [];
   const isLong = items.some(it => it.length > 120);
 
@@ -736,8 +817,11 @@ function ListSection({ section, brandColor }: { section: DocSection; brandColor:
         return (
           <div key={i}
             className={cn(
-              "group flex items-start gap-3.5 rounded-xl border border-white/[0.05] bg-white/[0.015] p-5",
-              "transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.03]",
+              "group flex items-start gap-3.5 rounded-xl border p-5",
+              "transition-all duration-300",
+              isDark
+                ? "border-white/[0.05] bg-white/[0.015] hover:border-white/[0.1] hover:bg-white/[0.03]"
+                : "border-black/[0.06] bg-black/[0.015] hover:border-black/[0.12] hover:bg-black/[0.03]",
             )}
             style={{
               transitionDelay: isVisible ? `${i * 50}ms` : "0ms",
@@ -748,7 +832,7 @@ function ListSection({ section, brandColor }: { section: DocSection; brandColor:
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
             <div className="flex-1 min-w-0">
               {priMatch && <div className="mb-1.5"><PriorityBadge priority={priMatch[1]} /></div>}
-              <span className="text-[13px] leading-relaxed text-white/55">{item}</span>
+              <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/55" : "text-gray-600")}>{item}</span>
             </div>
           </div>
         );
@@ -763,6 +847,7 @@ function ListSection({ section, brandColor }: { section: DocSection; brandColor:
 
 function ComparisonSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const comparisons = section.comparisons ?? [];
 
   return (
@@ -770,7 +855,8 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
       {comparisons.map((comp, i) => (
         <div
           key={i}
-          className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.01] transition-all duration-500 hover:border-white/[0.1]"
+          className={cn("group relative overflow-hidden rounded-2xl border transition-all duration-500",
+            isDark ? "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.1]" : "border-black/[0.08] bg-black/[0.01] hover:border-black/[0.12]")}
           style={{
             transitionDelay: isVisible ? `${i * 120}ms` : "0ms",
             opacity: isVisible ? 1 : 0,
@@ -778,16 +864,16 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
           }}
         >
           {/* Label bar */}
-          <div className="border-b border-white/[0.04] px-6 py-3">
-            <span className="text-[13px] font-semibold text-white/80">{comp.label}</span>
+          <div className={cn("border-b px-6 py-3", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
+            <span className={cn("text-[13px] font-semibold", isDark ? "text-white/80" : "text-gray-800")}>{comp.label}</span>
           </div>
 
           {/* Before -> After cards */}
           <div className="grid grid-cols-[1fr,auto,1fr] items-stretch gap-0">
             {/* Current State */}
             <div className="p-6">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/25">Current State</div>
-              <p className="text-[14px] leading-relaxed text-white/40">{comp.current}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>Current State</div>
+              <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{comp.current}</p>
             </div>
 
             {/* Arrow transition */}
@@ -826,6 +912,7 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
 
 function ArchitectureDiagram({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const layers = section.architectureLayers ?? [];
 
   // Alternate colors for visual layer separation
@@ -873,7 +960,7 @@ function ArchitectureDiagram({ section, brandColor }: { section: DocSection; bra
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-base font-bold text-white">{layer.layer}</span>
+                    <span className={cn("text-base font-bold", isDark ? "text-white" : "text-gray-900")}>{layer.layer}</span>
                     <span
                       className="rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
                       style={{ borderColor: colors.border, color: colors.accent, backgroundColor: colors.bg }}
@@ -881,7 +968,7 @@ function ArchitectureDiagram({ section, brandColor }: { section: DocSection; bra
                       {layer.owner}
                     </span>
                   </div>
-                  <p className="text-[14px] leading-relaxed text-white/45">{layer.contains}</p>
+                  <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{layer.contains}</p>
                 </div>
               </div>
 
@@ -904,6 +991,7 @@ function ArchitectureDiagram({ section, brandColor }: { section: DocSection; bra
 
 function JtbdSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const items = section.jtbdItems ?? [];
 
   return (
@@ -911,7 +999,9 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
       {items.map((jtbd, i) => (
         <div
           key={i}
-          className="group overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015] transition-all duration-300 hover:border-white/[0.1]"
+          className={cn("group overflow-hidden rounded-2xl border transition-all duration-300",
+            isDark ? "border-white/[0.06] bg-white/[0.015] hover:border-white/[0.1]"
+              : "border-black/[0.08] bg-black/[0.015] hover:border-black/[0.12]")}
           style={{
             transitionDelay: isVisible ? `${i * 100}ms` : "0ms",
             opacity: isVisible ? 1 : 0,
@@ -920,12 +1010,12 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
         >
           <div className="grid gap-0 sm:grid-cols-3">
             {/* When — context */}
-            <div className="border-b border-white/[0.04] p-5 sm:border-b-0 sm:border-r">
+            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-400/60">When</div>
-              <p className="text-[13px] leading-relaxed text-white/50">{jtbd.when}</p>
+              <p className={cn("text-[13px] leading-relaxed", isDark ? "text-white/50" : "text-gray-600")}>{jtbd.when}</p>
             </div>
             {/* I want — action */}
-            <div className="border-b border-white/[0.04] p-5 sm:border-b-0 sm:border-r" style={{ backgroundColor: `${brandColor}04` }}>
+            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")} style={{ backgroundColor: `${brandColor}04` }}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>I want</div>
               <p className="text-[13px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
             </div>
@@ -947,6 +1037,7 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
 
 function FeatureSpecSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const specs = section.featureSpecs ?? [];
 
   return (
@@ -964,18 +1055,18 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4">
-            <span className="text-[15px] font-semibold text-white">{spec.name}</span>
+          <div className={cn("flex items-center justify-between border-b px-6 py-4", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
+            <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{spec.name}</span>
             <PriorityBadge priority={spec.priority} />
           </div>
           {/* Description */}
           <div className="px-6 py-4">
-            <p className="text-[14px] leading-[1.75] text-white/50">{spec.description}</p>
+            <p className={cn("text-[14px] leading-[1.75]", isDark ? "text-white/50" : "text-gray-500")}>{spec.description}</p>
           </div>
           {/* Acceptance Criteria */}
           {spec.acceptance.length > 0 && (
-            <div className="border-t border-white/[0.04] px-6 py-4" style={{ backgroundColor: `${brandColor}03` }}>
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-white/25">Acceptance Criteria</div>
+            <div className={cn("border-t px-6 py-4", isDark ? "border-white/[0.04]" : "border-black/[0.06]")} style={{ backgroundColor: `${brandColor}03` }}>
+              <div className={cn("mb-3 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>Acceptance Criteria</div>
               <div className="space-y-2">
                 {spec.acceptance.map((ac, ai) => (
                   <div key={ai} className="flex items-start gap-2.5">
@@ -985,7 +1076,7 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
                     >
                       <Check className="h-2.5 w-2.5" style={{ color: `${brandColor}90` }} />
                     </div>
-                    <span className="text-[13px] leading-relaxed text-white/45">{ac}</span>
+                    <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{ac}</span>
                   </div>
                 ))}
               </div>
@@ -1003,6 +1094,7 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
 
 function AcceptanceCriteriaSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const items = section.items ?? [];
 
   return (
@@ -1025,7 +1117,7 @@ function AcceptanceCriteriaSection({ section, brandColor }: { section: DocSectio
               >
                 <Check className="h-3 w-3" style={{ color: `${brandColor}` }} />
               </div>
-              <span className="text-[13px] leading-relaxed text-white/50">{item}</span>
+              <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/50" : "text-gray-500")}>{item}</span>
             </div>
           ))}
         </div>
@@ -1040,16 +1132,17 @@ function AcceptanceCriteriaSection({ section, brandColor }: { section: DocSectio
 
 function PriorityMatrixSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const rows = section.priorityRows ?? [];
 
   return (
     <div ref={ref} className={cn("my-8 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
-      <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
               <tr style={{ backgroundColor: `${brandColor}06` }}>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">Feature Group</th>
+                <th className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>Feature Group</th>
                 <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-emerald-400/60">Must</th>
                 <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-amber-400/60">Should</th>
                 <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-white/30">Could</th>
@@ -1060,13 +1153,13 @@ function PriorityMatrixSection({ section, brandColor }: { section: DocSection; b
               {rows.map((row, ri) => (
                 <tr
                   key={ri}
-                  className="border-t border-white/[0.04] transition-colors hover:bg-white/[0.02]"
+                  className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-black/[0.06] hover:bg-black/[0.02]")}
                   style={{
                     transitionDelay: isVisible ? `${ri * 60}ms` : "0ms",
                     opacity: isVisible ? 1 : 0,
                   }}
                 >
-                  <td className="px-5 py-4 font-medium text-white/70">{row.feature}</td>
+                  <td className={cn("px-5 py-4 font-medium", isDark ? "text-white/70" : "text-gray-700")}>{row.feature}</td>
                   <td className="px-5 py-4 text-center">{row.must ? <span className="inline-block rounded-md bg-emerald-500/15 px-2 py-0.5 text-[12px] text-emerald-400">{row.must}</span> : <span className="text-white/10">-</span>}</td>
                   <td className="px-5 py-4 text-center">{row.should ? <span className="inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[12px] text-amber-400">{row.should}</span> : <span className="text-white/10">-</span>}</td>
                   <td className="px-5 py-4 text-center">{row.could ? <span className="inline-block rounded-md bg-white/[0.05] px-2 py-0.5 text-[12px] text-white/40">{row.could}</span> : <span className="text-white/10">-</span>}</td>
@@ -1086,6 +1179,7 @@ function PriorityMatrixSection({ section, brandColor }: { section: DocSection; b
 // ---------------------------------------------------------------------------
 
 function DataTableSection({ section, brandColor, shareToken }: { section: DocSection; brandColor: string; shareToken: string }) {
+  const { isDark } = usePortalTheme();
   const headers = section.tableHeaders ?? [];
   const rows = section.tableRows ?? [];
 
@@ -1109,15 +1203,15 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
 
   return (
     <div className="my-8 animate-section">
-      <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
-              {headers.map((h, hi) => <th key={hi} className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
+              {headers.map((h, hi) => <th key={hi} className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>{h}</th>)}
             </tr></thead>
             <tbody>{rows.map((row, ri) => (
-              <tr key={ri} className="border-t border-white/[0.04] transition-colors hover:bg-white/[0.02]">
-                {row.map((cell, ci) => <td key={ci} className={cn("px-5 py-4", ci === 0 ? "font-medium text-white/70" : "text-white/50")}>{cell}</td>)}
+              <tr key={ri} className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-black/[0.06] hover:bg-black/[0.02]")}>
+                {row.map((cell, ci) => <td key={ci} className={cn("px-5 py-4", ci === 0 ? (isDark ? "font-medium text-white/70" : "font-medium text-gray-700") : (isDark ? "text-white/50" : "text-gray-500"))}>{cell}</td>)}
               </tr>
             ))}</tbody>
           </table>
@@ -1134,6 +1228,7 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
 
 function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColor: string }) {
   const { ref, isVisible } = useScrollAnimation();
+  const { isDark } = usePortalTheme();
   const phases = section.phases ?? [];
   const icons = [Target, Zap, Sparkles, BarChart3];
   return (
@@ -1167,12 +1262,12 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
                 {/* Card */}
                 <div className={cn("ml-16 sm:ml-0 sm:w-[calc(50%-44px)]", isLeft ? "sm:mr-auto" : "sm:ml-auto")}>
                   <GlassCard className="p-6 group" brandColor={brandColor} glowOnHover>
-                    <div className="mb-2 text-lg font-bold text-white">{phase.name}</div>
+                    <div className={cn("mb-2 text-lg font-bold", isDark ? "text-white" : "text-gray-900")}>{phase.name}</div>
                     <div className="mb-4 flex items-center gap-2 text-[12px]" style={{ color: `${brandColor}cc` }}>
                       <Clock className="h-3.5 w-3.5" />
                       {phase.timeline}
                     </div>
-                    <p className="text-[14px] leading-[1.75] text-white/45">{phase.description}</p>
+                    <p className={cn("text-[14px] leading-[1.75]", isDark ? "text-white/45" : "text-gray-500")}>{phase.description}</p>
                     {/* Bottom accent */}
                     <div
                       className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100"
@@ -1190,6 +1285,7 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
 }
 
 function BudgetSection({ section, brandColor, shareToken }: { section: DocSection; brandColor: string; shareToken: string }) {
+  const { isDark } = usePortalTheme();
   const rows = section.budgetRows ?? [];
 
   const chartConfig = useMemo(() => {
@@ -1215,13 +1311,15 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
     <div className="my-10 animate-section">
       <div className="grid gap-4 sm:grid-cols-3">
         {rows.map((row, i) => (
-          <div key={i} className="animate-card group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.03]"
+          <div key={i} className={cn("animate-card group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300",
+            isDark ? "border-white/[0.06] bg-white/[0.018] hover:border-white/[0.12] hover:bg-white/[0.03]"
+              : "border-black/[0.08] bg-black/[0.018] hover:border-black/[0.15] hover:bg-black/[0.03]")}
             style={{ animationDelay: `${i * 0.1}s` }}>
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/25">{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
-            <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: "rgba(255,255,255,0.7)" }}>
+            <p className={cn("mb-4 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
+            <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, ${isDark ? "#fff" : "#1a1a2e"} 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)" }}>
               {row.investment}
             </p>
-            <div className="flex items-center gap-1.5 text-[12px] text-white/35"><Clock className="h-3 w-3" />{row.timeline}</div>
+            <div className={cn("flex items-center gap-1.5 text-[12px]", isDark ? "text-white/35" : "text-black/35")}><Clock className="h-3 w-3" />{row.timeline}</div>
             <div className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}50, transparent)` }} />
           </div>
         ))}
@@ -1241,11 +1339,14 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
 }
 
 function MilestoneTimeline({ section, brandColor }: { section: DocSection; brandColor: string }) {
+  const { isDark } = usePortalTheme();
   const ms = section.milestones ?? [];
   return (
     <div className="my-10 space-y-4 animate-section">
       {ms.map((m, i) => (
-        <div key={i} className="animate-card group flex gap-4 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.025]"
+        <div key={i} className={cn("animate-card group flex gap-4 rounded-2xl border p-5 transition-all duration-300",
+          isDark ? "border-white/[0.05] bg-white/[0.015] hover:border-white/[0.1] hover:bg-white/[0.025]"
+            : "border-black/[0.06] bg-black/[0.015] hover:border-black/[0.12] hover:bg-black/[0.025]")}
           style={{ animationDelay: `${i * 0.08}s` }}>
           <div className="flex flex-col items-center gap-1.5 pt-1">
             <div className="h-3 w-3 rounded-full border-2 transition-transform duration-300 group-hover:scale-125" style={{ borderColor: brandColor, backgroundColor: `${brandColor}35` }} />
@@ -1253,10 +1354,10 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[15px] font-semibold text-white">{m.phase}</span>
+              <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{m.phase}</span>
               <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}12`, color: `${brandColor}cc` }}>{m.dates}</span>
             </div>
-            <p className="text-[14px] text-white/40 leading-relaxed">{m.milestones}</p>
+            <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{m.milestones}</p>
           </div>
         </div>
       ))}
@@ -1269,6 +1370,7 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
 // ---------------------------------------------------------------------------
 
 function InboundTriageFlow({ brandColor }: { brandColor: string }) {
+  const { isDark } = usePortalTheme();
   return (
     <div className="my-10">
       <style>{`
@@ -1290,8 +1392,8 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
             <Phone className="h-5 w-5" style={{ color: brandColor }} />
           </div>
           <div>
-            <div className="text-sm font-semibold text-white">Inbound Call</div>
-            <div className="text-[11px] text-white/35">Incoming phone call received</div>
+            <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Inbound Call</div>
+            <div className={cn("text-[11px]", isDark ? "text-white/35" : "text-gray-400")}>Incoming phone call received</div>
           </div>
         </div>
 
@@ -1307,8 +1409,8 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
             <Sparkles className="h-5 w-5" style={{ color: brandColor }} />
           </div>
           <div>
-            <div className="text-sm font-semibold text-white">AI Receptionist</div>
-            <div className="text-[11px] text-white/35">Intent gathering &amp; routing</div>
+            <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>AI Receptionist</div>
+            <div className={cn("text-[11px]", isDark ? "text-white/35" : "text-gray-400")}>Intent gathering &amp; routing</div>
           </div>
         </div>
 
@@ -1329,8 +1431,8 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
                 style={{ animationDelay: `${1.0 + bi * 0.15}s`, borderColor: bi === 2 ? `${brandColor}40` : "rgba(255,255,255,0.06)", backgroundColor: bi === 2 ? `${brandColor}06` : "rgba(255,255,255,0.015)" }}
               >
                 <branch.icon className="h-4 w-4" style={{ color: bi === 2 ? brandColor : "rgba(255,255,255,0.45)" }} />
-                <div className="text-[12px] font-semibold text-white/80">{branch.label}</div>
-                <div className="text-[10px] text-white/30">{branch.desc}</div>
+                <div className={cn("text-[12px] font-semibold", isDark ? "text-white/80" : "text-gray-700")}>{branch.label}</div>
+                <div className={cn("text-[10px]", isDark ? "text-white/30" : "text-gray-400")}>{branch.desc}</div>
               </div>
               {bi === 2 && <div className="flow-line-v h-6 w-px" style={{ animationDelay: "1.5s", backgroundColor: `${brandColor}30` }} />}
             </div>
@@ -1347,8 +1449,8 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
             <SearchIcon className="h-5 w-5" style={{ color: brandColor }} />
           </div>
           <div>
-            <div className="text-sm font-semibold text-white">Recruiter Agent</div>
-            <div className="text-[11px] text-white/35">Pre-screening &amp; evaluation</div>
+            <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Recruiter Agent</div>
+            <div className={cn("text-[11px]", isDark ? "text-white/35" : "text-gray-400")}>Pre-screening &amp; evaluation</div>
           </div>
         </div>
 
@@ -1364,8 +1466,8 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
             <FileText className="h-5 w-5" style={{ color: brandColor }} />
           </div>
           <div>
-            <div className="text-sm font-semibold text-white">Progressive Ticketing</div>
-            <div className="text-[11px] text-white/35">Contextual summaries &mdash; auto-shared</div>
+            <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Progressive Ticketing</div>
+            <div className={cn("text-[11px]", isDark ? "text-white/35" : "text-gray-400")}>Contextual summaries &mdash; auto-shared</div>
           </div>
         </div>
 
@@ -1399,6 +1501,7 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
 // ---------------------------------------------------------------------------
 
 function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
+  const { isDark } = usePortalTheme();
   const steps = [
     { icon: Briefcase, label: "New Job Requisition", desc: "Via Bullhorn" },
     { icon: SearchIcon, label: "Screening Agent", desc: "Evaluate real criteria" },
@@ -1447,8 +1550,8 @@ function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
               >
                 <step.icon className="h-5 w-5" style={{ color: brandColor }} />
               </div>
-              <div className="text-[12px] font-semibold text-white/85">{step.label}</div>
-              <div className="text-[10px] text-white/35">{step.desc}</div>
+              <div className={cn("text-[12px] font-semibold", isDark ? "text-white/85" : "text-gray-700")}>{step.label}</div>
+              <div className={cn("text-[10px]", isDark ? "text-white/35" : "text-gray-400")}>{step.desc}</div>
             </div>
 
             {/* Arrow connector (not after last) */}
@@ -1485,22 +1588,42 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
   const extraHeaders = useMemo(() => ({ "x-portal-token": portal.share_token }), [portal.share_token]);
   const handleDocSwitch = useCallback((idx: number) => { setActiveDocIdx(idx); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
 
+  // Theme state — persisted to localStorage
+  const [theme, setTheme] = useState<PortalTheme>("dark");
+  useEffect(() => {
+    const saved = localStorage.getItem("portal-theme") as PortalTheme | null;
+    if (saved === "light" || saved === "dark") setTheme(saved);
+  }, []);
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === "dark" ? "light" : "dark";
+      localStorage.setItem("portal-theme", next);
+      return next;
+    });
+  }, []);
+  const isDark = theme === "dark";
+  const themeCtx = useMemo(() => ({ isDark, theme }), [isDark, theme]);
+
   return (
-    <div className="min-h-screen bg-[#050508] text-white">
+    <ThemeContext.Provider value={themeCtx}>
+    <div className={cn("min-h-screen", isDark ? "bg-[#050508] text-white" : "bg-white text-gray-900")}>
       <FloatingToc entries={tocEntries} brandColor={brandColor} />
 
       {/* Nav */}
-      <nav className="fixed top-0 z-[45] flex w-full items-center justify-between border-b border-white/[0.06] bg-[#050508]/80 px-6 py-2.5 backdrop-blur-xl">
+      <nav className={cn("fixed top-0 z-[45] flex w-full items-center justify-between border-b px-6 py-2.5 backdrop-blur-xl",
+        isDark ? "border-white/[0.06] bg-[#050508]/80" : "border-black/[0.08] bg-white/80")}>
         <div className="flex items-center gap-2.5 pl-28">
           <img src="/bluewave-icon.svg" alt="" className="h-5 w-5 opacity-80" />
-          <span className="text-[11px] text-white/30">Prepared by <span className="text-white/50">Mirror Factory</span></span>
+          <span className={cn("text-[11px]", isDark ? "text-white/30" : "text-black/30")}>Prepared by <span className={isDark ? "text-white/50" : "text-black/50"}>Mirror Factory</span></span>
         </div>
         <div className="flex items-center gap-2">
           {docs.length > 1 && (
-            <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5">
+            <div className={cn("flex items-center gap-0.5 rounded-lg border p-0.5",
+              isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-black/[0.08] bg-black/[0.02]")}>
               {docs.map((doc, di) => (
                 <button key={di} onClick={() => handleDocSwitch(di)}
-                  className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all", di === activeDocIdx ? "font-medium" : "text-white/30 hover:text-white/55")}
+                  className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all",
+                    di === activeDocIdx ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-black/30 hover:text-black/55"))}
                   style={di === activeDocIdx ? { backgroundColor: `${brandColor}18`, color: brandColor } : undefined}>
                   {doc.title.length > 18 ? doc.title.slice(0, 18) + "..." : doc.title}
                 </button>
@@ -1508,12 +1631,23 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
             </div>
           )}
           {activeDoc?.pdf_path && (
-            <Button variant="ghost" size="sm" asChild className="h-7 gap-1 text-[11px] text-white/35 hover:text-white/60">
+            <Button variant="ghost" size="sm" asChild className={cn("h-7 gap-1 text-[11px]", isDark ? "text-white/35 hover:text-white/60" : "text-black/35 hover:text-black/60")}>
               <a href={activeDoc.pdf_path} download target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /> PDF</a>
             </Button>
           )}
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+              isDark ? "text-white/40 hover:text-white/70 hover:bg-white/[0.05]" : "text-black/40 hover:text-black/70 hover:bg-black/[0.05]")}
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
           <Button variant="outline" size="sm" onClick={() => setChatOpen(!chatOpen)}
-            className="h-7 gap-1.5 border-white/10 bg-white/[0.02] text-[11px] text-white/50 hover:bg-white/[0.05]">
+            className={cn("h-7 gap-1.5 text-[11px]",
+              isDark ? "border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/[0.05]"
+                : "border-black/10 bg-black/[0.02] text-black/50 hover:bg-black/[0.05]")}>
             <MessageSquare className="h-3 w-3" /> {chatOpen ? "Close" : "Chat"}
           </Button>
         </div>
@@ -1549,16 +1683,18 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         <footer className="flex flex-col items-center gap-4 py-24">
           <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}25, transparent)` }} />
           {portal.logo_url && <img src={portal.logo_url} alt="" className="h-6 w-auto opacity-30" />}
-          <p className="text-[11px] text-white/15">Prepared by Mirror Factory</p>
+          <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-black/15")}>Prepared by Mirror Factory</p>
         </footer>
       </main>
 
       {/* Chat — bottom-right floating panel */}
       {chatOpen && (
-        <div className="fixed bottom-4 right-4 z-[60] w-[400px] max-w-[calc(100vw-32px)] h-[520px] max-h-[70vh] rounded-2xl border border-white/[0.08] bg-[#0a0a0f]/95 shadow-2xl backdrop-blur-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 flex flex-col">
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5 shrink-0">
-            <span className="text-xs font-medium text-white/60">Ask about this proposal</span>
-            <button onClick={() => setChatOpen(false)} className="text-white/30 hover:text-white/60"><X className="h-3.5 w-3.5" /></button>
+        <div className={cn("fixed bottom-4 right-4 z-[60] w-[400px] max-w-[calc(100vw-32px)] h-[520px] max-h-[70vh] rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 flex flex-col",
+          isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95")}>
+          <div className={cn("flex items-center justify-between border-b px-4 py-2.5 shrink-0",
+            isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
+            <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-black/60")}>Ask about this proposal</span>
+            <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3.5 w-3.5" /></button>
           </div>
           <div className="flex-1 overflow-hidden">
             <ChatInterface
@@ -1584,5 +1720,6 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         </button>
       )}
     </div>
+    </ThemeContext.Provider>
   );
 }
