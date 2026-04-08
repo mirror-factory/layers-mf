@@ -353,15 +353,12 @@ function buildToc(sections: DocSection[]): TocEntry[] {
 // Hooks
 // ---------------------------------------------------------------------------
 
-function useScrollAnimation(delay = 0) {
+// Scroll animation removed for performance — the 77K Scope of Work doc
+// creates hundreds of sections, each with an IntersectionObserver, crashing tabs.
+// All sections render immediately; CSS handles visual polish.
+function useScrollAnimation(_delay = 0) {
   const ref = useRef<HTMLDivElement>(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { delay ? setTimeout(() => setVis(true), delay) : setVis(true); obs.unobserve(el); } }, { threshold: 0.08, rootMargin: "0px 0px -20px 0px" });
-    obs.observe(el); return () => obs.disconnect();
-  }, [delay]);
-  return { ref, isVisible: vis };
+  return { ref, isVisible: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -465,12 +462,14 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const html = useMemo(() => `<!DOCTYPE html>
+  const [showChart, setShowChart] = useState(false);
+
+  const html = useMemo(() => showChart ? `<!DOCTYPE html>
 <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
 <style>body{margin:0;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui}</style>
 </head><body><canvas id="c" style="max-height:280px"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(config)})<\/script>
-</body></html>`, [config]);
+</body></html>` : "", [config, showChart]);
 
   const reExplain = useCallback(async () => {
     setLoading(true);
@@ -495,6 +494,15 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
     } catch { setAiResult("Failed to get explanation."); }
     finally { setLoading(false); }
   }, [shareToken, title]);
+
+  if (!showChart) {
+    return (
+      <button onClick={() => setShowChart(true)}
+        className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white/60">
+        <BarChart3 className="h-3 w-3" /> Show chart
+      </button>
+    );
+  }
 
   return (
     <div className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden">
