@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { getDocTree, getDocContent } from "@/lib/docs";
-import { DocsPage } from "@/components/docs-page";
+import { getDocTree, getDocContent, getDocCategories, getTotalDocCount } from "@/lib/docs";
+import { DocsIndexPage } from "@/components/docs-index-page";
 
 export const metadata: Metadata = {
   title: "Documentation -- Layers",
@@ -10,12 +10,17 @@ export const metadata: Metadata = {
 export default function Page() {
   const tree = getDocTree();
   const doc = getDocContent("");
+  const categories = getDocCategories();
+  const totalDocs = getTotalDocCount();
 
   return (
-    <DocsPage
+    <DocsIndexPage
       tree={tree}
-      title={doc?.title ?? "Documentation"}
-      content={doc?.content ?? "# Documentation\n\nSelect a document from the sidebar to get started."}
+      categories={categories}
+      totalDocs={totalDocs}
+      overviewContent={doc?.content}
+      overviewTitle={doc?.title ?? "Documentation"}
+      lastModified={doc?.lastModified}
     />
   );
 }

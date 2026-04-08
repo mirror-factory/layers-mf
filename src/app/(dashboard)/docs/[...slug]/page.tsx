@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDocTree, getDocContent, getAllDocSlugs } from "@/lib/docs";
+import { getDocTree, getDocContent, getAllDocSlugs, extractHeadings, getPrevNextDocs } from "@/lib/docs";
 import { DocsPage } from "@/components/docs-page";
 
 type Props = {
@@ -33,11 +33,19 @@ export default async function Page({ params }: Props) {
 
   if (!doc) notFound();
 
+  const headings = extractHeadings(doc.content);
+  const { prev, next } = getPrevNextDocs(slugPath);
+
   return (
     <DocsPage
       tree={tree}
       title={doc.title}
       content={doc.content}
+      slug={slugPath}
+      headings={headings}
+      lastModified={doc.lastModified}
+      prev={prev}
+      next={next}
     />
   );
 }
