@@ -2864,7 +2864,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className="shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6 relative"
+          className={cn("shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pt-6 relative", portalMode ? "pb-2" : "pb-[max(1rem,env(safe-area-inset-bottom))]")}
           style={{
             background: "linear-gradient(to bottom, transparent, hsl(168 14% 5% / 0.8) 30%, hsl(168 14% 5%) 60%)",
           }}
@@ -2975,7 +2975,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     el.style.height = "auto";
                     el.style.height = Math.min(el.scrollHeight, 200) + "px";
                   }}
-                  placeholder="Ask anything… (type / for commands)"
+                  placeholder={portalMode ? "Ask about this document…" : "Ask anything… (type / for commands)"}
                   rows={1}
                   className="flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:text-muted-foreground placeholder:truncate"
                   style={{ maxHeight: "200px", overflowY: "auto" }}

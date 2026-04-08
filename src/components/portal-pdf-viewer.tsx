@@ -760,25 +760,54 @@ export function PortalPdfViewer({
   }, []);
 
   // ---- Highlight text from chat tool (highlightText prop) ----
+  // Bug 6: Use MutationObserver to wait for text layer to fully render
   useEffect(() => {
     if (!highlightTextProp || !pdfAreaRef.current) return;
 
-    // Small delay to ensure the text layer has rendered
-    const timer = setTimeout(() => {
-      if (!pdfAreaRef.current) return;
-      const matches = highlightTextInDom(pdfAreaRef.current, highlightTextProp);
-      setSearchMatches(matches);
-      setSearchMatchIndex(0);
+    const container = pdfAreaRef.current;
 
+    const attemptHighlight = () => {
+      const matches = highlightTextInDom(container, highlightTextProp);
       if (matches.length > 0) {
+        setSearchMatches(matches);
+        setSearchMatchIndex(0);
         matches[0].classList.add("portal-pdf-highlight-active");
         matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
-        // Show the search bar so user can navigate matches
         setSearchVisible(true);
+        return true;
       }
-    }, 500);
+      return false;
+    };
 
-    return () => clearTimeout(timer);
+    // Try immediately first
+    if (attemptHighlight()) return;
+
+    // If no matches yet, observe DOM changes for text layer rendering
+    let attempts = 0;
+    const maxAttempts = 20;
+    const observer = new MutationObserver(() => {
+      attempts++;
+      if (attemptHighlight() || attempts >= maxAttempts) {
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Fallback timeout to disconnect observer
+    const timer = setTimeout(() => {
+      observer.disconnect();
+      // One final attempt
+      attemptHighlight();
+    }, 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
   }, [highlightTextProp]);
 
   // If no PDF URL, render text content
