@@ -202,9 +202,9 @@ function RHeading({ s, brandColor }: { s: Section; brandColor: string }) {
   return (
     <div id={s.id} className={cn("scroll-mt-4", lv === 1 && "mt-10 mb-4", lv === 2 && "mt-8 mb-3", lv >= 3 && "mt-6 mb-2")}>
       {lv === 1 && <div className="mb-3 h-px" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} />}
-      {lv === 1 ? <h2 className="text-xl font-bold text-white">{s.title}</h2>
-        : lv === 2 ? <h3 className="text-lg font-semibold text-white/90">{s.title}</h3>
-        : <h4 className="text-sm font-semibold uppercase tracking-wider" style={{ color: `${brandColor}bb` }}>{s.title}</h4>}
+      {lv === 1 ? <h2 className="text-2xl font-bold text-white">{s.title}</h2>
+        : lv === 2 ? <h3 className="text-xl font-semibold text-white/90">{s.title}</h3>
+        : <h4 className="text-base font-semibold uppercase tracking-wider" style={{ color: `${brandColor}bb` }}>{s.title}</h4>}
     </div>
   );
 }

@@ -2604,9 +2604,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         )}
         <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", compactMode ? "p-3" : "p-4 sm:p-6")}>
           <div className={cn("max-w-4xl mx-auto w-full", compactMode ? "space-y-3" : "space-y-6")}>
-          {messages.length === 0 && !compactMode && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              {portalMode ? (
+          {messages.length === 0 && (
+            <div className={cn("flex flex-col items-center justify-center text-center text-muted-foreground", compactMode ? "py-4" : "h-full")}>
+              {!compactMode && (portalMode ? (
                 <div className="mb-3">
                   <span
                     className="inline-block h-3 w-3 rounded-full"
@@ -2617,20 +2617,22 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 <div className="mb-3 opacity-60">
                   <NeuralMorph size={48} dotCount={14} formation="bloom" />
                 </div>
-              )}
-              <p className="text-sm font-medium text-foreground">
+              ))}
+              <p className={cn("font-medium text-foreground", compactMode ? "text-xs" : "text-sm")}>
                 {portalMode && portalTitle
                   ? `Ask about ${portalTitle}`
                   : "Ask anything about your team\u2019s knowledge"}
               </p>
-              <p className="text-xs mt-1">
-                {portalMode
-                  ? portalClientName
-                    ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
-                    : "Ask questions, search for sections, or request visualizations."
-                  : "Granger searches your documents, meetings, and notes to answer."}
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
+              {!compactMode && (
+                <p className="text-xs mt-1">
+                  {portalMode
+                    ? portalClientName
+                      ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
+                      : "Ask questions, search for sections, or request visualizations."
+                    : "Granger searches your documents, meetings, and notes to answer."}
+                </p>
+              )}
+              <div className={cn("flex flex-wrap justify-center gap-2 max-w-lg", compactMode ? "mt-3" : "mt-5")}>
                 {(portalMode ? [
                   { text: "Give me a summary of this document", accent: true },
                   { text: "What are the key milestones and timeline?", accent: false },
