@@ -5,6 +5,7 @@ import {
   ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock, DollarSign, Download, Layers, List, MessageSquare, Sparkles,
   Target, X, Zap, RefreshCw, Lightbulb, Loader2, Send,
+  Phone, Users, Briefcase, FileText, Bell, GitBranch, Search as SearchIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ interface DocSection {
     | "phase-timeline" | "budget-table" | "milestone-timeline"
     | "divider" | "comparison-table" | "architecture-diagram"
     | "jtbd-list" | "feature-spec" | "acceptance-criteria"
-    | "priority-matrix";
+    | "priority-matrix" | "flow-diagram";
   level?: number;
   title?: string;
   content: string;
@@ -38,6 +39,7 @@ interface DocSection {
   jtbdItems?: { when: string; want: string; soThat: string }[];
   featureSpecs?: { name: string; priority: string; description: string; acceptance: string[] }[];
   priorityRows?: { feature: string; must: string; should: string; could: string; deferred: string }[];
+  diagramType?: "inbound-triage" | "outbound-screening";
 }
 
 interface TocEntry { id: string; title: string; level: number; }
@@ -77,6 +79,27 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
   while (i < lines.length) {
     const raw = lines[i].trim();
     if (!raw) { i++; continue; }
+
+    // Flow diagram detection — inbound call triage
+    const rawLower = raw.toLowerCase();
+    if (
+      (rawLower.includes("inbound call triage") || rawLower.includes("ai receptionist answers calls") || rawLower.includes("ai receptionist")) &&
+      !sections.some(s => s.type === "flow-diagram" && s.diagramType === "inbound-triage")
+    ) {
+      idx++;
+      sections.push({ id: `s-${idx}`, type: "flow-diagram", diagramType: "inbound-triage", content: raw });
+      // Don't skip the line — let it also render as heading/paragraph below
+    }
+
+    // Flow diagram detection — outbound candidate screening
+    if (
+      (rawLower.includes("outbound candidate screening") || rawLower.includes("screens hundreds of candidates") || rawLower.includes("outbound screening")) &&
+      !sections.some(s => s.type === "flow-diagram" && s.diagramType === "outbound-screening")
+    ) {
+      idx++;
+      sections.push({ id: `s-${idx}`, type: "flow-diagram", diagramType: "outbound-screening", content: raw });
+    }
+
     // Skip metadata
     if (/^(\*\*)?!?\[/.test(raw)) { i++; continue; }
     if (/^(Prepared (by|for)|Date:|Revision:|\*\*Prepared|\*\*Date|\*\*Revision)/i.test(cleanBold(raw))) { i++; continue; }
@@ -1147,6 +1170,210 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
 }
 
 // ---------------------------------------------------------------------------
+// NEW: Inbound Call Triage Flow Diagram
+// ---------------------------------------------------------------------------
+
+function InboundTriageFlow({ brandColor }: { brandColor: string }) {
+  return (
+    <div className="my-10">
+      <style>{`
+        @keyframes flowNodeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes flowLineGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+        @keyframes flowLineGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .flow-node { animation: flowNodeIn 0.5s ease-out both; }
+        .flow-line-v { animation: flowLineGrow 0.4s ease-out both; transform-origin: top; }
+        .flow-line-h { animation: flowLineGrowX 0.4s ease-out both; transform-origin: left; }
+      `}</style>
+
+      <div className="flex flex-col items-center gap-0">
+        {/* Node: Inbound Call */}
+        <div
+          className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
+          style={{ animationDelay: "0s", borderColor: `${brandColor}30`, backgroundColor: `${brandColor}08` }}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}18` }}>
+            <Phone className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-white">Inbound Call</div>
+            <div className="text-[11px] text-white/35">Incoming phone call received</div>
+          </div>
+        </div>
+
+        {/* Vertical connector */}
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "0.3s", backgroundColor: `${brandColor}30` }} />
+
+        {/* Node: AI Receptionist */}
+        <div
+          className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
+          style={{ animationDelay: "0.4s", borderColor: `${brandColor}40`, backgroundColor: `${brandColor}10` }}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}25` }}>
+            <Sparkles className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-white">AI Receptionist</div>
+            <div className="text-[11px] text-white/35">Intent gathering &amp; routing</div>
+          </div>
+        </div>
+
+        {/* Vertical connector */}
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "0.7s", backgroundColor: `${brandColor}30` }} />
+
+        {/* Branching: 3 paths */}
+        <div className="flow-node flex items-center gap-4 sm:gap-6" style={{ animationDelay: "0.8s" }}>
+          {[
+            { icon: DollarSign, label: "Sales", desc: "Revenue inquiries" },
+            { icon: Briefcase, label: "Admin / HR", desc: "Internal requests" },
+            { icon: Users, label: "Candidates", desc: "Job applicants" },
+          ].map((branch, bi) => (
+            <div key={bi} className="flex flex-col items-center gap-0">
+              <div className="flow-line-v h-4 w-px" style={{ animationDelay: `${0.9 + bi * 0.1}s`, backgroundColor: `${brandColor}25` }} />
+              <div
+                className="flow-node flex flex-col items-center gap-2 rounded-xl border px-4 py-3 text-center"
+                style={{ animationDelay: `${1.0 + bi * 0.15}s`, borderColor: bi === 2 ? `${brandColor}40` : "rgba(255,255,255,0.06)", backgroundColor: bi === 2 ? `${brandColor}06` : "rgba(255,255,255,0.015)" }}
+              >
+                <branch.icon className="h-4 w-4" style={{ color: bi === 2 ? brandColor : "rgba(255,255,255,0.45)" }} />
+                <div className="text-[12px] font-semibold text-white/80">{branch.label}</div>
+                <div className="text-[10px] text-white/30">{branch.desc}</div>
+              </div>
+              {bi === 2 && <div className="flow-line-v h-6 w-px" style={{ animationDelay: "1.5s", backgroundColor: `${brandColor}30` }} />}
+            </div>
+          ))}
+        </div>
+
+        {/* Candidate path continues */}
+        {/* Node: Recruiter Agent */}
+        <div
+          className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
+          style={{ animationDelay: "1.6s", borderColor: `${brandColor}35`, backgroundColor: `${brandColor}08` }}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}18` }}>
+            <SearchIcon className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-white">Recruiter Agent</div>
+            <div className="text-[11px] text-white/35">Pre-screening &amp; evaluation</div>
+          </div>
+        </div>
+
+        {/* Vertical connector */}
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "1.9s", backgroundColor: `${brandColor}30` }} />
+
+        {/* Node: Progressive Ticketing */}
+        <div
+          className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
+          style={{ animationDelay: "2.0s", borderColor: `${brandColor}30`, backgroundColor: `${brandColor}06` }}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}15` }}>
+            <FileText className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-white">Progressive Ticketing</div>
+            <div className="text-[11px] text-white/35">Contextual summaries &mdash; auto-shared</div>
+          </div>
+        </div>
+
+        {/* Vertical connector */}
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "2.3s", backgroundColor: `${brandColor}30` }} />
+
+        {/* Destination systems */}
+        <div className="flow-node flex items-center gap-3 sm:gap-5" style={{ animationDelay: "2.4s" }}>
+          {["Bullhorn", "RingCentral", "Slack"].map((sys, si) => (
+            <div
+              key={si}
+              className="flow-node rounded-lg border px-4 py-2.5 text-center text-[12px] font-semibold"
+              style={{
+                animationDelay: `${2.5 + si * 0.12}s`,
+                borderColor: `${brandColor}25`,
+                backgroundColor: `${brandColor}06`,
+                color: `${brandColor}cc`,
+              }}
+            >
+              {sys}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NEW: Outbound Candidate Screening Flow
+// ---------------------------------------------------------------------------
+
+function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
+  const steps = [
+    { icon: Briefcase, label: "New Job Requisition", desc: "Via Bullhorn" },
+    { icon: SearchIcon, label: "Screening Agent", desc: "Evaluate real criteria" },
+    { icon: Users, label: "2,000+ Candidates", desc: "Contacted & screened" },
+    { icon: Bell, label: "Recruiter Notified", desc: "Tear sheet + verification" },
+    { icon: CheckCircle2, label: "Qualified Shortlist", desc: "Delivered to team" },
+  ];
+
+  return (
+    <div className="my-10">
+      <style>{`
+        @keyframes screenStepIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes screenArrowIn { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+        .screen-step { animation: screenStepIn 0.45s ease-out both; }
+        .screen-arrow { animation: screenArrowIn 0.35s ease-out both; transform-origin: left; }
+      `}</style>
+
+      {/* Time badge */}
+      <div className="mb-6 flex justify-center">
+        <div
+          className="screen-step inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[12px] font-bold"
+          style={{ animationDelay: "0s", borderColor: `${brandColor}40`, backgroundColor: `${brandColor}10`, color: brandColor }}
+        >
+          <Zap className="h-3.5 w-3.5" />
+          Under 1 Hour
+        </div>
+      </div>
+
+      {/* Horizontal flow — wraps on mobile */}
+      <div className="flex flex-wrap items-center justify-center gap-0">
+        {steps.map((step, si) => (
+          <div key={si} className="flex items-center">
+            {/* Step card */}
+            <div
+              className="screen-step flex flex-col items-center gap-2 rounded-2xl border px-5 py-4 text-center"
+              style={{
+                animationDelay: `${0.2 + si * 0.25}s`,
+                borderColor: si === steps.length - 1 ? `${brandColor}50` : `${brandColor}20`,
+                backgroundColor: si === steps.length - 1 ? `${brandColor}12` : `${brandColor}05`,
+                minWidth: 130,
+              }}
+            >
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ backgroundColor: si === steps.length - 1 ? `${brandColor}25` : `${brandColor}15` }}
+              >
+                <step.icon className="h-5 w-5" style={{ color: brandColor }} />
+              </div>
+              <div className="text-[12px] font-semibold text-white/85">{step.label}</div>
+              <div className="text-[10px] text-white/35">{step.desc}</div>
+            </div>
+
+            {/* Arrow connector (not after last) */}
+            {si < steps.length - 1 && (
+              <div
+                className="screen-arrow mx-1 hidden sm:flex items-center"
+                style={{ animationDelay: `${0.4 + si * 0.25}s` }}
+              >
+                <div className="h-px w-6" style={{ backgroundColor: `${brandColor}30` }} />
+                <ArrowRight className="h-3.5 w-3.5 -ml-0.5" style={{ color: `${brandColor}60` }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Experience
 // ---------------------------------------------------------------------------
 
@@ -1215,6 +1442,11 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
             case "feature-spec": return <FeatureSpecSection key={section.id} section={section} brandColor={brandColor} />;
             case "acceptance-criteria": return <AcceptanceCriteriaSection key={section.id} section={section} brandColor={brandColor} />;
             case "priority-matrix": return <PriorityMatrixSection key={section.id} section={section} brandColor={brandColor} />;
+            case "flow-diagram": return section.diagramType === "inbound-triage"
+              ? <InboundTriageFlow key={section.id} brandColor={brandColor} />
+              : section.diagramType === "outbound-screening"
+              ? <OutboundScreeningFlow key={section.id} brandColor={brandColor} />
+              : null;
             case "divider": return <div key={section.id} className="my-16"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}15, transparent)` }} /></div>;
             default: return null;
           }
