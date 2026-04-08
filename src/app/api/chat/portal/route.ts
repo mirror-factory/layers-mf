@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
-  streamText,
+  ToolLoopAgent,
+  createAgentUIStreamResponse,
   UIMessage,
   convertToModelMessages,
   stepCountIs,
@@ -480,13 +481,18 @@ export async function POST(request: NextRequest) {
 
   const modelId = portal.model ?? "google/gemini-3-flash";
 
-  const result = streamText({
+  const agent = new ToolLoopAgent({
     model: gateway(modelId),
-    system: systemPrompt,
-    messages: modelMessages,
+    instructions: systemPrompt,
     tools: portalTools,
     stopWhen: stepCountIs(5),
   });
 
-  return result.toUIMessageStreamResponse();
+  const response = await createAgentUIStreamResponse({
+    agent,
+    uiMessages: uiMessages,
+    onFinish: () => {},
+  });
+
+  return response;
 }
