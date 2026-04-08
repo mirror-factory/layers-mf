@@ -1382,6 +1382,16 @@ export function ContextLibrary({ items, initialSearch = "" }: Props) {
             <span data-testid="context-item-count" className="text-xs text-muted-foreground whitespace-nowrap">
               {processed.length} item{processed.length !== 1 ? "s" : ""}
             </span>
+            <button
+              onClick={() => {
+                const input = document.querySelector<HTMLInputElement>('[data-testid="upload-file-input"]');
+                input?.click();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Upload className="h-3 w-3" />
+              Upload
+            </button>
             <ExportDropdown
               itemIds={checkedIds.size > 0 ? [...checkedIds] : undefined}
               query={checkedIds.size === 0 && searchQuery.trim() ? searchQuery.trim() : undefined}
