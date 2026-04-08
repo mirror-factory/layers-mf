@@ -18,7 +18,7 @@ export async function parseFile(file: File): Promise<ParsedFile> {
   } else if (name.endsWith(".docx")) {
     const result = await mammoth.extractRawText({ buffer });
     text = result.value;
-  } else if (name.endsWith(".txt") || name.endsWith(".md")) {
+  } else if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".csv")) {
     text = buffer.toString("utf-8");
   } else {
     throw new Error(`Unsupported file type: ${file.name}`);
