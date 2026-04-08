@@ -1668,9 +1668,15 @@ interface ChatInterfaceProps {
   initialPrompt?: string | null;
   onConversationUpdated?: () => void;
   actionsRef?: React.MutableRefObject<ChatActions | null>;
+  /** Override the API endpoint (default: /api/chat) */
+  apiEndpoint?: string;
+  /** Extra headers to send with every request */
+  extraHeaders?: Record<string, string>;
+  /** Hide features not needed in embedded/portal mode */
+  portalMode?: boolean;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1717,6 +1723,9 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       initialPrompt={initialPrompt}
       initialMessages={initialMessages}
       actionsRef={actionsRef}
+      apiEndpoint={apiEndpoint}
+      extraHeaders={extraHeaders}
+      portalMode={portalMode}
     />
   );
 }
@@ -1728,9 +1737,12 @@ interface ChatInterfaceInnerProps {
   initialMessages?: UIMessage[];
   onConversationUpdated?: () => void;
   actionsRef?: React.MutableRefObject<ChatActions | null>;
+  apiEndpoint?: string;
+  extraHeaders?: Record<string, string>;
+  portalMode?: boolean;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -1774,12 +1786,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const { messages, sendMessage, addToolOutput, status, error, stop } = useChat({
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
-      api: "/api/chat",
+      api: apiEndpoint || "/api/chat",
       body: { model, conversationId, visualLevel },
       headers: () => ({
         "x-model": modelRef.current,
         "x-artifact-id": activeArtifactRef.current.id ?? "",
         "x-artifact-file": activeArtifactRef.current.filePath ?? "",
+        ...extraHeaders,
       }),
     }),
     // Auto-continue after client-side tool results (ask_user, artifact_panel)

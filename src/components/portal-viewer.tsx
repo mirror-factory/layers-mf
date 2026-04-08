@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PortalData } from "@/app/portal/[token]/page";
 import { PortalPdfViewer } from "@/components/portal-pdf-viewer";
-import { PortalChat } from "@/components/portal-chat";
+import { ChatInterface } from "@/components/chat-interface";
 
 interface PortalViewerProps {
   portal: PortalData;
@@ -214,7 +214,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {expanded ? (
         /* Expanded: 65/35 split */
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-[65%] border-r border-white/5">
+          <div className="w-[65%] border-r border-white/5 overflow-auto">
             <PortalPdfViewer
               pdfUrl={activePdfUrl}
               textContent={portal.document_content}
@@ -224,14 +224,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               onTotalPages={handleTotalPages}
             />
           </div>
-          <div className="flex w-[35%] flex-col">
-            <PortalChat
-              shareToken={portal.share_token}
-              enabledTools={portal.enabled_tools ?? []}
-              brandColor={brandColor}
-              expanded={true}
-              clientName={portal.client_name}
-              documentTitle={portal.title}
+          <div className="flex w-[35%] flex-col h-full">
+            <ChatInterface
+              apiEndpoint="/api/chat/portal"
+              extraHeaders={{ "x-portal-token": portal.share_token }}
+              portalMode
             />
           </div>
         </div>
@@ -251,23 +248,22 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           </div>
 
           {/* Sticky chat at bottom */}
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl">
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl max-h-[50vh] flex flex-col">
             {/* Page indicator */}
             {totalPages > 0 && (
-              <div className="flex justify-center py-1">
+              <div className="flex justify-center py-1 shrink-0">
                 <span className="text-[10px] text-muted-foreground">
                   Page {currentPage} of {totalPages}
                 </span>
               </div>
             )}
-            <PortalChat
-              shareToken={portal.share_token}
-              enabledTools={portal.enabled_tools ?? []}
-              brandColor={brandColor}
-              expanded={false}
-              clientName={portal.client_name}
-              documentTitle={portal.title}
-            />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ChatInterface
+                apiEndpoint="/api/chat/portal"
+                extraHeaders={{ "x-portal-token": portal.share_token }}
+                portalMode
+              />
+            </div>
           </div>
         </div>
       )}
