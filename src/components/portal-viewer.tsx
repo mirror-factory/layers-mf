@@ -1031,9 +1031,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* SINGLE ChatInterface — always mounted, positioned via CSS */}
       <div
         className={cn(
-          "fixed z-40 transition-all duration-300 ease-in-out flex flex-col",
+          "fixed z-40 flex flex-col",
           expanded
-            ? "right-0 top-12 w-[35%] bottom-0 bg-[hsl(168,14%,5%)]"
+            ? "right-0 top-12 w-[35%] bottom-0 bg-[hsl(168,14%,5%)] border-l border-white/5"
             : cn(
                 "bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl px-2 md:px-4",
                 distractionFree && "opacity-80 hover:opacity-100"
@@ -1080,12 +1080,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           </div>
         )}
         <div className={cn(
-          "overflow-hidden transition-all duration-300",
+          "overflow-hidden",
           expanded
             ? "flex-1"
             : cn(
-                "rounded-b-2xl border-x border-b border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl",
-                chatOpen ? "h-[40vh]" : "h-[80px]"
+                "rounded-b-2xl border-x border-b border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl transition-all duration-200",
+                chatOpen ? "h-[40vh]" : "h-0"
               )
         )}>
           <ChatInterface

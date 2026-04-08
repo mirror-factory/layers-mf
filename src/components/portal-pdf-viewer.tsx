@@ -257,8 +257,8 @@ function clearHighlightsInDom(container: HTMLElement) {
 // virtualized rendering and IntersectionObserver page detection
 // ---------------------------------------------------------------------------
 
-/** Number of pages to render beyond the visible page in each direction */
-const PAGE_BUFFER = 5;
+/** Render all pages — virtualization caused black pages when scrolling fast */
+const PAGE_BUFFER = 999;
 
 function PdfDocumentInner({
   pdfUrl,
