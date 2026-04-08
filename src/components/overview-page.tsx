@@ -1119,22 +1119,25 @@ The migration guide covers all breaking changes from v5.`}</MessageResponse>
       <section>
         <SectionHeading
           title="Connectors & MCP"
-          subtitle="Ingest knowledge from every tool your team uses. Extend with MCP servers for any API."
+          subtitle="Connect any tool via MCP servers. Search, connect, and manage directly from chat."
         />
         <div className="flex flex-wrap gap-2 mb-6">
-          <ConnectorBadge name="Google Drive" connected />
-          <ConnectorBadge name="GitHub" connected />
-          <ConnectorBadge name="Slack" connected />
-          <ConnectorBadge name="Linear" connected />
-          <ConnectorBadge name="Gmail" connected />
-          <ConnectorBadge name="Notion" />
           <ConnectorBadge name="Granola" connected />
+          <ConnectorBadge name="Canva" connected />
+          <ConnectorBadge name="GitHub" />
+          <ConnectorBadge name="Stripe" />
+          <ConnectorBadge name="Sentry" />
+          <ConnectorBadge name="Cloudflare" />
+          <ConnectorBadge name="Linear" />
+          <ConnectorBadge name="Notion" />
+          <ConnectorBadge name="Slack" />
+          <ConnectorBadge name="6,000+ on Smithery" />
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-          MCP (Model Context Protocol) servers let you extend Layers with any API.
-          Connect to internal tools, databases, or third-party services. Each server
-          registers tools that the AI can call during conversations, with PKCE OAuth
-          for secure authentication.
+          All integrations use MCP (Model Context Protocol). Search 3 registries,
+          connect with OAuth or API key directly from chat, and the AI gets instant
+          tool access. A mini-chat on the connectors page helps discover and set up
+          new servers conversationally.
         </p>
       </section>
 

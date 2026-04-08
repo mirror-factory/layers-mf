@@ -46,11 +46,13 @@
 |----------|--------|-------------|
 | [Org Permissions System](./organization/org-permissions-system.md) | Proposal | Multi-org, roles, guests |
 
-### Integrations
+### Integrations (MCP-Only)
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Connector Persistence](./integrations/connector-persistence.md) | Active | ConnectionManager, OAuth auto-refresh, token persistence |
+| [Connector Persistence](./integrations/connector-persistence.md) | Active | MCP ConnectionManager, OAuth auto-refresh, token persistence |
+
+> **Note**: As of v0.6.0, all integrations use MCP servers exclusively. Nango OAuth was fully removed (12,800 lines). Services connect via MCP with PKCE OAuth or bearer tokens.
 
 ### Notifications
 

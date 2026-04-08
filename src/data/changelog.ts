@@ -53,9 +53,19 @@ export const changelog: ChangelogEntry[] = [
       { type: "feat", description: "Consolidated /inbox and /notifications into single route" },
       { type: "feat", description: "Schedule notifications: started + complete dual notifications" },
       { type: "feat", description: "Notification bell 'View all' links to /notifications (same data source)" },
+      // Connectors
+      { type: "feat", description: "Connectors mini-chat: discover and connect MCP servers conversationally on the connectors page" },
+      { type: "feat", description: "Disconnect vs Remove: disconnect deactivates (can reconnect), remove deletes permanently" },
+      { type: "fix", description: "MCP disconnect/reconnect now works (RLS bypass, field name fix, 404 handling)" },
+      // Infrastructure
+      { type: "refactor", description: "Removed @nangohq/node and @nangohq/frontend packages" },
+      { type: "fix", description: "All 49 tests passing (content-lifecycle Math.floor fix)" },
+      { type: "fix", description: "iOS safe areas: contentInset set to 'never' (was 'automatic', doubled padding)" },
+      { type: "fix", description: "Vercel deploy: cron schedule adjusted for Hobby plan, lockfile regenerated" },
       // Docs
       { type: "docs", description: "Media types doc: file support matrix per model (images, PDF, text)" },
       { type: "docs", description: "Browserbase roadmap item: browser automation for AI agents" },
+      { type: "docs", description: "Overview page updated: MCP-only connectors, Smithery registry" },
     ],
   },
   {
