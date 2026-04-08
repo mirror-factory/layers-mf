@@ -5,6 +5,11 @@ import { DocsIndexPage } from "@/components/docs-index-page";
 export const metadata: Metadata = {
   title: "Documentation -- Layers",
   description: "Architecture documentation for Layers.",
+  alternates: {
+    types: {
+      "text/markdown": "/llms.txt",
+    },
+  },
 };
 
 export default function Page() {

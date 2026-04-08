@@ -1,0 +1,61 @@
+# Layers Documentation
+
+> Architecture and technical documentation for Layers AI OS — the operating system for knowledge teams.
+
+## Docs
+
+- [Roadmap](/docs/roadmap): Implementation status, priorities, and what's next
+- [Execution Plan](/docs/execution-plan): Sessions 1-2 epic tracking (13 epics, all complete)
+
+### Chat
+
+- [Context Engineering](/docs/chat/context-engineering): System prompt caching, compaction, priority docs flow
+- [Cost Observability](/docs/chat/cost-observability): Cost and token observability dashboard
+- [Local Models](/docs/chat/local-models): Local model testing with Ollama
+- [Media Types](/docs/chat/media-types): File support matrix per AI model
+
+### Artifacts
+
+- [Artifact System v2](/docs/artifacts/artifact-system-v2): Artifact types, tool registry, missing tools
+- [Universal Artifact System](/docs/artifacts/universal-artifact-system): Code, documents, sandboxes — creation, versioning, editing
+
+### Library
+
+- [Content Organization](/docs/library/content-organization): Collections, tags, smart filters, AI classification
+- [Ingestion Pipeline](/docs/library/ingestion-pipeline): Queue-based ingestion redesign
+- [Library Hub & Sharing](/docs/library/library-hub-and-sharing): Product vision — library as the central hub
+
+### Sharing
+
+- [Document Portal](/docs/sharing/document-portal): Interactive document portal and proposal viewer
+- [Sharing Permissions](/docs/sharing/sharing-permissions): Per-resource permissions model
+
+### Organization
+
+- [Org Permissions System](/docs/organization/org-permissions-system): Multi-org support, roles, guests, and permissions
+
+### Integrations
+
+- [Connector Persistence](/docs/integrations/connector-persistence): MCP ConnectionManager, OAuth auto-refresh, token persistence
+
+### Notifications
+
+- [Notification Events](/docs/notifications/notification-events): Notification event types and delivery
+- [Scheduling](/docs/notifications/scheduling): Scheduling system for recurring tasks
+
+### Platform
+
+- [Auto-Registry Strategy](/docs/platform/auto-registry-strategy): Convention-over-configuration auto-generation plan
+- [Brand Guide](/docs/platform/brand-guide): Colors, fonts, NeuralDots animation, component patterns
+- [Mobile App](/docs/platform/mobile-app): Capacitor setup for native iOS/Android
+- [Tool Result Cards](/docs/platform/tool-result-cards): Universal card component for tool outputs
+
+### Registries
+
+- [API Reference](/docs/registries/api-reference): API routes documentation
+- [DB Schema Reference](/docs/registries/db-schema-reference): Database tables, columns, relationships
+- [Tool Registry](/docs/registries/tool-registry): Built-in tool catalog and MCP integrations
+
+## Optional
+
+- [llms.txt spec](https://llmstxt.org): The specification this file follows

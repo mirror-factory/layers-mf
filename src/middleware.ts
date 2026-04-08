@@ -2,6 +2,29 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Issue 3: Serve raw markdown when URL ends in .md (e.g. /docs/roadmap.md)
+  if (pathname.startsWith("/docs/") && pathname.endsWith(".md")) {
+    const slug = pathname.replace(/^\/docs\//, "").replace(/\.md$/, "");
+    const url = request.nextUrl.clone();
+    url.pathname = `/api/docs/${slug}`;
+    return NextResponse.rewrite(url);
+  }
+
+  // Issue 4: Content negotiation — return markdown when Accept header prefers it
+  if (
+    pathname.startsWith("/docs/") &&
+    request.headers.get("accept")?.includes("text/markdown")
+  ) {
+    const slug = pathname.replace(/^\/docs\//, "");
+    if (slug) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/api/docs/${slug}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -28,8 +51,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   // Public paths that don't require auth
   const isPublicPath =

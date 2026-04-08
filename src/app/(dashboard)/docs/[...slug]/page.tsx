@@ -15,6 +15,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: doc ? `${doc.title} -- Docs -- Layers` : "Documentation -- Layers",
     description: doc ? `Architecture documentation: ${doc.title}` : "Architecture documentation for Layers.",
+    alternates: {
+      types: {
+        "text/markdown": "/llms.txt",
+      },
+    },
   };
 }
 
