@@ -205,9 +205,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           </div>
         </div>
       ) : (
-        /* Compact: stacked layout */
-        <div className="flex flex-1 flex-col">
-          <div className="flex-1 overflow-auto">
+        /* Compact: stacked with sticky chat at bottom */
+        <div className="relative flex flex-1 flex-col min-h-0">
+          {/* PDF viewer — takes remaining space, scrollable */}
+          <div className="flex-1 overflow-auto pb-[280px]">
             <PortalPdfViewer
               pdfUrl={portal.pdf_url}
               textContent={portal.document_content}
@@ -218,17 +219,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             />
           </div>
 
-          {/* Page indicator */}
-          {totalPages > 0 && (
-            <div className="flex justify-center border-t border-white/5 py-1.5">
-              <span className="text-xs text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </span>
-            </div>
-          )}
-
-          {/* Compact chat area */}
-          <div className="border-t border-white/5">
+          {/* Sticky chat at bottom */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl">
+            {/* Page indicator */}
+            {totalPages > 0 && (
+              <div className="flex justify-center py-1">
+                <span className="text-[10px] text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+            )}
             <PortalChat
               shareToken={portal.share_token}
               enabledTools={portal.enabled_tools ?? []}
