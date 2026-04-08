@@ -27,6 +27,7 @@ import {
   Download,
   Settings2,
   MessageSquarePlus,
+  StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ import { cn } from "@/lib/utils";
 import type { PortalData } from "@/app/portal/[token]/page";
 import { PortalPdfViewer, type PdfControls, type TextAction } from "@/components/portal-pdf-viewer";
 import { ChatInterface } from "@/components/chat-interface";
+import { AnnotationOverlay, type Annotation } from "@/components/portal-annotation-overlay";
 
 // ---------------------------------------------------------------------------
 // Context Tag type
@@ -154,6 +156,11 @@ const TOOL_CONFIG: Record<
     label: "Summarize",
     icon: BookOpen,
     description: "Summarize a section",
+  },
+  add_annotation: {
+    label: "Annotate",
+    icon: StickyNote,
+    description: "Add visual callouts to PDF",
   },
 };
 
@@ -415,6 +422,56 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Highlight text from chat tools
   const [highlightText, setHighlightText] = useState<string | undefined>(undefined);
 
+  // Annotations state
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+
+  const addAnnotation = useCallback(
+    (annotation: Omit<Annotation, "id" | "visible">) => {
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          ...annotation,
+          id: `ann-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          visible: true,
+        },
+      ]);
+    },
+    []
+  );
+
+  const dismissAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
+  const handleToolOutput = useCallback(
+    (toolName: string, output: unknown) => {
+      const out = output as Record<string, unknown>;
+      if (toolName === "add_annotation" && out.action === "add_annotation") {
+        addAnnotation({
+          page: Number(out.page) || 1,
+          text: String(out.text ?? ""),
+          note: String(out.note ?? ""),
+          type: (out.type as Annotation["type"]) ?? "info",
+        });
+      } else if (toolName === "navigate_pdf" && out.action === "navigate") {
+        const page = Number(out.page);
+        if (page > 0 && pdfControls) {
+          pdfControls.goToPage?.(page);
+          setCurrentPage(page);
+        }
+      } else if (toolName === "highlight_text" && out.action === "highlight") {
+        setHighlightText(String(out.text ?? ""));
+        const page = Number(out.page);
+        if (page > 0 && pdfControls) {
+          pdfControls.goToPage?.(page);
+          setCurrentPage(page);
+        }
+      }
+    },
+    [addAnnotation, pdfControls]
+  );
+
   // Feature 3: Tool toggles
   const [activeTools, setActiveTools] = useState<Set<string>>(
     () => new Set(portal.enabled_tools ?? [])
@@ -453,10 +510,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const activeDoc = documents[activeDocIndex];
   const activePdfUrl = activeDoc?.pdf_path || portal.pdf_url;
 
-  // Feature 1: TOC
+  // Feature 1: TOC — rebuild when switching documents
+  const activeDocContent = useMemo(() => {
+    const doc = documents[activeDocIndex];
+    return doc?.content || portal.document_content;
+  }, [documents, activeDocIndex, portal.document_content]);
+
   const tocEntries = useMemo(
-    () => extractToc(portal.document_content, totalPages),
-    [portal.document_content, totalPages]
+    () => extractToc(activeDocContent, totalPages),
+    [activeDocContent, totalPages]
   );
 
   const handleTocNavigate = useCallback((page: number) => {
@@ -987,7 +1049,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       <div className="flex flex-1 overflow-hidden" style={{ height: distractionFree ? '100vh' : 'calc(100vh - 3rem)' }}>
         {tocPanel}
         <div className={cn(
-          "overflow-y-auto h-full transition-all duration-300",
+          "relative overflow-y-auto h-full transition-all duration-300",
           expanded ? "w-[65%] border-r border-white/5" : "flex-1 pb-20"
         )}>
           <PortalPdfViewer
@@ -1000,6 +1062,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             onControlsReady={handleControlsReady}
             onTextAction={handleTextAction}
             highlightText={highlightText}
+          />
+          {/* Annotation overlay — rendered on top of PDF pages */}
+          <AnnotationOverlay
+            annotations={annotations}
+            onDismiss={dismissAnnotation}
+            currentPage={currentPage}
+            totalPages={totalPages}
           />
         </div>
 
@@ -1107,6 +1176,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             portalTitle={activeDoc?.title || portal.title}
             portalClientName={portal.client_name ?? undefined}
             initialPrompt={pendingPrompt ?? undefined}
+            onToolOutput={handleToolOutput}
           />
         </div>
       </div>

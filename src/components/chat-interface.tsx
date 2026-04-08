@@ -1150,6 +1150,21 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
     );
   }
 
+  // Any tool that returns { html } — render as sandboxed iframe (e.g. render_chart)
+  if (isDone && output && typeof output === "object" && "html" in (output as Record<string, unknown>)) {
+    const htmlOut = output as { html: string; width?: number; height?: number };
+    if (typeof htmlOut.html === "string" && htmlOut.html.length > 0) {
+      return (
+        <iframe
+          srcDoc={htmlOut.html}
+          sandbox="allow-scripts"
+          className="rounded-lg border my-2"
+          style={{ width: htmlOut.width || 600, height: htmlOut.height || 400 }}
+        />
+      );
+    }
+  }
+
   // Check if this is a code artifact from write_code
   // Code artifact = has code + language but NOT exitCode (sandbox results have exitCode)
   const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>) && !("exitCode" in (output as Record<string, unknown>));
@@ -1680,9 +1695,11 @@ interface ChatInterfaceProps {
   portalClientName?: string;
   /** Portal branding — brand color for send button and accents */
   portalBrandColor?: string;
+  /** Callback fired when a tool completes with output (used by portal to react to tool results) */
+  onToolOutput?: (toolName: string, output: unknown) => void;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1735,6 +1752,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       portalTitle={portalTitle}
       portalClientName={portalClientName}
       portalBrandColor={portalBrandColor}
+      onToolOutput={onToolOutput}
     />
   );
 }
@@ -1752,9 +1770,10 @@ interface ChatInterfaceInnerProps {
   portalTitle?: string;
   portalClientName?: string;
   portalBrandColor?: string;
+  onToolOutput?: (toolName: string, output: unknown) => void;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2169,6 +2188,27 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       }
     }
   }, [messages]);
+
+  // Notify parent of tool outputs (used by portal-viewer for annotations, navigation, etc.)
+  const toolOutputSeenRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!onToolOutput || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    for (const part of lastMsg.parts ?? []) {
+      if (!("type" in part) || !("state" in part)) continue;
+      if ((part as { state: string }).state !== "output-available") continue;
+      const partType = (part as { type: string }).type;
+      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
+      if (toolOutputSeenRef.current.has(partId)) continue;
+      const output = (part as { output: unknown }).output;
+      if (!output || typeof output !== "object") continue;
+      toolOutputSeenRef.current.add(partId);
+      // Extract tool name from part type (format: "tool-<name>")
+      const toolName = partType.startsWith("tool-") ? partType.slice(5) : partType;
+      onToolOutput(toolName, output as Record<string, unknown>);
+    }
+  }, [messages, onToolOutput]);
 
   // Load context panel preference from localStorage
   // Context panel hidden by default — user can open via button

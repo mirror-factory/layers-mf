@@ -11,6 +11,7 @@ export interface PortalDocument {
   context_item_id: string;
   is_active: boolean;
   pdf_path?: string;
+  content?: string | null;
 }
 
 export interface PortalData {
