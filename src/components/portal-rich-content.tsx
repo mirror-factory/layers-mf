@@ -2,15 +2,11 @@
 
 /**
  * Rich text content renderer for portal documents.
- * Replaces the basic line-by-line text renderer with structured sections,
- * tables, budget cards, timeline visualization, and charts.
- * Used by both the PDF viewer fallback and the experience page.
+ * Lightweight: no per-section observers, charts on-demand only.
  */
 
-import { useMemo, useRef, useState, useEffect } from "react";
-import {
-  CheckCircle2, Clock, DollarSign, Sparkles, Target, Zap, BarChart3,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Clock, BarChart3, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -65,23 +61,17 @@ function parseContent(text: string): Section[] {
       }
       if (headers.length >= 2 && rows.length > 0) {
         idx++;
-        // Detect budget
         const invCol = headers.findIndex(h => /investment|cost|price/i.test(h));
         const phCol = headers.findIndex(h => /phase|item/i.test(h));
         const tmCol = headers.findIndex(h => /timeline|duration/i.test(h));
         if (invCol >= 0 && phCol >= 0 && rows.length >= 2) {
-          sections.push({ id: `s${idx}`, type: "budget", content: "",
-            budgetRows: rows.map(r => ({ phase: r[phCol] ?? "", timeline: tmCol >= 0 ? (r[tmCol] ?? "") : "", investment: r[invCol] ?? "" })),
-          });
+          sections.push({ id: `s${idx}`, type: "budget", content: "", budgetRows: rows.map(r => ({ phase: r[phCol] ?? "", timeline: tmCol >= 0 ? (r[tmCol] ?? "") : "", investment: r[invCol] ?? "" })) });
           i = j; continue;
         }
-        // Detect milestones
         const dtCol = headers.findIndex(h => /dates?|target|when/i.test(h));
         const msCol = headers.findIndex(h => /milestone|deliverable|key/i.test(h));
         if (dtCol >= 0 && msCol >= 0 && phCol >= 0) {
-          sections.push({ id: `s${idx}`, type: "milestone", content: "",
-            milestones: rows.map(r => ({ phase: r[phCol] ?? "", dates: r[dtCol] ?? "", detail: r[msCol] ?? "" })),
-          });
+          sections.push({ id: `s${idx}`, type: "milestone", content: "", milestones: rows.map(r => ({ phase: r[phCol] ?? "", dates: r[dtCol] ?? "", detail: r[msCol] ?? "" })) });
           i = j; continue;
         }
         sections.push({ id: `s${idx}`, type: "table", content: "", tableHeaders: headers, tableRows: rows });
@@ -89,7 +79,7 @@ function parseContent(text: string): Section[] {
       }
     }
 
-    // Phase blocks (plain text triplet)
+    // Budget triplet
     if (/^Phase$/i.test(clean(raw)) && i + 1 < lines.length && /timeline/i.test(clean(lines[i + 1])) && i + 2 < lines.length && /investment/i.test(clean(lines[i + 2]))) {
       const budgetRows: Section["budgetRows"] = [];
       let j = i + 3;
@@ -113,7 +103,7 @@ function parseContent(text: string): Section[] {
       if (milestones.length > 0) { idx++; sections.push({ id: `s${idx}`, type: "milestone", content: "", milestones }); i = j; continue; }
     }
 
-    // Phase description blocks
+    // Phase blocks
     const phMatch = raw.match(/^Phase\s+(\d+)[\s:]+(.+)/i);
     if (phMatch && !raw.startsWith("|")) {
       const phases: Section["phases"] = [];
@@ -135,7 +125,7 @@ function parseContent(text: string): Section[] {
       if (phases.length >= 2) { idx++; sections.push({ id: `s${idx}`, type: "phase", content: "", phases }); i = j; continue; }
     }
 
-    // Headings: numbered, bold, markdown
+    // Headings
     const numH = clean(raw).match(/^(\d+(?:\.\d+)*)\.?\s+(.{2,100})/);
     if (numH && raw.length < 120 && !clean(raw).includes(". ")) {
       const dots = (numH[1].match(/\./g) || []).length;
@@ -150,7 +140,7 @@ function parseContent(text: string): Section[] {
     const mdH = raw.match(/^(#{1,4})\s+(.+)/);
     if (mdH) { idx++; sections.push({ id: `s${idx}`, type: "heading", level: mdH[1].length, title: clean(mdH[2]), content: "" }); i++; continue; }
 
-    // Lists
+    // Lists — batch into single section
     if (raw.startsWith("- ") || raw.startsWith("* ")) {
       const items: string[] = [];
       while (i < lines.length && (lines[i].trim().startsWith("- ") || lines[i].trim().startsWith("* "))) {
@@ -162,7 +152,7 @@ function parseContent(text: string): Section[] {
     // Divider
     if (raw.match(/^[-=_*]{3,}$/)) { sections.push({ id: `d${idx}`, type: "divider", content: "" }); i++; continue; }
 
-    // Paragraph
+    // Paragraph — merge consecutive lines
     const para: string[] = [];
     while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith("#") && !lines[i].trim().startsWith("- ") && !lines[i].trim().startsWith("* ") && !lines[i].trim().startsWith("|") && !clean(lines[i]).match(/^\d+\.\s+[A-Z]/) && !/^\*\*[^*]+\*\*$/.test(lines[i].trim())) {
       para.push(clean(lines[i])); i++;
@@ -173,44 +163,42 @@ function parseContent(text: string): Section[] {
 }
 
 // ---------------------------------------------------------------------------
-// Scroll animation
+// On-demand chart (only loads when user clicks "Show chart")
 // ---------------------------------------------------------------------------
 
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.unobserve(el); } }, { threshold: 0.08 });
-    obs.observe(el); return () => obs.disconnect();
-  }, []);
-  return { ref, vis };
-}
-
-// ---------------------------------------------------------------------------
-// Chart iframe
-// ---------------------------------------------------------------------------
-
-function MiniChart({ config, height = 220 }: { config: object; height?: number }) {
-  const html = useMemo(() => `<!DOCTYPE html><html><head>
+function OnDemandChart({ config }: { config: object }) {
+  const [show, setShow] = useState(false);
+  const html = useMemo(() => show ? `<!DOCTYPE html><html><head>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
 <style>body{margin:0;background:transparent;display:flex;justify-content:center;align-items:center;height:100%}</style>
 </head><body><canvas id="c"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(config)})<\/script>
-</body></html>`, [config]);
-  return <iframe srcDoc={html} className="w-full border-0 bg-transparent" style={{ height }} sandbox="allow-scripts" title="Chart" />;
+</body></html>` : "", [show, config]);
+
+  if (!show) {
+    return (
+      <button onClick={() => setShow(true)}
+        className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white/60">
+        <BarChart3 className="h-3 w-3" /> Show chart
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/[0.05] bg-white/[0.01] overflow-hidden">
+      <iframe srcDoc={html} className="w-full border-0 bg-transparent" style={{ height: 220 }} sandbox="allow-scripts" title="Chart" />
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
-// Section Renderers
+// Section Renderers (no IntersectionObserver — pure CSS for performance)
 // ---------------------------------------------------------------------------
 
 function RHeading({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   const lv = s.level ?? 1;
   return (
-    <div ref={ref} id={s.id} className={cn("scroll-mt-4 transition-all duration-500", vis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3",
-      lv === 1 && "mt-10 mb-4", lv === 2 && "mt-8 mb-3", lv >= 3 && "mt-6 mb-2")}>
+    <div id={s.id} className={cn("scroll-mt-4", lv === 1 && "mt-10 mb-4", lv === 2 && "mt-8 mb-3", lv >= 3 && "mt-6 mb-2")}>
       {lv === 1 && <div className="mb-3 h-px" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} />}
       {lv === 1 ? <h2 className="text-xl font-bold text-white">{s.title}</h2>
         : lv === 2 ? <h3 className="text-lg font-semibold text-white/90">{s.title}</h3>
@@ -220,35 +208,31 @@ function RHeading({ s, brandColor }: { s: Section; brandColor: string }) {
 }
 
 function RParagraph({ s }: { s: Section }) {
-  const { ref, vis } = useReveal();
   return (
-    <div ref={ref} className={cn("my-2 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <div className="my-2">
       <p className="text-[14px] leading-[1.75] text-white/55">{s.content}</p>
     </div>
   );
 }
 
 function RList({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   return (
-    <div ref={ref} className={cn("my-4 space-y-2 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <ul className="my-4 space-y-1.5">
       {(s.items ?? []).map((item, i) => (
-        <div key={i} className="flex items-start gap-2.5 rounded-lg border border-white/[0.05] bg-white/[0.01] px-3.5 py-2.5"
-          style={{ transitionDelay: vis ? `${i * 30}ms` : "0ms", opacity: vis ? 1 : 0 }}>
+        <li key={i} className="flex items-start gap-2.5 py-1">
           <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: brandColor }} />
           <span className="text-[13px] leading-relaxed text-white/55">{item}</span>
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
 function RTable({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   const headers = s.tableHeaders ?? [];
   const rows = s.tableRows ?? [];
 
-  // Auto-chart for numeric data
+  // Only offer chart if there's numeric data
   const numCol = headers.findIndex((_, ci) => rows.filter(r => /[\d.]+/.test((r[ci] ?? "").replace(/[$,~%<>]/g, ""))).length >= 2);
   const chartCfg = useMemo(() => {
     if (numCol < 1 || rows.length < 2) return null;
@@ -263,32 +247,32 @@ function RTable({ s, brandColor }: { s: Section; brandColor: string }) {
   }, [headers, rows, numCol, brandColor]);
 
   return (
-    <div ref={ref} className={cn("my-5 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <div className="my-5">
       <div className="overflow-hidden rounded-xl border border-white/[0.06]">
-        <table className="w-full text-[13px]">
-          <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
-            {headers.map((h, i) => <th key={i} className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
-          </tr></thead>
-          <tbody>{rows.map((row, ri) => (
-            <tr key={ri} className="border-t border-white/[0.04] hover:bg-white/[0.015]">
-              {row.map((c, ci) => <td key={ci} className={cn("px-4 py-2.5", ci === 0 ? "font-medium text-white/65" : "text-white/50")}>{c}</td>)}
-            </tr>
-          ))}</tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
+              {headers.map((h, i) => <th key={i} className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
+            </tr></thead>
+            <tbody>{rows.map((row, ri) => (
+              <tr key={ri} className="border-t border-white/[0.04] hover:bg-white/[0.015]">
+                {row.map((c, ci) => <td key={ci} className={cn("px-4 py-2.5", ci === 0 ? "font-medium text-white/65" : "text-white/50")}>{c}</td>)}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       </div>
-      {chartCfg && <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.01] overflow-hidden"><MiniChart config={chartCfg} /></div>}
+      {chartCfg && <OnDemandChart config={chartCfg} />}
     </div>
   );
 }
 
 function RBudget({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   const rows = s.budgetRows ?? [];
-
   const chartCfg = useMemo(() => {
     const withNums = rows.filter(r => r.investment.includes("$"));
     if (withNums.length < 2) return null;
-    const labels = withNums.map((r, i) => `Phase ${i + 1}`);
+    const labels = withNums.map((_, i) => `Phase ${i + 1}`);
     const values = withNums.map(r => { const m = r.investment.match(/\$([\d,]+)/); return m ? parseInt(m[1].replace(/,/g, ""), 10) : 0; });
     return {
       type: "bar", data: { labels, datasets: [{ data: values, backgroundColor: withNums.map((_, i) => `${brandColor}${Math.round(((i + 1) / withNums.length) * 140 + 100).toString(16).padStart(2, "0")}`), borderColor: "transparent", borderRadius: 6, barPercentage: 0.5 }] },
@@ -297,31 +281,27 @@ function RBudget({ s, brandColor }: { s: Section; brandColor: string }) {
   }, [rows, brandColor]);
 
   return (
-    <div ref={ref} className={cn("my-6 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <div className="my-6">
       <div className="grid gap-3 sm:grid-cols-3">
         {rows.map((r, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] p-5 transition-all hover:border-white/[0.1]"
-            style={{ transitionDelay: vis ? `${i * 100}ms` : "0ms", opacity: vis ? 1 : 0 }}>
+          <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-5">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/25">{r.phase.length > 35 ? r.phase.slice(0, 35) + "..." : r.phase}</p>
             <p className="mb-1 text-2xl font-bold" style={r.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: "rgba(255,255,255,0.65)" }}>{r.investment}</p>
             <div className="flex items-center gap-1.5 text-[11px] text-white/30"><Clock className="h-3 w-3" />{r.timeline}</div>
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 transition-opacity group-hover:opacity-100" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}40, transparent)` }} />
           </div>
         ))}
       </div>
-      {chartCfg && <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.01] overflow-hidden"><MiniChart config={chartCfg} height={200} /></div>}
+      {chartCfg && <OnDemandChart config={chartCfg} />}
     </div>
   );
 }
 
 function RMilestone({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   const ms = s.milestones ?? [];
   return (
-    <div ref={ref} className={cn("my-6 space-y-2.5 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <div className="my-6 space-y-2">
       {ms.map((m, i) => (
-        <div key={i} className="group flex gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] p-4 transition-all hover:border-white/[0.08]"
-          style={{ transitionDelay: vis ? `${i * 80}ms` : "0ms", opacity: vis ? 1 : 0 }}>
+        <div key={i} className="flex gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] p-4">
           <div className="flex flex-col items-center gap-1 pt-1">
             <div className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: brandColor, backgroundColor: `${brandColor}25` }} />
             {i < ms.length - 1 && <div className="flex-1 w-px" style={{ backgroundColor: `${brandColor}12` }} />}
@@ -340,31 +320,26 @@ function RMilestone({ s, brandColor }: { s: Section; brandColor: string }) {
 }
 
 function RPhase({ s, brandColor }: { s: Section; brandColor: string }) {
-  const { ref, vis } = useReveal();
   const phases = s.phases ?? [];
-  const icons = [Target, Zap, Sparkles, BarChart3];
   return (
-    <div ref={ref} className={cn("my-8 transition-all duration-500", vis ? "opacity-100" : "opacity-0")}>
+    <div className="my-8">
       <div className="relative">
         <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}30, transparent)` }} />
         <div className="space-y-5">
-          {phases.map((p, i) => {
-            const Icon = icons[i % icons.length];
-            return (
-              <div key={i} className="relative pl-14" style={{ transitionDelay: vis ? `${i * 150}ms` : "0ms", opacity: vis ? 1 : 0 }}>
-                <div className="absolute left-0 top-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2" style={{ borderColor: brandColor, backgroundColor: `${brandColor}10` }}>
-                    <Icon className="h-4 w-4" style={{ color: brandColor }} />
-                  </div>
-                </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 transition-all hover:border-white/[0.1]">
-                  <div className="text-base font-bold text-white">{p.name}</div>
-                  <div className="mt-1 mb-2 flex items-center gap-1.5 text-[11px]" style={{ color: `${brandColor}aa` }}><Clock className="h-3 w-3" />{p.timeline}</div>
-                  <p className="text-[13px] leading-relaxed text-white/45">{p.desc.length > 200 ? p.desc.slice(0, 200) + "..." : p.desc}</p>
+          {phases.map((p, i) => (
+            <div key={i} className="relative pl-14">
+              <div className="absolute left-0 top-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 text-xs font-bold" style={{ borderColor: brandColor, backgroundColor: `${brandColor}10`, color: brandColor }}>
+                  {i + 1}
                 </div>
               </div>
-            );
-          })}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
+                <div className="text-base font-bold text-white">{p.name}</div>
+                <div className="mt-1 mb-2 flex items-center gap-1.5 text-[11px]" style={{ color: `${brandColor}aa` }}><Clock className="h-3 w-3" />{p.timeline}</div>
+                <p className="text-[13px] leading-relaxed text-white/45">{p.desc.length > 250 ? p.desc.slice(0, 250) + "..." : p.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -379,7 +354,7 @@ export function RichTextContent({ content, brandColor = "#0DE4F2" }: { content: 
   const sections = useMemo(() => parseContent(content), [content]);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       {sections.map((s) => {
         switch (s.type) {
           case "heading": return <RHeading key={s.id} s={s} brandColor={brandColor} />;
