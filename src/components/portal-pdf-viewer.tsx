@@ -253,8 +253,12 @@ function clearHighlightsInDom(container: HTMLElement) {
 }
 
 // ---------------------------------------------------------------------------
-// Inner PDF Document (lazy-loaded react-pdf)
+// Inner PDF Document (lazy-loaded react-pdf) — continuous scroll with
+// virtualized rendering and IntersectionObserver page detection
 // ---------------------------------------------------------------------------
+
+/** Number of pages to render beyond the visible page in each direction */
+const PAGE_BUFFER = 2;
 
 function PdfDocumentInner({
   pdfUrl,
@@ -265,6 +269,7 @@ function PdfDocumentInner({
   isMobile,
   containerWidth,
   zoom,
+  scrollContainerRef,
 }: {
   pdfUrl: string;
   spread: boolean;
@@ -274,11 +279,15 @@ function PdfDocumentInner({
   isMobile: boolean;
   containerWidth: number;
   zoom: number;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Document, Page, pdfjs } = require("react-pdf");
   const [numPages, setNumPages] = useState<number>(0);
   const [ready, setReady] = useState(false);
+  const [pageHeight, setPageHeight] = useState(1000); // estimated height per page
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const programmaticScrollRef = useRef(false);
 
   useEffect(() => {
     pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -304,6 +313,149 @@ function PdfDocumentInner({
     [onTotalPages]
   );
 
+  // Determine which pages to actually render (virtualized window)
+  const visibleRange = useMemo(() => {
+    if (numPages === 0) return { start: 1, end: 1 };
+    const start = Math.max(1, currentPage - PAGE_BUFFER);
+    const end = Math.min(numPages, currentPage + PAGE_BUFFER);
+    return { start, end };
+  }, [currentPage, numPages]);
+
+  // Update estimated page height when first page renders
+  const handlePageRenderSuccess = useCallback(() => {
+    // Read actual rendered height from first visible page
+    const firstRef = pageRefs.current.get(visibleRange.start);
+    if (firstRef) {
+      const h = firstRef.getBoundingClientRect().height;
+      if (h > 0 && Math.abs(h - pageHeight) > 20) {
+        setPageHeight(h);
+      }
+    }
+  }, [visibleRange.start, pageHeight]);
+
+  // IntersectionObserver to detect which page is in view
+  useEffect(() => {
+    if (!ready || numPages === 0) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (programmaticScrollRef.current) return;
+
+        // Find the entry with the largest intersection ratio
+        let bestPage = currentPage;
+        let bestRatio = 0;
+
+        for (const entry of entries) {
+          const pageNum = parseInt(entry.target.getAttribute("data-page-number") ?? "0", 10);
+          if (pageNum > 0 && entry.intersectionRatio > bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            bestPage = pageNum;
+          }
+        }
+
+        if (bestRatio > 0 && bestPage !== currentPage) {
+          onPageChange(bestPage);
+        }
+      },
+      {
+        root: scrollContainer,
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      }
+    );
+
+    // Observe all page sentinel divs
+    pageRefs.current.forEach((el) => {
+      observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [ready, numPages, currentPage, onPageChange, scrollContainerRef]);
+
+  // Smooth scroll to page when currentPage changes programmatically (prev/next buttons)
+  const scrollToPage = useCallback(
+    (page: number) => {
+      const el = pageRefs.current.get(page);
+      if (el) {
+        programmaticScrollRef.current = true;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Release the programmatic scroll lock after animation
+        setTimeout(() => {
+          programmaticScrollRef.current = false;
+        }, 600);
+      }
+    },
+    []
+  );
+
+  // Expose scrollToPage via a ref stored on the scroll container for the parent
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      (container as HTMLDivElement & { __scrollToPage?: (page: number) => void }).__scrollToPage = scrollToPage;
+    }
+  }, [scrollToPage, scrollContainerRef]);
+
+  // Build page items for single or spread mode
+  const pageItems = useMemo(() => {
+    if (!showSpread) {
+      // Single page mode: one item per page
+      return Array.from({ length: numPages }, (_, i) => ({
+        key: i + 1,
+        pages: [i + 1],
+      }));
+    }
+    // Spread mode: pairs of pages (1 alone, then 2-3, 4-5, ...)
+    const items: { key: number; pages: number[] }[] = [];
+    // First page alone
+    if (numPages >= 1) {
+      items.push({ key: 1, pages: [1] });
+    }
+    for (let i = 2; i <= numPages; i += 2) {
+      const pair = [i];
+      if (i + 1 <= numPages) pair.push(i + 1);
+      items.push({ key: i, pages: pair });
+    }
+    return items;
+  }, [numPages, showSpread]);
+
+  // Calculate which items to render (virtualized)
+  const renderedItems = useMemo(() => {
+    return pageItems.filter((item) => {
+      const firstPage = item.pages[0];
+      const lastPage = item.pages[item.pages.length - 1];
+      // Render if any page in the item is within the buffer range
+      return lastPage >= visibleRange.start && firstPage <= visibleRange.end;
+    });
+  }, [pageItems, visibleRange]);
+
+  // Calculate placeholder heights for non-rendered items
+  const gapSize = 24; // gap between page items in px
+  const itemHeight = showSpread ? pageHeight : pageHeight;
+
+  const beforeHeight = useMemo(() => {
+    if (renderedItems.length === 0 || pageItems.length === 0) return 0;
+    const firstRenderedIdx = pageItems.indexOf(renderedItems[0]);
+    return firstRenderedIdx * (itemHeight + gapSize);
+  }, [renderedItems, pageItems, itemHeight, gapSize]);
+
+  const afterHeight = useMemo(() => {
+    if (renderedItems.length === 0 || pageItems.length === 0) return 0;
+    const lastRenderedIdx = pageItems.indexOf(renderedItems[renderedItems.length - 1]);
+    const remaining = pageItems.length - 1 - lastRenderedIdx;
+    return remaining * (itemHeight + gapSize);
+  }, [renderedItems, pageItems, itemHeight, gapSize]);
+
+  const setPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
+    if (el) {
+      pageRefs.current.set(page, el);
+    } else {
+      pageRefs.current.delete(page);
+    }
+  }, []);
+
   return (
     <Document
       file={pdfUrl}
@@ -320,30 +472,39 @@ function PdfDocumentInner({
       }
     >
       {ready && (
-        <div
-          className={cn(
-            "flex gap-4",
-            showSpread ? "flex-row" : "flex-col items-center"
-          )}
-        >
-          <div className="rounded-sm bg-white shadow-2xl">
-            <Page
-              pageNumber={currentPage}
-              width={pageWidth}
-              renderTextLayer={true}
-              renderAnnotationLayer={false}
-            />
-          </div>
-          {showSpread && currentPage + 1 <= numPages && (
-            <div className="rounded-sm bg-white shadow-2xl">
-              <Page
-                pageNumber={currentPage + 1}
-                width={pageWidth}
-                renderTextLayer={true}
-                renderAnnotationLayer={false}
-              />
-            </div>
-          )}
+        <div className="flex flex-col items-center gap-6">
+          {/* Top spacer for virtualized pages above */}
+          {beforeHeight > 0 && <div style={{ height: beforeHeight, flexShrink: 0 }} />}
+
+          {renderedItems.map((item) => {
+            const firstPage = item.pages[0];
+            return (
+              <div
+                key={item.key}
+                ref={(el) => setPageRef(firstPage, el)}
+                data-page-number={firstPage}
+                className={cn(
+                  "flex gap-4",
+                  showSpread ? "flex-row justify-center" : "flex-col items-center"
+                )}
+              >
+                {item.pages.map((pageNum) => (
+                  <div key={pageNum} className="rounded-sm bg-white shadow-2xl">
+                    <Page
+                      pageNumber={pageNum}
+                      width={pageWidth}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={false}
+                      onRenderSuccess={pageNum === firstPage ? handlePageRenderSuccess : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Bottom spacer for virtualized pages below */}
+          {afterHeight > 0 && <div style={{ height: afterHeight, flexShrink: 0 }} />}
         </div>
       )}
     </Document>
@@ -425,12 +586,17 @@ export function PortalPdfViewer({
     const step = showSpread ? 2 : 1;
     const newPage = Math.max(1, currentPage - step);
     onPageChange(newPage);
+    // Smooth scroll to the target page
+    const container = pdfAreaRef.current as (HTMLDivElement & { __scrollToPage?: (page: number) => void }) | null;
+    container?.__scrollToPage?.(newPage);
   }, [currentPage, onPageChange, showSpread]);
 
   const goToNext = useCallback(() => {
     const step = showSpread ? 2 : 1;
     const newPage = Math.min(numPages, currentPage + step);
     onPageChange(newPage);
+    const container = pdfAreaRef.current as (HTMLDivElement & { __scrollToPage?: (page: number) => void }) | null;
+    container?.__scrollToPage?.(newPage);
   }, [currentPage, numPages, onPageChange, showSpread]);
 
   const zoomIn = useCallback(() => setZoom((z) => Math.min(z + 0.25, 3)), []);
@@ -443,6 +609,8 @@ export function PortalPdfViewer({
   const goToPage = useCallback((page: number) => {
     const clamped = Math.max(1, Math.min(page, numPages));
     onPageChange(clamped);
+    const container = pdfAreaRef.current as (HTMLDivElement & { __scrollToPage?: (page: number) => void }) | null;
+    container?.__scrollToPage?.(clamped);
   }, [numPages, onPageChange]);
 
   // Expose controls to parent
@@ -667,7 +835,7 @@ export function PortalPdfViewer({
     );
   }
 
-  // PDF Viewer with bubble menu and search
+  // PDF Viewer with continuous scroll, bubble menu and search
   return (
     <div ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
       {/* Search bar overlay */}
@@ -680,7 +848,7 @@ export function PortalPdfViewer({
         totalMatches={searchMatches.length}
       />
 
-      {/* PDF Document */}
+      {/* PDF Document — scrollable container */}
       <div ref={pdfAreaRef} className="relative flex-1 overflow-auto bg-[hsl(168,14%,3%)] p-6">
         <div className="flex items-start justify-center">
           {pdfLoaded && (
@@ -693,6 +861,7 @@ export function PortalPdfViewer({
               isMobile={isMobile}
               containerWidth={containerWidth}
               zoom={zoom}
+              scrollContainerRef={pdfAreaRef}
             />
           )}
         </div>

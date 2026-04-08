@@ -2554,7 +2554,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div className="max-w-4xl mx-auto w-full space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              {!portalMode && (
+              {portalMode ? (
+                <div className="mb-3">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                  />
+                </div>
+              ) : (
                 <div className="mb-3 opacity-60">
                   <NeuralMorph size={48} dotCount={14} formation="bloom" />
                 </div>
@@ -2565,8 +2572,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   : "Ask anything about your team\u2019s knowledge"}
               </p>
               <p className="text-xs mt-1">
-                {portalMode && portalClientName
-                  ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
+                {portalMode
+                  ? portalClientName
+                    ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
+                    : "Ask questions, search for sections, or request visualizations."
                   : "Granger searches your documents, meetings, and notes to answer."}
               </p>
               <div className="flex flex-wrap justify-center gap-2 mt-5 max-w-lg">
