@@ -79,7 +79,8 @@ function parseMarkdownTable(lines: string[], startIdx: number): { headers: strin
 
 function parseDocument(content: string, portalTitle: string, clientName: string): DocSection[] {
   if (!content) return [];
-  const lines = content.split("\n");
+  // Pre-filter: remove empty lines so triplet patterns (Phase/Timeline/Investment) work
+  const lines = content.split("\n").filter(l => l.trim() !== "");
   const sections: DocSection[] = [];
   let idx = 0;
 
@@ -798,41 +799,44 @@ function ParagraphSection({ section, brandColor }: { section: DocSection; brandC
 }
 
 function ListSection({ section, brandColor }: { section: DocSection; brandColor: string }) {
-  const { ref, isVisible } = useScrollAnimation();
   const { isDark } = usePortalTheme();
   const items = section.items ?? [];
-  const isLong = items.some(it => it.length > 120);
-
-  // Detect if items contain "Priority: X" patterns
+  const isLong = items.some(it => it.length > 150);
   const hasPriority = items.some(it => /Priority:\s*(Must|Should|Could)/i.test(it));
 
+  // Short lists (< 8 items, short text) → compact bullet list, no cards
+  const useCompact = !isLong && !hasPriority && items.length <= 12;
+
+  if (useCompact) {
+    return (
+      <ul className="my-5 space-y-2.5">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-3">
+            <div className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: brandColor }} />
+            <span className={cn("text-[15px] leading-[1.7]", isDark ? "text-white/60" : "text-gray-700")}>{item}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   return (
-    <div ref={ref} className={cn(
-      "my-6 transition-all duration-600",
-      isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
-      !isLong && !hasPriority && "grid gap-3 sm:grid-cols-2",
-    )}>
+    <div className={cn("my-6", !isLong && !hasPriority && "grid gap-2.5 sm:grid-cols-2")}>
       {items.map((item, i) => {
         const priMatch = item.match(/Priority:\s*(Must|Should|Could|Deferred)/i);
         return (
           <div key={i}
             className={cn(
-              "group flex items-start gap-3.5 rounded-xl border p-5",
-              "transition-all duration-300",
+              "group flex items-start gap-3 rounded-lg border px-4 py-3",
               isDark
-                ? "border-white/[0.05] bg-white/[0.015] hover:border-white/[0.1] hover:bg-white/[0.03]"
-                : "border-black/[0.06] bg-black/[0.015] hover:border-black/[0.12] hover:bg-black/[0.03]",
+                ? "border-white/[0.05] bg-white/[0.01]"
+                : "border-black/[0.06] bg-black/[0.01]",
             )}
-            style={{
-              transitionDelay: isVisible ? `${i * 50}ms` : "0ms",
-              opacity: isVisible ? 1 : 0,
-              transform: isVisible ? "translateY(0)" : "translateY(8px)",
-            }}
           >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
             <div className="flex-1 min-w-0">
-              {priMatch && <div className="mb-1.5"><PriorityBadge priority={priMatch[1]} /></div>}
-              <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/55" : "text-gray-600")}>{item}</span>
+              {priMatch && <div className="mb-1"><PriorityBadge priority={priMatch[1]} /></div>}
+              <span className={cn("text-[15px] leading-[1.7]", isDark ? "text-white/60" : "text-gray-700")}>{item}</span>
             </div>
           </div>
         );
@@ -865,7 +869,7 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
         >
           {/* Label bar */}
           <div className={cn("border-b px-6 py-3", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
-            <span className={cn("text-[13px] font-semibold", isDark ? "text-white/80" : "text-gray-800")}>{comp.label}</span>
+            <span className={cn("text-[15px] font-semibold", isDark ? "text-white/80" : "text-gray-800")}>{comp.label}</span>
           </div>
 
           {/* Before -> After cards */}
@@ -873,7 +877,7 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
             {/* Current State */}
             <div className="p-6">
               <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>Current State</div>
-              <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{comp.current}</p>
+              <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{comp.current}</p>
             </div>
 
             {/* Arrow transition */}
@@ -891,7 +895,7 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
             {/* Target State */}
             <div className="p-6" style={{ background: `linear-gradient(135deg, ${brandColor}06 0%, transparent 60%)` }}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>Target State</div>
-              <p className="text-[14px] leading-relaxed font-medium" style={{ color: `${brandColor}cc` }}>{comp.target}</p>
+              <p className="text-[16px] leading-relaxed font-medium" style={{ color: `${brandColor}cc` }}>{comp.target}</p>
             </div>
           </div>
 
@@ -968,7 +972,7 @@ function ArchitectureDiagram({ section, brandColor }: { section: DocSection; bra
                       {layer.owner}
                     </span>
                   </div>
-                  <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{layer.contains}</p>
+                  <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{layer.contains}</p>
                 </div>
               </div>
 
@@ -1012,17 +1016,17 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
             {/* When — context */}
             <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-400/60">When</div>
-              <p className={cn("text-[13px] leading-relaxed", isDark ? "text-white/50" : "text-gray-600")}>{jtbd.when}</p>
+              <p className={cn("text-[15px] leading-relaxed", isDark ? "text-white/50" : "text-gray-600")}>{jtbd.when}</p>
             </div>
             {/* I want — action */}
             <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")} style={{ backgroundColor: `${brandColor}04` }}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>I want</div>
-              <p className="text-[13px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
+              <p className="text-[15px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
             </div>
             {/* So that — outcome */}
             <div className="p-5">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-400/60">So that</div>
-              <p className="text-[13px] leading-relaxed text-emerald-400/70">{jtbd.soThat}</p>
+              <p className="text-[15px] leading-relaxed text-emerald-400/70">{jtbd.soThat}</p>
             </div>
           </div>
         </div>
@@ -1061,7 +1065,7 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
           </div>
           {/* Description */}
           <div className="px-6 py-4">
-            <p className={cn("text-[14px] leading-[1.75]", isDark ? "text-white/50" : "text-gray-500")}>{spec.description}</p>
+            <p className={cn("text-[16px] leading-[1.75]", isDark ? "text-white/50" : "text-gray-500")}>{spec.description}</p>
           </div>
           {/* Acceptance Criteria */}
           {spec.acceptance.length > 0 && (
@@ -1076,7 +1080,7 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
                     >
                       <Check className="h-2.5 w-2.5" style={{ color: `${brandColor}90` }} />
                     </div>
-                    <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{ac}</span>
+                    <span className={cn("text-[15px] leading-relaxed", isDark ? "text-white/45" : "text-gray-500")}>{ac}</span>
                   </div>
                 ))}
               </div>
@@ -1117,7 +1121,7 @@ function AcceptanceCriteriaSection({ section, brandColor }: { section: DocSectio
               >
                 <Check className="h-3 w-3" style={{ color: `${brandColor}` }} />
               </div>
-              <span className={cn("text-[13px] leading-relaxed", isDark ? "text-white/50" : "text-gray-500")}>{item}</span>
+              <span className={cn("text-[15px] leading-relaxed", isDark ? "text-white/50" : "text-gray-500")}>{item}</span>
             </div>
           ))}
         </div>
@@ -1139,7 +1143,7 @@ function PriorityMatrixSection({ section, brandColor }: { section: DocSection; b
     <div ref={ref} className={cn("my-8 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
       <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[15px]">
             <thead>
               <tr style={{ backgroundColor: `${brandColor}06` }}>
                 <th className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>Feature Group</th>
@@ -1205,7 +1209,7 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
     <div className="my-8 animate-section">
       <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[15px]">
             <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
               {headers.map((h, hi) => <th key={hi} className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>{h}</th>)}
             </tr></thead>
@@ -1267,7 +1271,7 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
                       <Clock className="h-3.5 w-3.5" />
                       {phase.timeline}
                     </div>
-                    <p className={cn("text-[14px] leading-[1.75]", isDark ? "text-white/45" : "text-gray-500")}>{phase.description}</p>
+                    <p className={cn("text-[16px] leading-[1.75]", isDark ? "text-white/45" : "text-gray-500")}>{phase.description}</p>
                     {/* Bottom accent */}
                     <div
                       className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100"
@@ -1357,7 +1361,7 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
               <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{m.phase}</span>
               <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}12`, color: `${brandColor}cc` }}>{m.dates}</span>
             </div>
-            <p className={cn("text-[14px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{m.milestones}</p>
+            <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{m.milestones}</p>
           </div>
         </div>
       ))}

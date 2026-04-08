@@ -37,14 +37,15 @@ function clean(s: string): string {
 
 function parseContent(text: string): Section[] {
   if (!text) return [];
-  const lines = text.split("\n");
+  // Pre-filter: remove empty lines so triplet patterns (Phase/Timeline/Investment) work
+  // even when the source has blank lines between every field
+  const lines = text.split("\n").filter(l => l.trim() !== "");
   const sections: Section[] = [];
   let idx = 0;
   let i = 0;
 
   while (i < lines.length) {
     const raw = lines[i].trim();
-    if (!raw) { i++; continue; }
     if (/^(\*\*)?!?\[/.test(raw)) { i++; continue; }
     if (/^(Prepared|Date:|Revision:|\*\*Prepared|\*\*Date|\*\*Revision)/i.test(clean(raw))) { i++; continue; }
 
@@ -211,7 +212,7 @@ function RHeading({ s, brandColor }: { s: Section; brandColor: string }) {
 function RParagraph({ s }: { s: Section }) {
   return (
     <div className="my-2">
-      <p className="text-[14px] leading-[1.75] text-white/55">{s.content}</p>
+      <p className="text-[16px] leading-[1.75] text-white/55">{s.content}</p>
     </div>
   );
 }
@@ -222,7 +223,7 @@ function RList({ s, brandColor }: { s: Section; brandColor: string }) {
       {(s.items ?? []).map((item, i) => (
         <li key={i} className="flex items-start gap-2.5 py-1">
           <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: brandColor }} />
-          <span className="text-[13px] leading-relaxed text-white/55">{item}</span>
+          <span className="text-[15px] leading-relaxed text-white/55">{item}</span>
         </li>
       ))}
     </ul>
@@ -251,7 +252,7 @@ function RTable({ s, brandColor }: { s: Section; brandColor: string }) {
     <div className="my-5">
       <div className="overflow-hidden rounded-xl border border-white/[0.06]">
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[15px]">
             <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
               {headers.map((h, i) => <th key={i} className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50">{h}</th>)}
             </tr></thead>
@@ -312,7 +313,7 @@ function RMilestone({ s, brandColor }: { s: Section; brandColor: string }) {
               <span className="text-sm font-semibold text-white">{m.phase}</span>
               <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}0d`, color: `${brandColor}bb` }}>{m.dates}</span>
             </div>
-            <p className="text-[13px] text-white/40 leading-relaxed">{m.detail}</p>
+            <p className="text-[15px] text-white/40 leading-relaxed">{m.detail}</p>
           </div>
         </div>
       ))}
@@ -337,7 +338,7 @@ function RPhase({ s, brandColor }: { s: Section; brandColor: string }) {
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
                 <div className="text-base font-bold text-white">{p.name}</div>
                 <div className="mt-1 mb-2 flex items-center gap-1.5 text-[11px]" style={{ color: `${brandColor}aa` }}><Clock className="h-3 w-3" />{p.timeline}</div>
-                <p className="text-[13px] leading-relaxed text-white/45">{p.desc.length > 250 ? p.desc.slice(0, 250) + "..." : p.desc}</p>
+                <p className="text-[15px] leading-relaxed text-white/45">{p.desc.length > 250 ? p.desc.slice(0, 250) + "..." : p.desc}</p>
               </div>
             </div>
           ))}
