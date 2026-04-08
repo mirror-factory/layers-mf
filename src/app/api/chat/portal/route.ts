@@ -485,7 +485,7 @@ export async function POST(request: NextRequest) {
     system: systemPrompt,
     messages: modelMessages,
     tools: portalTools,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(3),
   });
 
   return result.toUIMessageStreamResponse();
