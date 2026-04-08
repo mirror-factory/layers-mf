@@ -1697,9 +1697,15 @@ interface ChatInterfaceProps {
   portalBrandColor?: string;
   /** Callback fired when a tool completes with output (used by portal to react to tool results) */
   onToolOutput?: (toolName: string, output: unknown) => void;
+  /** Compact mode — reduced spacing, no empty state, minimal chrome (for embedded drawers) */
+  compactMode?: boolean;
+  /** Hide the context window bar (token counter) */
+  hideContextBar?: boolean;
+  /** Additional CSS classes for the outermost container */
+  containerClassName?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1753,6 +1759,9 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       portalClientName={portalClientName}
       portalBrandColor={portalBrandColor}
       onToolOutput={onToolOutput}
+      compactMode={compactMode}
+      hideContextBar={hideContextBar}
+      containerClassName={containerClassName}
     />
   );
 }
@@ -1771,9 +1780,12 @@ interface ChatInterfaceInnerProps {
   portalClientName?: string;
   portalBrandColor?: string;
   onToolOutput?: (toolName: string, output: unknown) => void;
+  compactMode?: boolean;
+  hideContextBar?: boolean;
+  containerClassName?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2538,7 +2550,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   };
 
   return (
-    <div className="flex h-full overflow-hidden flex-col md:flex-row">
+    <div className={cn("flex h-full overflow-hidden flex-col md:flex-row", containerClassName)}>
       {/* Left: chat thread */}
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
         {/* Chat actions — hidden entirely, per-message actions handle copy/branch/feedback */}
@@ -2590,9 +2602,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             />
           </div>
         )}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-          <div className="max-w-4xl mx-auto w-full space-y-6">
-          {messages.length === 0 && (
+        <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", compactMode ? "p-3" : "p-4 sm:p-6")}>
+          <div className={cn("max-w-4xl mx-auto w-full", compactMode ? "space-y-3" : "space-y-6")}>
+          {messages.length === 0 && !compactMode && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               {portalMode ? (
                 <div className="mb-3">
@@ -2904,7 +2916,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 px-4 sm:px-8 pt-6 relative", portalMode ? "pb-2" : "pb-[max(1rem,env(safe-area-inset-bottom))]")}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "")}
           style={{
             background: "linear-gradient(to bottom, transparent, hsl(168 14% 5% / 0.8) 30%, hsl(168 14% 5%) 60%)",
           }}
@@ -3276,7 +3288,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
           {/* Context window bar — pops up above prompt area */}
-          {showContextBar && messages.length > 0 && (
+          {showContextBar && !hideContextBar && !compactMode && messages.length > 0 && (
             <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
               <div className="max-w-5xl mx-auto">
                 <ContextWindowBar messages={messages} modelId={model} conversationId={conversationId} />
