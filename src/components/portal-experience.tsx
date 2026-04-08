@@ -375,7 +375,7 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
   const lv = section.level ?? 1;
   return (
     <div ref={ref} id={section.id} className={cn("scroll-mt-16 transition-all duration-600", isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0", lv === 1 && "mb-5 mt-20", lv === 2 && "mb-4 mt-14", lv >= 3 && "mb-3 mt-8")}>
-      {lv === 1 && <div className="mb-5 flex items-center gap-4"><div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} /><div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}12` }}><Zap className="h-3.5 w-3.5" style={{ color: brandColor }} /></div><div className="h-px flex-1" style={{ background: `linear-gradient(270deg, ${brandColor}30, transparent)` }} /></div>}
+      {lv === 1 && <div className="mb-5 flex items-center gap-4"><div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${brandColor}30, transparent)` }} /><img src="/bluewave-icon.svg" alt="" className="h-7 w-7 opacity-70" /><div className="h-px flex-1" style={{ background: `linear-gradient(270deg, ${brandColor}30, transparent)` }} /></div>}
       {lv === 1 ? <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">{section.title}</h2>
         : lv === 2 ? <h3 className="text-xl font-semibold text-white/90">{section.title}</h3>
         : <h4 className="text-sm font-semibold tracking-wider uppercase" style={{ color: `${brandColor}bb` }}>{section.title}</h4>}
@@ -573,14 +573,16 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
 
 export function PortalExperience({ portal }: { portal: PortalData }) {
   const [chatOpen, setChatOpen] = useState(false);
-  const [activeDocId, setActiveDocId] = useState<string | null>(portal.documents?.find(d => d.is_active)?.id ?? portal.documents?.[0]?.id ?? null);
+  const docs = portal.documents ?? [];
+  const defaultIdx = Math.max(0, docs.findIndex(d => d.is_active));
+  const [activeDocIdx, setActiveDocIdx] = useState(defaultIdx);
   const brandColor = portal.brand_color || "#0DE4F2";
-  const activeDoc = portal.documents?.find(d => d.id === activeDocId) ?? portal.documents?.[0];
+  const activeDoc = docs[activeDocIdx] ?? docs[0];
   const content = activeDoc?.content ?? portal.document_content ?? "";
   const sections = useMemo(() => parseDocument(content, activeDoc?.title ?? portal.title, portal.client_name ?? "Client"), [content, activeDoc?.title, portal.title, portal.client_name]);
   const tocEntries = useMemo(() => buildToc(sections), [sections]);
   const extraHeaders = useMemo(() => ({ "x-portal-token": portal.share_token }), [portal.share_token]);
-  const handleDocSwitch = useCallback((doc: PortalDocument) => { setActiveDocId(doc.id); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const handleDocSwitch = useCallback((idx: number) => { setActiveDocIdx(idx); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
 
   return (
     <div className="min-h-screen bg-[#050508] text-white">
@@ -588,17 +590,17 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
 
       {/* Nav */}
       <nav className="fixed top-0 z-[45] flex w-full items-center justify-between border-b border-white/[0.06] bg-[#050508]/80 px-6 py-2.5 backdrop-blur-xl">
-        <div className="flex items-center gap-3 pl-28">
-          {portal.logo_url && <img src={portal.logo_url} alt="" className="h-5 w-auto opacity-70" />}
+        <div className="flex items-center gap-2.5 pl-28">
+          <img src="/bluewave-icon.svg" alt="" className="h-5 w-5 opacity-80" />
           <span className="text-[11px] text-white/30">Prepared by <span className="text-white/50">Mirror Factory</span></span>
         </div>
         <div className="flex items-center gap-2">
-          {portal.documents && portal.documents.length > 1 && (
+          {docs.length > 1 && (
             <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5">
-              {portal.documents.map(doc => (
-                <button key={doc.id} onClick={() => handleDocSwitch(doc)}
-                  className={cn("rounded-md px-2.5 py-1 text-[11px] transition-all", doc.id === activeDocId ? "font-medium" : "text-white/30 hover:text-white/55")}
-                  style={doc.id === activeDocId ? { backgroundColor: `${brandColor}18`, color: brandColor } : undefined}>
+              {docs.map((doc, di) => (
+                <button key={di} onClick={() => handleDocSwitch(di)}
+                  className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all", di === activeDocIdx ? "font-medium" : "text-white/30 hover:text-white/55")}
+                  style={di === activeDocIdx ? { backgroundColor: `${brandColor}18`, color: brandColor } : undefined}>
                   {doc.title.length > 18 ? doc.title.slice(0, 18) + "..." : doc.title}
                 </button>
               ))}
