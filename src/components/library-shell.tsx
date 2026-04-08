@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -231,6 +231,23 @@ export function LibraryShell({
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const form = new FormData();
+        form.append("file", file);
+        await fetch("/api/ingest/upload", { method: "POST", body: form });
+      }
+      router.refresh();
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const [selectedSource, setSelectedSource] = useState(initialSource);
   const [selectedFolder, setSelectedFolder] = useState(initialFolder);
@@ -454,12 +471,31 @@ export function LibraryShell({
               All documents, transcripts, and files available to your agents.
             </p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/context/upload-meeting">
-              <Mic className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">Upload Meeting</span>
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              disabled={uploading}
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              {uploading ? <Loader className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />}
+              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload"}</span>
+            </Button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.csv"
+              multiple
+              className="hidden"
+              onChange={(e) => { handleFileUpload(e.target.files); e.target.value = ""; }}
+            />
+            <Button asChild variant="outline" size="sm">
+              <Link href="/context/upload-meeting">
+                <Mic className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Upload Meeting</span>
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Breadcrumb trail */}
