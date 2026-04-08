@@ -341,6 +341,38 @@ ${title ? `<h3 style="text-align:center;margin-bottom:8px">${title}</h3>` : ""}
     });
   }
 
+  // Walkthrough — animated tour through document sections
+  if (enabled.has("walkthrough_document")) {
+    tools.walkthrough_document = tool({
+      description:
+        "Create an animated walkthrough of the document, highlighting key sections one by one with explanations. Use when the user asks to 'walk me through', 'give me a tour', 'explain the whole document', or 'walkthrough'.",
+      inputSchema: z.object({
+        sections: z
+          .array(
+            z.object({
+              page: z.number().describe("Page number for this section"),
+              title: z.string().describe("Section heading or title"),
+              note: z
+                .string()
+                .describe(
+                  "Brief explanation of what this section covers (1-2 sentences)"
+                ),
+            })
+          )
+          .describe("Ordered list of sections to walk through"),
+      }),
+      execute: async ({
+        sections,
+      }: {
+        sections: { page: number; title: string; note: string }[];
+      }) => ({
+        action: "walkthrough",
+        sections,
+        total: sections.length,
+      }),
+    });
+  }
+
   // Document switching — works with the portal's documents array
   const documents = (portal.documents as { id: string; title: string; context_item_id: string; is_active: boolean }[]) ?? [];
   if (documents.length > 1) {
@@ -405,11 +437,12 @@ function buildSystemPrompt(
 
 You have access to the full document content. When answering questions:
 1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
-2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF), add_annotation (to add visual callouts on the PDF).
+2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF), add_annotation (to add visual callouts on the PDF), walkthrough_document (to give an animated tour).
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
-4. Always reference specific sections and quote relevant text.
-5. Be concise but thorough.
-6. NEVER call more than 3 tools per response.
+4. When the user asks to "walk me through", "give me a tour", "explain the whole document", or "walkthrough", use the walkthrough_document tool. Identify 8-15 key sections, estimate a page number for each, and provide a brief 1-2 sentence explanation per section.
+5. Always reference specific sections and quote relevant text.
+6. Be concise but thorough.
+7. NEVER call more than 3 tools per response (except walkthrough_document which counts as 1).
 
 Document: ${portal.title}
 Client: ${portal.client_name ?? "Unknown"}

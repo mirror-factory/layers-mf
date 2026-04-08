@@ -28,6 +28,7 @@ import {
   Settings2,
   MessageSquarePlus,
   StickyNote,
+  SkipForward,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,6 +163,11 @@ const TOOL_CONFIG: Record<
     icon: StickyNote,
     description: "Add visual callouts to PDF",
   },
+  walkthrough_document: {
+    label: "Walkthrough",
+    icon: Play,
+    description: "Animated document walkthrough",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -183,7 +189,10 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
   const totalChars = content.length;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    // Strip bold markers (**text**, __text__) and leading/trailing whitespace
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    const line = raw.replace(/\*\*|__/g, "").trim();
     if (!line) continue;
 
     let match: RegExpMatchArray | null = null;
@@ -198,8 +207,9 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
     }
 
     // Numbered sections: 1. Title, 2.1 Title, 1.2.3 Title
+    // Also match "5.1 " (number then space), "5.1. ", "5.1) ", "5.1- "
     if (!title) {
-      match = line.match(/^(\d+(?:\.\d+)*)[.\s)\-]+\s*(.{3,80})/);
+      match = line.match(/^(\d+(?:\.\d+)*)\s*[.)\-:]?\s+(.{2,120})/);
       if (match) {
         const numbering = match[1];
         const dots = (numbering.match(/\./g) || []).length;
@@ -217,6 +227,15 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
       }
     }
 
+    // Label-style headings: "Priority:", "Description:", "Overview:", etc.
+    if (!title) {
+      match = line.match(/^([A-Z][a-zA-Z\s]{2,30}):\s*(.*)$/);
+      if (match && /^(Priority|Description|Overview|Summary|Requirements|Scope|Goals|Objectives|Background|Introduction|Conclusion|References|Appendix|Notes|Details|Deliverables|Timeline|Budget|Risks|Dependencies|Assumptions|Constraints|Architecture|Design|Implementation|Testing|Deployment|Maintenance|Security|Performance|Scalability|Integration|Configuration|Setup|Installation|Usage|API|Database|Schema|Migration|Workflow|Process|Procedure|Policy|Standard|Guideline|Specification|Definition|Glossary|FAQ|Contact|Support|Status|Phase|Stage|Step|Task|Action|Item|Issue|Feature|Module|Component|Service|Endpoint|Route|Model|View|Controller|Handler|Provider|Factory|Adapter|Bridge|Proxy|Decorator|Observer|Strategy)$/i.test(match[1].trim())) {
+        level = 3;
+        title = match[1].trim();
+      }
+    }
+
     // ALL-CAPS lines (likely section headers) — at least 4 chars, no lowercase
     if (!title && line.length >= 4 && line.length <= 80 && /^[A-Z][A-Z\s\d&:,\-]+$/.test(line)) {
       level = 1;
@@ -224,8 +243,9 @@ function extractToc(content: string | null, totalPages: number): TocEntry[] {
     }
 
     if (title) {
-      // Remove trailing punctuation like colons
-      title = title.replace(/[:]+$/, "").trim();
+      // Remove trailing punctuation like colons, bold markers
+      title = title.replace(/\*\*|__/g, "").replace(/[:]+$/, "").trim();
+      if (!title) continue;
       // Estimate page based on character offset
       const charOffset = lines.slice(0, i).join("\n").length;
       const estimatedPage = totalPages > 0
@@ -425,6 +445,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Annotations state
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
 
+  // Walkthrough state
+  const [walkthrough, setWalkthrough] = useState<{
+    sections: { page: number; title: string; note: string }[];
+    currentIndex: number;
+    playing: boolean;
+  } | null>(null);
+
   const addAnnotation = useCallback(
     (annotation: Omit<Annotation, "id" | "visible">) => {
       setAnnotations((prev) => [
@@ -466,6 +493,23 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         if (page > 0 && pdfControls) {
           pdfControls.goToPage?.(page);
           setCurrentPage(page);
+        }
+      } else if (toolName === "walkthrough_document" && Array.isArray(out.sections)) {
+        const sections = out.sections as { page: number; title: string; note: string }[];
+        if (sections.length > 0) {
+          setWalkthrough({ sections, currentIndex: 0, playing: true });
+          // Navigate to first section
+          const first = sections[0];
+          if (pdfControls) {
+            pdfControls.goToPage?.(first.page);
+          }
+          setCurrentPage(first.page);
+          addAnnotation({
+            page: first.page,
+            text: first.title,
+            note: first.note,
+            type: "info",
+          });
         }
       }
     },
@@ -577,6 +621,34 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const handleTotalPages = useCallback((pages: number) => {
     setTotalPages(pages);
   }, []);
+
+  // Walkthrough auto-advance effect
+  useEffect(() => {
+    if (!walkthrough?.playing) return;
+    const timer = setInterval(() => {
+      setWalkthrough((prev) => {
+        if (!prev || prev.currentIndex >= prev.sections.length - 1) {
+          return prev ? { ...prev, playing: false } : null;
+        }
+        const next = prev.currentIndex + 1;
+        const section = prev.sections[next];
+        // Navigate to next section's page
+        if (pdfControls) {
+          pdfControls.goToPage?.(section.page);
+        }
+        setCurrentPage(section.page);
+        // Add annotation for this section
+        addAnnotation({
+          page: section.page,
+          text: section.title,
+          note: section.note,
+          type: "info",
+        });
+        return { ...prev, currentIndex: next };
+      });
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [walkthrough?.playing, pdfControls, addAnnotation]);
 
   const handleControlsReady = useCallback((controls: PdfControls) => {
     setPdfControls(controls);
@@ -1052,6 +1124,79 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           "relative overflow-y-auto h-full transition-all duration-300",
           expanded ? "w-[65%] border-r border-white/5" : "flex-1 pb-20"
         )}>
+          {/* Walkthrough progress bar */}
+          {walkthrough && (
+            <div className="absolute top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur px-4 py-2 flex items-center gap-3">
+              <span className="text-xs text-white/80 shrink-0">
+                Section {walkthrough.currentIndex + 1} of {walkthrough.sections.length}
+              </span>
+              <span className="text-xs text-white font-medium truncate max-w-[200px]">
+                {walkthrough.sections[walkthrough.currentIndex]?.title}
+              </span>
+              <div className="flex-1 h-1 bg-white/10 rounded-full">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${((walkthrough.currentIndex + 1) / walkthrough.sections.length) * 100}%`,
+                    backgroundColor: brandColor,
+                  }}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setWalkthrough((w) =>
+                    w ? { ...w, playing: !w.playing } : null
+                  )
+                }
+                className="h-6 w-6 text-white/80 hover:text-white"
+                title={walkthrough.playing ? "Pause walkthrough" : "Resume walkthrough"}
+              >
+                {walkthrough.playing ? (
+                  <Pause className="h-3.5 w-3.5" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  // Skip to next section manually
+                  setWalkthrough((prev) => {
+                    if (!prev || prev.currentIndex >= prev.sections.length - 1) {
+                      return prev ? { ...prev, playing: false } : null;
+                    }
+                    const next = prev.currentIndex + 1;
+                    const section = prev.sections[next];
+                    if (pdfControls) pdfControls.goToPage?.(section.page);
+                    setCurrentPage(section.page);
+                    addAnnotation({
+                      page: section.page,
+                      text: section.title,
+                      note: section.note,
+                      type: "info",
+                    });
+                    return { ...prev, currentIndex: next };
+                  });
+                }}
+                className="h-6 w-6 text-white/80 hover:text-white"
+                title="Skip to next section"
+              >
+                <SkipForward className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setWalkthrough(null)}
+                className="h-6 w-6 text-white/80 hover:text-white"
+                title="End walkthrough"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
             textContent={portal.document_content}
