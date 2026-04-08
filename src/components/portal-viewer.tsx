@@ -1085,7 +1085,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? "flex-1"
             : cn(
                 "rounded-b-2xl border-x border-b border-white/10 bg-[hsl(168,14%,5%)]/95 backdrop-blur-xl shadow-2xl",
-                chatOpen ? "h-[40vh]" : "h-0"
+                chatOpen ? "h-[40vh]" : "h-[80px]"
               )
         )}>
           <ChatInterface
