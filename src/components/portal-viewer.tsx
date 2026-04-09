@@ -496,12 +496,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, []);
 
   // Build extra headers including active tools and context tags
+  // Base64-encode context to avoid non-ISO-8859-1 chars in headers (em-dashes, etc.)
   const extraHeaders = useMemo(
     () => ({
       "x-portal-token": portal.share_token,
       "x-active-tools": JSON.stringify([...activeTools]),
       ...(contextTags.length > 0 && {
-        "x-portal-context": JSON.stringify(contextTags.map((t) => t.text)),
+        "x-portal-context": btoa(unescape(encodeURIComponent(JSON.stringify(contextTags.map((t) => t.text))))),
       }),
     }),
     [portal.share_token, activeTools, contextTags]
