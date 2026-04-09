@@ -1334,29 +1334,19 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
   const { isDark } = usePortalTheme();
   const rows = section.budgetRows ?? [];
 
-  const chartConfig = useMemo(() => {
-    const withNums = rows.filter(r => r.investment.includes("$"));
-    if (withNums.length < 2) return null;
-    const labels = withNums.map(r => r.phase.replace(/Phase \d+:\s*/i, "Ph " + (rows.indexOf(r) + 1)));
-    const values = withNums.map(r => { const m = r.investment.match(/\$([\d,]+)/); return m ? parseInt(m[1].replace(/,/g, ""), 10) : 0; });
-    const colors = withNums.map((_, i) => `${brandColor}${Math.round(((i + 1) / withNums.length) * 160 + 95).toString(16).padStart(2, "0")}`);
-    const tc = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.55)";
-    const gc = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.08)";
-    return {
-      type: "bar" as const,
-      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: "transparent", borderRadius: 6, barPercentage: 0.6 }] },
-      options: { responsive: true, maintainAspectRatio: true, animation: { duration: 1200 },
-        plugins: { legend: { display: false } },
-        scales: { x: { ticks: { color: tc }, grid: { display: false } }, y: { ticks: { color: tc, callback: (v: number) => "$" + (v / 1000) + "k" }, grid: { color: gc } } },
-      },
-    };
-  }, [rows, brandColor, isDark]);
-
-  // Budget chart auto-shows (it's the key visual for this section)
-  const [chartReady] = useState(true);
+  // Extract numeric values for inline bar chart
+  const barData = useMemo(() => {
+    const items = rows.filter(r => r.investment.includes("$")).map(r => {
+      const m = r.investment.match(/\$([\d,]+)/);
+      return { label: r.phase.replace(/Phase \d+:\s*/i, "").slice(0, 25), value: m ? parseInt(m[1].replace(/,/g, ""), 10) : 0, raw: r.investment };
+    });
+    const max = Math.max(...items.map(i => i.value), 1);
+    return { items, max };
+  }, [rows]);
 
   return (
     <div className="my-10 animate-section">
+      {/* Budget cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         {rows.map((row, i) => (
           <div key={i} className={cn("animate-card group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300",
@@ -1372,14 +1362,30 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
           </div>
         ))}
       </div>
-      {/* Budget chart auto-displays */}
-      {chartConfig && chartReady && (
-        <div className={cn("mt-5 animate-card overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-gray-200 bg-white")} style={{ animationDelay: "0.3s" }}>
-          <iframe srcDoc={`<!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
-<style>html,body{margin:0;padding:16px;background:transparent!important;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px;background:transparent!important}</style>
-</head><body><canvas id="c"></canvas>
-<script>new Chart(document.getElementById('c'),${JSON.stringify(chartConfig)})<\/script>
-</body></html>`} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title="Budget chart" />
+
+      {/* Inline CSS bar chart — no iframe */}
+      {barData.items.length >= 2 && (
+        <div className={cn("mt-5 rounded-2xl border p-5", isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-gray-200 bg-gray-50/50")}>
+          <div className="space-y-3">
+            {barData.items.map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className={cn("w-24 shrink-0 text-right text-[13px] font-medium truncate", isDark ? "text-white/50" : "text-gray-500")}>{item.label}</span>
+                <div className="flex-1 relative h-8 rounded-lg overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
+                  <div
+                    className="h-full rounded-lg transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${(item.value / barData.max) * 100}%`,
+                      backgroundColor: brandColor,
+                      opacity: isDark ? 0.7 : 0.8,
+                    }}
+                  />
+                  <span className={cn("absolute right-2 top-1/2 -translate-y-1/2 text-[13px] font-semibold", isDark ? "text-white/70" : "text-gray-700")}>
+                    {item.raw}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
