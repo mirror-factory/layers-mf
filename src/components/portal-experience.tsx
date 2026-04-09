@@ -516,15 +516,27 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 }) {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { isDark } = usePortalTheme();
 
   const [showChart, setShowChart] = useState(true);
 
+  // Inject background color into chart config to avoid white canvas
+  const themedConfig = useMemo(() => {
+    const cfg = JSON.parse(JSON.stringify(config));
+    if (!cfg.options) cfg.options = {};
+    if (!cfg.options.plugins) cfg.options.plugins = {};
+    // Transparent background plugin
+    cfg.plugins = [{ id: "bgColor", beforeDraw: `function(chart){chart.ctx.save();chart.ctx.fillStyle='${isDark ? "#0a0a0f" : "#fafafa"}';chart.ctx.fillRect(0,0,chart.width,chart.height);chart.ctx.restore();}` }];
+    return cfg;
+  }, [config, isDark]);
+
+  const bgColor = isDark ? "#0a0a0f" : "#fafafa";
   const html = useMemo(() => showChart ? `<!DOCTYPE html>
 <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
-<style>html,body{margin:0;padding:16px;background:transparent!important;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px;background:transparent!important}</style>
+<style>html,body{margin:0;padding:16px;background:${bgColor};display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
 </head><body><canvas id="c"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(config)})<\/script>
-</body></html>` : "", [config, showChart]);
+</body></html>` : "", [config, showChart, bgColor]);
 
   const reExplain = useCallback(async () => {
     setLoading(true);
@@ -542,16 +554,13 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         for (const line of decoder.decode(value, { stream: true }).split("\n")) {
-          for (const p of ["0:", "g:"]) { if (line.startsWith(p)) { try { const v = JSON.parse(line.slice(p.length)); if (typeof v === "string") text += v; } catch {} } }
+          if (line.startsWith("data: ")) { try { const evt = JSON.parse(line.slice(6)); if (evt.type === "text-delta" && evt.delta) text += evt.delta; } catch {} }
         }
       }
       setAiResult(text || "No explanation generated.");
     } catch { setAiResult("Failed to get explanation."); }
     finally { setLoading(false); }
   }, [shareToken, title]);
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { isDark } = usePortalTheme();
 
   if (!showChart) {
     return (
@@ -1454,7 +1463,7 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         for (const line of decoder.decode(value, { stream: true }).split("\n")) {
-          for (const p of ["0:", "g:"]) { if (line.startsWith(p)) { try { const v = JSON.parse(line.slice(p.length)); if (typeof v === "string") text += v; } catch {} } }
+          if (line.startsWith("data: ")) { try { const evt = JSON.parse(line.slice(6)); if (evt.type === "text-delta" && evt.delta) text += evt.delta; } catch {} }
         }
       }
       setAiResult(text || "No explanation generated.");
@@ -1631,7 +1640,7 @@ function OutboundScreeningFlow({ brandColor, shareToken }: { brandColor: string;
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         for (const line of decoder.decode(value, { stream: true }).split("\n")) {
-          for (const p of ["0:", "g:"]) { if (line.startsWith(p)) { try { const v = JSON.parse(line.slice(p.length)); if (typeof v === "string") text += v; } catch {} } }
+          if (line.startsWith("data: ")) { try { const evt = JSON.parse(line.slice(6)); if (evt.type === "text-delta" && evt.delta) text += evt.delta; } catch {} }
         }
       }
       setAiResult(text || "No explanation generated.");
@@ -1793,7 +1802,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         isDark ? "border-white/[0.06] bg-[#050508]/80" : "border-gray-200 bg-white/95")}>
         <div className="flex items-center gap-2.5 pl-28">
           <img src="/bluewave-icon.svg" alt="" className="h-5 w-5 opacity-80" />
-          <span className={cn("text-[11px]", isDark ? "text-white/30" : "text-gray-400")}>Prepared by <span className={isDark ? "text-white/50" : "text-gray-600"}>Mirror Factory</span></span>
+          <span className={cn("text-[11px]", isDark ? "text-white/50" : "text-gray-500")}>Prepared by <span className={isDark ? "text-white/70" : "text-gray-700"}>Mirror Factory</span></span>
         </div>
         <div className="flex items-center gap-2">
           {docs.length > 1 && (
@@ -1862,7 +1871,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         <footer className="flex flex-col items-center gap-4 py-24">
           <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}25, transparent)` }} />
           {portal.logo_url && <img src={portal.logo_url} alt="" className={cn("h-6 w-auto", isDark ? "opacity-80" : "opacity-100")} />}
-          <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-gray-300")}>Prepared by Mirror Factory</p>
+          <p className={cn("text-[11px]", isDark ? "text-white/50" : "text-gray-500")}>Prepared by Mirror Factory</p>
         </footer>
       </main>
 
