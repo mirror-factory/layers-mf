@@ -51,6 +51,8 @@ interface PortalPdfViewerProps {
   onLoadError?: () => void;
   /** Brand color for rich text rendering */
   brandColor?: string;
+  /** Light vs dark rendering for PDF chrome */
+  isDark?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,9 +63,10 @@ interface BubbleMenuProps {
   position: { top: number; left: number };
   onAction: (action: TextAction) => void;
   onClose: () => void;
+  isDark: boolean;
 }
 
-function BubbleMenu({ position, onAction, onClose }: BubbleMenuProps) {
+function BubbleMenu({ position, onAction, onClose, isDark }: BubbleMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,7 +89,10 @@ function BubbleMenu({ position, onAction, onClose }: BubbleMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-[100] flex items-center gap-0.5 rounded-lg border border-white/10 bg-[hsl(168,14%,8%)]/95 p-1 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150"
+      className={cn(
+        "fixed z-[100] flex items-center gap-0.5 rounded-lg border p-1 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
+        isDark ? "border-white/10 bg-[hsl(168,14%,8%)]/95" : "border-gray-200 bg-white"
+      )}
       style={{
         top: position.top,
         left: position.left,
@@ -119,9 +125,10 @@ interface SearchBarProps {
   matchIndex: number;
   totalMatches: number;
   visible: boolean;
+  isDark: boolean;
 }
 
-function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches, visible }: SearchBarProps) {
+function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches, visible, isDark }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
 
@@ -146,7 +153,12 @@ function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches,
   if (!visible) return null;
 
   return (
-    <div className="absolute right-4 top-4 z-50 flex items-center gap-2 rounded-lg border border-white/10 bg-[hsl(168,14%,8%)]/95 px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200">
+    <div
+      className={cn(
+        "absolute right-4 top-4 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200",
+        isDark ? "border-white/10 bg-[hsl(168,14%,8%)]/95" : "border-gray-200 bg-white"
+      )}
+    >
       <Search className="h-4 w-4 text-muted-foreground" />
       <input
         ref={inputRef}
@@ -555,6 +567,7 @@ export function PortalPdfViewer({
   highlightText: highlightTextProp,
   onLoadError,
   brandColor,
+  isDark: isDarkProp,
 }: PortalPdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [zoom, setZoom] = useState(1);
@@ -563,6 +576,7 @@ export function PortalPdfViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfAreaRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
+  const isDark = isDarkProp ?? true;
 
   // Bubble menu state
   const [bubbleMenu, setBubbleMenu] = useState<{
@@ -870,10 +884,17 @@ export function PortalPdfViewer({
         onClose={handleSearchClose}
         matchIndex={searchMatchIndex}
         totalMatches={searchMatches.length}
+        isDark={isDark}
       />
 
       {/* PDF Document — scrollable container */}
-      <div ref={pdfAreaRef} className="relative flex-1 overflow-auto bg-[hsl(168,14%,3%)] p-6">
+      <div
+        ref={pdfAreaRef}
+        className={cn(
+          "relative flex-1 overflow-auto p-6",
+          isDark ? "bg-[hsl(168,14%,3%)]" : "bg-[#f7fbff]"
+        )}
+      >
         <div className="flex items-start justify-center">
           {pdfLoaded && (
             <PdfDocumentInner
@@ -898,6 +919,7 @@ export function PortalPdfViewer({
           position={bubbleMenu.position}
           onAction={handleBubbleAction}
           onClose={closeBubbleMenu}
+          isDark={isDark}
         />
       )}
     </div>

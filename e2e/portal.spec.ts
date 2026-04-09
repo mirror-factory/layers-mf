@@ -109,53 +109,22 @@ async function gotoPortal(page: Page) {
 test.describe("Portal — mobile view (iPhone 14 Pro)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("shows library landing, opens doc preview, floating chat bar works", async ({
+  test("shows document view and floating chat, opens chat drawer", async ({
     page,
   }) => {
     await gotoPortal(page);
 
-    // ── Library is shown first ──────────────────────────────────────────────
-    const libraryHeading = page.getByRole("heading", {
-      name: "Document Library",
-    });
-    await expect(libraryHeading).toBeVisible({ timeout: 10000 });
+    // ── Document view is shown first ───────────────────────────────────────
+    const docHeading = page.locator("header h1");
+    await expect(docHeading).toBeVisible({ timeout: 10000 });
 
-    // ── Document cards are visible ──────────────────────────────────────────
-    // The grid on mobile is single-column (no sm:grid-cols-2 class active)
-    const docCards = page.locator(
-      ".grid.gap-4 > div[class*='rounded-xl'][class*='border']"
-    );
-    await expect(docCards.first()).toBeVisible({ timeout: 8000 });
-
-    // Confirm there is at least one card
-    const cardCount = await docCards.count();
-    expect(cardCount).toBeGreaterThan(0);
-
-    // ── Click first document card to open doc-preview ───────────────────────
-    await docCards.first().click();
-
-    // Back button appears in the doc-preview sticky header
-    const backButton = page.locator(
-      'button[title="Back to Library"]'
-    );
-    await expect(backButton).toBeVisible({ timeout: 8000 });
-
-    // Document title visible in the preview header
-    const previewTitle = page
-      .locator("p.truncate.text-sm.font-semibold.text-white")
-      .first();
-    await expect(previewTitle).toBeVisible({ timeout: 8000 });
-
-    // ── Floating chat bar is visible at the bottom ──────────────────────────
-    // The floating prompt bar renders the placeholder text
+    // ── Floating chat bar is visible at the bottom ─────────────────────────
     const floatingBar = page.getByText("Ask about this document...");
     await expect(floatingBar).toBeVisible({ timeout: 8000 });
 
     // ── Click the floating chat bar to open the chat panel ─────────────────
     await floatingBar.click();
 
-    // Chat panel open: the ChatInterface renders a textarea or the collapse button appears
-    // We look for the "Collapse" button that appears in the expanded chat bar header
     const collapseButton = page.getByText("Collapse");
     await expect(collapseButton).toBeVisible({ timeout: 8000 });
   });
@@ -168,42 +137,34 @@ test.describe("Portal — mobile view (iPhone 14 Pro)", () => {
 test.describe("Portal — tablet view (iPad)", () => {
   test.use({ viewport: { width: 768, height: 1024 } });
 
-  test("shows 2-column library grid, Library tab active, chat expand button exists", async ({
+  test("document view loads, Library grid is 2-column, chat expand button exists", async ({
     page,
   }) => {
     await gotoPortal(page);
 
-    // ── Library heading present ─────────────────────────────────────────────
-    await expect(
-      page.getByRole("heading", { name: "Document Library" })
-    ).toBeVisible({ timeout: 10000 });
+    // ── Document view loads ────────────────────────────────────────────────
+    const docHeading = page.locator("header h1");
+    await expect(docHeading).toBeVisible({ timeout: 10000 });
 
-    // ── Grid has the sm:grid-cols-2 breakpoint active at 768 px ────────────
-    // The grid container has class "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-    // Playwright can check computed columns via evaluate
+    // ── Switch to Library tab ──────────────────────────────────────────────
+    const libraryTab = page.getByRole("button", { name: /Library/i }).first();
+    await expect(libraryTab).toBeVisible({ timeout: 8000 });
+    await libraryTab.click();
+
+    await expect(docHeading).toBeVisible({ timeout: 10000 });
+
     const gridColCount = await page.evaluate(() => {
-      const grid = document.querySelector<HTMLElement>(".grid.gap-4");
+      const grid = document.querySelector<HTMLElement>(".grid.gap-3");
       if (!grid) return 0;
       const style = window.getComputedStyle(grid);
-      // gridTemplateColumns returns repeated "Npx" values separated by spaces
       const cols = style.gridTemplateColumns.split(" ").filter(Boolean);
       return cols.length;
     });
-    // At 768 px, sm:grid-cols-2 fires → 2 columns
     expect(gridColCount).toBeGreaterThanOrEqual(2);
 
-    // ── Header "Library" tab button is visible and active ──────────────────
-    const libraryTab = page.getByRole("button", { name: /Library/i }).first();
-    await expect(libraryTab).toBeVisible({ timeout: 8000 });
-    // The active Library tab has a backgroundColor set inline (the brand color)
-    // We verify it exists and is clickable
-    await expect(libraryTab).toBeEnabled();
-
-    // ── Expand/collapse chat button (Expand icon) is visible in the header ──
     const expandButton = page.locator('button[title="Expanded mode"], button[title="Compact mode"]');
     await expect(expandButton).toBeVisible({ timeout: 8000 });
 
-    // ── Floating prompt bar is present ─────────────────────────────────────
     const floatingBar = page.getByText("Ask about this document...");
     await expect(floatingBar).toBeVisible({ timeout: 8000 });
   });
@@ -221,42 +182,36 @@ test.describe("Portal — desktop (1440x900)", () => {
   }) => {
     await gotoPortal(page);
 
-    await expect(
-      page.getByRole("heading", { name: "Document Library" })
-    ).toBeVisible({ timeout: 10000 });
+    const docHeading = page.locator("header h1");
+    await expect(docHeading).toBeVisible({ timeout: 10000 });
 
-    // ── Floating prompt bar is visible at bottom center ────────────────────
     const floatingBar = page.getByText("Ask about this document...");
     await expect(floatingBar).toBeVisible({ timeout: 8000 });
 
-    // Verify it is positioned roughly in the horizontal center of the viewport
     const barBox = await floatingBar.boundingBox();
     expect(barBox).not.toBeNull();
     if (barBox) {
       const barCenterX = barBox.x + barBox.width / 2;
-      // Center should be within ±200 px of viewport center (720 px at 1440 wide)
       expect(Math.abs(barCenterX - 720)).toBeLessThan(200);
     }
 
-    // ── Click the floating bar to open the chat drawer ─────────────────────
     await floatingBar.click();
 
-    // The "Collapse" button appears when the chat drawer is open (not expanded sidebar mode)
     const collapseButton = page.getByText("Collapse");
     await expect(collapseButton).toBeVisible({ timeout: 8000 });
 
-    // ── Library grid shows 3 columns at 1440 px (lg:grid-cols-3) ───────────
-    // Close the chat first to scroll to the library grid
     await collapseButton.click();
     await expect(floatingBar).toBeVisible({ timeout: 5000 });
 
+    const libraryTab = page.getByRole("button", { name: /Library/i }).first();
+    await libraryTab.click();
+
     const gridColCount = await page.evaluate(() => {
-      const grid = document.querySelector<HTMLElement>(".grid.gap-4");
+      const grid = document.querySelector<HTMLElement>(".grid.gap-3");
       if (!grid) return 0;
       const cols = window.getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean);
       return cols.length;
     });
-    // At 1440 px, lg:grid-cols-3 fires → 3 columns
     expect(gridColCount).toBeGreaterThanOrEqual(3);
   });
 });
@@ -306,16 +261,9 @@ test.describe("Portal — desktop sidebar mode (1440x900)", () => {
     }
 
     // ── Document area is narrower (uses the remaining ~65%) ─────────────────
-    // The document/library area has class "w-[65%]" when expanded (document view)
-    // In library view, the flex-1 area should be narrower. We verify the library
-    // heading is still visible and to the left of center.
-    const libraryHeading = page.getByRole("heading", { name: "Document Library" });
-    // It may not be visible in the document pane if active view switched; check either heading or the area
-    // The key structural test is that the chat sidebar width is correct (done above).
-    // The viewport should still show the library heading within the left portion.
-    const headingBox = await libraryHeading.boundingBox();
+    const docHeading = page.locator("header h1");
+    const headingBox = await docHeading.boundingBox();
     if (headingBox) {
-      // Heading center should be in the left ~65% of the viewport
       const headingCenterX = headingBox.x + headingBox.width / 2;
       expect(headingCenterX).toBeLessThan(1440 * 0.75); // left of 75% mark
     }

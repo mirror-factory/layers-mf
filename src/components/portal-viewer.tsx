@@ -11,7 +11,6 @@ import {
   Volume2,
   List,
   Pause,
-  Eye,
   Search,
   Navigation,
   BarChart3,
@@ -20,14 +19,10 @@ import {
   FileText,
   BookOpen,
   X,
-  Play,
   Download,
   Settings2,
   MessageSquarePlus,
   StickyNote,
-  SkipForward,
-  Sun,
-  Moon,
   FileSpreadsheet,
   Image as ImageIcon,
   FileIcon,
@@ -35,6 +30,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
+import * as mammoth from "mammoth/mammoth.browser";
+import { read, utils } from "xlsx";
 import {
   Tooltip,
   TooltipContent,
@@ -85,14 +82,14 @@ function ContextTagsBar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-gray-200 dark:border-white/5">
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-sky-100 dark:border-white/5">
         <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mr-1">
           Context
         </span>
         {tags.map((tag) => (
           <Tooltip key={tag.id}>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/15">
+              <div className="flex items-center gap-1 rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-0.5 text-xs text-sky-600 transition-colors hover:bg-sky-400/15">
                 <span className="max-w-[160px] truncate">
                   {truncateText(tag.text)}
                 </span>
@@ -101,7 +98,7 @@ function ContextTagsBar({
                     e.stopPropagation();
                     onRemove(tag.id);
                   }}
-                  className="ml-0.5 rounded-full p-0.5 hover:bg-emerald-500/20 transition-colors"
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-sky-400/20 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -167,11 +164,6 @@ const TOOL_CONFIG: Record<
     label: "Annotate",
     icon: StickyNote,
     description: "Add visual callouts to PDF",
-  },
-  walkthrough_document: {
-    label: "Walkthrough",
-    icon: Play,
-    description: "Animated document walkthrough",
   },
 };
 
@@ -308,13 +300,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Annotations state
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
 
-  // Walkthrough state
-  const [walkthrough, setWalkthrough] = useState<{
-    sections: { page: number; title: string; note: string }[];
-    currentIndex: number;
-    playing: boolean;
-  } | null>(null);
-
   const addAnnotation = useCallback(
     (annotation: Omit<Annotation, "id" | "visible">) => {
       setAnnotations((prev) => [
@@ -356,23 +341,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         if (page > 0 && pdfControls) {
           pdfControls.goToPage?.(page);
           setCurrentPage(page);
-        }
-      } else if (toolName === "walkthrough_document" && Array.isArray(out.sections)) {
-        const sections = out.sections as { page: number; title: string; note: string }[];
-        if (sections.length > 0) {
-          setWalkthrough({ sections, currentIndex: 0, playing: true });
-          // Navigate to first section
-          const first = sections[0];
-          if (pdfControls) {
-            pdfControls.goToPage?.(first.page);
-          }
-          setCurrentPage(first.page);
-          addAnnotation({
-            page: first.page,
-            text: first.title,
-            note: first.note,
-            type: "info",
-          });
         }
       }
     },
@@ -421,10 +389,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const activePdfUrl = pdfFailed ? null : rawPdfUrl;
 
   // View mode and Library Previews
-  const [activeView, setActiveView] = useState<"document" | "library" | "doc-preview">("library");
+  const [activeView, setActiveView] = useState<"document" | "library" | "doc-preview">("document");
   const [previewDoc, setPreviewDoc] = useState<typeof BLUEWAVE_DOCUMENTS[0] | null>(null);
   const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
   const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
+  const [docPreviewTable, setDocPreviewTable] = useState<string[][] | null>(null);
+  const [docPreviewMessages, setDocPreviewMessages] = useState<string[]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
@@ -432,13 +402,52 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setPreviewDoc(doc);
     setActiveView("doc-preview");
 
-    if (doc.type === "image") return;
+    if (doc.type === "image" || doc.type === "pdf") {
+      setIsPreviewLoading(false);
+      return;
+    }
 
     setIsPreviewLoading(true);
     setDocPreviewText(null);
     setDocPreviewHtml(null);
+    setDocPreviewTable(null);
+    setDocPreviewMessages([]);
 
     try {
+      const docUrl = encodeURI(doc.url);
+      const fetchBinary = async () => {
+        const res = await fetch(docUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch document (${res.status})`);
+        }
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("text/html")) {
+          throw new Error("Preview unavailable. File request returned HTML.");
+        }
+        return res.arrayBuffer();
+      };
+
+      if (doc.type === "docx") {
+        const arrayBuffer = await fetchBinary();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        setDocPreviewHtml(result.value);
+        setDocPreviewMessages(result.messages.map((msg: { message: string }) => msg.message));
+        return;
+      }
+
+      if (doc.type === "xlsx") {
+        const arrayBuffer = await fetchBinary();
+        const workbook = read(arrayBuffer);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
+          header: 1,
+          blankrows: false,
+        });
+        const normalized = rows.map((row) => row.map((cell) => (cell ?? "").toString()));
+        setDocPreviewTable(normalized.length > 0 ? normalized : [["No data found"]]);
+        return;
+      }
+
       const res = await fetch("/portal-docs/bluewave/_manifest.json");
       const manifest = await res.json();
       const loadedDoc = manifest.find((d: any) => d.id === doc.id);
@@ -448,6 +457,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       }
     } catch (err) {
       console.error("Failed to load document text:", err);
+      const message = err instanceof Error ? err.message : "Preview unavailable.";
+      setDocPreviewText(message);
     } finally {
       setIsPreviewLoading(false);
     }
@@ -522,33 +533,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setTotalPages(pages);
   }, []);
 
-  // Walkthrough auto-advance effect
-  useEffect(() => {
-    if (!walkthrough?.playing) return;
-    const timer = setInterval(() => {
-      setWalkthrough((prev) => {
-        if (!prev || prev.currentIndex >= prev.sections.length - 1) {
-          return prev ? { ...prev, playing: false } : null;
-        }
-        const next = prev.currentIndex + 1;
-        const section = prev.sections[next];
-        // Navigate to next section's page
-        if (pdfControls) {
-          pdfControls.goToPage?.(section.page);
-        }
-        setCurrentPage(section.page);
-        // Add annotation for this section
-        addAnnotation({
-          page: section.page,
-          text: section.title,
-          note: section.note,
-          type: "info",
-        });
-        return { ...prev, currentIndex: next };
-      });
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [walkthrough?.playing, pdfControls, addAnnotation]);
 
   const handleControlsReady = useCallback((controls: PdfControls) => {
     setPdfControls(controls);
@@ -597,34 +581,20 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     [addContextTag]
   );
 
-  const brandColor = portal.brand_color || "#34d399";
+  const brandColor = portal.brand_color || "#0DE4F2";
 
-  // Theme toggle — toggles dark class on <html>
-  const [portalDark, setPortalDark] = useState(false);
+  // Force light mode for portal view
+  const portalDark = false;
   useEffect(() => {
-    const saved = localStorage.getItem("portal-theme");
-    if (saved === "dark") {
-      setPortalDark(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      // Default: light mode — ensure no dark class
-      document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("dark");
+    try {
+      localStorage.setItem("portal-theme", "light");
+    } catch {
+      // Ignore storage quota errors in locked-down or full storage contexts
     }
   }, []);
   const pd = portalDark;
-  const togglePortalTheme = useCallback(() => {
-    setPortalDark(prev => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("portal-theme", "dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("portal-theme", "light");
-      }
-      return next;
-    });
-  }, []);
+  const brandAccent = portal.brand_color || "#0DE4F2";
 
   // ---------------------------------------------------------------------------
   // Tool toggles dropdown menu (Bug 8)
@@ -700,7 +670,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     <>
       {/* Mobile: fullscreen overlay */}
       <div className={cn("fixed inset-0 z-[100] flex flex-col backdrop-blur-xl md:hidden", pd ? "bg-[#070a0e]/95" : "bg-white/95")}>
-        <div className={cn("flex items-center justify-between px-4 py-3 border-b", pd ? "border-white/5" : "border-gray-200")}>
+        <div className={cn("flex items-center justify-between px-4 py-3 border-b", pd ? "border-white/5" : "border-sky-100")}>
           <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
             variant="ghost"
@@ -716,8 +686,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       </div>
       {/* Desktop: sidebar */}
-      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#070a0e]/60" : "border-gray-200 bg-white/70")}>
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#070a0e]/80" : "border-gray-200 bg-white/90")}>
+      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#070a0e]/60" : "border-sky-100 bg-white/70")}>
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#070a0e]/80" : "border-sky-100 bg-white/90")}>
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
             variant="ghost"
@@ -737,7 +707,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Audio progress bar (inline in header, shown when audio is playing)
   // ---------------------------------------------------------------------------
   const audioProgressBar = portal.audio_url && audioPlaying ? (
-    <div className={cn("flex items-center gap-2 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-gray-200")}>
+    <div className={cn("flex items-center gap-2 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-sky-100")}>
       <span className="text-[10px] tabular-nums text-muted-foreground">{formatTime(audioCurrentTime)}</span>
       <div
         ref={progressRef}
@@ -789,7 +759,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* Unified Header — includes PDF page nav */}
       <header className={cn(
         "sticky top-0 z-50 flex items-center justify-between px-4 py-2 backdrop-blur-xl",
-        pd ? "border-b border-white/5 bg-[#070a0e]/80" : "border-b border-gray-200 bg-white/90"
+        pd ? "border-b border-white/5 bg-[#070a0e]/80" : "border-b border-sky-100 bg-white/95"
       )}>
           <div className="flex items-center gap-3">
             {portal.logo_url && (
@@ -849,7 +819,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <div className="flex items-center gap-1">
             {/* PDF page navigation — merged into header */}
             {pdfControls && pdfControls.numPages > 0 && (
-              <div className={cn("flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-gray-200")}>
+              <div className={cn("flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-sky-100")}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -921,7 +891,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               onClick={() => setShowToc(!showToc)}
               className={cn(
                 "h-8 w-8 text-muted-foreground hover:text-foreground",
-                showToc && (pd ? "bg-white/10 text-foreground" : "bg-gray-100 text-gray-900")
+                showToc && (pd ? "bg-white/10 text-foreground" : "bg-sky-50 text-sky-900")
               )}
               title="Table of contents"
             >
@@ -946,17 +916,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               </Button>
             )}
 
-            {/* Theme toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={togglePortalTheme}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title={portalDark ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {portalDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-
             <Button
               variant="ghost"
               size="icon"
@@ -980,7 +939,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         {activeView === "doc-preview" && previewDoc ? (
           <div className="flex-1 overflow-y-auto">
             {/* Sticky viewer header */}
-            <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-gray-200 bg-white/95")}>
+            <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-white/95")}>
               <div className="flex items-center gap-3 overflow-hidden">
                 <button
                   onClick={() => { setActiveView("library"); }}
@@ -1004,7 +963,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               <a
                 href={previewDoc.url}
                 download
-                className={cn("flex h-7 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition-all border", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
+                className={cn("flex h-7 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition-all border", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-sky-100 text-gray-500 hover:bg-sky-50 hover:text-gray-800")}
               >
                 <Download className="h-3.5 w-3.5" /> Download
               </a>
@@ -1014,20 +973,44 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <div className="p-6">
               {previewDoc.type === "image" ? (
                 <div className="flex min-h-[70vh] items-center justify-center">
-                  <img src={previewDoc.url} alt={previewDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-gray-200")} />
+                  <img src={previewDoc.url} alt={previewDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
                 </div>
               ) : previewDoc.type === "xlsx" ? (
-                <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-green-500/10">
-                    <FileSpreadsheet className="h-10 w-10 text-green-500" />
+                <div className={cn("min-h-[60vh] rounded-2xl border p-6", pd ? "border-white/10 bg-[#0e1015]" : "border-sky-100 bg-white")}> 
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/10">
+                      <FileSpreadsheet className="h-5 w-5 text-green-500" />
+                    </div>
+                    <div>
+                      <p className={cn("text-sm font-semibold", pd ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
+                      <p className={cn("text-[11px]", pd ? "text-white/40" : "text-gray-500")}>First worksheet preview</p>
+                    </div>
+                    <a
+                      href={previewDoc.url}
+                      download
+                      className={cn("ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-sky-100 text-gray-600 hover:bg-sky-50 hover:text-gray-900")}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </a>
                   </div>
-                  <div className="text-center">
-                    <p className={cn("text-base font-semibold", pd ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
-                    <p className={cn("mt-2 max-w-md text-sm", pd ? "text-white/50" : "text-gray-500")}>This spreadsheet requires Excel or Google Sheets. Download to view in your preferred application.</p>
+                  <div className="overflow-auto">
+                    <table className={cn("min-w-full text-left text-xs", pd ? "text-white/70" : "text-gray-700")}> 
+                      <tbody>
+                        {(docPreviewTable ?? [["Loading..."]]).map((row, rowIdx) => (
+                          <tr key={`row-${rowIdx}`} className={rowIdx === 0 ? (pd ? "bg-white/5" : "bg-gray-50") : ""}>
+                            {row.map((cell, cellIdx) => (
+                              <td
+                                key={`cell-${rowIdx}-${cellIdx}`}
+                                className={cn("border px-3 py-2 align-top", pd ? "border-white/10" : "border-sky-100")}
+                              >
+                                {cell || "—"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <a href={previewDoc.url} download className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90" style={{ backgroundColor: brandColor }}>
-                    <Download className="h-4 w-4" /> Download Spreadsheet
-                  </a>
                 </div>
               ) : isPreviewLoading ? (
                 <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
@@ -1035,16 +1018,26 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <p className={cn("text-sm", pd ? "text-white/50" : "text-gray-500")}>Loading document...</p>
                 </div>
               ) : (
-                <div className={cn("mx-auto max-w-3xl rounded-xl p-8 shadow-sm sm:p-12 border", pd ? "border-white/10 bg-[#0e1015]" : "border-gray-200 bg-white")}>
+                <div className={cn("mx-auto max-w-3xl rounded-xl p-8 shadow-sm sm:p-12 border", pd ? "border-white/10 bg-[#0e1015]" : "border-sky-100 bg-white")}>
                   {docPreviewHtml ? (
                     <div
-                      className={cn("prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-a:text-blue-500", pd ? "prose-invert prose-a:text-blue-400" : "")}
+                      className={cn("prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-a:text-blue-500", pd ? "prose-invert prose-a:text-blue-400" : "prose-headings:text-gray-900 prose-p:text-gray-700")}
                       dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
                     />
                   ) : (
                     <pre className={cn("whitespace-pre-wrap font-sans text-sm leading-relaxed", pd ? "text-gray-300" : "text-gray-700")}>
                       {docPreviewText || "No text content could be extracted from this document."}
                     </pre>
+                  )}
+                  {docPreviewMessages.length > 0 && (
+                    <div className={cn("mt-6 rounded-lg border p-3 text-xs", pd ? "border-white/10 text-white/50" : "border-sky-100 text-gray-500")}> 
+                      <p className={cn("mb-1 text-[11px] font-semibold uppercase tracking-wide", pd ? "text-white/40" : "text-gray-400")}>Conversion notes</p>
+                      <ul className="space-y-1">
+                        {docPreviewMessages.map((message, idx) => (
+                          <li key={`m-${idx}`}>• {message}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}
@@ -1072,7 +1065,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                         <div
                           key={di}
                           onClick={() => handleOpenDocPreview(doc)}
-                          className={cn("group relative flex flex-col items-start gap-4 rounded-xl p-5 transition-all duration-300 cursor-pointer border", pd ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50")}
+                          className={cn("group relative flex flex-col items-start gap-4 rounded-xl p-5 transition-all duration-300 cursor-pointer border", pd ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]" : "border-sky-100 bg-white hover:border-sky-200 hover:bg-sky-50")}
                         >
                           <div className="flex w-full items-start justify-between gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105"
@@ -1084,18 +1077,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                             </div>
 
                             <div className="flex shrink-0 gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
-                              <button
-                                onClick={(e) => handleOpenDocPreview(doc, e)}
-                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
-                                title="Preview Document"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
                               <a
                                 href={doc.url}
                                 download
                                 onClick={(e) => e.stopPropagation()}
-                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
+                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-sky-100 bg-white text-gray-500 hover:bg-sky-50 hover:text-gray-800")}
                                 title="Download Document"
                               >
                                 <Download className="h-3.5 w-3.5" />
@@ -1128,81 +1114,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         ) : (
           <div className={cn(
             "relative overflow-y-auto h-full transition-all duration-300",
-            expanded ? cn("w-[65%] border-r", pd ? "border-white/5" : "border-gray-200") : "flex-1 pb-20"
+            expanded ? cn("w-[65%] border-r", pd ? "border-white/5" : "border-sky-100") : "flex-1 pb-20"
           )}>
-          {/* Walkthrough progress bar */}
-          {walkthrough && (
-            <div className="absolute top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur px-4 py-2 flex items-center gap-3">
-              <span className="text-xs text-white/80 shrink-0">
-                Section {walkthrough.currentIndex + 1} of {walkthrough.sections.length}
-              </span>
-              <span className="text-xs text-white font-medium truncate max-w-[200px]">
-                {walkthrough.sections[walkthrough.currentIndex]?.title}
-              </span>
-              <div className="flex-1 h-1 bg-white/10 rounded-full">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${((walkthrough.currentIndex + 1) / walkthrough.sections.length) * 100}%`,
-                    backgroundColor: brandColor,
-                  }}
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  setWalkthrough((w) =>
-                    w ? { ...w, playing: !w.playing } : null
-                  )
-                }
-                className="h-6 w-6 text-white/80 hover:text-white"
-                title={walkthrough.playing ? "Pause walkthrough" : "Resume walkthrough"}
-              >
-                {walkthrough.playing ? (
-                  <Pause className="h-3.5 w-3.5" />
-                ) : (
-                  <Play className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  // Skip to next section manually
-                  setWalkthrough((prev) => {
-                    if (!prev || prev.currentIndex >= prev.sections.length - 1) {
-                      return prev ? { ...prev, playing: false } : null;
-                    }
-                    const next = prev.currentIndex + 1;
-                    const section = prev.sections[next];
-                    if (pdfControls) pdfControls.goToPage?.(section.page);
-                    setCurrentPage(section.page);
-                    addAnnotation({
-                      page: section.page,
-                      text: section.title,
-                      note: section.note,
-                      type: "info",
-                    });
-                    return { ...prev, currentIndex: next };
-                  });
-                }}
-                className="h-6 w-6 text-white/80 hover:text-white"
-                title="Skip to next section"
-              >
-                <SkipForward className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setWalkthrough(null)}
-                className="h-6 w-6 text-white/80 hover:text-white"
-                title="End walkthrough"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
             textContent={activeDocContent || portal.document_content}
@@ -1215,6 +1128,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             highlightText={highlightText}
             onLoadError={() => setPdfFailed(true)}
             brandColor={brandColor}
+            isDark={portalDark}
           />
           {/* Annotation overlay — rendered on top of PDF pages */}
           <AnnotationOverlay
@@ -1229,11 +1143,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         {/* Chat sidebar — only visible when expanded, animates in */}
         <div className={cn(
           "flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 border-l",
-          pd ? "border-white/5" : "border-gray-200",
+          pd ? "border-white/5" : "border-sky-100",
           expanded ? "w-[35%]" : "w-0"
         )}>
           {expanded && (
-            <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b", pd ? "border-white/5" : "border-gray-200")}>
+            <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b", pd ? "border-white/5" : "border-sky-100")}>
               <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
               <div className="flex items-center gap-1 shrink-0">
                 {toolTogglesDropdown}
@@ -1257,13 +1171,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         className={cn(
           "fixed z-40 flex flex-col",
           expanded
-            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-gray-200")
+            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-sky-100")
             : "bottom-0 left-0 right-0 md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
         )}
       >
         {!expanded && !chatOpen && (
           /* Floating prompt bar — just the input + expand button */
-          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-gray-200 bg-white/95")}>
+          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95")}>
             <button
               onClick={() => setChatOpen(true)}
               className="flex-1 text-left text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
@@ -1286,7 +1200,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {!expanded && chatOpen && (
           /* Expanded floating chat — full toggle bar */
-          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-gray-200 bg-white/95")}>
+          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95")}>
             <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
             <div className="flex items-center justify-between px-3 py-1">
               <button
@@ -1316,7 +1230,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded
             ? "flex-1"
             : cn(
-                cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-gray-200 bg-white/95"),
+                cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95"),
                 chatOpen ? "h-[60vh] md:h-[40vh]" : "h-0"
               )
         )}>
@@ -1327,6 +1241,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             portalMode
             portalTitle={activeDoc?.title || portal.title}
             portalClientName={portal.client_name ?? undefined}
+            portalBrandColor={brandAccent}
+            portalLogoUrl={portal.logo_url ?? undefined}
             initialPrompt={pendingPrompt ?? undefined}
             onToolOutput={handleToolOutput}
           />

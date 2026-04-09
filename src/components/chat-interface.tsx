@@ -2609,7 +2609,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", compactMode ? "p-3" : "p-4 sm:p-6")}>
           <div className={cn("max-w-4xl mx-auto w-full", compactMode ? "space-y-3" : "space-y-6")}>
           {messages.length === 0 && (
-            <div className={cn("flex flex-col items-center justify-center text-center text-muted-foreground", compactMode ? "py-4" : "h-full")}>
+            <div className={cn("flex flex-col items-center justify-center text-center", portalMode ? "text-slate-500" : "text-muted-foreground", compactMode ? "py-4" : "h-full")}>
               {!compactMode && (portalMode ? (
                 <div className="mb-4 flex flex-col items-center gap-2">
                   {portalLogoUrl ? (
@@ -2621,8 +2621,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     />
                   )}
                   {portalClientName && (
-                    <p className="text-[11px] text-muted-foreground/60">
-                      Prepared by <span className="text-foreground/70">Mirror Factory</span> for <span className="text-foreground/70">{portalClientName}</span>
+                    <p className={cn("text-[11px]", portalMode ? "text-slate-400" : "text-muted-foreground/60")}>
+                      Prepared by <span className={cn(portalMode ? "text-slate-600" : "text-foreground/70")}>Mirror Factory</span> for{" "}
+                      <span className={cn(portalMode ? "text-slate-600" : "text-foreground/70")}>{portalClientName}</span>
                     </p>
                   )}
                 </div>
@@ -2631,7 +2632,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   <NeuralMorph size={48} dotCount={14} formation="bloom" />
                 </div>
               ))}
-              <p className={cn("font-medium text-foreground", compactMode ? "text-xs" : "text-sm")}>
+              <p className={cn("font-medium", portalMode ? "text-slate-700" : "text-foreground", compactMode ? "text-xs" : "text-sm")}>
                 {portalMode && portalTitle
                   ? `Ask about ${portalTitle}`
                   : "Ask anything about your team\u2019s knowledge"}
@@ -2664,9 +2665,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
                       !portalMode && accent && "border-primary/30 text-primary hover:bg-primary/10",
                       !portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                      portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      portalMode && !accent && "bg-white text-slate-600 border-sky-100 hover:bg-sky-50 hover:text-slate-900",
+                      portalMode && accent && "bg-sky-50/60 border-sky-100 hover:bg-sky-100/60"
                     )}
-                    style={portalMode && accent ? { borderColor: `${portalBrandColor || "#34d399"}40`, color: portalBrandColor || "#34d399" } : undefined}
+                    style={portalMode && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
                   >
                     {prompt}
                   </button>
@@ -2694,8 +2696,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 {m.role === "user" ? (
                   <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
                     {portalMode ? (
-                      <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-white/10">
-                        <span className="inline-block h-2 w-2 rounded-full bg-white/60" />
+                      <span
+                        className="inline-flex h-full w-full items-center justify-center rounded-full"
+                        style={{ backgroundColor: `${portalBrandColor || "#0DE4F2"}20` }}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: portalBrandColor || "#0DE4F2" }}
+                        />
                       </span>
                     ) : (
                       <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
@@ -2703,17 +2711,21 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : portalMode ? (
                   <>
-                    {/* Portal mode: brand-colored dot avatar — always visible */}
-                    <div className="flex shrink-0 items-center justify-center rounded-full" style={{ width: 32, height: 32, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
-                      <span
-                        className={cn("inline-block h-2.5 w-2.5 rounded-full", isStreaming && "animate-pulse")}
-                        style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                    {/* Portal mode: brand-colored animated avatar */}
+                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                      <NeuralMorph
+                        size={36}
+                        dotCount={isStreaming ? 14 : 10}
+                        formation={isStreaming ? "active" : "orbit"}
+                        color={portalBrandColor || "#0DE4F2"}
                       />
                     </div>
-                    <div className="hidden shrink-0 mt-0.5">
-                      <span
-                        className={cn("inline-block h-2 w-2 rounded-full", isStreaming && "animate-pulse")}
-                        style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                    <div className="sm:hidden shrink-0 mt-0.5">
+                      <NeuralMorph
+                        size={22}
+                        dotCount={8}
+                        formation={isStreaming ? "active" : "orbit"}
+                        color={portalBrandColor || "#0DE4F2"}
                       />
                     </div>
                   </>
@@ -2929,7 +2941,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         <div
           className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "")}
           style={{
-            background: `linear-gradient(to bottom, transparent, hsl(var(--background) / 0.85) 35%, hsl(var(--background)) 65%)`,
+            background: portalMode
+              ? "linear-gradient(to bottom, transparent, rgba(255,255,255,0.85) 35%, #ffffff 65%)"
+              : `linear-gradient(to bottom, transparent, hsl(var(--background) / 0.85) 35%, hsl(var(--background)) 65%)`,
           }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
@@ -2947,7 +2961,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
-          <div className="max-w-3xl mx-auto rounded-2xl border border-border/50 bg-card/60 backdrop-blur-md shadow-xl p-3">
+          <div
+            className={cn(
+              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3",
+              portalMode ? "border-sky-100 bg-white/95" : "border-border/50 bg-card/60"
+            )}
+          >
             {/* Interview UI — renders as overlay above the input area */}
             {pendingInterview && (
               <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">

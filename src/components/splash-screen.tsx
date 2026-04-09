@@ -29,27 +29,26 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       {/* Splash overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a0a0a] transition-opacity duration-600",
+          "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#f4fbff] transition-opacity duration-600",
           phase === "fading" ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
       >
         {/* Animated dots */}
         <div className="mb-6">
-          <NeuralMorph size={80} dotCount={20} formation="bloom" />
+          <NeuralMorph size={80} dotCount={20} formation="bloom" color="#0DE4F2" />
         </div>
 
-        {/* Logo text */}
-        <h1
-          className="font-display text-3xl font-bold tracking-tight text-white"
-          style={{ fontFamily: "var(--font-display), sans-serif" }}
-        >
-          Granger
-        </h1>
-        <p className="mt-1.5 text-sm text-white/40">Your AI Chief of Staff</p>
+        {/* BlueWave logo */}
+        <img
+          src="/bluewave-logo.svg"
+          alt="BlueWave"
+          className="h-8 w-auto opacity-90"
+        />
+        <p className="mt-2 text-sm text-sky-700/70">Proposal Portal</p>
 
-        {/* Subtle mint glow */}
+        {/* Subtle blue glow */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-64 h-64 rounded-full bg-[#34d399]/5 blur-3xl" />
+          <div className="h-64 w-64 rounded-full bg-[#0DE4F2]/10 blur-3xl" />
         </div>
       </div>
     </>
