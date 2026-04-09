@@ -835,37 +835,17 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // ---------------------------------------------------------------------------
   // Tool toggles dropdown menu (Bug 8)
   // ---------------------------------------------------------------------------
-  const toolTogglesDropdown = (portal.enabled_tools ?? []).length > 0 ? (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          title="Configure tools"
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {(portal.enabled_tools ?? []).map((toolId) => {
-          const config = TOOL_CONFIG[toolId];
-          if (!config) return null;
-          const Icon = config.icon;
-          return (
-            <DropdownMenuCheckboxItem
-              key={toolId}
-              checked={activeTools.has(toolId)}
-              onCheckedChange={() => toggleTool(toolId)}
-            >
-              <Icon className="mr-2 h-3.5 w-3.5" />
-              {config.label}
-            </DropdownMenuCheckboxItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ) : null;
+  const sidebarToggleButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setExpanded(!expanded)}
+      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+      title={expanded ? "Float chat" : "Dock to sidebar"}
+    >
+      {expanded ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
+    </Button>
+  );
 
   // ---------------------------------------------------------------------------
   // TOC sidebar panel
@@ -1482,7 +1462,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 >
                   <Info className="h-3.5 w-3.5" />
                 </Button>
-                {toolTogglesDropdown}
+                {sidebarToggleButton}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1530,7 +1510,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               >
                 <Info className="h-4 w-4" />
               </Button>
-              {toolTogglesDropdown}
+              {sidebarToggleButton}
               <Button
                 variant="ghost"
                 size="icon"
@@ -1565,7 +1545,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 >
                   <Info className="h-3.5 w-3.5" />
                 </Button>
-                {toolTogglesDropdown}
+                {sidebarToggleButton}
                 <Button
                   variant="ghost"
                   size="icon"
