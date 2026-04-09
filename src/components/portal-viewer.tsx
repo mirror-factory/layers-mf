@@ -568,11 +568,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     [activeDocContent, totalPages]
   );
 
-  const handleTocNavigate = useCallback((page: number) => {
+  const [activeTocId, setActiveTocId] = useState<string | null>(null);
+  const handleTocNavigate = useCallback((page: number, entryId?: string) => {
     if (pdfControls) {
       pdfControls.goToPage?.(page);
     }
     setCurrentPage(page);
+    setActiveTocId(entryId ?? null);
   }, [pdfControls]);
 
   // Feature 2: Audio
@@ -619,6 +621,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     // Don't let the PDF viewer's IntersectionObserver override during presentation
     if (presentationMode) return;
     setCurrentPage(page);
+    setActiveTocId(null); // Clear specific TOC selection when user scrolls
   }, [presentationMode]);
 
   const handleTotalPages = useCallback((pages: number) => {
@@ -768,12 +771,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {tocEntries.map((entry) => (
         <button
           key={entry.id}
-          onClick={() => { handleTocNavigate(entry.estimatedPage); if (typeof window !== "undefined" && window.innerWidth < 768) setShowToc(false); }}
+          onClick={() => { handleTocNavigate(entry.estimatedPage, entry.id); if (typeof window !== "undefined" && window.innerWidth < 768) setShowToc(false); }}
           className={cn(
             "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/5",
-            entry.estimatedPage === currentPage
+            activeTocId === entry.id
               ? "bg-white/5 text-foreground"
-              : "text-muted-foreground hover:text-foreground"
+              : (!activeTocId && entry.estimatedPage === currentPage)
+                ? "bg-white/5 text-foreground"
+                : "text-muted-foreground hover:text-foreground"
           )}
           style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
         >
