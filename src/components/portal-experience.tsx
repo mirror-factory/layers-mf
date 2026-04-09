@@ -58,7 +58,9 @@ interface TocEntry { id: string; title: string; level: number; }
 // Parser Helpers
 // ---------------------------------------------------------------------------
 
-function cleanBold(s: string): string { return s.replace(/\*\*/g, "").replace(/\\\\/g, "").trim(); }
+function cleanBold(s: string): string { return s.replace(/\*\*/g, "").replace(/\\\\/g, "").replace(/\\([~<>*_`#])/g, "$1").trim(); }
+
+function isSeparatorRow(cells: string[]): boolean { return cells.every(c => /^[:\-\s]*$/.test(c)); }
 
 function parseMarkdownTable(lines: string[], startIdx: number): { headers: string[]; rows: string[][]; endIdx: number } {
   const headers = lines[startIdx].split("|").map(c => cleanBold(c.trim())).filter(Boolean);
@@ -67,10 +69,12 @@ function parseMarkdownTable(lines: string[], startIdx: number): { headers: strin
   const rows: string[][] = [];
   while (j < lines.length && lines[j].trim().startsWith("|")) {
     const cells = lines[j].split("|").map(c => cleanBold(c.trim())).filter(Boolean);
-    if (cells.length > 0) rows.push(cells);
+    if (cells.length > 0 && !isSeparatorRow(cells)) rows.push(cells);
     j++;
   }
-  return { headers, rows, endIdx: j };
+  // Also filter separator-like headers (if first row was a separator)
+  const cleanHeaders = isSeparatorRow(headers) ? [] : headers;
+  return { headers: cleanHeaders, rows, endIdx: j };
 }
 
 // ---------------------------------------------------------------------------
@@ -771,7 +775,7 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
       ) : lv === 2 ? (
         <h3 className={cn("text-2xl font-semibold", isDark ? "text-white/90" : "text-gray-800")}>{section.title}</h3>
       ) : (
-        <h4 className="text-sm font-semibold tracking-wider uppercase" style={{ color: `${brandColor}bb` }}>{section.title}</h4>
+        <h4 className={cn("text-sm font-semibold tracking-wider uppercase", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>{section.title}</h4>
       )}
     </div>
   );
@@ -898,8 +902,8 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
 
             {/* Target State */}
             <div className="p-6" style={{ background: `linear-gradient(135deg, ${brandColor}06 0%, transparent 60%)` }}>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>Target State</div>
-              <p className="text-[16px] leading-relaxed font-medium" style={{ color: `${brandColor}cc` }}>{comp.target}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", !isDark && "text-teal-600")} style={isDark ? { color: `${brandColor}80` } : undefined}>Target State</div>
+              <p className={cn("text-[16px] leading-relaxed font-medium", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}cc` } : undefined}>{comp.target}</p>
             </div>
           </div>
 
@@ -1028,8 +1032,8 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
             </div>
             {/* I want — action */}
             <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-gray-100")} style={{ backgroundColor: `${brandColor}04` }}>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>I want</div>
-              <p className="text-[15px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", !isDark && "text-teal-600")} style={isDark ? { color: `${brandColor}80` } : undefined}>I want</div>
+              <p className={cn("text-[15px] leading-relaxed font-medium", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>{jtbd.want}</p>
             </div>
             {/* So that — outcome */}
             <div className="p-5">
@@ -1261,7 +1265,7 @@ function PhaseTimelineCard({ phase, brandColor, icon: Icon }: {
         </div>
         <div>
           <div className={cn("text-lg font-bold", isDark ? "text-white" : "text-gray-900")}>{phase.name}</div>
-          <div className="flex items-center gap-1.5 text-[13px]" style={{ color: `${brandColor}bb` }}>
+          <div className={cn("flex items-center gap-1.5 text-[13px]", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>
             <Clock className="h-3 w-3" />{phase.timeline}
           </div>
         </div>
@@ -1398,7 +1402,7 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-2">
               <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{m.phase}</span>
-              <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${brandColor}12`, color: `${brandColor}cc` }}>{m.dates}</span>
+              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium", !isDark && "text-teal-700")} style={{ backgroundColor: `${brandColor}12`, ...(isDark ? { color: `${brandColor}cc` } : {}) }}>{m.dates}</span>
             </div>
             <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{m.milestones}</p>
           </div>
@@ -1527,7 +1531,7 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
                 animationDelay: `${2.5 + si * 0.12}s`,
                 borderColor: `${brandColor}25`,
                 backgroundColor: `${brandColor}06`,
-                color: `${brandColor}cc`,
+                color: isDark ? `${brandColor}cc` : "#0891b2",
               }}
             >
               {sys}
@@ -1631,16 +1635,31 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
   const extraHeaders = useMemo(() => ({ "x-portal-token": portal.share_token }), [portal.share_token]);
   const handleDocSwitch = useCallback((idx: number) => { setActiveDocIdx(idx); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
 
-  // Theme state — persisted to localStorage
+  // Theme state — persisted to localStorage, synced to <html> class for ChatInterface
   const [theme, setTheme] = useState<PortalTheme>("dark");
   useEffect(() => {
     const saved = localStorage.getItem("portal-theme") as PortalTheme | null;
-    if (saved === "light" || saved === "dark") setTheme(saved);
+    if (saved === "light" || saved === "dark") {
+      setTheme(saved);
+      if (saved === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    } else {
+      // Default is dark
+      document.documentElement.classList.add("dark");
+    }
   }, []);
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
       const next = prev === "dark" ? "light" : "dark";
       localStorage.setItem("portal-theme", next);
+      if (next === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
       return next;
     });
   }, []);
@@ -1765,7 +1784,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
                 portalBrandColor={brandColor}
                 compactMode
                 hideContextBar
-                containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white"}
+                containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_.shrink-0.sticky]:!bg-white [&_.shrink-0.sticky]:!bg-none [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white [&_[style*='linear-gradient']]:!bg-white [&_[style*='linear-gradient']]:![background:white]"}
               />
             </div>
           </div>
