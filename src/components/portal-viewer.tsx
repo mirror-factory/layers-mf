@@ -1506,8 +1506,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-gray-50 border-sky-100")
             : cn(
                 "left-0 right-0",
-                chatOpen ? "top-12 bottom-0 pb-[env(safe-area-inset-bottom,0px)]" : "bottom-0",
-                chatOpen ? "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:top-auto md:pb-0 md:max-h-[60vh]" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
+                chatOpen ? "top-0 bottom-0 pb-[env(safe-area-inset-bottom,0px)]" : "bottom-0",
+                chatOpen ? "md:top-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh]" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
               )
         )}
       >
@@ -1585,7 +1585,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? "flex-1"
             : cn(
                 cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-gray-50/95"),
-                chatOpen ? "flex-1 md:max-h-[50vh] md:h-[50vh]" : "h-0"
+                chatOpen ? "flex-1 min-h-0" : "h-0"
               )
         )}>
           <ChatInterface
