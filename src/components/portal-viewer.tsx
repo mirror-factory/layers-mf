@@ -584,7 +584,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // Render XLSX via jspreadsheet-ce when table data is ready
   useEffect(() => {
-    if (!docPreviewTable || !jspreadsheetRef.current || activeView !== "library-doc" || activeLibraryDoc?.type !== "xlsx") return;
+    const currentLibDoc = openedLibraryDocs[activeLibraryDocIndex];
+    if (!docPreviewTable || !jspreadsheetRef.current || activeView !== "library-doc" || currentLibDoc?.type !== "xlsx") return;
 
     const container = jspreadsheetRef.current;
     container.innerHTML = "";
@@ -593,18 +594,20 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     (async () => {
       try {
         const jspreadsheet = (await import("jspreadsheet-ce")).default;
+        // @ts-expect-error -- CSS import
         await import("jsuites/dist/jsuites.css");
+        // @ts-expect-error -- CSS import
         await import("jspreadsheet-ce/dist/jspreadsheet.css");
         if (cancelled) return;
 
-        const columns = docPreviewTable[0]?.map((header, i) => ({
+        const columns = docPreviewTable[0]?.map((header: string, i: number) => ({
           title: header || String.fromCharCode(65 + i),
           width: 120,
         })) || [];
 
         jspreadsheet(container, {
-          data: docPreviewTable.slice(1),
-          columns,
+          data: docPreviewTable.slice(1) as unknown as string[][],
+          columns: columns as unknown[],
           tableOverflow: true,
           tableWidth: "100%",
           tableHeight: "calc(100vh - 6rem)",
@@ -614,14 +617,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           pagination: false,
           freezeColumns: 0,
           defaultColWidth: 120,
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
       } catch (err) {
         console.error("Jspreadsheet init failed:", err);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [docPreviewTable, activeView, activeLibraryDoc?.type]);
+  }, [docPreviewTable, activeView, openedLibraryDocs, activeLibraryDocIndex]);
 
   // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
   const handleToolOutput = useCallback(
