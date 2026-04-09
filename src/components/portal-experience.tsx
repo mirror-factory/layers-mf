@@ -18,7 +18,8 @@ import { ChatInterface } from "@/components/chat-interface";
 // ---------------------------------------------------------------------------
 
 type PortalTheme = "dark" | "light";
-const ThemeContext = createContext<{ isDark: boolean; theme: PortalTheme }>({ isDark: true, theme: "dark" });
+// accentColor: brandColor in dark mode, dark teal (#0F766E) in light mode for contrast
+const ThemeContext = createContext<{ isDark: boolean; theme: PortalTheme; accentColor: string }>({ isDark: true, theme: "dark", accentColor: "#0DE4F2" });
 function usePortalTheme() { return useContext(ThemeContext); }
 
 
@@ -1664,12 +1665,14 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
     });
   }, []);
   const isDark = theme === "dark";
-  const themeCtx = useMemo(() => ({ isDark, theme }), [isDark, theme]);
+  // In light mode, use dark teal instead of bright cyan — the brand cyan is unreadable on white
+  const accentColor = isDark ? brandColor : "#0F766E";
+  const themeCtx = useMemo(() => ({ isDark, theme, accentColor }), [isDark, theme, accentColor]);
 
   return (
     <ThemeContext.Provider value={themeCtx}>
     <div className={cn("min-h-screen", isDark ? "bg-[#050508] text-white" : "bg-white text-gray-900")}>
-      <FloatingToc entries={tocEntries} brandColor={brandColor} />
+      <FloatingToc entries={tocEntries} brandColor={accentColor} />
 
       {/* Nav */}
       <nav className={cn("fixed top-0 z-[45] flex w-full items-center justify-between border-b px-6 py-2.5 backdrop-blur-xl",
@@ -1686,7 +1689,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
                 <button key={di} onClick={() => handleDocSwitch(di)}
                   className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all",
                     di === activeDocIdx ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-gray-400 hover:text-gray-600"))}
-                  style={di === activeDocIdx ? { backgroundColor: `${brandColor}18`, color: brandColor } : undefined}>
+                  style={di === activeDocIdx ? { backgroundColor: `${accentColor}18`, color: accentColor } : undefined}>
                   {doc.title.length > 18 ? doc.title.slice(0, 18) + "..." : doc.title}
                 </button>
               ))}
@@ -1719,31 +1722,31 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
       <main className="mx-auto max-w-4xl px-6 pt-14">
         {sections.map(section => {
           switch (section.type) {
-            case "hero": return <HeroSection key={section.id} title={section.title ?? portal.title} clientName={section.content} brandColor={brandColor} logoUrl={portal.logo_url} subtitle={portal.subtitle} />;
-            case "heading": return <HeadingSection key={section.id} section={section} brandColor={brandColor} />;
-            case "paragraph": return <ParagraphSection key={section.id} section={section} brandColor={brandColor} />;
-            case "list": return <ListSection key={section.id} section={section} brandColor={brandColor} />;
-            case "data-table": return <DataTableSection key={section.id} section={section} brandColor={brandColor} shareToken={portal.share_token} />;
-            case "phase-timeline": return <PhaseTimeline key={section.id} section={section} brandColor={brandColor} />;
-            case "budget-table": return <BudgetSection key={section.id} section={section} brandColor={brandColor} shareToken={portal.share_token} />;
-            case "milestone-timeline": return <MilestoneTimeline key={section.id} section={section} brandColor={brandColor} />;
-            case "comparison-table": return <ComparisonSection key={section.id} section={section} brandColor={brandColor} />;
-            case "architecture-diagram": return <ArchitectureDiagram key={section.id} section={section} brandColor={brandColor} />;
-            case "jtbd-list": return <JtbdSection key={section.id} section={section} brandColor={brandColor} />;
-            case "feature-spec": return <FeatureSpecSection key={section.id} section={section} brandColor={brandColor} />;
-            case "acceptance-criteria": return <AcceptanceCriteriaSection key={section.id} section={section} brandColor={brandColor} />;
-            case "priority-matrix": return <PriorityMatrixSection key={section.id} section={section} brandColor={brandColor} />;
+            case "hero": return <HeroSection key={section.id} title={section.title ?? portal.title} clientName={section.content} brandColor={accentColor} logoUrl={portal.logo_url} subtitle={portal.subtitle} />;
+            case "heading": return <HeadingSection key={section.id} section={section} brandColor={accentColor} />;
+            case "paragraph": return <ParagraphSection key={section.id} section={section} brandColor={accentColor} />;
+            case "list": return <ListSection key={section.id} section={section} brandColor={accentColor} />;
+            case "data-table": return <DataTableSection key={section.id} section={section} brandColor={accentColor} shareToken={portal.share_token} />;
+            case "phase-timeline": return <PhaseTimeline key={section.id} section={section} brandColor={accentColor} />;
+            case "budget-table": return <BudgetSection key={section.id} section={section} brandColor={accentColor} shareToken={portal.share_token} />;
+            case "milestone-timeline": return <MilestoneTimeline key={section.id} section={section} brandColor={accentColor} />;
+            case "comparison-table": return <ComparisonSection key={section.id} section={section} brandColor={accentColor} />;
+            case "architecture-diagram": return <ArchitectureDiagram key={section.id} section={section} brandColor={accentColor} />;
+            case "jtbd-list": return <JtbdSection key={section.id} section={section} brandColor={accentColor} />;
+            case "feature-spec": return <FeatureSpecSection key={section.id} section={section} brandColor={accentColor} />;
+            case "acceptance-criteria": return <AcceptanceCriteriaSection key={section.id} section={section} brandColor={accentColor} />;
+            case "priority-matrix": return <PriorityMatrixSection key={section.id} section={section} brandColor={accentColor} />;
             case "flow-diagram": return section.diagramType === "inbound-triage"
-              ? <InboundTriageFlow key={section.id} brandColor={brandColor} />
+              ? <InboundTriageFlow key={section.id} brandColor={accentColor} />
               : section.diagramType === "outbound-screening"
-              ? <OutboundScreeningFlow key={section.id} brandColor={brandColor} />
+              ? <OutboundScreeningFlow key={section.id} brandColor={accentColor} />
               : null;
-            case "divider": return <div key={section.id} className="my-16"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}15, transparent)` }} /></div>;
+            case "divider": return <div key={section.id} className="my-16"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}15, transparent)` }} /></div>;
             default: return null;
           }
         })}
         <footer className="flex flex-col items-center gap-4 py-24">
-          <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}25, transparent)` }} />
+          <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}25, transparent)` }} />
           {portal.logo_url && <img src={portal.logo_url} alt="" className="h-6 w-auto opacity-30" />}
           <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-gray-300")}>Prepared by Mirror Factory</p>
         </footer>
@@ -1781,7 +1784,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
                 portalMode
                 portalTitle={activeDoc?.title || portal.title}
                 portalClientName={portal.client_name ?? undefined}
-                portalBrandColor={brandColor}
+                portalBrandColor={accentColor}
                 compactMode
                 hideContextBar
                 containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_.shrink-0.sticky]:!bg-white [&_.shrink-0.sticky]:!bg-none [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white [&_[style*='linear-gradient']]:!bg-white [&_[style*='linear-gradient']]:![background:white]"}
@@ -1795,7 +1798,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
       {!chatOpen && (
         <button onClick={() => setChatOpen(true)}
           className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95"
-          style={{ backgroundColor: brandColor, boxShadow: `0 6px 24px ${brandColor}40` }}>
+          style={{ backgroundColor: accentColor, boxShadow: `0 6px 24px ${accentColor}40` }}>
           <MessageSquare className="h-5 w-5 text-white" />
         </button>
       )}
