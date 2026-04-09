@@ -470,15 +470,23 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         }
       } else if (toolName === "open_document_preview" && out.action === "open_document_preview") {
         const docId = String(out.document_id ?? "");
-        // Check library documents first, then portal documents
-        const libraryDoc = BLUEWAVE_DOCUMENTS.find((item) => item.id === docId);
+        // Check library documents first (exact match, then partial title match)
+        const libraryDoc = BLUEWAVE_DOCUMENTS.find((item) => item.id === docId)
+          || BLUEWAVE_DOCUMENTS.find((item) => item.title.toLowerCase().includes(docId.toLowerCase()))
+          || BLUEWAVE_DOCUMENTS.find((item) => docId.toLowerCase().includes(item.title.toLowerCase()));
         if (libraryDoc) {
+          // Reset state before opening to force re-render
+          setDocxArrayBuffer(null);
+          setDocPreviewHtml(null);
+          setDocPreviewText(null);
+          setDocPreviewTable(null);
           void handleOpenDocPreview(libraryDoc);
         } else {
           // Try portal documents — switch to that doc tab
           const portalDocs = portal.documents ?? [];
           const portalIdx = portalDocs.findIndex(
             (d) => d.context_item_id === docId || d.title === docId || d.id === docId
+              || d.title.toLowerCase().includes(docId.toLowerCase())
           );
           if (portalIdx >= 0) {
             setActiveDocIndex(portalIdx);
@@ -1029,19 +1037,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowToc(!showToc)}
-              className={cn(
-                "h-8 w-8 text-muted-foreground hover:text-foreground",
-                showToc && (pd ? "bg-white/10 text-foreground" : "bg-sky-50 text-sky-900")
-              )}
-              title="Table of contents"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
               onClick={() => setChatOpen((prev) => !prev)}
               className="h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
               title={chatOpen ? "Hide chat" : "Show chat"}
@@ -1049,23 +1044,42 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               <MessageSquare className="h-4 w-4" />
             </Button>
 
-            {/* Download PDF */}
-            {activePdfUrl && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
+            {/* Download All — ZIP of all library documents */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={async () => {
+                try {
+                  const { default: JSZip } = await import("jszip");
+                  const zip = new JSZip();
+                  const folder = zip.folder("Mirror-Factory-BlueWave-Proposal");
+                  if (!folder) return;
+                  for (const doc of BLUEWAVE_DOCUMENTS) {
+                    try {
+                      const res = await fetch(encodeURI(doc.url));
+                      if (res.ok) {
+                        const blob = await res.blob();
+                        folder.file(doc.filename, blob);
+                      }
+                    } catch {
+                      // Skip failed downloads
+                    }
+                  }
+                  const content = await zip.generateAsync({ type: "blob" });
                   const a = document.createElement("a");
-                  a.href = activePdfUrl;
-                  a.download = (activeDoc?.title || portal.title) + ".pdf";
+                  a.href = URL.createObjectURL(content);
+                  a.download = "Mirror-Factory-BlueWave-Proposal.zip";
                   a.click();
-                }}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                title="Download PDF"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            )}
+                  URL.revokeObjectURL(a.href);
+                } catch (err) {
+                  console.error("ZIP download failed:", err);
+                }
+              }}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Download all documents"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
 
             <Button
               variant="ghost"
@@ -1404,7 +1418,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? "flex-1"
             : cn(
                 cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-gray-50/95"),
-                chatOpen ? "flex-1 md:h-[40vh]" : "h-0"
+                chatOpen ? "flex-1 md:max-h-[50vh] md:h-[50vh]" : "h-0"
               )
         )}>
           <ChatInterface

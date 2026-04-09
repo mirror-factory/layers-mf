@@ -794,7 +794,18 @@ export async function POST(request: NextRequest) {
       const decoded = decodeURIComponent(escape(atob(portalContextHeader)));
       const contextTexts = JSON.parse(decoded) as string[];
       if (Array.isArray(contextTexts) && contextTexts.length > 0) {
-        systemPrompt += `\n\n--- User-Highlighted Context ---\nThe user has highlighted the following text from the document. Reference these selections when relevant to the conversation:\n${contextTexts.map((t, i) => `${i + 1}. "${t}"`).join("\n")}`;
+        // Extract "Viewing:" tag to tell AI which doc is currently open
+        const viewingTag = contextTexts.find(t => t.startsWith("Viewing: "));
+        const otherTags = contextTexts.filter(t => !t.startsWith("Viewing: "));
+
+        if (viewingTag) {
+          const viewingDocTitle = viewingTag.replace("Viewing: ", "");
+          systemPrompt += `\n\nIMPORTANT: The user is currently viewing "${viewingDocTitle}". When they say "this document", "this one", or ask questions without specifying a document, they mean "${viewingDocTitle}". Use lookup_document to load its content if needed before answering.`;
+        }
+
+        if (otherTags.length > 0) {
+          systemPrompt += `\n\n--- User-Highlighted Context ---\nThe user has highlighted the following text from the document. Reference these selections when relevant to the conversation:\n${otherTags.map((t, i) => `${i + 1}. "${t}"`).join("\n")}`;
+        }
       }
     } catch {
       // Ignore malformed context header
