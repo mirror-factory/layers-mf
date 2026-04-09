@@ -875,20 +875,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   </span>
                 )}
               </div>
-              {/* Document switcher tabs (desktop) */}
+              {/* Document switcher tabs (desktop) — docs first, then Library */}
               <div className="hidden md:flex gap-1 mt-1">
-                <button
-                  onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
-                    activeView === "library" || activeView === "doc-preview"
-                      ? "text-primary-foreground"
-                      : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                  )}
-                  style={activeView === "library" || activeView === "doc-preview" ? { backgroundColor: brandColor } : undefined}
-                >
-                  <FolderOpen className="h-3 w-3" /> Library
-                </button>
                 {documents.map((doc, i) => (
                   <button
                     key={doc.id}
@@ -904,6 +892,18 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     {doc.title}
                   </button>
                 ))}
+                <button
+                  onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                    activeView === "library" || activeView === "doc-preview"
+                      ? "text-primary-foreground"
+                      : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                  )}
+                  style={activeView === "library" || activeView === "doc-preview" ? { backgroundColor: brandColor } : undefined}
+                >
+                  <FolderOpen className="h-3 w-3" /> Library
+                </button>
               </div>
 
               {/* Mobile doc picker */}
@@ -926,12 +926,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-64">
-                    <DropdownMenuItem
-                      onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                    >
-                      <FolderOpen className="mr-2 h-4 w-4" /> Full document library
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     {documents.map((doc, i) => (
                       <DropdownMenuItem
                         key={doc.id}
@@ -941,6 +935,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                         <span className="truncate">{doc.title}</span>
                       </DropdownMenuItem>
                     ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" /> Full document library
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
