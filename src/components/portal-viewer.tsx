@@ -1322,32 +1322,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         
         {activeView === "library-doc" && activeLibraryDoc ? (
           <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-gray-50")}>
-            {/* Sticky viewer header */}
-            <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-gray-50/95")}>
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: activeLibraryDoc.type === 'image' ? '#f59e0b15' : activeLibraryDoc.type === 'pdf' ? '#ef444415' : activeLibraryDoc.type === 'xlsx' ? '#22c55e15' : `${brandColor}15` }}>
-                  {activeLibraryDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
-                   activeLibraryDoc.type === "pdf" ? <FileIcon className="h-4 w-4 text-red-500" /> :
-                   activeLibraryDoc.type === "xlsx" ? <FileSpreadsheet className="h-4 w-4 text-green-500" /> :
-                   <FileText className="h-4 w-4 text-cyan-400" />}
-                </div>
-                <div className="overflow-hidden">
-                  <p className={cn("truncate text-sm font-semibold", pd ? "text-white" : "text-gray-900")}>{activeLibraryDoc.title}</p>
-                  <p className={cn("text-[10px]", pd ? "text-white/30" : "text-gray-400")}>{activeLibraryDoc.type.toUpperCase()} · {activeLibraryDoc.sizeHuman}</p>
-                </div>
-              </div>
-              <a
-                href={activeLibraryDoc.url}
-                download
-                className={cn("flex h-7 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition-all border", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-sky-100 text-gray-500 hover:bg-sky-50 hover:text-gray-800")}
-              >
-                <Download className="h-3.5 w-3.5" /> Download
-              </a>
-            </div>
-
-            {/* Viewer content */}
-            <div className={cn("p-2 md:p-4", effectiveTwoColumn && "md:columns-2 md:gap-0")}>
+            {/* Viewer content — no header bar, tabs handle navigation */}
+            <div className={cn(effectiveTwoColumn ? "md:flex md:gap-0" : "")}>
               {activeLibraryDoc.type === "image" ? (
                 <div className="flex min-h-[70vh] items-center justify-center">
                   <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
@@ -1404,10 +1380,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <p className={cn("text-sm", pd ? "text-white/50" : "text-gray-500")}>Loading document...</p>
                 </div>
               ) : docxArrayBuffer && activeLibraryDoc.type === "docx" ? (
-                /* docx-preview renders directly into this container */
+                /* docx-preview renders directly into this container — edge-to-edge */
                 <div
                   ref={docxContainerRef}
-                  className={cn("docx-preview-wrapper mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden", effectiveTwoColumn ? "max-w-none min-h-0" : "max-w-4xl min-h-[80vh]")}
+                  className="docx-preview-wrapper w-full min-h-[80vh] bg-white overflow-hidden"
                 />
               ) : (
                 <div
@@ -1442,7 +1418,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
             textContent={activeDocContent || portal.document_content}
-            spread={effectiveTwoColumn}
+            spread={twoColumnMode}
             currentPage={currentPage}
             onPageChange={handlePageChange}
             onTotalPages={handleTotalPages}

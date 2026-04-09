@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PortalViewer } from "@/components/portal-viewer";
-import { Loader2 } from "lucide-react";
+import { PortalSplash } from "@/components/portal-splash";
 
 export interface PortalDocument {
   id: string;
@@ -41,50 +41,28 @@ export default function PortalPage() {
   const params = useParams<{ token: string }>();
   const [portal, setPortal] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPortal = async () => {
       try {
         const res = await fetch(`/api/portals/public/${params.token}`);
         if (!res.ok) {
-          if (res.status === 404) {
-            setError("Portal not found or has been deactivated.");
-          } else {
-            setError("Failed to load portal.");
-          }
+          setError(res.status === 404 ? "Portal not found or has been deactivated." : "Failed to load portal.");
           return;
         }
         const data = await res.json();
         const p = data.portal ?? data;
-        // pdf_url and audio_url are resolved server-side in the public API
         p.documents = p.documents ?? [];
         p.enabled_tools = p.enabled_tools ?? [];
         setPortal(p);
       } catch {
         setError("Failed to load portal.");
-      } finally {
-        setLoading(false);
       }
     };
-
-    if (params.token) {
-      fetchPortal();
-    }
+    if (params.token) fetchPortal();
   }, [params.token]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
-          <p className="text-sm text-muted-foreground">Loading portal...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !portal) {
+  if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -92,13 +70,21 @@ export default function PortalPage() {
             <span className="text-2xl">!</span>
           </div>
           <h1 className="text-xl font-semibold">Portal Unavailable</h1>
-          <p className="max-w-md text-sm text-muted-foreground">
-            {error ?? "This portal could not be loaded."}
-          </p>
+          <p className="max-w-md text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
     );
   }
 
-  return <PortalViewer portal={portal} />;
+  // Splash stays visible until portal data is loaded
+  return (
+    <PortalSplash
+      loaded={!!portal}
+      logoUrl={portal?.logo_url ?? undefined}
+      clientName={portal?.client_name ?? undefined}
+      brandColor={portal?.brand_color}
+    >
+      {portal && <PortalViewer portal={portal} />}
+    </PortalSplash>
+  );
 }

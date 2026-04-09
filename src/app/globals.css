@@ -290,18 +290,18 @@ mark.portal-pdf-highlight-active {
   animation: annotation-enter 0.3s ease-out both;
 }
 
-/* docx-preview styles — make rendered Word docs look native */
+/* docx-preview styles — edge-to-edge document rendering */
 .docx-preview-wrapper .docx-wrapper {
   background: white !important;
-  padding: 2rem 1rem !important;
+  padding: 0 !important;
 }
 .docx-preview-wrapper .docx-wrapper > section.docx {
   background: white !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-  margin: 1rem auto !important;
-  padding: 2.5cm 2cm !important;
-  max-width: 21cm;
-  min-height: 29.7cm;
+  box-shadow: none !important;
+  margin: 0 auto !important;
+  padding: 2cm 2cm !important;
+  max-width: none;
+  min-height: auto;
 }
 .docx-preview-wrapper table {
   border-collapse: collapse;
