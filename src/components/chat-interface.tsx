@@ -1822,6 +1822,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   // Refs for dynamic values (read by transport headers, updated by state)
   const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
   const modelRef = useRef(model);
+  const extraHeadersRef = useRef(extraHeaders);
+  extraHeadersRef.current = extraHeaders;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -1830,18 +1832,31 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
 
+  // Memoize transport so useChat doesn't reset when dynamic values (model, headers) change.
+  // All dynamic values are read via refs inside the headers/body functions.
+  const visualLevelRef = useRef(visualLevel);
+  visualLevelRef.current = visualLevel;
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: apiEndpoint || "/api/chat",
+        body: () => ({ model: modelRef.current, conversationId: conversationIdRef.current, visualLevel: visualLevelRef.current }),
+        headers: () => ({
+          "x-model": modelRef.current,
+          "x-artifact-id": activeArtifactRef.current.id ?? "",
+          "x-artifact-file": activeArtifactRef.current.filePath ?? "",
+          ...extraHeadersRef.current,
+        }),
+      }),
+    [apiEndpoint],
+  );
+
   const { messages, sendMessage, addToolOutput, status, error, stop } = useChat({
     messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
-    transport: new DefaultChatTransport({
-      api: apiEndpoint || "/api/chat",
-      body: { model, conversationId, visualLevel },
-      headers: () => ({
-        "x-model": modelRef.current,
-        "x-artifact-id": activeArtifactRef.current.id ?? "",
-        "x-artifact-file": activeArtifactRef.current.filePath ?? "",
-        ...extraHeaders,
-      }),
-    }),
+    transport,
     // Auto-continue after client-side tool results (ask_user, artifact_panel)
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onFinish: () => {
@@ -2621,7 +2636,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     />
                   )}
                   {portalClientName && (
-                    <p className={cn("text-[11px]", portalMode ? "text-slate-400 dark:text-white/40" : "text-muted-foreground/60")}>
+                    <p className={cn("text-[11px]", portalMode ? "text-slate-500 dark:text-white/40" : "text-muted-foreground/60")}>
                       Prepared by <span className={cn(portalMode ? "text-slate-600 dark:text-white/70" : "text-foreground/70")}>Mirror Factory</span> for{" "}
                       <span className={cn(portalMode ? "text-slate-600 dark:text-white/70" : "text-foreground/70")}>{portalClientName}</span>
                     </p>
@@ -2665,8 +2680,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
                       !portalMode && accent && "border-primary/30 text-primary hover:bg-primary/10",
                       !portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                      portalMode && !accent && "bg-white dark:bg-white/5 text-slate-600 dark:text-white/70 border-sky-100 dark:border-white/10 hover:bg-sky-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white",
-                      portalMode && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-100 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
+                      portalMode && !accent && "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-white/70 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white",
+                      portalMode && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-200 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
                     )}
                     style={portalMode && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
                   >
@@ -2811,7 +2826,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     <MessageContent
                       className={cn(
                         portalMode &&
-                          "group-[.is-user]:bg-sky-50 dark:group-[.is-user]:bg-white/5 group-[.is-user]:text-slate-700 dark:group-[.is-user]:text-white group-[.is-user]:border group-[.is-user]:border-sky-100 dark:group-[.is-user]:border-white/10 group-[.is-assistant]:text-slate-700 dark:group-[.is-assistant]:text-white"
+                          "group-[.is-user]:bg-sky-100 dark:group-[.is-user]:bg-white/5 group-[.is-user]:text-gray-900 dark:group-[.is-user]:text-white group-[.is-user]:border group-[.is-user]:border-sky-200 dark:group-[.is-user]:border-white/10 group-[.is-assistant]:text-gray-900 dark:group-[.is-assistant]:text-white"
                       )}
                     >
                       {m.role === "user" ? (
@@ -2902,7 +2917,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </>
               )}
-              <span className={cn("text-xs pt-3", portalMode ? "text-slate-400 dark:text-white/40" : "text-muted-foreground")}>Thinking…</span>
+              <span className={cn("text-xs pt-3", portalMode ? "text-slate-600 dark:text-white/40" : "text-muted-foreground")}>Thinking…</span>
             </div>
           )}
 
@@ -2944,7 +2959,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-white/85 to-white dark:via-[#070a0e]/85 dark:to-[#070a0e]")}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-gray-50/85 to-gray-50 dark:via-[#070a0e]/85 dark:to-[#070a0e]")}
           style={{
             background: portalMode
               ? undefined
@@ -2969,7 +2984,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div
             className={cn(
               "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3",
-              portalMode ? "border-sky-200 bg-white/95 dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60"
+              portalMode ? "border-gray-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60"
             )}
           >
             {/* Interview UI — renders as overlay above the input area */}
@@ -3066,7 +3081,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   rows={1}
                   className={cn(
                     "flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:truncate",
-                    portalMode ? "text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
+                    portalMode ? "text-gray-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
                   )}
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {

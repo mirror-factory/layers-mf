@@ -290,6 +290,17 @@ mark.portal-pdf-highlight-active {
   animation: annotation-enter 0.3s ease-out both;
 }
 
+/* Jspreadsheet overrides for portal */
+.jexcel_content {
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+.jexcel {
+  font-size: 13px !important;
+}
+.jexcel td {
+  padding: 4px 8px !important;
+}
+
 /* docx-preview styles — edge-to-edge, no wrapper chrome */
 .docx-preview-wrapper .docx-wrapper {
   background: transparent !important;

@@ -92,7 +92,7 @@ function ContextTagsBar({
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-sky-100 dark:border-white/5">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mr-1">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-muted-foreground mr-1">
           Context
         </span>
         {tags.map((tag) => (
@@ -458,6 +458,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [docxArrayBuffer, setDocxArrayBuffer] = useState<ArrayBuffer | null>(null);
   const docxContainerRef = useRef<HTMLDivElement | null>(null);
+  const jspreadsheetRef = useRef<HTMLDivElement | null>(null);
 
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -580,6 +581,47 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     })();
     return () => { cancelled = true; };
   }, [docxArrayBuffer]);
+
+  // Render XLSX via jspreadsheet-ce when table data is ready
+  useEffect(() => {
+    if (!docPreviewTable || !jspreadsheetRef.current || activeView !== "library-doc" || activeLibraryDoc?.type !== "xlsx") return;
+
+    const container = jspreadsheetRef.current;
+    container.innerHTML = "";
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const jspreadsheet = (await import("jspreadsheet-ce")).default;
+        await import("jsuites/dist/jsuites.css");
+        await import("jspreadsheet-ce/dist/jspreadsheet.css");
+        if (cancelled) return;
+
+        const columns = docPreviewTable[0]?.map((header, i) => ({
+          title: header || String.fromCharCode(65 + i),
+          width: 120,
+        })) || [];
+
+        jspreadsheet(container, {
+          data: docPreviewTable.slice(1),
+          columns,
+          tableOverflow: true,
+          tableWidth: "100%",
+          tableHeight: "calc(100vh - 6rem)",
+          editable: false,
+          columnSorting: true,
+          search: true,
+          pagination: false,
+          freezeColumns: 0,
+          defaultColWidth: 120,
+        });
+      } catch (err) {
+        console.error("Jspreadsheet init failed:", err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [docPreviewTable, activeView, activeLibraryDoc?.type]);
 
   // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
   const handleToolOutput = useCallback(
@@ -1329,51 +1371,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
                 </div>
               ) : activeLibraryDoc.type === "xlsx" ? (
-                <div className="min-h-[60vh] rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                  {docPreviewTable ? (
-                    <div className="overflow-auto max-h-[80vh]">
-                      <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
-                        {docPreviewTable.length > 0 && (
-                          <thead className="sticky top-0 z-10">
-                            <tr>
-                              {/* Row number header */}
-                              <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
-                              {docPreviewTable[0].map((cell, cellIdx) => (
-                                <th
-                                  key={`h-${cellIdx}`}
-                                  className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap"
-                                >
-                                  {cell || String.fromCharCode(65 + cellIdx)}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                        )}
-                        <tbody>
-                          {docPreviewTable.slice(1).map((row, rowIdx) => (
-                            <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                              <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">
-                                {rowIdx + 2}
-                              </td>
-                              {row.map((cell, cellIdx) => (
-                                <td
-                                  key={`cell-${rowIdx}-${cellIdx}`}
-                                  className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap"
-                                >
-                                  {cell || ""}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-xs text-slate-500">
-                      {docPreviewText || "Loading spreadsheet..."}
-                    </div>
-                  )}
-                </div>
+                <div
+                  ref={jspreadsheetRef}
+                  className="min-h-[60vh] bg-white overflow-hidden w-full"
+                />
               ) : isPreviewLoading ? (
                 <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
