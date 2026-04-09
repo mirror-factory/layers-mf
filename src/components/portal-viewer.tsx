@@ -376,8 +376,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         const rows = utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
           header: 1,
           blankrows: false,
+          defval: "",
         });
-        const normalized = rows.map((row) => row.map((cell) => (cell ?? "").toString()));
+        // Normalize: ensure all rows have the same column count
+        const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0);
+        const normalized = rows.map((row) => {
+          const cells = row.map((cell) => (cell ?? "").toString());
+          while (cells.length < maxCols) cells.push("");
+          return cells;
+        });
+        // Trim trailing empty rows
+        while (normalized.length > 0 && normalized[normalized.length - 1].every(c => c === "")) {
+          normalized.pop();
+        }
         setDocPreviewTable(normalized.length > 0 ? normalized : [["No data found"]]);
         return;
       }
@@ -419,6 +430,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           experimental: false,
           trimXmlDeclaration: true,
           useBase64URL: true,
+          renderHeaders: true,
+          renderFooters: true,
+          renderFootnotes: true,
         });
       } catch (err) {
         console.error("docx-preview renderAsync failed:", err);
@@ -747,7 +761,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const tocPanel = showToc && tocEntries.length > 0 ? (
     <>
       {/* Mobile: fullscreen overlay */}
-      <div className={cn("fixed inset-0 z-[100] flex flex-col backdrop-blur-xl md:hidden", pd ? "bg-[#070a0e]/95" : "bg-white/95")}>
+      <div className={cn("fixed inset-0 z-[100] flex flex-col backdrop-blur-xl md:hidden", pd ? "bg-[#070a0e]/95" : "bg-gray-50/95")}>
         <div className={cn("flex items-center justify-between px-4 py-3 border-b", pd ? "border-white/5" : "border-sky-100")}>
           <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
@@ -764,8 +778,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       </div>
       {/* Desktop: sidebar */}
-      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#070a0e]/60" : "border-sky-100 bg-white/70")}>
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#070a0e]/80" : "border-sky-100 bg-white/90")}>
+      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#070a0e]/60" : "border-sky-100 bg-gray-50/70")}>
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#070a0e]/80" : "border-sky-100 bg-gray-50/90")}>
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
             variant="ghost"
@@ -837,14 +851,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* Unified Header — includes PDF page nav */}
       <header className={cn(
         "sticky top-0 z-50 flex items-center justify-between px-4 py-2 backdrop-blur-xl",
-        pd ? "border-b border-white/5 bg-[#070a0e]/80" : "border-b border-sky-100 bg-white/95"
+        pd ? "border-b border-white/5 bg-[#070a0e]/80" : "border-b border-sky-100 bg-gray-50/95"
       )}>
           <div className="flex items-center gap-3">
             {portal.logo_url && (
               <img
                 src={portal.logo_url}
                 alt="Logo"
-                className="h-7 w-7 rounded-md object-contain"
+                className="h-7 max-w-[28px] rounded-md object-contain"
               />
             )}
             <div>
@@ -901,7 +915,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                       size="sm"
                       className={cn(
                         "h-8 px-2 text-xs font-medium gap-2",
-                        pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-sky-100 bg-white text-slate-600"
+                        pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-sky-100 bg-gray-50 text-slate-600"
                       )}
                     >
                       <FolderOpen className="h-3.5 w-3.5" />
@@ -1076,7 +1090,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         {activeView === "doc-preview" && previewDoc ? (
           <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-gray-50")}>
             {/* Sticky viewer header */}
-            <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-white/95")}>
+            <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-gray-50/95")}>
               <div className="flex items-center gap-3 overflow-hidden">
                 <button
                   onClick={() => { setActiveView("library"); }}
@@ -1215,15 +1229,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                         <div
                           key={di}
                           onClick={() => handleOpenDocPreview(doc)}
-                          className={cn("group relative flex flex-col items-start gap-4 rounded-xl p-5 transition-all duration-300 cursor-pointer border", pd ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]" : "border-sky-100 bg-white hover:border-sky-200 hover:bg-sky-50")}
+                          className={cn("group relative flex flex-col items-start gap-4 rounded-xl p-5 transition-all duration-300 cursor-pointer border overflow-hidden", pd ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]" : "border-sky-100 bg-gray-50 hover:border-sky-200 hover:bg-gray-100")}
+                          style={{ borderTopWidth: 3, borderTopColor: doc.type === 'pdf' ? '#ef4444' : doc.type === 'xlsx' ? '#22c55e' : doc.type === 'image' ? '#f59e0b' : '#06b6d4' }}
                         >
                           <div className="flex w-full items-start justify-between gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105"
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105"
                               style={{ backgroundColor: doc.type === 'pdf' ? '#ef444415' : doc.type === 'xlsx' ? '#22c55e15' : doc.type === 'image' ? '#f59e0b15' : `${brandColor}15` }}>
-                              {doc.type === "pdf" ? <FileIcon className="h-5 w-5 text-red-500" /> :
-                               doc.type === "xlsx" ? <FileSpreadsheet className="h-5 w-5 text-green-500" /> :
-                               doc.type === "image" ? <ImageIcon className="h-5 w-5 text-amber-500" /> :
-                               <FileText className="h-5 w-5" style={{ color: brandColor }} />}
+                              {doc.type === "pdf" ? <FileIcon className="h-6 w-6 text-red-500" /> :
+                               doc.type === "xlsx" ? <FileSpreadsheet className="h-6 w-6 text-green-500" /> :
+                               doc.type === "image" ? <ImageIcon className="h-6 w-6 text-amber-500" /> :
+                               <FileText className="h-6 w-6" style={{ color: brandColor }} />}
                             </div>
 
                             <div className="flex shrink-0 gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
@@ -1231,16 +1246,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                                 href={doc.url}
                                 download
                                 onClick={(e) => e.stopPropagation()}
-                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-sky-100 bg-white text-gray-500 hover:bg-sky-50 hover:text-gray-800")}
+                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-sky-100 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
                                 title="Download Document"
                               >
                                 <Download className="h-3.5 w-3.5" />
                               </a>
                             </div>
                           </div>
-                          
+
                           <div className="w-full">
                             <p className={cn("text-sm font-semibold line-clamp-2", pd ? "text-white" : "text-gray-900")} title={doc.title}>{doc.title}</p>
+                            {doc.description && (
+                              <p className={cn("mt-1 text-xs line-clamp-2", pd ? "text-white/40" : "text-gray-500")}>{doc.description}</p>
+                            )}
                             <div className="mt-2 flex items-center gap-2">
                               <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
                                 doc.type === 'pdf' ? 'bg-red-500/10 text-red-400' :
@@ -1322,7 +1340,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         className={cn(
           "fixed z-40 flex flex-col",
           expanded
-            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-sky-100")
+            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-gray-50 border-sky-100")
             : cn(
                 "left-0 right-0",
                 chatOpen ? "top-12 bottom-0" : "bottom-0",
@@ -1332,7 +1350,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       >
         {!expanded && !chatOpen && (
           /* Floating prompt bar — just the input + expand button */
-          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95")}>
+          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-gray-50/95")}>
             <button
               onClick={() => setChatOpen(true)}
               className="flex-1 text-left text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
@@ -1355,7 +1373,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {!expanded && chatOpen && (
           /* Expanded floating chat — full toggle bar */
-          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95")}>
+          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-gray-50/95")}>
             <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
             <div className="flex items-center justify-between px-3 py-1">
               <button
@@ -1385,7 +1403,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded
             ? "flex-1"
             : cn(
-                cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95"),
+                cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-gray-50/95"),
                 chatOpen ? "flex-1 md:h-[40vh]" : "h-0"
               )
         )}>

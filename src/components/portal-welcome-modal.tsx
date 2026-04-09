@@ -111,21 +111,11 @@ export function PortalWelcomeModal({
       >
         {/* Header */}
         <div className="flex flex-col items-center gap-4 px-8 pt-8 pb-4">
-          {/* BlueWave logo — always shown */}
           <img
-            src="/bluewave-logo.svg"
-            alt="BlueWave logo"
+            src={logoUrl || "/bluewave-logo.svg"}
+            alt={clientName ? `${clientName} logo` : "Logo"}
             className="h-12 w-auto object-contain"
           />
-
-          {/* Optional client logo below BlueWave logo */}
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt={clientName ? `${clientName} logo` : "Client logo"}
-              className="h-8 w-auto object-contain opacity-80"
-            />
-          )}
 
           {/* Thin colored divider */}
           <div
