@@ -119,6 +119,8 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
     // Skip metadata
     if (/^(\*\*)?!?\[/.test(raw)) { i++; continue; }
     if (/^(Prepared (by|for)|Date:|Revision:|\*\*Prepared|\*\*Date|\*\*Revision)/i.test(cleanBold(raw))) { i++; continue; }
+    if (/Product Engagement Proposal/i.test(raw)) { i++; continue; }
+    if (/Product Scope Document/i.test(raw)) { i++; continue; }
     if (/\bx\b/.test(cleanBold(raw)) && raw.length < 80 && i < 15) { i++; continue; }
 
     // Markdown tables
@@ -478,7 +480,7 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
   if (entries.length === 0) return null;
 
   return (
-    <div ref={ref} className="fixed left-4 top-16 z-[60]">
+    <div ref={ref} className="fixed left-28 top-16 z-[60]">
       <button onClick={() => setOpen(!open)}
         className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-xl transition-all",
           isDark ? "border-white/[0.08] bg-[#0a0a0f]/90 text-white/50 hover:bg-white/[0.05] hover:text-white/80"
@@ -515,7 +517,7 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
 
   const html = useMemo(() => showChart ? `<!DOCTYPE html>
 <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
@@ -1207,6 +1209,15 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
     const labels = rows.map(r => r[labelCol]?.slice(0, 30) ?? "");
     const values = rows.map(r => parseFloat((r[numericCol] ?? "0").replace(/[$,~%<>]/g, "")) || 0);
     if (values.every(v => v === 0)) return null;
+    // Skip chart if fewer than 3 parseable numeric values
+    const parseableCount = values.filter(v => v !== 0).length;
+    if (parseableCount < 3) return null;
+    // Skip chart if all values are the same (not meaningful)
+    const uniqueValues = new Set(values);
+    if (uniqueValues.size <= 1) return null;
+    // Skip key-value tables (labels are very short single words like "Company", "Revenue")
+    const shortLabelCount = labels.filter(l => l.split(/\s+/).length <= 1 && l.length <= 15).length;
+    if (shortLabelCount >= labels.length * 0.6) return null;
     const colors = rows.map((_, i) => `${brandColor}${Math.round(((i + 1) / rows.length) * 180 + 75).toString(16).padStart(2, "0")}`);
     const textColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.6)";
     const gridColor = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.08)";
@@ -1370,7 +1381,7 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
             {barData.items.map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <span className={cn("w-24 shrink-0 text-right text-[13px] font-medium truncate", isDark ? "text-white/50" : "text-gray-500")}>{item.label}</span>
-                <div className="flex-1 relative h-8 rounded-lg overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
+                <div className={cn("flex-1 relative h-8 rounded-lg overflow-hidden", !isDark && "bg-teal-50")} style={isDark ? { backgroundColor: "rgba(255,255,255,0.04)" } : undefined}>
                   <div
                     className="h-full rounded-lg transition-all duration-1000 ease-out"
                     style={{
@@ -1379,7 +1390,7 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
                       opacity: isDark ? 0.7 : 0.8,
                     }}
                   />
-                  <span className={cn("absolute right-2 top-1/2 -translate-y-1/2 text-[13px] font-semibold", isDark ? "text-white/70" : "text-gray-700")}>
+                  <span className={cn("absolute right-2 top-1/2 -translate-y-1/2 text-[13px] font-semibold", isDark ? "text-white/70" : "text-gray-800")}>
                     {item.raw}
                   </span>
                 </div>
@@ -1423,8 +1434,33 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
 // NEW: Inbound Call Triage Flow Diagram
 // ---------------------------------------------------------------------------
 
-function InboundTriageFlow({ brandColor }: { brandColor: string }) {
+function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; shareToken: string }) {
   const { isDark } = usePortalTheme();
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const explainFlow = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat/portal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          share_token: shareToken,
+          messages: [{ id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: "Explain this inbound call triage flow in 2-3 sentences. How does the AI receptionist route calls to Sales, Admin/HR, and Candidates? What are the key benefits?" }], createdAt: new Date() }],
+        }),
+      });
+      if (!res.ok) { setAiResult("Unable to explain."); return; }
+      const reader = res.body?.getReader(); if (!reader) return;
+      const decoder = new TextDecoder(); let text = "";
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+          for (const p of ["0:", "g:"]) { if (line.startsWith(p)) { try { const v = JSON.parse(line.slice(p.length)); if (typeof v === "string") text += v; } catch {} } }
+        }
+      }
+      setAiResult(text || "No explanation generated.");
+    } catch { setAiResult("Failed to get explanation."); }
+    finally { setLoading(false); }
+  }, [shareToken]);
   return (
     <div className="my-10">
       <style>{`
@@ -1545,6 +1581,27 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
             </div>
           ))}
         </div>
+
+        {/* Explain this flow button */}
+        <div className="mt-6 flex justify-center">
+          <button onClick={explainFlow} disabled={loading}
+            className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all disabled:opacity-50",
+              isDark ? "border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/80"
+                : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700")}>
+            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
+            {loading ? "Thinking..." : "Explain this flow"}
+          </button>
+        </div>
+        {aiResult && (
+          <div className={cn("mt-3 rounded-xl border px-4 py-3 text-xs leading-relaxed",
+            isDark ? "border-white/[0.06] bg-white/[0.015] text-white/50" : "border-gray-200 bg-gray-50 text-gray-600")}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
+              <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
+            </div>
+            {aiResult}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1554,8 +1611,33 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
 // NEW: Outbound Candidate Screening Flow
 // ---------------------------------------------------------------------------
 
-function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
+function OutboundScreeningFlow({ brandColor, shareToken }: { brandColor: string; shareToken: string }) {
   const { isDark } = usePortalTheme();
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const explainFlow = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat/portal", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          share_token: shareToken,
+          messages: [{ id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: "Explain this outbound candidate screening flow in 2-3 sentences. How does the screening agent evaluate 2,000+ candidates and deliver a qualified shortlist? What are the key benefits?" }], createdAt: new Date() }],
+        }),
+      });
+      if (!res.ok) { setAiResult("Unable to explain."); return; }
+      const reader = res.body?.getReader(); if (!reader) return;
+      const decoder = new TextDecoder(); let text = "";
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+          for (const p of ["0:", "g:"]) { if (line.startsWith(p)) { try { const v = JSON.parse(line.slice(p.length)); if (typeof v === "string") text += v; } catch {} } }
+        }
+      }
+      setAiResult(text || "No explanation generated.");
+    } catch { setAiResult("Failed to get explanation."); }
+    finally { setLoading(false); }
+  }, [shareToken]);
   const steps = [
     { icon: Briefcase, label: "New Job Requisition", desc: "Via Bullhorn" },
     { icon: SearchIcon, label: "Screening Agent", desc: "Evaluate real criteria" },
@@ -1621,6 +1703,27 @@ function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
           </div>
         ))}
       </div>
+
+      {/* Explain this flow button */}
+      <div className="mt-6 flex justify-center">
+        <button onClick={explainFlow} disabled={loading}
+          className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all disabled:opacity-50",
+            isDark ? "border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white/80"
+              : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700")}>
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
+          {loading ? "Thinking..." : "Explain this flow"}
+        </button>
+      </div>
+      {aiResult && (
+        <div className={cn("mt-3 rounded-xl border px-4 py-3 text-xs leading-relaxed",
+          isDark ? "border-white/[0.06] bg-white/[0.015] text-white/50" : "border-gray-200 bg-gray-50 text-gray-600")}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
+            <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
+          </div>
+          {aiResult}
+        </div>
+      )}
     </div>
   );
 }
@@ -1658,6 +1761,11 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
       document.documentElement.classList.add("dark");
     }
   }, []);
+  // Sync html dark class whenever theme changes (including initial render)
+  useEffect(() => {
+    if (theme === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }, [theme]);
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
       const next = prev === "dark" ? "light" : "dark";
@@ -1743,9 +1851,9 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
             case "acceptance-criteria": return <AcceptanceCriteriaSection key={section.id} section={section} brandColor={accentColor} />;
             case "priority-matrix": return <PriorityMatrixSection key={section.id} section={section} brandColor={accentColor} />;
             case "flow-diagram": return section.diagramType === "inbound-triage"
-              ? <InboundTriageFlow key={section.id} brandColor={accentColor} />
+              ? <InboundTriageFlow key={section.id} brandColor={accentColor} shareToken={portal.share_token} />
               : section.diagramType === "outbound-screening"
-              ? <OutboundScreeningFlow key={section.id} brandColor={accentColor} />
+              ? <OutboundScreeningFlow key={section.id} brandColor={accentColor} shareToken={portal.share_token} />
               : null;
             case "divider": return <div key={section.id} className="my-16"><div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}15, transparent)` }} /></div>;
             default: return null;
@@ -1753,7 +1861,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         })}
         <footer className="flex flex-col items-center gap-4 py-24">
           <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}25, transparent)` }} />
-          {portal.logo_url && <img src={portal.logo_url} alt="" className="h-6 w-auto opacity-30" />}
+          {portal.logo_url && <img src={portal.logo_url} alt="" className={cn("h-6 w-auto", isDark ? "opacity-80" : "opacity-100")} />}
           <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-gray-300")}>Prepared by Mirror Factory</p>
         </footer>
       </main>
