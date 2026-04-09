@@ -514,7 +514,7 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 
   const html = useMemo(() => showChart ? `<!DOCTYPE html>
 <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
-<style>body{margin:0;padding:16px;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
+<style>html,body{margin:0;padding:16px;background:transparent!important;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px;background:transparent!important}</style>
 </head><body><canvas id="c"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(config)})<\/script>
 </body></html>` : "", [config, showChart]);
@@ -1240,59 +1240,86 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
   );
 }
 
+function PhaseTimelineCard({ phase, brandColor, icon: Icon }: {
+  phase: { name: string; timeline: string; description: string };
+  brandColor: string;
+  icon: React.ElementType;
+}) {
+  const { isDark } = usePortalTheme();
+  const [expanded, setExpanded] = useState(false);
+
+  // Split description into sub-items by sentence boundaries that look like labeled items
+  const parts = phase.description.split(/(?<=\.) (?=[A-Z])/);
+  const summary = parts[0] ?? phase.description.slice(0, 120);
+  const hasMore = parts.length > 1 || phase.description.length > 150;
+
+  return (
+    <GlassCard className="p-5 group" brandColor={brandColor} glowOnHover>
+      <div className="flex items-center gap-3 mb-2">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${brandColor}15` }}>
+          <Icon className="h-4 w-4" style={{ color: brandColor }} />
+        </div>
+        <div>
+          <div className={cn("text-lg font-bold", isDark ? "text-white" : "text-gray-900")}>{phase.name}</div>
+          <div className="flex items-center gap-1.5 text-[13px]" style={{ color: `${brandColor}bb` }}>
+            <Clock className="h-3 w-3" />{phase.timeline}
+          </div>
+        </div>
+      </div>
+
+      <p className={cn("text-[15px] leading-[1.7] mt-3", isDark ? "text-white/55" : "text-gray-600")}>
+        {expanded ? summary : summary.slice(0, 120) + (summary.length > 120 ? "..." : "")}
+      </p>
+
+      {hasMore && expanded && parts.length > 1 && (
+        <ul className="mt-3 space-y-2">
+          {parts.slice(1).map((item, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <div className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: brandColor }} />
+              <span className={cn("text-[15px] leading-[1.6]", isDark ? "text-white/50" : "text-gray-500")}>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {hasMore && (
+        <button onClick={() => setExpanded(!expanded)}
+          className={cn("mt-3 text-[13px] font-medium transition-colors", isDark ? "text-white/40 hover:text-white/70" : "text-gray-400 hover:text-gray-600")}
+          style={{ color: expanded ? brandColor : undefined }}>
+          {expanded ? "Show less" : `Show ${parts.length - 1} more details`}
+        </button>
+      )}
+    </GlassCard>
+  );
+}
+
 function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColor: string }) {
-  const { ref, isVisible } = useScrollAnimation();
   const { isDark } = usePortalTheme();
   const phases = section.phases ?? [];
   const icons = [Target, Zap, Sparkles, BarChart3];
   return (
-    <div ref={ref} className={cn("my-12 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
-      <div className="relative">
-        {/* Connecting line with progress fill */}
-        <div className="absolute left-7 top-0 bottom-0 w-[2px] sm:left-1/2 sm:-translate-x-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}12, ${brandColor}12, transparent)` }} />
-        <div
-          className="absolute left-7 top-0 w-[2px] sm:left-1/2 sm:-translate-x-px transition-all duration-[2000ms] ease-out"
-          style={{
-            background: `linear-gradient(180deg, ${brandColor}60, ${brandColor}30, transparent)`,
-            height: isVisible ? "100%" : "0%",
-          }}
-        />
-        <div className="space-y-8">
-          {phases.map((phase, i) => {
-            const Icon = icons[i % icons.length];
-            const isLeft = i % 2 === 0;
-            return (
-              <div key={i} className="relative transition-all duration-700" style={{ transitionDelay: isVisible ? `${i * 200}ms` : "0ms", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(20px)" }}>
-                {/* Timeline node */}
-                <div className="absolute left-7 top-6 z-10 -translate-x-1/2 sm:left-1/2">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-full border-2 shadow-lg transition-transform duration-300 hover:scale-110"
-                    style={{ borderColor: brandColor, backgroundColor: `${brandColor}15`, boxShadow: `0 0 20px ${brandColor}20` }}
-                  >
-                    <Icon className="h-5 w-5" style={{ color: brandColor }} />
-                  </div>
+    <div className="my-12">
+      {/* Horizontal phase cards — cleaner than alternating timeline */}
+      <div className="space-y-6">
+        {phases.map((phase, i) => {
+          const Icon = icons[i % icons.length];
+          return (
+            <div key={i} className="flex gap-4 items-start">
+              {/* Vertical connector */}
+              <div className="flex flex-col items-center gap-1 pt-2 shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold"
+                  style={{ borderColor: brandColor, backgroundColor: `${brandColor}12`, color: brandColor }}>
+                  {i + 1}
                 </div>
-
-                {/* Card */}
-                <div className={cn("ml-16 sm:ml-0 sm:w-[calc(50%-44px)]", isLeft ? "sm:mr-auto" : "sm:ml-auto")}>
-                  <GlassCard className="p-6 group" brandColor={brandColor} glowOnHover>
-                    <div className={cn("mb-2 text-lg font-bold", isDark ? "text-white" : "text-gray-900")}>{phase.name}</div>
-                    <div className="mb-4 flex items-center gap-2 text-[12px]" style={{ color: `${brandColor}cc` }}>
-                      <Clock className="h-3.5 w-3.5" />
-                      {phase.timeline}
-                    </div>
-                    <p className={cn("text-[16px] leading-[1.75]", isDark ? "text-white/45" : "text-gray-500")}>{phase.description}</p>
-                    {/* Bottom accent */}
-                    <div
-                      className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100"
-                      style={{ background: `linear-gradient(90deg, transparent, ${brandColor}40, transparent)` }}
-                    />
-                  </GlassCard>
-                </div>
+                {i < phases.length - 1 && <div className="flex-1 w-px min-h-[40px]" style={{ backgroundColor: `${brandColor}20` }} />}
               </div>
-            );
-          })}
-        </div>
+              {/* Card */}
+              <div className="flex-1 min-w-0">
+                <PhaseTimelineCard phase={phase} brandColor={brandColor} icon={Icon} />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1344,7 +1371,7 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
       {chartConfig && chartReady && (
         <div className={cn("mt-5 animate-card overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-gray-200 bg-white")} style={{ animationDelay: "0.3s" }}>
           <iframe srcDoc={`<!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
-<style>body{margin:0;padding:16px;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
+<style>html,body{margin:0;padding:16px;background:transparent!important;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px;background:transparent!important}</style>
 </head><body><canvas id="c"></canvas>
 <script>new Chart(document.getElementById('c'),${JSON.stringify(chartConfig)})<\/script>
 </body></html>`} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title="Budget chart" />
@@ -1546,18 +1573,18 @@ function OutboundScreeningFlow({ brandColor }: { brandColor: string }) {
         </div>
       </div>
 
-      {/* Horizontal flow — wraps on mobile */}
-      <div className="flex flex-wrap items-center justify-center gap-0">
+      {/* Horizontal flow — all 5 steps in one row */}
+      <div className="flex items-center justify-center gap-0 overflow-x-auto pb-2">
         {steps.map((step, si) => (
-          <div key={si} className="flex items-center">
+          <div key={si} className="flex items-center shrink-0">
             {/* Step card */}
             <div
-              className="screen-step flex flex-col items-center gap-2 rounded-2xl border px-5 py-4 text-center"
+              className="screen-step flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-center"
               style={{
                 animationDelay: `${0.2 + si * 0.25}s`,
                 borderColor: si === steps.length - 1 ? `${brandColor}50` : `${brandColor}20`,
                 backgroundColor: si === steps.length - 1 ? `${brandColor}12` : `${brandColor}05`,
-                minWidth: 130,
+                width: 140,
               }}
             >
               <div
