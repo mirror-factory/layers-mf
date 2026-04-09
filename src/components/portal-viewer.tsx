@@ -29,7 +29,10 @@ import {
   FileIcon,
   FolderOpen,
   Sun,
-  Moon
+  Moon,
+  Info,
+  Footprints,
+  Library as LibraryIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
@@ -132,44 +135,160 @@ const TOOL_CONFIG: Record<
   search_document: {
     label: "Search",
     icon: Search,
-    description: "Search within the document",
+    description: "Search for keywords within the current document",
   },
   navigate_pdf: {
     label: "Navigate",
     icon: Navigation,
-    description: "Navigate to pages/sections",
+    description: "Jump to a specific page in the PDF viewer",
+  },
+  navigate_portal: {
+    label: "Go To",
+    icon: Navigation,
+    description: "Navigate to a specific tab or section",
   },
   render_chart: {
     label: "Charts",
     icon: BarChart3,
-    description: "Generate visualizations",
+    description: "Create interactive data visualizations",
   },
   web_search: {
-    label: "Web",
+    label: "Web Search",
     icon: Globe,
-    description: "Search the web",
+    description: "Search the web for current information",
   },
   highlight_text: {
     label: "Highlight",
     icon: Highlighter,
-    description: "Highlight text in document",
+    description: "Highlight specific text in the document",
   },
   get_page_content: {
-    label: "Page",
+    label: "Read Page",
     icon: FileText,
-    description: "Get full page content",
+    description: "Read the full content of a specific page",
   },
   summarize_section: {
     label: "Summarize",
     icon: BookOpen,
-    description: "Summarize a section",
+    description: "Summarize a section or page range",
   },
   add_annotation: {
     label: "Annotate",
     icon: StickyNote,
-    description: "Add visual callouts to PDF",
+    description: "Add visual callouts and notes to the PDF",
+  },
+  walkthrough_document: {
+    label: "Walkthrough",
+    icon: Footprints,
+    description: "Guided animated tour through the document",
+  },
+  get_document_registry: {
+    label: "Doc Registry",
+    icon: LibraryIcon,
+    description: "List all available documents in the library",
+  },
+  lookup_document: {
+    label: "Lookup",
+    icon: Search,
+    description: "Search and read content from a library document",
+  },
+  open_document_preview: {
+    label: "Open Doc",
+    icon: FileText,
+    description: "Open a library document in the viewer",
   },
 };
+
+// Tools info modal
+function ToolsInfoModal({
+  open,
+  onClose,
+  enabledTools,
+  isDark,
+  brandColor,
+}: {
+  open: boolean;
+  onClose: () => void;
+  enabledTools: string[];
+  isDark: boolean;
+  brandColor: string;
+}) {
+  if (!open) return null;
+
+  // Always-on tools (not configurable)
+  const alwaysOnTools = ["get_document_registry", "lookup_document", "open_document_preview"];
+  const configurableTools = enabledTools.filter(t => !alwaysOnTools.includes(t));
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+      <div className={cn("absolute inset-0 backdrop-blur-sm", isDark ? "bg-black/50" : "bg-black/20")} />
+      <div
+        className={cn(
+          "relative z-10 w-full max-w-md mx-4 rounded-2xl border p-6 shadow-2xl",
+          isDark ? "bg-[#0a0a0f] border-white/10" : "bg-white border-gray-200"
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={cn("text-lg font-semibold", isDark ? "text-white" : "text-gray-900")}>
+            AI Tools
+          </h3>
+          <button onClick={onClose} className={cn("p-1 rounded-lg transition-colors", isDark ? "hover:bg-white/10" : "hover:bg-gray-100")}>
+            <X className={cn("h-4 w-4", isDark ? "text-white/60" : "text-gray-400")} />
+          </button>
+        </div>
+
+        <p className={cn("text-xs mb-4", isDark ? "text-white/40" : "text-gray-500")}>
+          These tools are available to the AI assistant when answering your questions.
+        </p>
+
+        <div className="space-y-1.5 mb-4">
+          <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-2", isDark ? "text-white/30" : "text-gray-400")}>
+            Configurable Tools
+          </p>
+          {configurableTools.map((toolId) => {
+            const config = TOOL_CONFIG[toolId];
+            if (!config) return null;
+            const Icon = config.icon;
+            return (
+              <div key={toolId} className={cn("flex items-center gap-3 rounded-lg px-3 py-2", isDark ? "bg-white/[0.03]" : "bg-gray-50")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: `${brandColor}20` }}>
+                  <Icon className="h-3.5 w-3.5" style={{ color: brandColor }} />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn("text-xs font-medium", isDark ? "text-white" : "text-gray-800")}>{config.label}</p>
+                  <p className={cn("text-[10px]", isDark ? "text-white/40" : "text-gray-500")}>{config.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-1.5">
+          <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-2", isDark ? "text-white/30" : "text-gray-400")}>
+            Always Available
+          </p>
+          {alwaysOnTools.map((toolId) => {
+            const config = TOOL_CONFIG[toolId];
+            if (!config) return null;
+            const Icon = config.icon;
+            return (
+              <div key={toolId} className={cn("flex items-center gap-3 rounded-lg px-3 py-2", isDark ? "bg-white/[0.03]" : "bg-gray-50")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+                  <Icon className="h-3.5 w-3.5 text-emerald-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn("text-xs font-medium", isDark ? "text-white" : "text-gray-800")}>{config.label}</p>
+                  <p className={cn("text-[10px]", isDark ? "text-white/40" : "text-gray-500")}>{config.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // TOC extraction
@@ -293,6 +412,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chatKey, setChatKey] = useState(0);
+  const [showToolsInfo, setShowToolsInfo] = useState(false);
   const progressRef = useRef<HTMLDivElement | null>(null);
 
   // Context tags state
@@ -862,6 +982,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         isDark={portalDark}
       />
 
+      {/* Tools info modal */}
+      <ToolsInfoModal
+        open={showToolsInfo}
+        onClose={() => setShowToolsInfo(false)}
+        enabledTools={[...(portal.enabled_tools ?? ["search_document", "navigate_pdf", "navigate_portal", "highlight_text", "render_chart"]), "get_document_registry", "lookup_document", "open_document_preview"]}
+        isDark={portalDark}
+        brandColor={brandColor}
+      />
+
       {/* Audio element (hidden) */}
       {portal.audio_url && (
         <audio
@@ -1344,6 +1473,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b", pd ? "border-white/5" : "border-sky-100")}>
               <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
               <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowToolsInfo(true)}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  title="AI Tools info"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </Button>
                 {toolTogglesDropdown}
                 <Button
                   variant="ghost"
@@ -1383,6 +1521,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               Ask about this document...
             </button>
             <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowToolsInfo(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="AI Tools info"
+              >
+                <Info className="h-4 w-4" />
+              </Button>
               {toolTogglesDropdown}
               <Button
                 variant="ghost"
@@ -1409,6 +1556,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 <span>Collapse</span>
               </button>
               <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowToolsInfo(true)}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  title="AI Tools info"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </Button>
                 {toolTogglesDropdown}
                 <Button
                   variant="ghost"
