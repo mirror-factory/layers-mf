@@ -1695,6 +1695,8 @@ interface ChatInterfaceProps {
   portalClientName?: string;
   /** Portal branding — brand color for send button and accents */
   portalBrandColor?: string;
+  /** Portal branding — logo URL for empty state */
+  portalLogoUrl?: string;
   /** Callback fired when a tool completes with output (used by portal to react to tool results) */
   onToolOutput?: (toolName: string, output: unknown) => void;
   /** Compact mode — reduced spacing, no empty state, minimal chrome (for embedded drawers) */
@@ -1705,7 +1707,7 @@ interface ChatInterfaceProps {
   containerClassName?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1758,6 +1760,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       portalTitle={portalTitle}
       portalClientName={portalClientName}
       portalBrandColor={portalBrandColor}
+      portalLogoUrl={portalLogoUrl}
       onToolOutput={onToolOutput}
       compactMode={compactMode}
       hideContextBar={hideContextBar}
@@ -1779,13 +1782,14 @@ interface ChatInterfaceInnerProps {
   portalTitle?: string;
   portalClientName?: string;
   portalBrandColor?: string;
+  portalLogoUrl?: string;
   onToolOutput?: (toolName: string, output: unknown) => void;
   compactMode?: boolean;
   hideContextBar?: boolean;
   containerClassName?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2607,11 +2611,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           {messages.length === 0 && (
             <div className={cn("flex flex-col items-center justify-center text-center text-muted-foreground", compactMode ? "py-4" : "h-full")}>
               {!compactMode && (portalMode ? (
-                <div className="mb-3">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full"
-                    style={{ backgroundColor: portalBrandColor || "#34d399" }}
-                  />
+                <div className="mb-4 flex flex-col items-center gap-2">
+                  {portalLogoUrl ? (
+                    <img src={portalLogoUrl} alt="" className="h-8 w-auto opacity-80" />
+                  ) : (
+                    <span
+                      className="inline-block h-3 w-3 rounded-full"
+                      style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                    />
+                  )}
+                  {portalClientName && (
+                    <p className="text-[11px] text-muted-foreground/60">
+                      Prepared by <span className="text-foreground/70">Mirror Factory</span> for <span className="text-foreground/70">{portalClientName}</span>
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="mb-3 opacity-60">
@@ -2623,13 +2636,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   ? `Ask about ${portalTitle}`
                   : "Ask anything about your team\u2019s knowledge"}
               </p>
-              {!compactMode && (
+              {!compactMode && !portalMode && (
                 <p className="text-xs mt-1">
-                  {portalMode
-                    ? portalClientName
-                      ? `Chat with AI about ${portalClientName}\u2019s document. Ask questions, search for sections, or request visualizations.`
-                      : "Ask questions, search for sections, or request visualizations."
-                    : "Granger searches your documents, meetings, and notes to answer."}
+                  {"Granger searches your documents, meetings, and notes to answer."}
                 </p>
               )}
               <div className={cn("flex flex-wrap justify-center gap-2 max-w-lg", compactMode ? "mt-3" : "mt-5")}>
@@ -2694,14 +2703,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : portalMode ? (
                   <>
-                    {/* Portal mode: brand-colored dot avatar */}
-                    <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 36, height: 36, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
+                    {/* Portal mode: brand-colored dot avatar — always visible */}
+                    <div className="flex shrink-0 items-center justify-center rounded-full" style={{ width: 32, height: 32, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
                       <span
                         className={cn("inline-block h-2.5 w-2.5 rounded-full", isStreaming && "animate-pulse")}
                         style={{ backgroundColor: portalBrandColor || "#34d399" }}
                       />
                     </div>
-                    <div className="sm:hidden shrink-0 mt-0.5">
+                    <div className="hidden shrink-0 mt-0.5">
                       <span
                         className={cn("inline-block h-2 w-2 rounded-full", isStreaming && "animate-pulse")}
                         style={{ backgroundColor: portalBrandColor || "#34d399" }}

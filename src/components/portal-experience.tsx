@@ -1899,6 +1899,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
                 portalTitle={activeDoc?.title || portal.title}
                 portalClientName={portal.client_name ?? undefined}
                 portalBrandColor={accentColor}
+                portalLogoUrl={portal.logo_url ?? undefined}
                 compactMode
                 hideContextBar
                 containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_.shrink-0.sticky]:!bg-white [&_.shrink-0.sticky]:!bg-none [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white [&_[style*='linear-gradient']]:!bg-white [&_[style*='linear-gradient']]:![background:white]"}
