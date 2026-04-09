@@ -6,7 +6,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Planning",
     "url": "/portal-docs/bluewave/BlueWave_CallGuide_20260331.docx",
-    "sizeHuman": "17 KB"
+    "sizeHuman": "17 KB",
+    "description": "BlueWave sales call guide with conversation scripts, objection handling, and qualification criteria for AI receptionist solution pitches."
   },
   {
     "id": "development_scope_docx",
@@ -15,7 +16,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Core Documents",
     "url": "/portal-docs/bluewave/Development Scope.docx",
-    "sizeHuman": "117 KB"
+    "sizeHuman": "117 KB",
+    "description": "Detailed technical development scope for Project Aqueduct — system architecture, integration requirements, API specs, and implementation phases."
   },
   {
     "id": "executive_summary_docx",
@@ -24,7 +26,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Core Documents",
     "url": "/portal-docs/bluewave/Executive Summary.docx",
-    "sizeHuman": "214 KB"
+    "sizeHuman": "214 KB",
+    "description": "Executive summary of the BlueWave AI OS proposal — business case, ROI projections, and high-level solution overview for leadership review."
   },
   {
     "id": "project_intake_bluewave_aqueduct_docx",
@@ -33,7 +36,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Planning",
     "url": "/portal-docs/bluewave/Project_Intake_BlueWave_Aqueduct.docx",
-    "sizeHuman": "19 KB"
+    "sizeHuman": "19 KB",
+    "description": "Project intake document for Aqueduct initiative — stakeholder details, goals, constraints, timeline, and initial technical requirements."
   },
   {
     "id": "proposal_bluewave_swell_docx",
@@ -42,7 +46,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Core Documents",
     "url": "/portal-docs/bluewave/Proposal_BlueWave_Swell.docx",
-    "sizeHuman": "213 KB"
+    "sizeHuman": "213 KB",
+    "description": "Full commercial proposal for Project Swell — pricing, deliverables, timeline, and engagement terms for the AI receptionist platform."
   },
   {
     "id": "bluewave_high_level_mvp_architecture_png",
@@ -51,7 +56,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "image",
     "category": "Architecture",
     "url": "/portal-docs/bluewave/Bluewave_high_level_MVP_architecture.png",
-    "sizeHuman": "5.1 MB"
+    "sizeHuman": "5.1 MB",
+    "description": "Visual diagram of the BlueWave high-level MVP architecture showing key system components, data flows, and integration points."
   },
   {
     "id": "proposal_library_competitive_landscape_docx",
@@ -60,7 +66,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/Competitive Landscape.docx",
-    "sizeHuman": "49 KB"
+    "sizeHuman": "49 KB",
+    "description": "Competitive landscape analysis — comparison of BlueWave's position against competitors, differentiators, and market opportunity."
   },
   {
     "id": "proposal_library_cost_of_inaction_docx",
@@ -69,7 +76,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/Cost Of Inaction.docx",
-    "sizeHuman": "46 KB"
+    "sizeHuman": "46 KB",
+    "description": "Cost of inaction analysis — quantified business impact of not adopting AI solutions, including lost revenue and inefficiency costs."
   },
   {
     "id": "proposal_library_dayinthelife_bluewave_swell_docx",
@@ -78,7 +86,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/DayInTheLife_BlueWave_Swell.docx",
-    "sizeHuman": "45 KB"
+    "sizeHuman": "45 KB",
+    "description": "Day-in-the-life narrative for BlueWave Swell — before/after scenarios showing how AI transforms daily workflows for staff and management."
   },
   {
     "id": "proposal_library_faq_docx",
@@ -87,7 +96,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/FAQ.docx",
-    "sizeHuman": "47 KB"
+    "sizeHuman": "47 KB",
+    "description": "Frequently asked questions about the Mirror Factory AI engagement — pricing, implementation, security, integrations, and support."
   },
   {
     "id": "proposal_library_proposal_docx",
@@ -96,7 +106,8 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "docx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/Proposal.docx",
-    "sizeHuman": "208 KB"
+    "sizeHuman": "208 KB",
+    "description": "Complete proposal document for BlueWave — full commercial terms, technical approach, team bios, case studies, and implementation roadmap."
   },
   {
     "id": "proposal_library_roi_bluewave_swell_xlsx",
@@ -105,6 +116,7 @@ export const BLUEWAVE_DOCUMENTS = [
     "type": "xlsx",
     "category": "Proposal Library",
     "url": "/portal-docs/bluewave/proposal-library/ROI_BlueWave_Swell.xlsx",
-    "sizeHuman": "25 KB"
+    "sizeHuman": "25 KB",
+    "description": "ROI analysis spreadsheet for Project Swell — financial model with revenue impact, cost savings, payback period, and 3-year projections."
   }
 ];

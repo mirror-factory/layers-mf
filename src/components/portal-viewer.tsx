@@ -563,24 +563,23 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const activePdfUrl = pdfFailed ? null : rawPdfUrl;
 
   // View mode and Library Previews
-  const [activeView, setActiveView] = useState<"document" | "library">("document");
+  const [activeView, setActiveView] = useState<"document" | "library" | "doc-preview">("library");
   const [previewDoc, setPreviewDoc] = useState<typeof BLUEWAVE_DOCUMENTS[0] | null>(null);
   const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
   const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
-  const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (doc.type === "image") {
-      setPreviewDoc(doc);
-      return;
-    }
-    
+  const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setPreviewDoc(doc);
+    setActiveView("doc-preview");
+
+    if (doc.type === "image") return;
+
     setIsPreviewLoading(true);
     setDocPreviewText(null);
     setDocPreviewHtml(null);
-    
+
     try {
       const res = await fetch("/portal-docs/bluewave/_manifest.json");
       const manifest = await res.json();
@@ -971,6 +970,18 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               </div>
               {/* Document switcher tabs */}
               <div className="flex gap-1 mt-1">
+                <button
+                  onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                    activeView === "library" || activeView === "doc-preview"
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  )}
+                  style={activeView === "library" || activeView === "doc-preview" ? { backgroundColor: brandColor } : undefined}
+                >
+                  <FolderOpen className="h-3 w-3" /> Library
+                </button>
                 {documents.map((doc, i) => (
                   <button
                     key={doc.id}
@@ -986,18 +997,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     {doc.title}
                   </button>
                 ))}
-                <button
-                  onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
-                    activeView === "library"
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  )}
-                  style={activeView === "library" ? { backgroundColor: brandColor } : undefined}
-                >
-                  <FolderOpen className="h-3 w-3" /> Library
-                </button>
               </div>
             </div>
           </div>
@@ -1219,7 +1218,80 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       <div className="flex flex-1 overflow-hidden" style={{ height: distractionFree ? '100vh' : 'calc(100vh - 3rem)' }}>
         {activeView === "document" && tocPanel}
         
-        {activeView === "library" ? (
+        {activeView === "doc-preview" && previewDoc ? (
+          <div className="flex-1 overflow-y-auto">
+            {/* Sticky viewer header */}
+            <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl px-4 py-3">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <button
+                  onClick={() => { setActiveView("library"); }}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors"
+                  title="Back to Library"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: previewDoc.type === 'image' ? '#f59e0b15' : previewDoc.type === 'pdf' ? '#ef444415' : previewDoc.type === 'xlsx' ? '#22c55e15' : `${brandColor}15` }}>
+                  {previewDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
+                   previewDoc.type === "pdf" ? <FileIcon className="h-4 w-4 text-red-500" /> :
+                   previewDoc.type === "xlsx" ? <FileSpreadsheet className="h-4 w-4 text-green-500" /> :
+                   <FileText className="h-4 w-4 text-cyan-400" />}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="truncate text-sm font-semibold text-white">{previewDoc.title}</p>
+                  <p className="text-[10px] text-white/30">{previewDoc.type.toUpperCase()} · {previewDoc.sizeHuman}</p>
+                </div>
+              </div>
+              <a
+                href={previewDoc.url}
+                download
+                className="flex h-7 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-[11px] font-medium text-white/60 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </a>
+            </div>
+
+            {/* Viewer content */}
+            <div className="p-6">
+              {previewDoc.type === "image" ? (
+                <div className="flex min-h-[70vh] items-center justify-center">
+                  <img src={previewDoc.url} alt={previewDoc.title} className="max-h-[85vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain" />
+                </div>
+              ) : previewDoc.type === "xlsx" ? (
+                <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-green-500/10">
+                    <FileSpreadsheet className="h-10 w-10 text-green-500" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-base font-semibold text-white">{previewDoc.title}</p>
+                    <p className="mt-2 max-w-md text-sm text-white/50">This spreadsheet requires Excel or Google Sheets. Download to view in your preferred application.</p>
+                  </div>
+                  <a href={previewDoc.url} download className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90" style={{ backgroundColor: brandColor }}>
+                    <Download className="h-4 w-4" /> Download Spreadsheet
+                  </a>
+                </div>
+              ) : isPreviewLoading ? (
+                <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
+                  <p className="text-sm text-white/50">Loading document...</p>
+                </div>
+              ) : (
+                <div className="mx-auto max-w-3xl rounded-xl border border-white/10 bg-[#0e1015] p-8 shadow-sm sm:p-12">
+                  {docPreviewHtml ? (
+                    <div
+                      className="prose prose-sm sm:prose-base max-w-none prose-invert prose-headings:font-semibold prose-a:text-blue-400"
+                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-300">
+                      {docPreviewText || "No text content could be extracted from this document."}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeView === "library" ? (
           <div className="flex-1 overflow-y-auto p-6 md:p-12">
             <div className="mx-auto max-w-5xl">
               <div className="mb-8">
@@ -1240,30 +1312,30 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                       {categoryDocs.map((doc, di) => (
                         <div
                           key={di}
-                          className="group relative flex flex-col items-start gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.04]"
+                          onClick={() => handleOpenDocPreview(doc)}
+                          className="group relative flex flex-col items-start gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.04] cursor-pointer"
                         >
                           <div className="flex w-full items-start justify-between gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105" 
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105"
                               style={{ backgroundColor: doc.type === 'pdf' ? '#ef444415' : doc.type === 'xlsx' ? '#22c55e15' : doc.type === 'image' ? '#f59e0b15' : `${brandColor}15` }}>
                               {doc.type === "pdf" ? <FileIcon className="h-5 w-5 text-red-500" /> :
                                doc.type === "xlsx" ? <FileSpreadsheet className="h-5 w-5 text-green-500" /> :
                                doc.type === "image" ? <ImageIcon className="h-5 w-5 text-amber-500" /> :
                                <FileText className="h-5 w-5" style={{ color: brandColor }} />}
                             </div>
-                            
+
                             <div className="flex shrink-0 gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
-                              {doc.type !== "pdf" && doc.type !== "xlsx" && (
-                                <button
-                                  onClick={(e) => handleOpenDocPreview(doc, e)}
-                                  className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white"
-                                  title="Preview Document"
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </button>
-                              )}
+                              <button
+                                onClick={(e) => handleOpenDocPreview(doc, e)}
+                                className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white"
+                                title="Preview Document"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
                               <a
                                 href={doc.url}
                                 download
+                                onClick={(e) => e.stopPropagation()}
                                 className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white"
                                 title="Download Document"
                               >
@@ -1504,71 +1576,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       </div>
 
-      {/* Document Preview Overlay */}
-      {previewDoc && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewDoc(null)} />
-          <div className={cn(
-            "relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f1115] shadow-2xl",
-            previewDoc.type === "image" ? "max-h-[85vh] max-w-[85vw]" : "h-full w-full max-w-4xl"
-          )}>
-            {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-3">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                  {previewDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
-                   <FileText className="h-4 w-4 text-cyan-400" />}
-                </div>
-                <h3 className="truncate text-sm font-semibold text-white">
-                  {previewDoc.title}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewDoc.url}
-                  download
-                  className="flex h-8 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-[11px] font-medium text-white/60 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  <Download className="h-3.5 w-3.5" /> Download
-                </a>
-                <button
-                  onClick={() => setPreviewDoc(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            
-            {/* Content */}
-            <div className="flex-1 overflow-auto bg-black/20">
-              {previewDoc.type === "image" ? (
-                <div className="flex min-h-[40vh] items-center justify-center p-6">
-                  <img src={previewDoc.url} alt={previewDoc.title} className="max-h-[75vh] max-w-full rounded shadow-2xl object-contain border border-white/10" />
-                </div>
-              ) : isPreviewLoading ? (
-                <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4">
-                  <div className="h-8 w-8 animate-spin text-cyan-500 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full" />
-                  <p className="text-sm text-white/50">Extracting document content...</p>
-                </div>
-              ) : (
-                <div className="mx-auto my-8 max-w-3xl rounded-xl border border-white/10 bg-[#181a20] p-8 shadow-sm sm:p-12 text-gray-200">
-                  {docPreviewHtml ? (
-                    <div 
-                      className="prose prose-sm sm:prose-base max-w-none prose-invert prose-headings:font-semibold prose-a:text-blue-400 hover:prose-a:text-blue-300"
-                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
-                    />
-                  ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-300">
-                      {docPreviewText || "No text content could be extracted from this document."}
-                    </pre>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

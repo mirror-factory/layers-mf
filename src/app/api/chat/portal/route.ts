@@ -426,6 +426,102 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     });
   }
 
+  // Always-available: document library registry + lookup
+  tools.get_document_registry = tool({
+    description: "Get the registry of all documents available in the document library for this portal. Returns each document's title, type, category, description, and ID. Use this to know WHICH document to look up when a user asks about topics that might be covered in a specific file.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const { BLUEWAVE_DOCUMENTS } = await import("@/lib/bluewave-docs");
+      return {
+        total: BLUEWAVE_DOCUMENTS.length,
+        documents: BLUEWAVE_DOCUMENTS.map(d => ({
+          id: d.id,
+          title: d.title,
+          type: d.type,
+          category: d.category,
+          description: d.description,
+          url: d.url,
+        })),
+      };
+    },
+  });
+
+  tools.lookup_document = tool({
+    description: "Look up content from a specific document in the library by its ID. Optionally filter by a search query to find relevant excerpts. Use get_document_registry first to know which document IDs are available.",
+    inputSchema: z.object({
+      document_id: z.string().describe("The document ID from the registry (e.g. 'proposal_bluewave_swell_docx')"),
+      query: z.string().optional().describe("Optional search query to find relevant excerpts within the document"),
+      max_chars: z.number().min(500).max(8000).optional().describe("Maximum characters to return (default 3000)"),
+    }),
+    execute: async ({ document_id, query, max_chars }: { document_id: string; query?: string; max_chars?: number }) => {
+      try {
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const manifestPath = path.join(process.cwd(), "public", "portal-docs", "bluewave", "_manifest.json");
+        const raw = await fs.readFile(manifestPath, "utf-8");
+        const manifest = JSON.parse(raw) as Array<{ id: string; extractedText?: string; extractedHtml?: string }>;
+        const doc = manifest.find(d => d.id === document_id);
+
+        if (!doc) {
+          return { error: `Document "${document_id}" not found in library. Use get_document_registry to see available IDs.` };
+        }
+
+        const text = doc.extractedText || "(no text content available)";
+        const limit = max_chars ?? 3000;
+
+        if (query) {
+          const lines = text.split("\n").filter((l: string) => l.trim());
+          const lowerQuery = query.toLowerCase();
+          const queryWords = lowerQuery.split(/\s+/).filter((w: string) => w.length > 2);
+
+          const scored = lines.map((line: string, idx: number) => {
+            const lower = line.toLowerCase();
+            const score = queryWords.filter((w: string) => lower.includes(w)).length;
+            return { line, idx, score };
+          }).filter((l: { line: string; idx: number; score: number }) => l.score > 0);
+
+          scored.sort((a: { score: number }, b: { score: number }) => b.score - a.score);
+
+          if (scored.length > 0) {
+            const seen = new Set<number>();
+            const excerpts: string[] = [];
+            let totalChars = 0;
+
+            for (const { idx } of scored.slice(0, 10)) {
+              const start = Math.max(0, idx - 2);
+              const end = Math.min(lines.length - 1, idx + 3);
+              if (!seen.has(start)) {
+                const excerpt = lines.slice(start, end + 1).join("\n");
+                seen.add(start);
+                excerpts.push(excerpt);
+                totalChars += excerpt.length;
+                if (totalChars >= limit) break;
+              }
+            }
+
+            return {
+              document_id,
+              query,
+              excerpt_count: excerpts.length,
+              content: excerpts.join("\n---\n").slice(0, limit),
+            };
+          }
+
+          return { document_id, query, excerpt_count: 0, content: "(no matching content found)", note: "Try a broader query" };
+        }
+
+        return {
+          document_id,
+          content: text.slice(0, limit),
+          total_chars: text.length,
+          truncated: text.length > limit,
+        };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Failed to load document" };
+      }
+    },
+  });
+
   // Document switching — works with the portal's documents array
   const documents = (portal.documents as { id: string; title: string; context_item_id: string; is_active: boolean }[]) ?? [];
   if (documents.length > 1) {
@@ -528,6 +624,7 @@ You have access to the full document content. When answering questions:
 5. Always reference specific sections and quote relevant text.
 6. Be concise but thorough.
 7. NEVER call more than 3 tools per response (except walkthrough_document which counts as 1).
+8. Use get_document_registry to discover which files are in the document library, then lookup_document to read their content. These are useful when the user asks about topics that may be covered in a supplementary document.
 
 Document: ${portal.title}
 Client: ${portal.client_name ?? "Unknown"}
