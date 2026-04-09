@@ -680,12 +680,14 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         background: `radial-gradient(ellipse 50% 40% at 60% 50%, ${brandColor}${isDark ? "10" : "06"} 0%, transparent 60%)`,
         animation: "hero-glow 12s ease-in-out infinite reverse",
       }} />
-      {/* Animated grid — drifts diagonally */}
-      <div className={cn("absolute inset-0", isDark ? "opacity-[0.04]" : "opacity-[0.06]")} style={{
-        backgroundImage: `linear-gradient(${brandColor}60 1px, transparent 1px), linear-gradient(90deg, ${brandColor}60 1px, transparent 1px)`,
-        backgroundSize: "80px 80px",
-        animation: "hero-grid-drift 20s linear infinite",
-      }} />
+      {/* Animated grid — drifts diagonally (hidden in light mode) */}
+      {isDark && (
+        <div className="absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: `linear-gradient(${brandColor}60 1px, transparent 1px), linear-gradient(90deg, ${brandColor}60 1px, transparent 1px)`,
+          backgroundSize: "80px 80px",
+          animation: "hero-grid-drift 20s linear infinite",
+        }} />
+      )}
       {/* Bottom edge glow line */}
       <div className="absolute bottom-0 left-0 right-0 h-px" style={{
         background: `linear-gradient(90deg, transparent 10%, ${brandColor}50, transparent 90%)`,
@@ -715,17 +717,15 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         </div>
 
         {/* Title — BIG, animated gradient */}
-        <h1 className="text-6xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
-          style={{
-            background: isDark
-              ? `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`
-              : `linear-gradient(135deg, #111827 0%, ${brandColor} 50%, #111827 100%)`,
-            backgroundSize: isDark ? "300% 300%" : "200% 200%",
+        <h1 className={cn("text-6xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl", !isDark && "text-gray-900")}
+          style={isDark ? {
+            background: `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`,
+            backgroundSize: "300% 300%",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            animation: isDark
-              ? "hero-title-gradient 6s ease-in-out infinite, hero-fade-up 1s ease-out 0.4s both"
-              : "hero-fade-up 1s ease-out 0.4s both",
+            animation: "hero-title-gradient 6s ease-in-out infinite, hero-fade-up 1s ease-out 0.4s both",
+          } : {
+            animation: "hero-fade-up 1s ease-out 0.4s both",
           }}>
           {title.replace(/Scope of Work —\s*/i, "").replace(/Proposal —\s*/i, "")}
         </h1>
@@ -1201,15 +1201,17 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
     const values = rows.map(r => parseFloat((r[numericCol] ?? "0").replace(/[$,~%<>]/g, "")) || 0);
     if (values.every(v => v === 0)) return null;
     const colors = rows.map((_, i) => `${brandColor}${Math.round(((i + 1) / rows.length) * 180 + 75).toString(16).padStart(2, "0")}`);
+    const textColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.6)";
+    const gridColor = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.08)";
     return {
       type: rows.length <= 5 ? "doughnut" : "bar",
       data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: "transparent", borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: true, animation: { duration: 1000 },
-        plugins: { legend: { position: "right" as const, labels: { color: "rgba(255,255,255,0.5)", font: { size: 10 } } } },
-        ...(rows.length > 5 ? { scales: { x: { ticks: { color: "rgba(255,255,255,0.35)" }, grid: { color: "rgba(255,255,255,0.04)" } }, y: { ticks: { color: "rgba(255,255,255,0.35)" }, grid: { color: "rgba(255,255,255,0.04)" } } } } : {}),
+        plugins: { legend: { position: "right" as const, labels: { color: textColor, font: { size: 10 } } } },
+        ...(rows.length > 5 ? { scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } } } : {}),
       },
     };
-  }, [headers, rows, numericCol, brandColor]);
+  }, [headers, rows, numericCol, brandColor, isDark]);
 
   return (
     <div className="my-8 animate-section">
@@ -1304,15 +1306,17 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
     const labels = withNums.map(r => r.phase.replace(/Phase \d+:\s*/i, "Ph " + (rows.indexOf(r) + 1)));
     const values = withNums.map(r => { const m = r.investment.match(/\$([\d,]+)/); return m ? parseInt(m[1].replace(/,/g, ""), 10) : 0; });
     const colors = withNums.map((_, i) => `${brandColor}${Math.round(((i + 1) / withNums.length) * 160 + 95).toString(16).padStart(2, "0")}`);
+    const tc = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.55)";
+    const gc = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.08)";
     return {
       type: "bar" as const,
       data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: "transparent", borderRadius: 6, barPercentage: 0.6 }] },
       options: { responsive: true, maintainAspectRatio: true, animation: { duration: 1200 },
         plugins: { legend: { display: false } },
-        scales: { x: { ticks: { color: "rgba(255,255,255,0.4)" }, grid: { display: false } }, y: { ticks: { color: "rgba(255,255,255,0.3)", callback: (v: number) => "$" + (v / 1000) + "k" }, grid: { color: "rgba(255,255,255,0.04)" } } },
+        scales: { x: { ticks: { color: tc }, grid: { display: false } }, y: { ticks: { color: tc, callback: (v: number) => "$" + (v / 1000) + "k" }, grid: { color: gc } } },
       },
     };
-  }, [rows, brandColor]);
+  }, [rows, brandColor, isDark]);
 
   // Budget chart auto-shows (it's the key visual for this section)
   const [chartReady] = useState(true);
@@ -1326,7 +1330,7 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
               : "border-gray-200 bg-gray-50/80 hover:border-gray-300 hover:bg-gray-50 shadow-sm")}
             style={{ animationDelay: `${i * 0.1}s` }}>
             <p className={cn("mb-4 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-gray-400")}>{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
-            <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, ${isDark ? "#fff" : "#1a1a2e"} 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)" }}>
+            <p className={cn("mb-2 text-3xl font-bold", isDark ? "" : "text-gray-900")} style={isDark && row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : (!isDark && row.investment.includes("$") ? { color: brandColor } : {})}>
               {row.investment}
             </p>
             <div className={cn("flex items-center gap-1.5 text-[12px]", isDark ? "text-white/35" : "text-gray-400")}><Clock className="h-3 w-3" />{row.timeline}</div>
