@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
-import * as mammoth from "mammoth/mammoth.browser";
 import { read, utils } from "xlsx";
 import {
   Tooltip,
@@ -331,6 +330,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [docPreviewTable, setDocPreviewTable] = useState<string[][] | null>(null);
   const [docPreviewMessages, setDocPreviewMessages] = useState<string[]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [docxArrayBuffer, setDocxArrayBuffer] = useState<ArrayBuffer | null>(null);
+  const docxContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -364,9 +365,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
       if (doc.type === "docx") {
         const arrayBuffer = await fetchBinary();
-        const result = await mammoth.convertToHtml({ arrayBuffer });
-        setDocPreviewHtml(result.value);
-        setDocPreviewMessages(result.messages.map((msg: { message: string }) => msg.message));
+        setDocxArrayBuffer(arrayBuffer);
         return;
       }
 
@@ -399,6 +398,38 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
   };
 
+  // Render DOCX via docx-preview when arrayBuffer is ready
+  useEffect(() => {
+    if (!docxArrayBuffer || !docxContainerRef.current) return;
+    const container = docxContainerRef.current;
+    container.innerHTML = "";
+    let cancelled = false;
+    (async () => {
+      try {
+        const { renderAsync } = await import("docx-preview");
+        if (cancelled) return;
+        await renderAsync(docxArrayBuffer, container, undefined, {
+          className: "docx-preview-body",
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          ignoreFonts: false,
+          breakPages: true,
+          ignoreLastRenderedPageBreak: true,
+          experimental: false,
+          trimXmlDeclaration: true,
+          useBase64URL: true,
+        });
+      } catch (err) {
+        console.error("docx-preview renderAsync failed:", err);
+        if (!cancelled && container) {
+          container.innerHTML = `<p class="text-red-500 p-4">Failed to render document. Try downloading instead.</p>`;
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [docxArrayBuffer]);
+
   // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
   const handleToolOutput = useCallback(
     (toolName: string, output: unknown) => {
@@ -425,9 +456,22 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         }
       } else if (toolName === "open_document_preview" && out.action === "open_document_preview") {
         const docId = String(out.document_id ?? "");
-        const doc = BLUEWAVE_DOCUMENTS.find((item) => item.id === docId);
-        if (doc) {
-          void handleOpenDocPreview(doc);
+        // Check library documents first, then portal documents
+        const libraryDoc = BLUEWAVE_DOCUMENTS.find((item) => item.id === docId);
+        if (libraryDoc) {
+          void handleOpenDocPreview(libraryDoc);
+        } else {
+          // Try portal documents — switch to that doc tab
+          const portalDocs = portal.documents ?? [];
+          const portalIdx = portalDocs.findIndex(
+            (d) => d.context_item_id === docId || d.title === docId || d.id === docId
+          );
+          if (portalIdx >= 0) {
+            setActiveDocIndex(portalIdx);
+            setActiveView("document");
+            setCurrentPage(1);
+            setPdfFailed(false);
+          }
         }
       }
     },
@@ -1118,6 +1162,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
                   <p className={cn("text-sm", pd ? "text-white/50" : "text-gray-500")}>Loading document...</p>
                 </div>
+              ) : docxArrayBuffer && previewDoc.type === "docx" ? (
+                /* docx-preview renders directly into this container */
+                <div
+                  ref={docxContainerRef}
+                  className="docx-preview-wrapper mx-auto max-w-4xl min-h-[80vh] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+                />
               ) : (
                 <div
                   className={cn(
@@ -1137,28 +1187,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     >
                       {docPreviewText || "No text content could be extracted from this document."}
                     </pre>
-                  )}
-                  {docPreviewMessages.length > 0 && (
-                    <div
-                      className={cn(
-                        "mt-6 rounded-lg border p-3 text-xs",
-                        docPreviewIsLight ? "border-sky-100 text-gray-500" : pd ? "border-white/10 text-white/50" : "border-sky-100 text-gray-500"
-                      )}
-                    >
-                      <p
-                        className={cn(
-                          "mb-1 text-[11px] font-semibold uppercase tracking-wide",
-                          docPreviewIsLight ? "text-gray-400" : pd ? "text-white/40" : "text-gray-400"
-                        )}
-                      >
-                        Conversion notes
-                      </p>
-                      <ul className="space-y-1">
-                        {docPreviewMessages.map((message, idx) => (
-                          <li key={`m-${idx}`}>• {message}</li>
-                        ))}
-                      </ul>
-                    </div>
                   )}
                 </div>
               )}

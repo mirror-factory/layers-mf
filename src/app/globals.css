@@ -289,3 +289,25 @@ mark.portal-pdf-highlight-active {
 .annotation-enter {
   animation: annotation-enter 0.3s ease-out both;
 }
+
+/* docx-preview styles — make rendered Word docs look native */
+.docx-preview-wrapper .docx-wrapper {
+  background: white !important;
+  padding: 2rem 1rem !important;
+}
+.docx-preview-wrapper .docx-wrapper > section.docx {
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  margin: 1rem auto !important;
+  padding: 2.5cm 2cm !important;
+  max-width: 21cm;
+  min-height: 29.7cm;
+}
+.docx-preview-wrapper table {
+  border-collapse: collapse;
+}
+.docx-preview-wrapper td,
+.docx-preview-wrapper th {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+}
