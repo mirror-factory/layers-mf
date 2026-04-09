@@ -1017,7 +1017,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className={cn("text-base font-semibold tracking-tight", pd ? "text-white" : "text-gray-900")}>
-                  {activeDoc?.title || portal.title}
+                  {activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : (activeDoc?.title || portal.title)}
                 </h1>
                 {portal.client_name && (
                   <span
