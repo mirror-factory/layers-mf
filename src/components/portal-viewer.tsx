@@ -32,7 +32,9 @@ import {
   Moon,
   Info,
   Footprints,
-  Library as LibraryIcon
+  Library as LibraryIcon,
+  Columns2,
+  RectangleVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
@@ -413,6 +415,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chatKey, setChatKey] = useState(0);
   const [showToolsInfo, setShowToolsInfo] = useState(false);
+  const [twoColumnMode, setTwoColumnMode] = useState(false);
+  // Force single column when sidebar is docked
+  const effectiveTwoColumn = twoColumnMode && !expanded;
   const progressRef = useRef<HTMLDivElement | null>(null);
 
   // Context tags state
@@ -1223,6 +1228,21 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               </Button>
             )}
 
+            {/* Column toggle — disabled when sidebar is docked */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTwoColumnMode(prev => !prev)}
+              disabled={expanded}
+              className={cn(
+                "hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground",
+                expanded && "opacity-30 cursor-not-allowed"
+              )}
+              title={expanded ? "Single column (sidebar active)" : effectiveTwoColumn ? "Single column" : "Two column view"}
+            >
+              {effectiveTwoColumn ? <RectangleVertical className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+            </Button>
+
             <Button
               variant="ghost"
               size="icon"
@@ -1327,7 +1347,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             </div>
 
             {/* Viewer content */}
-            <div className="p-6">
+            <div className={cn("p-2 md:p-4", effectiveTwoColumn && "md:columns-2 md:gap-0")}>
               {activeLibraryDoc.type === "image" ? (
                 <div className="flex min-h-[70vh] items-center justify-center">
                   <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
@@ -1387,7 +1407,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 /* docx-preview renders directly into this container */
                 <div
                   ref={docxContainerRef}
-                  className="docx-preview-wrapper mx-auto max-w-4xl min-h-[80vh] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+                  className={cn("docx-preview-wrapper mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden", effectiveTwoColumn ? "max-w-none min-h-0" : "max-w-4xl min-h-[80vh]")}
                 />
               ) : (
                 <div
@@ -1422,7 +1442,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
             textContent={activeDocContent || portal.document_content}
-            spread={!expanded}
+            spread={effectiveTwoColumn}
             currentPage={currentPage}
             onPageChange={handlePageChange}
             onTotalPages={handleTotalPages}
