@@ -411,10 +411,10 @@ function GlassCard({ children, className, brandColor, glowOnHover = false, style
         "transition-all duration-300",
         isDark
           ? "border-white/[0.06] bg-white/[0.018]"
-          : "border-black/[0.08] bg-black/[0.02]",
+          : "border-gray-200 bg-gray-50/80",
         glowOnHover && (isDark
           ? "hover:border-white/[0.12] hover:bg-white/[0.03]"
-          : "hover:border-black/[0.15] hover:bg-black/[0.04]"),
+          : "hover:border-gray-300 hover:bg-gray-50"),
         className,
       )}
       style={style}
@@ -437,7 +437,7 @@ function PriorityBadge({ priority }: { priority: string }) {
     : p === "should"
     ? { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/25" }
     : p === "could"
-    ? { bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" }
+    ? { bg: "bg-gray-500/10", text: "text-gray-500", border: "border-gray-500/20" }
     : { bg: "bg-red-500/10", text: "text-red-400/70", border: "border-red-500/20" };
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", config.bg, config.text, config.border)}>
@@ -475,21 +475,21 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
       <button onClick={() => setOpen(!open)}
         className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-xl transition-all",
           isDark ? "border-white/[0.08] bg-[#0a0a0f]/90 text-white/50 hover:bg-white/[0.05] hover:text-white/80"
-            : "border-black/[0.1] bg-white/90 text-black/50 hover:bg-black/[0.05] hover:text-black/80")}>
+            : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm")}>
         <BookOpen className="h-3.5 w-3.5" style={{ color: brandColor }} />
         Contents
         <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className={cn("absolute left-0 top-full mt-1 w-72 max-h-[60vh] overflow-y-auto rounded-xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
-          isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95")}>
+        <div className={cn("absolute left-0 top-full mt-1 w-72 max-h-[60vh] overflow-y-auto rounded-xl border p-2 backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150",
+          isDark ? "border-white/[0.08] bg-[#0a0a0f]/95 shadow-2xl" : "border-gray-200 bg-white shadow-lg")}>
           {entries.map(e => (
             <button key={e.id} onClick={() => { document.getElementById(e.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); setOpen(false); }}
               className={cn("flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-all",
-                isDark ? "text-white/50 hover:bg-white/[0.05] hover:text-white/80" : "text-black/50 hover:bg-black/[0.05] hover:text-black/80")}
+                isDark ? "text-white/50 hover:bg-white/[0.05] hover:text-white/80" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
               style={{ paddingLeft: `${(e.level - 1) * 12 + 12}px` }}>
               <ChevronRight className="h-2.5 w-2.5 shrink-0" style={{ color: brandColor }} />
-              <span className={cn("line-clamp-1", e.level === 1 && (isDark ? "font-medium text-white/60" : "font-medium text-black/60"))}>{e.title}</span>
+              <span className={cn("line-clamp-1", e.level === 1 && (isDark ? "font-medium text-white/60" : "font-medium text-gray-700"))}>{e.title}</span>
             </button>
           ))}
         </div>
@@ -549,7 +549,7 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
       <button onClick={() => setShowChart(true)}
         className={cn("mt-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] transition-colors",
           isDark ? "border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.04] hover:text-white/60"
-            : "border-black/[0.08] bg-black/[0.02] text-black/40 hover:bg-black/[0.04] hover:text-black/60")}>
+            : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700")}>
         <BarChart3 className="h-3 w-3" /> Show chart
       </button>
     );
@@ -557,23 +557,23 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
 
   return (
     <div className={cn("group relative rounded-2xl border overflow-hidden",
-      isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-black/[0.08] bg-black/[0.015]")}>
+      isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-gray-200 bg-white")}>
       <iframe srcDoc={html} className="h-[280px] w-full border-0 bg-transparent" sandbox="allow-scripts" title={title || "Chart"} />
       <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button onClick={reExplain} disabled={loading}
           className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-medium backdrop-blur-xl transition-all disabled:opacity-50",
             isDark ? "border-white/10 bg-black/80 text-white/60 hover:bg-black/90 hover:text-white"
-              : "border-black/10 bg-white/80 text-black/60 hover:bg-white/90 hover:text-black")}>
+              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900")}>
           {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
           {loading ? "Thinking..." : "Explain this"}
         </button>
       </div>
       {aiResult && (
         <div className={cn("border-t px-4 py-3 text-xs leading-relaxed",
-          isDark ? "border-white/[0.06] text-white/50" : "border-black/[0.08] text-black/50")}>
+          isDark ? "border-white/[0.06] text-white/50" : "border-gray-200 text-gray-600")}>
           <div className="flex items-center justify-between mb-1">
             <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
-            <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3 w-3" /></button>
+            <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
           </div>
           {aiResult}
         </div>
@@ -719,17 +719,19 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
           style={{
             background: isDark
               ? `linear-gradient(135deg, #ffffff 0%, ${brandColor} 40%, #ffffff 60%, ${brandColor} 100%)`
-              : `linear-gradient(135deg, #1a1a2e 0%, ${brandColor} 40%, #1a1a2e 60%, ${brandColor} 100%)`,
-            backgroundSize: "300% 300%",
+              : `linear-gradient(135deg, #111827 0%, ${brandColor} 50%, #111827 100%)`,
+            backgroundSize: isDark ? "300% 300%" : "200% 200%",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            animation: "hero-title-gradient 6s ease-in-out infinite, hero-fade-up 1s ease-out 0.4s both",
+            animation: isDark
+              ? "hero-title-gradient 6s ease-in-out infinite, hero-fade-up 1s ease-out 0.4s both"
+              : "hero-fade-up 1s ease-out 0.4s both",
           }}>
           {title.replace(/Scope of Work —\s*/i, "").replace(/Proposal —\s*/i, "")}
         </h1>
 
         {/* Subtitle */}
-        <p className={cn("max-w-xl text-lg", isDark ? "text-white/40" : "text-black/40")}
+        <p className={cn("max-w-xl text-lg", isDark ? "text-white/40" : "text-gray-500")}
           style={{ animation: "hero-fade-up-delayed 1.2s ease-out 0.5s both" }}>
           {subtitle || `Prepared for ${clientName}`}
         </p>
@@ -830,7 +832,7 @@ function ListSection({ section, brandColor }: { section: DocSection; brandColor:
               "group flex items-start gap-3 rounded-lg border px-4 py-3",
               isDark
                 ? "border-white/[0.05] bg-white/[0.01]"
-                : "border-black/[0.06] bg-black/[0.01]",
+                : "border-gray-200 bg-gray-50/50",
             )}
           >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
@@ -860,7 +862,7 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
         <div
           key={i}
           className={cn("group relative overflow-hidden rounded-2xl border transition-all duration-500",
-            isDark ? "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.1]" : "border-black/[0.08] bg-black/[0.01] hover:border-black/[0.12]")}
+            isDark ? "border-white/[0.06] bg-white/[0.01] hover:border-white/[0.1]" : "border-gray-200 bg-white hover:border-gray-300 shadow-sm")}
           style={{
             transitionDelay: isVisible ? `${i * 120}ms` : "0ms",
             opacity: isVisible ? 1 : 0,
@@ -868,16 +870,16 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
           }}
         >
           {/* Label bar */}
-          <div className={cn("border-b px-6 py-3", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
-            <span className={cn("text-[15px] font-semibold", isDark ? "text-white/80" : "text-gray-800")}>{comp.label}</span>
+          <div className={cn("border-b px-6 py-3", isDark ? "border-white/[0.04]" : "border-gray-100")}>
+            <span className={cn("text-[15px] font-semibold", isDark ? "text-white/80" : "text-gray-900")}>{comp.label}</span>
           </div>
 
           {/* Before -> After cards */}
           <div className="grid grid-cols-[1fr,auto,1fr] items-stretch gap-0">
             {/* Current State */}
             <div className="p-6">
-              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>Current State</div>
-              <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{comp.current}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-gray-400")}>Current State</div>
+              <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-600")}>{comp.current}</p>
             </div>
 
             {/* Arrow transition */}
@@ -920,10 +922,14 @@ function ArchitectureDiagram({ section, brandColor }: { section: DocSection; bra
   const layers = section.architectureLayers ?? [];
 
   // Alternate colors for visual layer separation
-  const layerColors = [
+  const layerColors = isDark ? [
     { bg: `${brandColor}08`, border: `${brandColor}25`, accent: brandColor },
     { bg: "rgba(255,255,255,0.02)", border: "rgba(255,255,255,0.08)", accent: "rgba(255,255,255,0.5)" },
     { bg: `${brandColor}05`, border: `${brandColor}18`, accent: `${brandColor}aa` },
+  ] : [
+    { bg: `${brandColor}06`, border: `${brandColor}20`, accent: brandColor },
+    { bg: "rgb(249,250,251)", border: "rgb(229,231,235)", accent: "rgb(107,114,128)" },
+    { bg: `${brandColor}04`, border: `${brandColor}15`, accent: `${brandColor}aa` },
   ];
 
   return (
@@ -1005,7 +1011,7 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
           key={i}
           className={cn("group overflow-hidden rounded-2xl border transition-all duration-300",
             isDark ? "border-white/[0.06] bg-white/[0.015] hover:border-white/[0.1]"
-              : "border-black/[0.08] bg-black/[0.015] hover:border-black/[0.12]")}
+              : "border-gray-200 bg-white hover:border-gray-300 shadow-sm")}
           style={{
             transitionDelay: isVisible ? `${i * 100}ms` : "0ms",
             opacity: isVisible ? 1 : 0,
@@ -1014,19 +1020,19 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
         >
           <div className="grid gap-0 sm:grid-cols-3">
             {/* When — context */}
-            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-400/60">When</div>
-              <p className={cn("text-[15px] leading-relaxed", isDark ? "text-white/50" : "text-gray-600")}>{jtbd.when}</p>
+            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-gray-100")}>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-amber-400/60" : "text-amber-600")}>When</div>
+              <p className={cn("text-[15px] leading-relaxed", isDark ? "text-white/50" : "text-gray-700")}>{jtbd.when}</p>
             </div>
             {/* I want — action */}
-            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-black/[0.06]")} style={{ backgroundColor: `${brandColor}04` }}>
+            <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-gray-100")} style={{ backgroundColor: `${brandColor}04` }}>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${brandColor}80` }}>I want</div>
               <p className="text-[15px] leading-relaxed font-medium" style={{ color: `${brandColor}bb` }}>{jtbd.want}</p>
             </div>
             {/* So that — outcome */}
             <div className="p-5">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-400/60">So that</div>
-              <p className="text-[15px] leading-relaxed text-emerald-400/70">{jtbd.soThat}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-emerald-400/60" : "text-emerald-600")}>So that</div>
+              <p className={cn("text-[15px] leading-relaxed", isDark ? "text-emerald-400/70" : "text-emerald-700")}>{jtbd.soThat}</p>
             </div>
           </div>
         </div>
@@ -1059,18 +1065,18 @@ function FeatureSpecSection({ section, brandColor }: { section: DocSection; bran
           }}
         >
           {/* Header */}
-          <div className={cn("flex items-center justify-between border-b px-6 py-4", isDark ? "border-white/[0.04]" : "border-black/[0.06]")}>
+          <div className={cn("flex items-center justify-between border-b px-6 py-4", isDark ? "border-white/[0.04]" : "border-gray-200")}>
             <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{spec.name}</span>
             <PriorityBadge priority={spec.priority} />
           </div>
           {/* Description */}
           <div className="px-6 py-4">
-            <p className={cn("text-[16px] leading-[1.75]", isDark ? "text-white/50" : "text-gray-500")}>{spec.description}</p>
+            <p className={cn("text-[16px] leading-[1.75]", isDark ? "text-white/50" : "text-gray-600")}>{spec.description}</p>
           </div>
           {/* Acceptance Criteria */}
           {spec.acceptance.length > 0 && (
-            <div className={cn("border-t px-6 py-4", isDark ? "border-white/[0.04]" : "border-black/[0.06]")} style={{ backgroundColor: `${brandColor}03` }}>
-              <div className={cn("mb-3 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>Acceptance Criteria</div>
+            <div className={cn("border-t px-6 py-4", isDark ? "border-white/[0.04]" : "border-gray-200")} style={{ backgroundColor: `${brandColor}03` }}>
+              <div className={cn("mb-3 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-gray-400")}>Acceptance Criteria</div>
               <div className="space-y-2">
                 {spec.acceptance.map((ac, ai) => (
                   <div key={ai} className="flex items-start gap-2.5">
@@ -1141,33 +1147,33 @@ function PriorityMatrixSection({ section, brandColor }: { section: DocSection; b
 
   return (
     <div ref={ref} className={cn("my-8 transition-all duration-700", isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0")}>
-      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
+      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-gray-200")}>
         <div className="overflow-x-auto">
           <table className="w-full text-[15px]">
             <thead>
               <tr style={{ backgroundColor: `${brandColor}06` }}>
                 <th className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>Feature Group</th>
-                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-emerald-400/60">Must</th>
-                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-amber-400/60">Should</th>
-                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-white/30">Could</th>
-                <th className="px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider text-red-400/40">Deferred</th>
+                <th className={cn("px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-emerald-400/60" : "text-emerald-600")}>Must</th>
+                <th className={cn("px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-amber-400/60" : "text-amber-600")}>Should</th>
+                <th className={cn("px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/30" : "text-gray-400")}>Could</th>
+                <th className={cn("px-5 py-4 text-center text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-red-400/40" : "text-red-500")}>Deferred</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, ri) => (
                 <tr
                   key={ri}
-                  className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-black/[0.06] hover:bg-black/[0.02]")}
+                  className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-gray-100 hover:bg-gray-50")}
                   style={{
                     transitionDelay: isVisible ? `${ri * 60}ms` : "0ms",
                     opacity: isVisible ? 1 : 0,
                   }}
                 >
                   <td className={cn("px-5 py-4 font-medium", isDark ? "text-white/70" : "text-gray-700")}>{row.feature}</td>
-                  <td className="px-5 py-4 text-center">{row.must ? <span className="inline-block rounded-md bg-emerald-500/15 px-2 py-0.5 text-[12px] text-emerald-400">{row.must}</span> : <span className="text-white/10">-</span>}</td>
-                  <td className="px-5 py-4 text-center">{row.should ? <span className="inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[12px] text-amber-400">{row.should}</span> : <span className="text-white/10">-</span>}</td>
-                  <td className="px-5 py-4 text-center">{row.could ? <span className="inline-block rounded-md bg-white/[0.05] px-2 py-0.5 text-[12px] text-white/40">{row.could}</span> : <span className="text-white/10">-</span>}</td>
-                  <td className="px-5 py-4 text-center">{row.deferred ? <span className="inline-block rounded-md bg-red-500/10 px-2 py-0.5 text-[12px] text-red-400/60">{row.deferred}</span> : <span className="text-white/10">-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.must ? <span className={cn("inline-block rounded-md bg-emerald-500/15 px-2 py-0.5 text-[12px]", isDark ? "text-emerald-400" : "text-emerald-600")}>{row.must}</span> : <span className={isDark ? "text-white/10" : "text-gray-300"}>-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.should ? <span className={cn("inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[12px]", isDark ? "text-amber-400" : "text-amber-600")}>{row.should}</span> : <span className={isDark ? "text-white/10" : "text-gray-300"}>-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.could ? <span className={cn("inline-block rounded-md px-2 py-0.5 text-[12px]", isDark ? "bg-white/[0.05] text-white/40" : "bg-gray-100 text-gray-500")}>{row.could}</span> : <span className={isDark ? "text-white/10" : "text-gray-300"}>-</span>}</td>
+                  <td className="px-5 py-4 text-center">{row.deferred ? <span className={cn("inline-block rounded-md bg-red-500/10 px-2 py-0.5 text-[12px]", isDark ? "text-red-400/60" : "text-red-500")}>{row.deferred}</span> : <span className={isDark ? "text-white/10" : "text-gray-300"}>-</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -1207,14 +1213,14 @@ function DataTableSection({ section, brandColor, shareToken }: { section: DocSec
 
   return (
     <div className="my-8 animate-section">
-      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
+      <div className={cn("overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06]" : "border-gray-200")}>
         <div className="overflow-x-auto">
           <table className="w-full text-[15px]">
             <thead><tr style={{ backgroundColor: `${brandColor}08` }}>
               {headers.map((h, hi) => <th key={hi} className={cn("px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-600")}>{h}</th>)}
             </tr></thead>
             <tbody>{rows.map((row, ri) => (
-              <tr key={ri} className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-black/[0.06] hover:bg-black/[0.02]")}>
+              <tr key={ri} className={cn("border-t transition-colors", isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-gray-100 hover:bg-gray-50")}>
                 {row.map((cell, ci) => <td key={ci} className={cn("px-5 py-4", ci === 0 ? (isDark ? "font-medium text-white/70" : "font-medium text-gray-700") : (isDark ? "text-white/50" : "text-gray-500"))}>{cell}</td>)}
               </tr>
             ))}</tbody>
@@ -1317,20 +1323,20 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
         {rows.map((row, i) => (
           <div key={i} className={cn("animate-card group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300",
             isDark ? "border-white/[0.06] bg-white/[0.018] hover:border-white/[0.12] hover:bg-white/[0.03]"
-              : "border-black/[0.08] bg-black/[0.018] hover:border-black/[0.15] hover:bg-black/[0.03]")}
+              : "border-gray-200 bg-gray-50/80 hover:border-gray-300 hover:bg-gray-50 shadow-sm")}
             style={{ animationDelay: `${i * 0.1}s` }}>
-            <p className={cn("mb-4 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-black/25")}>{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
+            <p className={cn("mb-4 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-gray-400")}>{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
             <p className="mb-2 text-3xl font-bold" style={row.investment.includes("$") ? { background: `linear-gradient(135deg, ${isDark ? "#fff" : "#1a1a2e"} 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : { color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)" }}>
               {row.investment}
             </p>
-            <div className={cn("flex items-center gap-1.5 text-[12px]", isDark ? "text-white/35" : "text-black/35")}><Clock className="h-3 w-3" />{row.timeline}</div>
+            <div className={cn("flex items-center gap-1.5 text-[12px]", isDark ? "text-white/35" : "text-gray-400")}><Clock className="h-3 w-3" />{row.timeline}</div>
             <div className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 transition-opacity group-hover:opacity-100" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}50, transparent)` }} />
           </div>
         ))}
       </div>
       {/* Budget chart auto-displays */}
       {chartConfig && chartReady && (
-        <div className="mt-5 animate-card overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015]" style={{ animationDelay: "0.3s" }}>
+        <div className={cn("mt-5 animate-card overflow-hidden rounded-2xl border", isDark ? "border-white/[0.06] bg-white/[0.015]" : "border-gray-200 bg-white")} style={{ animationDelay: "0.3s" }}>
           <iframe srcDoc={`<!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
 <style>body{margin:0;padding:16px;background:transparent;display:flex;justify-content:center;align-items:center;min-height:100%;font-family:system-ui;box-sizing:border-box}canvas{width:100%!important;max-height:260px}</style>
 </head><body><canvas id="c"></canvas>
@@ -1350,7 +1356,7 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
       {ms.map((m, i) => (
         <div key={i} className={cn("animate-card group flex gap-4 rounded-2xl border p-5 transition-all duration-300",
           isDark ? "border-white/[0.05] bg-white/[0.015] hover:border-white/[0.1] hover:bg-white/[0.025]"
-            : "border-black/[0.06] bg-black/[0.015] hover:border-black/[0.12] hover:bg-black/[0.025]")}
+            : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 shadow-sm")}
           style={{ animationDelay: `${i * 0.08}s` }}>
           <div className="flex flex-col items-center gap-1.5 pt-1">
             <div className="h-3 w-3 rounded-full border-2 transition-transform duration-300 group-hover:scale-125" style={{ borderColor: brandColor, backgroundColor: `${brandColor}35` }} />
@@ -1432,9 +1438,9 @@ function InboundTriageFlow({ brandColor }: { brandColor: string }) {
               <div className="flow-line-v h-4 w-px" style={{ animationDelay: `${0.9 + bi * 0.1}s`, backgroundColor: `${brandColor}25` }} />
               <div
                 className="flow-node flex flex-col items-center gap-2 rounded-xl border px-4 py-3 text-center"
-                style={{ animationDelay: `${1.0 + bi * 0.15}s`, borderColor: bi === 2 ? `${brandColor}40` : "rgba(255,255,255,0.06)", backgroundColor: bi === 2 ? `${brandColor}06` : "rgba(255,255,255,0.015)" }}
+                style={{ animationDelay: `${1.0 + bi * 0.15}s`, borderColor: bi === 2 ? `${brandColor}40` : (isDark ? "rgba(255,255,255,0.06)" : "rgb(229,231,235)"), backgroundColor: bi === 2 ? `${brandColor}06` : (isDark ? "rgba(255,255,255,0.015)" : "rgb(249,250,251)") }}
               >
-                <branch.icon className="h-4 w-4" style={{ color: bi === 2 ? brandColor : "rgba(255,255,255,0.45)" }} />
+                <branch.icon className="h-4 w-4" style={{ color: bi === 2 ? brandColor : (isDark ? "rgba(255,255,255,0.45)" : "rgb(107,114,128)") }} />
                 <div className={cn("text-[12px] font-semibold", isDark ? "text-white/80" : "text-gray-700")}>{branch.label}</div>
                 <div className={cn("text-[10px]", isDark ? "text-white/30" : "text-gray-400")}>{branch.desc}</div>
               </div>
@@ -1615,19 +1621,19 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
 
       {/* Nav */}
       <nav className={cn("fixed top-0 z-[45] flex w-full items-center justify-between border-b px-6 py-2.5 backdrop-blur-xl",
-        isDark ? "border-white/[0.06] bg-[#050508]/80" : "border-black/[0.08] bg-white/80")}>
+        isDark ? "border-white/[0.06] bg-[#050508]/80" : "border-gray-200 bg-white/95")}>
         <div className="flex items-center gap-2.5 pl-28">
           <img src="/bluewave-icon.svg" alt="" className="h-5 w-5 opacity-80" />
-          <span className={cn("text-[11px]", isDark ? "text-white/30" : "text-black/30")}>Prepared by <span className={isDark ? "text-white/50" : "text-black/50"}>Mirror Factory</span></span>
+          <span className={cn("text-[11px]", isDark ? "text-white/30" : "text-gray-400")}>Prepared by <span className={isDark ? "text-white/50" : "text-gray-600"}>Mirror Factory</span></span>
         </div>
         <div className="flex items-center gap-2">
           {docs.length > 1 && (
             <div className={cn("flex items-center gap-0.5 rounded-lg border p-0.5",
-              isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-black/[0.08] bg-black/[0.02]")}>
+              isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-gray-200 bg-gray-50")}>
               {docs.map((doc, di) => (
                 <button key={di} onClick={() => handleDocSwitch(di)}
                   className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all",
-                    di === activeDocIdx ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-black/30 hover:text-black/55"))}
+                    di === activeDocIdx ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-gray-400 hover:text-gray-600"))}
                   style={di === activeDocIdx ? { backgroundColor: `${brandColor}18`, color: brandColor } : undefined}>
                   {doc.title.length > 18 ? doc.title.slice(0, 18) + "..." : doc.title}
                 </button>
@@ -1635,7 +1641,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
             </div>
           )}
           {activeDoc?.pdf_path && (
-            <Button variant="ghost" size="sm" asChild className={cn("h-7 gap-1 text-[11px]", isDark ? "text-white/35 hover:text-white/60" : "text-black/35 hover:text-black/60")}>
+            <Button variant="ghost" size="sm" asChild className={cn("h-7 gap-1 text-[11px]", isDark ? "text-white/35 hover:text-white/60" : "text-gray-400 hover:text-gray-600")}>
               <a href={activeDoc.pdf_path} download target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /> PDF</a>
             </Button>
           )}
@@ -1643,7 +1649,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
           <button
             onClick={toggleTheme}
             className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-              isDark ? "text-white/40 hover:text-white/70 hover:bg-white/[0.05]" : "text-black/40 hover:text-black/70 hover:bg-black/[0.05]")}
+              isDark ? "text-white/40 hover:text-white/70 hover:bg-white/[0.05]" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100")}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
             {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -1651,7 +1657,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
           <Button variant="outline" size="sm" onClick={() => setChatOpen(!chatOpen)}
             className={cn("h-7 gap-1.5 text-[11px]",
               isDark ? "border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/[0.05]"
-                : "border-black/10 bg-black/[0.02] text-black/50 hover:bg-black/[0.05]")}>
+                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50")}>
             <MessageSquare className="h-3 w-3" /> {chatOpen ? "Close" : "Chat"}
           </Button>
         </div>
@@ -1687,7 +1693,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         <footer className="flex flex-col items-center gap-4 py-24">
           <div className="h-px w-24" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}25, transparent)` }} />
           {portal.logo_url && <img src={portal.logo_url} alt="" className="h-6 w-auto opacity-30" />}
-          <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-black/15")}>Prepared by Mirror Factory</p>
+          <p className={cn("text-[11px]", isDark ? "text-white/15" : "text-gray-300")}>Prepared by Mirror Factory</p>
         </footer>
       </main>
 
@@ -1699,22 +1705,22 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
 
           {/* Chat container — responsive */}
           <div className={cn(
-            "fixed z-[60] flex flex-col overflow-hidden border shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-300",
+            "fixed z-[60] flex flex-col overflow-hidden border backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-300",
             // Mobile: bottom sheet, full width, 60% height
             "inset-x-0 bottom-0 h-[65vh] rounded-t-2xl md:rounded-2xl",
             // Desktop: floating panel, fixed size
             "md:inset-auto md:bottom-4 md:right-4 md:w-[400px] md:h-[520px] md:max-h-[70vh]",
-            isDark ? "border-white/[0.08] bg-[#0a0a0f]/95" : "border-black/[0.1] bg-white/95"
+            isDark ? "border-white/[0.08] bg-[#0a0a0f]/95 shadow-2xl" : "border-gray-200 bg-white shadow-lg"
           )}>
             {/* Drag handle (mobile) */}
             <div className="flex justify-center pt-2 pb-1 md:hidden">
-              <div className={cn("h-1 w-10 rounded-full", isDark ? "bg-white/20" : "bg-black/15")} />
+              <div className={cn("h-1 w-10 rounded-full", isDark ? "bg-white/20" : "bg-gray-300")} />
             </div>
 
             <div className={cn("flex items-center justify-between border-b px-4 py-2.5 shrink-0",
-              isDark ? "border-white/[0.06]" : "border-black/[0.08]")}>
-              <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-black/60")}>Ask about this proposal</span>
-              <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"}><X className="h-3.5 w-3.5" /></button>
+              isDark ? "border-white/[0.06]" : "border-gray-200")}>
+              <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-gray-600")}>Ask about this proposal</span>
+              <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3.5 w-3.5" /></button>
             </div>
             <div className="flex-1 overflow-hidden">
               <ChatInterface
@@ -1726,6 +1732,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
                 portalBrandColor={brandColor}
                 compactMode
                 hideContextBar
+                containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white"}
               />
             </div>
           </div>
