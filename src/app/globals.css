@@ -290,18 +290,31 @@ mark.portal-pdf-highlight-active {
   animation: annotation-enter 0.3s ease-out both;
 }
 
-/* docx-preview styles — edge-to-edge document rendering */
+/* docx-preview styles — edge-to-edge, no wrapper chrome */
 .docx-preview-wrapper .docx-wrapper {
-  background: white !important;
+  background: transparent !important;
   padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
 }
 .docx-preview-wrapper .docx-wrapper > section.docx {
   background: white !important;
   box-shadow: none !important;
-  margin: 0 auto !important;
-  padding: 2cm 2cm !important;
-  max-width: none;
-  min-height: auto;
+  margin: 0 !important;
+  padding: 1.5cm 2cm !important;
+  max-width: none !important;
+  min-height: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Two-column mode: pages side by side */
+.docx-preview-wrapper.two-column .docx-wrapper {
+  display: flex !important;
+  flex-wrap: wrap !important;
+}
+.docx-preview-wrapper.two-column .docx-wrapper > section.docx {
+  width: 50% !important;
+  flex: 0 0 50% !important;
 }
 .docx-preview-wrapper table {
   border-collapse: collapse;
