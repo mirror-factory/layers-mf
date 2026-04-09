@@ -1506,8 +1506,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-gray-50 border-sky-100")
             : cn(
                 "left-0 right-0",
-                chatOpen ? "top-12 bottom-0" : "bottom-0",
-                "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:top-auto"
+                chatOpen ? "top-12 bottom-0 pb-[env(safe-area-inset-bottom,0px)]" : "bottom-0",
+                chatOpen ? "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:top-auto md:pb-0 md:max-h-[60vh]" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
               )
         )}
       >
