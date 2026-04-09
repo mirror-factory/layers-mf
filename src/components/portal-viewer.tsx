@@ -323,8 +323,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, []);
 
   // View mode and Library Previews
-  const [activeView, setActiveView] = useState<"document" | "library" | "doc-preview">("document");
-  const [previewDoc, setPreviewDoc] = useState<typeof BLUEWAVE_DOCUMENTS[0] | null>(null);
+  const [activeView, setActiveView] = useState<"document" | "library-doc">("document");
+  const [openedLibraryDocs, setOpenedLibraryDocs] = useState<typeof BLUEWAVE_DOCUMENTS>([]);
+  const [activeLibraryDocIndex, setActiveLibraryDocIndex] = useState<number>(-1);
   const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
   const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
   const [docPreviewTable, setDocPreviewTable] = useState<string[][] | null>(null);
@@ -335,8 +336,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setPreviewDoc(doc);
-    setActiveView("doc-preview");
+
+    // Check if already opened
+    const existingIdx = openedLibraryDocs.findIndex(d => d.id === doc.id);
+    if (existingIdx >= 0) {
+      setActiveLibraryDocIndex(existingIdx);
+      setActiveView("library-doc");
+      return;
+    }
+
+    // Add to opened tabs
+    setOpenedLibraryDocs(prev => [...prev, doc]);
+    setActiveLibraryDocIndex(openedLibraryDocs.length);
+    setActiveView("library-doc");
 
     if (doc.type === "image" || doc.type === "pdf") {
       setIsPreviewLoading(false);
@@ -475,11 +487,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           || BLUEWAVE_DOCUMENTS.find((item) => item.title.toLowerCase().includes(docId.toLowerCase()))
           || BLUEWAVE_DOCUMENTS.find((item) => docId.toLowerCase().includes(item.title.toLowerCase()));
         if (libraryDoc) {
-          // Reset state before opening to force re-render
-          setDocxArrayBuffer(null);
-          setDocPreviewHtml(null);
-          setDocPreviewText(null);
-          setDocPreviewTable(null);
+          // Check if already opened — if so just switch, otherwise reset and open
+          const existingIdx = openedLibraryDocs.findIndex(d => d.id === libraryDoc.id);
+          if (existingIdx < 0) {
+            setDocxArrayBuffer(null);
+            setDocPreviewHtml(null);
+            setDocPreviewText(null);
+            setDocPreviewTable(null);
+          }
           void handleOpenDocPreview(libraryDoc);
         } else {
           // Try portal documents — switch to that doc tab
@@ -497,7 +512,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         }
       }
     },
-    [addAnnotation, pdfControls, handleOpenDocPreview]
+    [addAnnotation, pdfControls, handleOpenDocPreview, openedLibraryDocs]
   );
 
   // Feature 3: Tool toggles
@@ -540,15 +555,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // Auto-add active document to context so AI knows what user is viewing
   useEffect(() => {
-    const docTitle = activeView === "doc-preview" && previewDoc
-      ? previewDoc.title
+    const docTitle = activeView === "library-doc" && openedLibraryDocs[activeLibraryDocIndex]
+      ? openedLibraryDocs[activeLibraryDocIndex].title
       : activeDoc?.title;
     if (!docTitle) return;
     setContextTags(prev => {
       const filtered = prev.filter(t => !t.text.startsWith("Viewing: "));
       return [{ id: "active-doc", text: `Viewing: ${docTitle}` }, ...filtered];
     });
-  }, [activeView, activeDocIndex, previewDoc?.title, activeDoc?.title]);
+  }, [activeView, activeDocIndex, activeLibraryDocIndex, openedLibraryDocs, activeDoc?.title]);
 
   const [pdfFailed, setPdfFailed] = useState(false);
   const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
@@ -694,7 +709,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, [portalDark]);
   const pd = portalDark;
   const brandAccent = portal.brand_color || "#0DE4F2";
-  const docPreviewIsLight = previewDoc?.type === "docx" || previewDoc?.type === "xlsx";
+  const activeLibraryDoc = openedLibraryDocs[activeLibraryDocIndex] ?? null;
+  const docPreviewIsLight = activeLibraryDoc?.type === "docx" || activeLibraryDoc?.type === "xlsx";
 
   // ---------------------------------------------------------------------------
   // Tool toggles dropdown menu (Bug 8)
@@ -900,18 +916,72 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     {doc.title}
                   </button>
                 ))}
-                <button
-                  onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
-                    activeView === "library" || activeView === "doc-preview"
-                      ? "text-primary-foreground"
-                      : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                  )}
-                  style={activeView === "library" || activeView === "doc-preview" ? { backgroundColor: brandColor } : undefined}
-                >
-                  <FolderOpen className="h-3 w-3" /> Library
-                </button>
+                {/* Opened library doc tabs */}
+                {openedLibraryDocs.map((ldoc, i) => (
+                  <button
+                    key={ldoc.id}
+                    onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); }}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                      i === activeLibraryDocIndex && activeView === "library-doc"
+                        ? "text-primary-foreground"
+                        : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                    )}
+                    style={i === activeLibraryDocIndex && activeView === "library-doc" ? { backgroundColor: brandColor } : undefined}
+                  >
+                    {ldoc.title}
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenedLibraryDocs(prev => prev.filter((_, idx) => idx !== i));
+                        if (openedLibraryDocs.length <= 1) {
+                          setActiveView("document");
+                          setActiveLibraryDocIndex(-1);
+                        } else if (activeLibraryDocIndex >= i) {
+                          setActiveLibraryDocIndex(prev => Math.max(0, prev - 1));
+                        }
+                      }}
+                      className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </span>
+                  </button>
+                ))}
+                {/* Library dropdown picker */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                      pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                    )}>
+                      <FolderOpen className="h-3 w-3" /> Library
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
+                    {["Core Documents", "Planning", "Proposal Library", "Architecture"].map((category) => {
+                      const categoryDocs = BLUEWAVE_DOCUMENTS.filter(d => d.category === category);
+                      if (categoryDocs.length === 0) return null;
+                      return (
+                        <div key={category}>
+                          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{category}</div>
+                          {categoryDocs.map(ldoc => (
+                            <DropdownMenuItem key={ldoc.id} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
+                              {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
+                               ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
+                               ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
+                               <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{ldoc.title}</p>
+                                <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                        </div>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Mobile doc picker */}
@@ -928,12 +998,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     >
                       <FolderOpen className="h-3.5 w-3.5" />
                       <span className="truncate max-w-[140px]">
-                        {activeView === "library" ? "Document Library" : activeDoc?.title || portal.title}
+                        {activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : activeDoc?.title || portal.title}
                       </span>
                       <ChevronDown className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+                    {/* Portal documents */}
                     {documents.map((doc, i) => (
                       <DropdownMenuItem
                         key={doc.id}
@@ -943,12 +1014,31 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                         <span className="truncate">{doc.title}</span>
                       </DropdownMenuItem>
                     ))}
+                    {/* Opened library doc tabs */}
+                    {openedLibraryDocs.length > 0 && <DropdownMenuSeparator />}
+                    {openedLibraryDocs.map((ldoc, i) => (
+                      <DropdownMenuItem
+                        key={`lib-${ldoc.id}`}
+                        onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); }}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span className="truncate">{ldoc.title}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    {/* Library picker */}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                    >
-                      <FolderOpen className="mr-2 h-4 w-4" /> Full document library
-                    </DropdownMenuItem>
+                    {BLUEWAVE_DOCUMENTS.map(ldoc => (
+                      <DropdownMenuItem key={`pick-${ldoc.id}`} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
+                        {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
+                         ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
+                         ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
+                         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{ldoc.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -1101,32 +1191,25 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 3rem)' }}>
         {activeView === "document" && tocPanel}
         
-        {activeView === "doc-preview" && previewDoc ? (
+        {activeView === "library-doc" && activeLibraryDoc ? (
           <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-gray-50")}>
             {/* Sticky viewer header */}
             <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-gray-50/95")}>
               <div className="flex items-center gap-3 overflow-hidden">
-                <button
-                  onClick={() => { setActiveView("library"); }}
-                  className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-colors", pd ? "text-white/40 hover:text-white/80 hover:bg-white/5" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100")}
-                  title="Back to Library"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: previewDoc.type === 'image' ? '#f59e0b15' : previewDoc.type === 'pdf' ? '#ef444415' : previewDoc.type === 'xlsx' ? '#22c55e15' : `${brandColor}15` }}>
-                  {previewDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
-                   previewDoc.type === "pdf" ? <FileIcon className="h-4 w-4 text-red-500" /> :
-                   previewDoc.type === "xlsx" ? <FileSpreadsheet className="h-4 w-4 text-green-500" /> :
+                  style={{ backgroundColor: activeLibraryDoc.type === 'image' ? '#f59e0b15' : activeLibraryDoc.type === 'pdf' ? '#ef444415' : activeLibraryDoc.type === 'xlsx' ? '#22c55e15' : `${brandColor}15` }}>
+                  {activeLibraryDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
+                   activeLibraryDoc.type === "pdf" ? <FileIcon className="h-4 w-4 text-red-500" /> :
+                   activeLibraryDoc.type === "xlsx" ? <FileSpreadsheet className="h-4 w-4 text-green-500" /> :
                    <FileText className="h-4 w-4 text-cyan-400" />}
                 </div>
                 <div className="overflow-hidden">
-                  <p className={cn("truncate text-sm font-semibold", pd ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
-                  <p className={cn("text-[10px]", pd ? "text-white/30" : "text-gray-400")}>{previewDoc.type.toUpperCase()} · {previewDoc.sizeHuman}</p>
+                  <p className={cn("truncate text-sm font-semibold", pd ? "text-white" : "text-gray-900")}>{activeLibraryDoc.title}</p>
+                  <p className={cn("text-[10px]", pd ? "text-white/30" : "text-gray-400")}>{activeLibraryDoc.type.toUpperCase()} · {activeLibraryDoc.sizeHuman}</p>
                 </div>
               </div>
               <a
-                href={previewDoc.url}
+                href={activeLibraryDoc.url}
                 download
                 className={cn("flex h-7 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition-all border", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-sky-100 text-gray-500 hover:bg-sky-50 hover:text-gray-800")}
               >
@@ -1136,11 +1219,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
             {/* Viewer content */}
             <div className="p-6">
-              {previewDoc.type === "image" ? (
+              {activeLibraryDoc.type === "image" ? (
                 <div className="flex min-h-[70vh] items-center justify-center">
-                  <img src={previewDoc.url} alt={previewDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
+                  <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
                 </div>
-              ) : previewDoc.type === "xlsx" ? (
+              ) : activeLibraryDoc.type === "xlsx" ? (
                 <div className="min-h-[60vh] rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                   {docPreviewTable ? (
                     <div className="overflow-auto max-h-[80vh]">
@@ -1191,7 +1274,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
                   <p className={cn("text-sm", pd ? "text-white/50" : "text-gray-500")}>Loading document...</p>
                 </div>
-              ) : docxArrayBuffer && previewDoc.type === "docx" ? (
+              ) : docxArrayBuffer && activeLibraryDoc.type === "docx" ? (
                 /* docx-preview renders directly into this container */
                 <div
                   ref={docxContainerRef}
@@ -1219,78 +1302,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   )}
                 </div>
               )}
-            </div>
-          </div>
-        ) : activeView === "library" ? (
-          <div className={cn("flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-12 md:py-12", pd ? "" : "bg-gray-50")}>
-            <div className="mx-auto max-w-5xl">
-              <div className="mb-8">
-                <h2 className={cn("text-3xl font-bold tracking-tight mb-2", pd ? "text-white" : "text-gray-900")}>Document Library</h2>
-                <p className={cn(pd ? "text-gray-400" : "text-gray-500")}>Browse and download all configured documents for this project.</p>
-              </div>
-              
-              {["Core Documents", "Planning", "Proposal Library", "Architecture"].map((category) => {
-                const categoryDocs = BLUEWAVE_DOCUMENTS.filter(d => d.category === category);
-                if (categoryDocs.length === 0) return null;
-                
-                return (
-                  <div key={category} className="mb-10">
-                    <h3 className={cn("mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider", pd ? "text-white/50" : "text-gray-400")}>
-                      <FolderOpen className="h-4 w-4" /> {category}
-                    </h3>
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {categoryDocs.map((doc, di) => (
-                        <div
-                          key={di}
-                          onClick={() => handleOpenDocPreview(doc)}
-                          className={cn("group relative flex flex-col items-start gap-4 rounded-xl p-5 transition-all duration-300 cursor-pointer border overflow-hidden", pd ? "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]" : "border-sky-100 bg-gray-50 hover:border-sky-200 hover:bg-gray-100")}
-                          style={{ borderTopWidth: 3, borderTopColor: doc.type === 'pdf' ? '#ef4444' : doc.type === 'xlsx' ? '#22c55e' : doc.type === 'image' ? '#f59e0b' : '#06b6d4' }}
-                        >
-                          <div className="flex w-full items-start justify-between gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105"
-                              style={{ backgroundColor: doc.type === 'pdf' ? '#ef444415' : doc.type === 'xlsx' ? '#22c55e15' : doc.type === 'image' ? '#f59e0b15' : `${brandColor}15` }}>
-                              {doc.type === "pdf" ? <FileIcon className="h-6 w-6 text-red-500" /> :
-                               doc.type === "xlsx" ? <FileSpreadsheet className="h-6 w-6 text-green-500" /> :
-                               doc.type === "image" ? <ImageIcon className="h-6 w-6 text-amber-500" /> :
-                               <FileText className="h-6 w-6" style={{ color: brandColor }} />}
-                            </div>
-
-                            <div className="flex shrink-0 gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
-                              <a
-                                href={doc.url}
-                                download
-                                onClick={(e) => e.stopPropagation()}
-                                className={cn("flex h-7 w-7 items-center justify-center rounded border transition-colors", pd ? "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white" : "border-sky-100 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
-                                title="Download Document"
-                              >
-                                <Download className="h-3.5 w-3.5" />
-                              </a>
-                            </div>
-                          </div>
-
-                          <div className="w-full">
-                            <p className={cn("text-sm font-semibold line-clamp-2", pd ? "text-white" : "text-gray-900")} title={doc.title}>{doc.title}</p>
-                            {doc.description && (
-                              <p className={cn("mt-1 text-xs line-clamp-2", pd ? "text-white/40" : "text-gray-500")}>{doc.description}</p>
-                            )}
-                            <div className="mt-2 flex items-center gap-2">
-                              <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
-                                doc.type === 'pdf' ? 'bg-red-500/10 text-red-400' :
-                                doc.type === 'xlsx' ? 'bg-green-500/10 text-green-400' :
-                                doc.type === 'image' ? 'bg-amber-500/10 text-amber-400' :
-                                'bg-cyan-500/10 text-cyan-400'
-                              )}>
-                                {doc.type}
-                              </span>
-                              <span className={cn("text-[11px]", pd ? "text-white/30" : "text-gray-400")}>{doc.sizeHuman}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
         ) : (
