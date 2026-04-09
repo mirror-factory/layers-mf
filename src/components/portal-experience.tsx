@@ -1,25 +1,27 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo, createContext, useContext } from "react";
-import {
-  ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronRight,
-  Clock, DollarSign, Download, Layers, List, MessageSquare, Sparkles,
+import { ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronRight,
+  Clock, DollarSign, Download, FolderOpen, Layers, List, MessageSquare, Sparkles,
   Target, X, Zap, RefreshCw, Lightbulb, Loader2, Send,
   Phone, Users, Briefcase, FileText, Bell, GitBranch, Search as SearchIcon,
-  Sun, Moon,
+  Sun, Moon, FileSpreadsheet, Image as ImageIcon, File, FileIcon, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PortalData, PortalDocument } from "@/app/portal/[token]/page";
 import { ChatInterface } from "@/components/chat-interface";
+import { WaveSidebar } from "@/components/ui/wave-sidebar";
+import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
 
 // ---------------------------------------------------------------------------
 // Theme context
 // ---------------------------------------------------------------------------
 
 type PortalTheme = "dark" | "light";
-// accentColor: brandColor in dark mode, dark teal (#0F766E) in light mode for contrast
-const ThemeContext = createContext<{ isDark: boolean; theme: PortalTheme; accentColor: string }>({ isDark: true, theme: "dark", accentColor: "#0DE4F2" });
+// accentColor: brandColor in dark mode, bright cyan (#0CE4F2) in light mode
+// accentTextColor: same as accentColor in dark, darker cyan (#0891B2) in light for readability
+const ThemeContext = createContext<{ isDark: boolean; theme: PortalTheme; accentColor: string; accentTextColor: string }>({ isDark: true, theme: "dark", accentColor: "#0DE4F2", accentTextColor: "#0DE4F2" });
 function usePortalTheme() { return useContext(ThemeContext); }
 
 
@@ -485,7 +487,7 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
         className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs backdrop-blur-xl transition-all",
           isDark ? "border-white/[0.08] bg-[#0a0a0f]/90 text-white/50 hover:bg-white/[0.05] hover:text-white/80"
             : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm")}>
-        <BookOpen className="h-3.5 w-3.5" style={{ color: brandColor }} />
+        <BookOpen className="h-3.5 w-3.5" style={{ color: isDark ? brandColor : "#0891B2" }} />
         Contents
         <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
@@ -497,7 +499,7 @@ function FloatingToc({ entries, brandColor }: { entries: TocEntry[]; brandColor:
               className={cn("flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-all",
                 isDark ? "text-white/50 hover:bg-white/[0.05] hover:text-white/80" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800")}
               style={{ paddingLeft: `${(e.level - 1) * 12 + 12}px` }}>
-              <ChevronRight className="h-2.5 w-2.5 shrink-0" style={{ color: brandColor }} />
+              <ChevronRight className="h-2.5 w-2.5 shrink-0" style={{ color: isDark ? brandColor : "#0891B2" }} />
               <span className={cn("line-clamp-1", e.level === 1 && (isDark ? "font-medium text-white/60" : "font-medium text-gray-700"))}>{e.title}</span>
             </button>
           ))}
@@ -590,7 +592,7 @@ function InteractiveChart({ config, brandColor, shareToken, title }: {
         <div className={cn("border-t px-4 py-3 text-xs leading-relaxed",
           isDark ? "border-white/[0.06] text-white/50" : "border-gray-200 text-gray-600")}>
           <div className="flex items-center justify-between mb-1">
-            <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
+            <span className="flex items-center gap-1 font-medium" style={{ color: isDark ? brandColor : "#0891B2" }}><Sparkles className="h-3 w-3" /> AI Insight</span>
             <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
           </div>
           {aiResult}
@@ -728,7 +730,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
         {/* Badge — fade up */}
         <div className="inline-flex items-center gap-2 rounded-full border px-5 py-2 text-[10px] font-medium tracking-[0.2em] uppercase"
           style={{
-            borderColor: `${brandColor}30`, color: brandColor, backgroundColor: `${brandColor}06`,
+            borderColor: `${brandColor}30`, color: isDark ? brandColor : "#0891B2", backgroundColor: `${brandColor}06`,
             animation: "hero-fade-up 0.8s ease-out 0.2s both",
           }}>
           <Sparkles className="h-3 w-3" /> Interactive Experience
@@ -787,7 +789,7 @@ function HeadingSection({ section, brandColor }: { section: DocSection; brandCol
       ) : lv === 2 ? (
         <h3 className={cn("text-2xl font-semibold", isDark ? "text-white/90" : "text-gray-800")}>{section.title}</h3>
       ) : (
-        <h4 className={cn("text-sm font-semibold tracking-wider uppercase", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>{section.title}</h4>
+        <h4 className={cn("text-sm font-semibold tracking-wider uppercase")} style={{ color: isDark ? `${brandColor}bb` : "#0891B2" }}>{section.title}</h4>
       )}
     </div>
   );
@@ -853,7 +855,7 @@ function ListSection({ section, brandColor }: { section: DocSection; brandColor:
                 : "border-gray-200 bg-gray-50/50",
             )}
           >
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: isDark ? brandColor : "#0891B2" }} />
             <div className="flex-1 min-w-0">
               {priMatch && <div className="mb-1"><PriorityBadge priority={priMatch[1]} /></div>}
               <span className={cn("text-[15px] leading-[1.7]", isDark ? "text-white/60" : "text-gray-700")}>{item}</span>
@@ -907,15 +909,15 @@ function ComparisonSection({ section, brandColor }: { section: DocSection; brand
                 className="my-2 flex h-8 w-8 items-center justify-center rounded-full transition-transform duration-500 group-hover:scale-110"
                 style={{ backgroundColor: `${brandColor}15`, border: `1px solid ${brandColor}30` }}
               >
-                <ArrowRight className="h-3.5 w-3.5" style={{ color: brandColor }} />
+                <ArrowRight className="h-3.5 w-3.5" style={{ color: isDark ? brandColor : "#0891B2" }} />
               </div>
               <div className="h-full w-px" style={{ background: `linear-gradient(180deg, transparent, ${brandColor}20, transparent)` }} />
             </div>
 
             {/* Target State */}
             <div className="p-6" style={{ background: `linear-gradient(135deg, ${brandColor}06 0%, transparent 60%)` }}>
-              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", !isDark && "text-teal-600")} style={isDark ? { color: `${brandColor}80` } : undefined}>Target State</div>
-              <p className={cn("text-[16px] leading-relaxed font-medium", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}cc` } : undefined}>{comp.target}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest")} style={{ color: isDark ? `${brandColor}80` : "#0891B2" }}>Target State</div>
+              <p className={cn("text-[16px] leading-relaxed font-medium")} style={{ color: isDark ? `${brandColor}cc` : "#0891B2" }}>{comp.target}</p>
             </div>
           </div>
 
@@ -1044,8 +1046,8 @@ function JtbdSection({ section, brandColor }: { section: DocSection; brandColor:
             </div>
             {/* I want — action */}
             <div className={cn("border-b p-5 sm:border-b-0 sm:border-r", isDark ? "border-white/[0.04]" : "border-gray-100")} style={{ backgroundColor: `${brandColor}04` }}>
-              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest", !isDark && "text-teal-600")} style={isDark ? { color: `${brandColor}80` } : undefined}>I want</div>
-              <p className={cn("text-[15px] leading-relaxed font-medium", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>{jtbd.want}</p>
+              <div className={cn("mb-2 text-[10px] font-semibold uppercase tracking-widest")} style={{ color: isDark ? `${brandColor}80` : "#0891B2" }}>I want</div>
+              <p className={cn("text-[15px] leading-relaxed font-medium")} style={{ color: isDark ? `${brandColor}bb` : "#0891B2" }}>{jtbd.want}</p>
             </div>
             {/* So that — outcome */}
             <div className="p-5">
@@ -1282,11 +1284,11 @@ function PhaseTimelineCard({ phase, brandColor, icon: Icon }: {
     <GlassCard className="p-5 group" brandColor={brandColor} glowOnHover>
       <div className="flex items-center gap-3 mb-2">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${brandColor}15` }}>
-          <Icon className="h-4 w-4" style={{ color: brandColor }} />
+          <Icon className="h-4 w-4" style={{ color: isDark ? brandColor : "#0891B2" }} />
         </div>
         <div>
           <div className={cn("text-lg font-bold", isDark ? "text-white" : "text-gray-900")}>{phase.name}</div>
-          <div className={cn("flex items-center gap-1.5 text-[13px]", !isDark && "text-teal-700")} style={isDark ? { color: `${brandColor}bb` } : undefined}>
+          <div className={cn("flex items-center gap-1.5 text-[13px]")} style={{ color: isDark ? `${brandColor}bb` : "#0891B2" }}>
             <Clock className="h-3 w-3" />{phase.timeline}
           </div>
         </div>
@@ -1333,7 +1335,7 @@ function PhaseTimeline({ section, brandColor }: { section: DocSection; brandColo
               {/* Vertical connector */}
               <div className="flex flex-col items-center gap-1 pt-2 shrink-0">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold"
-                  style={{ borderColor: brandColor, backgroundColor: `${brandColor}12`, color: brandColor }}>
+                  style={{ borderColor: isDark ? brandColor : "#0891B2", backgroundColor: `${brandColor}12`, color: isDark ? brandColor : "#0891B2" }}>
                   {i + 1}
                 </div>
                 {i < phases.length - 1 && <div className="flex-1 w-px min-h-[40px]" style={{ backgroundColor: `${brandColor}20` }} />}
@@ -1374,7 +1376,7 @@ function BudgetSection({ section, brandColor, shareToken }: { section: DocSectio
               : "border-gray-200 bg-gray-50/80 hover:border-gray-300 hover:bg-gray-50 shadow-sm")}
             style={{ animationDelay: `${i * 0.1}s` }}>
             <p className={cn("mb-4 text-[10px] font-semibold uppercase tracking-widest", isDark ? "text-white/25" : "text-gray-400")}>{row.phase.length > 40 ? row.phase.slice(0, 40) + "..." : row.phase}</p>
-            <p className={cn("mb-2 text-3xl font-bold", isDark ? "" : "text-gray-900")} style={isDark && row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : (!isDark && row.investment.includes("$") ? { color: brandColor } : {})}>
+            <p className={cn("mb-2 text-3xl font-bold", isDark ? "" : "text-gray-900")} style={isDark && row.investment.includes("$") ? { background: `linear-gradient(135deg, #fff 30%, ${brandColor})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" } : (!isDark && row.investment.includes("$") ? { color: "#0891B2" } : {})}>
               {row.investment}
             </p>
             <div className={cn("flex items-center gap-1.5 text-[12px]", isDark ? "text-white/35" : "text-gray-400")}><Clock className="h-3 w-3" />{row.timeline}</div>
@@ -1429,7 +1431,7 @@ function MilestoneTimeline({ section, brandColor }: { section: DocSection; brand
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-2">
               <span className={cn("text-[15px] font-semibold", isDark ? "text-white" : "text-gray-900")}>{m.phase}</span>
-              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium", !isDark && "text-teal-700")} style={{ backgroundColor: `${brandColor}12`, ...(isDark ? { color: `${brandColor}cc` } : {}) }}>{m.dates}</span>
+              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium")} style={{ backgroundColor: `${brandColor}12`, color: isDark ? `${brandColor}cc` : "#0891B2" }}>{m.dates}</span>
             </div>
             <p className={cn("text-[16px] leading-relaxed", isDark ? "text-white/40" : "text-gray-500")}>{m.milestones}</p>
           </div>
@@ -1485,10 +1487,10 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
         {/* Node: Inbound Call */}
         <div
           className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
-          style={{ animationDelay: "0s", borderColor: `${brandColor}30`, backgroundColor: `${brandColor}08` }}
+          style={{ animationDelay: "0s", borderColor: isDark ? `${brandColor}30` : `${brandColor}60`, backgroundColor: isDark ? `${brandColor}08` : `${brandColor}12` }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}18` }}>
-            <Phone className="h-5 w-5" style={{ color: brandColor }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: isDark ? `${brandColor}18` : `${brandColor}20` }}>
+            <Phone className="h-5 w-5" style={{ color: isDark ? brandColor : "#0891B2" }} />
           </div>
           <div>
             <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Inbound Call</div>
@@ -1497,15 +1499,15 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
         </div>
 
         {/* Vertical connector */}
-        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "0.3s", backgroundColor: `${brandColor}30` }} />
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "0.3s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
 
         {/* Node: AI Receptionist */}
         <div
           className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
-          style={{ animationDelay: "0.4s", borderColor: `${brandColor}40`, backgroundColor: `${brandColor}10` }}
+          style={{ animationDelay: "0.4s", borderColor: isDark ? `${brandColor}40` : `${brandColor}60`, backgroundColor: isDark ? `${brandColor}10` : `${brandColor}15` }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}25` }}>
-            <Sparkles className="h-5 w-5" style={{ color: brandColor }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: isDark ? `${brandColor}25` : `${brandColor}25` }}>
+            <Sparkles className="h-5 w-5" style={{ color: isDark ? brandColor : "#0891B2" }} />
           </div>
           <div>
             <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>AI Receptionist</div>
@@ -1513,39 +1515,49 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
           </div>
         </div>
 
-        {/* Vertical connector */}
-        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "0.7s", backgroundColor: `${brandColor}30` }} />
+        {/* Vertical connector to branch point */}
+        <div className="flow-line-v h-6 w-px" style={{ animationDelay: "0.7s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
 
-        {/* Branching: 3 paths */}
-        <div className="flow-node flex items-center gap-4 sm:gap-6" style={{ animationDelay: "0.8s" }}>
-          {[
-            { icon: DollarSign, label: "Sales", desc: "Revenue inquiries" },
-            { icon: Briefcase, label: "Admin / HR", desc: "Internal requests" },
-            { icon: Users, label: "Candidates", desc: "Job applicants" },
-          ].map((branch, bi) => (
-            <div key={bi} className="flex flex-col items-center gap-0">
-              <div className="flow-line-v h-4 w-px" style={{ animationDelay: `${0.9 + bi * 0.1}s`, backgroundColor: `${brandColor}25` }} />
-              <div
-                className="flow-node flex flex-col items-center gap-2 rounded-xl border px-4 py-3 text-center"
-                style={{ animationDelay: `${1.0 + bi * 0.15}s`, borderColor: bi === 2 ? `${brandColor}40` : (isDark ? "rgba(255,255,255,0.06)" : "rgb(229,231,235)"), backgroundColor: bi === 2 ? `${brandColor}06` : (isDark ? "rgba(255,255,255,0.015)" : "rgb(249,250,251)") }}
-              >
-                <branch.icon className="h-4 w-4" style={{ color: bi === 2 ? brandColor : (isDark ? "rgba(255,255,255,0.45)" : "rgb(107,114,128)") }} />
-                <div className={cn("text-[12px] font-semibold", isDark ? "text-white/80" : "text-gray-700")}>{branch.label}</div>
-                <div className={cn("text-[10px]", isDark ? "text-white/30" : "text-gray-400")}>{branch.desc}</div>
+        {/* Branching: horizontal connector bar + 3 paths */}
+        <div className="flow-node relative flex flex-col items-center" style={{ animationDelay: "0.8s" }}>
+          {/* Horizontal bar connecting all three branches */}
+          <div className="flow-line-h w-full h-px" style={{ animationDelay: "0.85s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
+          <div className="flex items-start gap-4 sm:gap-6" style={{ marginTop: "-0.5px" }}>
+            {[
+              { icon: DollarSign, label: "Sales", desc: "Revenue inquiries" },
+              { icon: Briefcase, label: "Admin / HR", desc: "Internal requests" },
+              { icon: Users, label: "Candidates", desc: "Job applicants" },
+            ].map((branch, bi) => (
+              <div key={bi} className="flex flex-col items-center gap-0">
+                {/* Each branch gets its own vertical drop line */}
+                <div className="flow-line-v h-5 w-px" style={{ animationDelay: `${0.9 + bi * 0.1}s`, backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
+                <div
+                  className="flow-node flex flex-col items-center gap-2 rounded-xl border px-4 py-3 text-center"
+                  style={{
+                    animationDelay: `${1.0 + bi * 0.15}s`,
+                    borderColor: isDark ? (bi === 2 ? `${brandColor}40` : "rgba(255,255,255,0.06)") : `${brandColor}50`,
+                    backgroundColor: isDark ? (bi === 2 ? `${brandColor}06` : "rgba(255,255,255,0.015)") : `${brandColor}08`,
+                  }}
+                >
+                  <branch.icon className="h-4 w-4" style={{ color: isDark ? (bi === 2 ? brandColor : "rgba(255,255,255,0.45)") : "#0891B2" }} />
+                  <div className={cn("text-[12px] font-semibold", isDark ? "text-white/80" : "text-gray-700")}>{branch.label}</div>
+                  <div className={cn("text-[10px]", isDark ? "text-white/30" : "text-gray-400")}>{branch.desc}</div>
+                </div>
+                {/* Continue connector only from Candidates */}
+                {bi === 2 && <div className="flow-line-v h-6 w-px" style={{ animationDelay: "1.5s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />}
               </div>
-              {bi === 2 && <div className="flow-line-v h-6 w-px" style={{ animationDelay: "1.5s", backgroundColor: `${brandColor}30` }} />}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Candidate path continues */}
         {/* Node: Recruiter Agent */}
         <div
           className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
-          style={{ animationDelay: "1.6s", borderColor: `${brandColor}35`, backgroundColor: `${brandColor}08` }}
+          style={{ animationDelay: "1.6s", borderColor: isDark ? `${brandColor}35` : `${brandColor}55`, backgroundColor: isDark ? `${brandColor}08` : `${brandColor}10` }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}18` }}>
-            <SearchIcon className="h-5 w-5" style={{ color: brandColor }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: isDark ? `${brandColor}18` : `${brandColor}20` }}>
+            <SearchIcon className="h-5 w-5" style={{ color: isDark ? brandColor : "#0891B2" }} />
           </div>
           <div>
             <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Recruiter Agent</div>
@@ -1554,15 +1566,15 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
         </div>
 
         {/* Vertical connector */}
-        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "1.9s", backgroundColor: `${brandColor}30` }} />
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "1.9s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
 
         {/* Node: Progressive Ticketing */}
         <div
           className="flow-node flex items-center gap-3 rounded-2xl border px-6 py-4"
-          style={{ animationDelay: "2.0s", borderColor: `${brandColor}30`, backgroundColor: `${brandColor}06` }}
+          style={{ animationDelay: "2.0s", borderColor: isDark ? `${brandColor}30` : `${brandColor}50`, backgroundColor: isDark ? `${brandColor}06` : `${brandColor}10` }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${brandColor}15` }}>
-            <FileText className="h-5 w-5" style={{ color: brandColor }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: isDark ? `${brandColor}15` : `${brandColor}20` }}>
+            <FileText className="h-5 w-5" style={{ color: isDark ? brandColor : "#0891B2" }} />
           </div>
           <div>
             <div className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>Progressive Ticketing</div>
@@ -1571,7 +1583,7 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
         </div>
 
         {/* Vertical connector */}
-        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "2.3s", backgroundColor: `${brandColor}30` }} />
+        <div className="flow-line-v h-8 w-px" style={{ animationDelay: "2.3s", backgroundColor: isDark ? `${brandColor}30` : `${brandColor}50` }} />
 
         {/* Destination systems */}
         <div className="flow-node flex items-center gap-3 sm:gap-5" style={{ animationDelay: "2.4s" }}>
@@ -1581,8 +1593,8 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
               className="flow-node rounded-lg border px-4 py-2.5 text-center text-[12px] font-semibold"
               style={{
                 animationDelay: `${2.5 + si * 0.12}s`,
-                borderColor: `${brandColor}25`,
-                backgroundColor: `${brandColor}06`,
+                borderColor: isDark ? `${brandColor}25` : `${brandColor}45`,
+                backgroundColor: isDark ? `${brandColor}06` : `${brandColor}10`,
                 color: isDark ? `${brandColor}cc` : "#0891b2",
               }}
             >
@@ -1605,7 +1617,7 @@ function InboundTriageFlow({ brandColor, shareToken }: { brandColor: string; sha
           <div className={cn("mt-3 rounded-xl border px-4 py-3 text-xs leading-relaxed",
             isDark ? "border-white/[0.06] bg-white/[0.015] text-white/50" : "border-gray-200 bg-gray-50 text-gray-600")}>
             <div className="flex items-center justify-between mb-1">
-              <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
+              <span className="flex items-center gap-1 font-medium" style={{ color: isDark ? brandColor : "#0891B2" }}><Sparkles className="h-3 w-3" /> AI Insight</span>
               <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
             </div>
             {aiResult}
@@ -1668,7 +1680,7 @@ function OutboundScreeningFlow({ brandColor, shareToken }: { brandColor: string;
       <div className="mb-6 flex justify-center">
         <div
           className="screen-step inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[12px] font-bold"
-          style={{ animationDelay: "0s", borderColor: `${brandColor}40`, backgroundColor: `${brandColor}10`, color: brandColor }}
+          style={{ animationDelay: "0s", borderColor: `${brandColor}40`, backgroundColor: `${brandColor}10`, color: isDark ? brandColor : "#0891B2" }}
         >
           <Zap className="h-3.5 w-3.5" />
           Under 1 Hour
@@ -1693,7 +1705,7 @@ function OutboundScreeningFlow({ brandColor, shareToken }: { brandColor: string;
                 className="flex h-10 w-10 items-center justify-center rounded-xl"
                 style={{ backgroundColor: si === steps.length - 1 ? `${brandColor}25` : `${brandColor}15` }}
               >
-                <step.icon className="h-5 w-5" style={{ color: brandColor }} />
+                <step.icon className="h-5 w-5" style={{ color: isDark ? brandColor : "#0891B2" }} />
               </div>
               <div className={cn("text-[12px] font-semibold", isDark ? "text-white/85" : "text-gray-700")}>{step.label}</div>
               <div className={cn("text-[10px]", isDark ? "text-white/35" : "text-gray-400")}>{step.desc}</div>
@@ -1727,7 +1739,7 @@ function OutboundScreeningFlow({ brandColor, shareToken }: { brandColor: string;
         <div className={cn("mt-3 rounded-xl border px-4 py-3 text-xs leading-relaxed",
           isDark ? "border-white/[0.06] bg-white/[0.015] text-white/50" : "border-gray-200 bg-gray-50 text-gray-600")}>
           <div className="flex items-center justify-between mb-1">
-            <span className="flex items-center gap-1 font-medium" style={{ color: brandColor }}><Sparkles className="h-3 w-3" /> AI Insight</span>
+            <span className="flex items-center gap-1 font-medium" style={{ color: isDark ? brandColor : "#0891B2" }}><Sparkles className="h-3 w-3" /> AI Insight</span>
             <button onClick={() => setAiResult(null)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3 w-3" /></button>
           </div>
           {aiResult}
@@ -1752,7 +1764,90 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
   const sections = useMemo(() => parseDocument(content, activeDoc?.title ?? portal.title, portal.client_name ?? "Client"), [content, activeDoc?.title, portal.title, portal.client_name]);
   const tocEntries = useMemo(() => buildToc(sections), [sections]);
   const extraHeaders = useMemo(() => ({ "x-portal-token": portal.share_token }), [portal.share_token]);
-  const handleDocSwitch = useCallback((idx: number) => { setActiveDocIdx(idx); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+
+  // View state — "document" | "additional-docs" | "doc-preview"
+  type ViewMode = "document" | "additional-docs" | "doc-preview";
+  const [activeView, setActiveView] = useState<ViewMode>("document");
+  const handleDocSwitch = useCallback((idx: number) => { setActiveDocIdx(idx); setActiveView("document"); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+
+  // Library Previews — full-page inline viewer
+  const [previewDoc, setPreviewDoc] = useState<typeof BLUEWAVE_DOCUMENTS[0] | null>(null);
+  const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
+  const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPreviewDoc(doc);
+    setActiveView("doc-preview");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (doc.type === "image" || doc.type === "pdf") return;
+
+    setIsPreviewLoading(true);
+    setDocPreviewText(null);
+    setDocPreviewHtml(null);
+    try {
+      const res = await fetch("/portal-docs/bluewave/_manifest.json");
+      const manifest = await res.json();
+      const loadedDoc = manifest.find((d: any) => d.id === doc.id);
+      if (loadedDoc) {
+        setDocPreviewText(loadedDoc.extractedText);
+        setDocPreviewHtml(loadedDoc.extractedHtml);
+      }
+    } catch (err) {
+      console.error("Failed to load document text:", err);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleToolOutput = useCallback(
+    (output: any) => {
+      if (output?.action === "navigate") {
+        if (output.target === "additional-docs") {
+          setActiveView("additional-docs");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          setActiveView("document");
+          // If the target matches a section ID, try scrolling to it
+          setTimeout(() => {
+            const el = document.getElementById(output.target);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+              el.style.transition = "background-color 1s ease";
+              const ogBg = el.style.backgroundColor;
+              el.style.backgroundColor = "rgba(12, 228, 242, 0.2)";
+              setTimeout(() => {
+                el.style.backgroundColor = ogBg;
+              }, 2000);
+            }
+          }, 100);
+        }
+      } else if (output?.action === "highlight") {
+        // We could implement a generic text finder here using window.find
+        // For now just scroll if an element contains the text
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue?.includes(output.text)) {
+            const el = node.parentElement;
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.style.transition = "background-color 1s ease";
+              const ogBg = el.style.backgroundColor;
+              el.style.backgroundColor = "rgba(12, 228, 242, 0.2)";
+              setTimeout(() => {
+                el.style.backgroundColor = ogBg;
+              }, 2000);
+              break;
+            }
+          }
+        }
+      }
+    },
+    [setActiveView]
+  );
 
   // Theme state — persisted to localStorage, synced to <html> class for ChatInterface
   const [theme, setTheme] = useState<PortalTheme>("dark");
@@ -1788,14 +1883,31 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
     });
   }, []);
   const isDark = theme === "dark";
-  // In light mode, use dark teal instead of bright cyan — the brand cyan is unreadable on white
-  const accentColor = isDark ? brandColor : "#0F766E";
-  const themeCtx = useMemo(() => ({ isDark, theme, accentColor }), [isDark, theme, accentColor]);
+  // In light mode, use bright cyan for decorative accents, darker cyan for text/icons
+  const accentColor = isDark ? brandColor : "#0CE4F2";
+  const accentTextColor = isDark ? brandColor : "#0891B2";
+  const themeCtx = useMemo(() => ({ isDark, theme, accentColor, accentTextColor }), [isDark, theme, accentColor, accentTextColor]);
+
+  // Scroll-driven progress for wave sidebars (0 = top, 1 = past hero)
+  const [scrollProgress, setScrollProgress] = useState(0);
+  useEffect(() => {
+    const SCROLL_RANGE = 1200; // pixels over which waves transition
+    const onScroll = () => {
+      const progress = Math.min(1, window.scrollY / SCROLL_RANGE);
+      setScrollProgress(progress);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // initial
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <ThemeContext.Provider value={themeCtx}>
     <div className={cn("min-h-screen", isDark ? "bg-[#050508] text-white" : "bg-white text-gray-900")}>
       <FloatingToc entries={tocEntries} brandColor={accentColor} />
+
+      {/* Animated wave gradient side bars — decorative motion on left/right edges */}
+      <WaveSidebar brandColor={brandColor} isDark={isDark} scrollProgress={scrollProgress} />
 
       {/* Nav */}
       <nav className={cn("fixed top-0 z-[45] flex w-full items-center justify-between border-b px-6 py-2.5 backdrop-blur-xl",
@@ -1805,22 +1917,28 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
           <span className={cn("text-[11px]", isDark ? "text-white/50" : "text-gray-500")}>Prepared by <span className={isDark ? "text-white/70" : "text-gray-700"}>Mirror Factory</span></span>
         </div>
         <div className="flex items-center gap-2">
-          {docs.length > 1 && (
-            <div className={cn("flex items-center gap-0.5 rounded-lg border p-0.5",
+          <div className={cn("flex items-center gap-0.5 rounded-lg border p-0.5",
               isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-gray-200 bg-gray-50")}>
               {docs.map((doc, di) => (
                 <button key={di} onClick={() => handleDocSwitch(di)}
                   className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all",
-                    di === activeDocIdx ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-gray-400 hover:text-gray-600"))}
-                  style={di === activeDocIdx ? { backgroundColor: `${accentColor}18`, color: accentColor } : undefined}>
+                    di === activeDocIdx && activeView === "document" ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-gray-400 hover:text-gray-600"))}
+                  style={di === activeDocIdx && activeView === "document" ? { backgroundColor: `${accentColor}18`, color: accentTextColor } : undefined}>
                   {doc.title.length > 18 ? doc.title.slice(0, 18) + "..." : doc.title}
                 </button>
               ))}
+              {/* Additional Documents tab */}
+              <button
+                onClick={() => { setActiveView(activeView === "additional-docs" || activeView === "doc-preview" ? "document" : "additional-docs"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className={cn("cursor-pointer rounded-md px-2.5 py-1 text-[11px] transition-all",
+                  (activeView === "additional-docs" || activeView === "doc-preview") ? "font-medium" : (isDark ? "text-white/30 hover:text-white/55" : "text-gray-400 hover:text-gray-600"))}
+                style={(activeView === "additional-docs" || activeView === "doc-preview") ? { backgroundColor: `${accentColor}18`, color: accentTextColor } : undefined}>
+                Documents
+              </button>
             </div>
-          )}
-          {activeDoc?.pdf_path && (
+          {activeDoc?.pdf_path && activeView === "document" && (
             <Button variant="ghost" size="sm" asChild className={cn("h-7 gap-1 text-[11px]", isDark ? "text-white/35 hover:text-white/60" : "text-gray-400 hover:text-gray-600")}>
-              <a href={activeDoc.pdf_path} download target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /> PDF</a>
+              <a href={activeDoc.pdf_path} download target="_blank" rel="noopener noreferrer"><Download className="h-3 w-3" /> Configured Docs</a>
             </Button>
           )}
           {/* Theme toggle */}
@@ -1843,6 +1961,231 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
 
       {/* Content */}
       <main className="mx-auto max-w-4xl px-6 pt-14">
+        {activeView === "doc-preview" && previewDoc ? (
+          /* Full-page inline document viewer — mirrors PDF viewer layout */
+          <div className="min-h-[calc(100vh-56px)] py-8">
+            {/* Viewer header */}
+            <div className={cn(
+              "sticky top-14 z-30 flex shrink-0 items-center justify-between border-b px-4 py-3 backdrop-blur-xl",
+              isDark ? "border-white/[0.06] bg-[#050508]/90" : "border-gray-200 bg-white/95"
+            )}>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <button
+                  onClick={() => { setActiveView("additional-docs"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-colors", isDark ? "text-white/40 hover:text-white/70 hover:bg-white/[0.05]" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100")}
+                  title="Back to Documents"
+                >
+                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                </button>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: previewDoc.type === 'image' ? '#f59e0b15' : previewDoc.type === 'pdf' ? '#ef444415' : previewDoc.type === 'xlsx' ? '#22c55e15' : `${accentColor}15` }}>
+                  {previewDoc.type === "image" ? <ImageIcon className="h-4 w-4 text-amber-500" /> :
+                   previewDoc.type === "pdf" ? <FileIcon className="h-4 w-4 text-red-500" /> :
+                   previewDoc.type === "xlsx" ? <FileSpreadsheet className="h-4 w-4 text-green-500" /> :
+                   <FileText className="h-4 w-4" style={{ color: isDark ? accentColor : accentTextColor }} />}
+                </div>
+                <div className="overflow-hidden">
+                  <p className={cn("truncate text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
+                  <p className={cn("text-[10px]", isDark ? "text-white/30" : "text-gray-400")}>{previewDoc.type.toUpperCase()} · {previewDoc.sizeHuman}</p>
+                </div>
+              </div>
+              <a
+                href={previewDoc.url}
+                download
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium transition-all",
+                  isDark ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </a>
+            </div>
+
+            {/* Viewer body */}
+            <div className="mx-auto mt-4 w-full max-w-4xl px-0">
+              {previewDoc.type === "image" ? (
+                /* Image viewer */
+                <div className={cn("flex min-h-[80vh] items-center justify-center rounded-2xl p-6", isDark ? "bg-white/[0.02]" : "bg-gray-50")}>
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.title}
+                    className="max-h-[85vh] w-auto max-w-full rounded-xl shadow-2xl object-contain"
+                  />
+                </div>
+              ) : previewDoc.type === "pdf" ? (
+                /* PDF viewer — embedded iframe */
+                <div className={cn("overflow-hidden rounded-2xl border shadow-xl", isDark ? "border-white/[0.06]" : "border-gray-200")} style={{ height: "calc(100vh - 160px)" }}>
+                  <iframe
+                    src={previewDoc.url}
+                    className="h-full w-full"
+                    title={previewDoc.title}
+                    style={{ border: "none" }}
+                  />
+                </div>
+              ) : previewDoc.type === "xlsx" ? (
+                /* Spreadsheet — download prompt */
+                <div className={cn("flex min-h-[60vh] flex-col items-center justify-center gap-6 rounded-2xl border p-12", isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-gray-200 bg-gray-50")}>
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl" style={{ backgroundColor: '#22c55e15' }}>
+                    <FileSpreadsheet className="h-10 w-10 text-green-500" />
+                  </div>
+                  <div className="text-center">
+                    <p className={cn("text-base font-semibold", isDark ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
+                    <p className={cn("mt-2 max-w-md text-sm", isDark ? "text-white/50" : "text-gray-500")}>This spreadsheet file requires Excel or Google Sheets to view. Download the file to open it in your preferred application.</p>
+                  </div>
+                  <a
+                    href={previewDoc.url}
+                    download
+                    className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    <Download className="h-4 w-4" /> Download Spreadsheet
+                  </a>
+                </div>
+              ) : isPreviewLoading ? (
+                /* Loading state */
+                <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin" style={{ color: isDark ? accentColor : accentTextColor }} />
+                  <p className={cn("text-sm", isDark ? "text-white/50" : "text-gray-500")}>Loading document content...</p>
+                </div>
+              ) : (
+                /* Word doc / text content */
+                <div className={cn(
+                  "mx-auto rounded-2xl border p-8 shadow-sm sm:p-12",
+                  isDark ? "border-white/[0.04] bg-[#0e1015]" : "border-gray-100 bg-white"
+                )}>
+                  {docPreviewHtml ? (
+                    <div
+                      className={cn(
+                        "prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-a:text-blue-500",
+                        isDark ? "prose-invert prose-headings:text-white prose-p:text-gray-300" : "prose-headings:text-gray-900 prose-p:text-gray-700"
+                      )}
+                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                    />
+                  ) : (
+                    <pre className={cn("whitespace-pre-wrap font-sans text-sm leading-relaxed", isDark ? "text-gray-300" : "text-gray-700")}>
+                      {docPreviewText || "No text content could be extracted from this document."}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeView === "additional-docs" ? (
+          /* Additional Documents grid */
+          <div className="py-24">
+            <div className="mb-10 text-center">
+              <h2 className={cn("text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-gray-900")}>Document Library</h2>
+              <p className={cn("mt-2 text-sm", isDark ? "text-white/40" : "text-gray-500")}>View and download all related project documents</p>
+            </div>
+            
+            {["Core Documents", "Planning", "Proposal Library", "Architecture"].map((category) => {
+              const categoryDocs = BLUEWAVE_DOCUMENTS.filter(d => d.category === category);
+              if (categoryDocs.length === 0) return null;
+              
+              return (
+                <div key={category} className="mb-12">
+                  <h3 className={cn("mb-6 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-400")}>
+                    <FolderOpen className="h-4 w-4" /> {category}
+                  </h3>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {categoryDocs.map((doc, di) => (
+                      <div
+                        key={di}
+                        className={cn(
+                          "group relative flex flex-col items-start gap-4 rounded-2xl border p-5 transition-all duration-300",
+                          isDark
+                            ? "border-white/[0.06] bg-white/[0.018] hover:border-white/[0.12] hover:bg-white/[0.03]"
+                            : "border-gray-200 bg-gray-50/80 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
+                        )}
+                      >
+                        <div className="flex w-full items-start justify-between gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105" 
+                            style={{ backgroundColor: doc.type === 'pdf' ? '#ef444415' : doc.type === 'xlsx' ? '#22c55e15' : doc.type === 'image' ? '#f59e0b15' : `${accentColor}15` }}>
+                            {doc.type === "pdf" ? <FileIcon className="h-6 w-6 text-red-500" /> :
+                             doc.type === "xlsx" ? <FileSpreadsheet className="h-6 w-6 text-green-500" /> :
+                             doc.type === "image" ? <ImageIcon className="h-6 w-6 text-amber-500" /> :
+                             <FileText className="h-6 w-6" style={{ color: isDark ? accentColor : accentTextColor }} />}
+                          </div>
+                          
+                          <div className="flex shrink-0 gap-1">
+                            <button
+                              onClick={(e) => handleOpenDocPreview(doc, e)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
+                                isDark ? "border-white/10 text-white/40 hover:bg-white/10 hover:text-white" : "border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-800"
+                              )}
+                              title="View Document"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <a
+                              href={doc.url}
+                              download
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-full border transition-all",
+                                isDark ? "border-white/10 text-white/40 hover:bg-white/10 hover:text-white" : "border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-800"
+                              )}
+                              title="Download Document"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                        
+                        <div className="w-full">
+                          <p className={cn("text-sm font-semibold line-clamp-2", isDark ? "text-white" : "text-gray-900")} title={doc.title}>{doc.title}</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                              doc.type === 'pdf' ? 'bg-red-500/10 text-red-500' :
+                              doc.type === 'xlsx' ? 'bg-green-500/10 text-green-500' :
+                              doc.type === 'image' ? 'bg-amber-500/10 text-amber-500' :
+                              (isDark ? 'bg-cyan-500/10 text-cyan-400' : 'bg-cyan-600/10 text-cyan-700')
+                            )}>
+                              {doc.type}
+                            </span>
+                            <span className={cn("text-[11px]", isDark ? "text-white/30" : "text-gray-400")}>{doc.sizeHuman}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Additional Configured Workflows as well */}
+            <div className="mb-12">
+              <h3 className={cn("mb-6 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-400")}>
+                <Layers className="h-4 w-4" /> Configured Views
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {docs.map((d, di) => (
+                  <div
+                    key={`cfg-${di}`}
+                    className={cn(
+                      "group relative flex flex-col items-start gap-4 rounded-2xl border p-5 transition-all duration-300 cursor-pointer",
+                      isDark
+                        ? "border-white/[0.06] bg-white/[0.018] hover:border-white/[0.12] hover:bg-white/[0.03]"
+                        : "border-gray-200 bg-gray-50/80 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
+                    )}
+                    onClick={() => { setActiveDocIdx(di); setActiveView("document"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ backgroundColor: `${accentColor}15` }}>
+                        <List className="h-6 w-6" style={{ color: isDark ? accentColor : accentTextColor }} />
+                    </div>
+                    <div className="w-full">
+                      <p className={cn("text-sm font-semibold", isDark ? "text-white" : "text-gray-900")}>{d.title}</p>
+                      <p className={cn("mt-1 text-[11px]", isDark ? "text-white/40" : "text-gray-500")}>Interactive Experience</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+          </div>
+        ) : (
+          /* Document experience view */
+          <>
         {sections.map(section => {
           switch (section.type) {
             case "hero": return <HeroSection key={section.id} title={section.title ?? portal.title} clientName={section.content} brandColor={accentColor} logoUrl={portal.logo_url} subtitle={portal.subtitle} />;
@@ -1873,6 +2216,8 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
           {portal.logo_url && <img src={portal.logo_url} alt="" className={cn("h-6 w-auto", isDark ? "opacity-80" : "opacity-100")} />}
           <p className={cn("text-[11px]", isDark ? "text-white/50" : "text-gray-500")}>Prepared by Mirror Factory</p>
         </footer>
+          </>
+        )}
       </main>
 
       {/* Chat — mobile: bottom sheet, desktop: floating panel */}
@@ -1900,18 +2245,33 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
               <span className={cn("text-xs font-medium", isDark ? "text-white/60" : "text-gray-600")}>Ask about this proposal</span>
               <button onClick={() => setChatOpen(false)} className={isDark ? "text-white/30 hover:text-white/60" : "text-gray-400 hover:text-gray-600"}><X className="h-3.5 w-3.5" /></button>
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden" style={!isDark ? {
+              // Override CSS custom properties so all shadcn components inside render in light mode
+              '--background': '0 0% 100%',
+              '--foreground': '222 47% 11%',
+              '--card': '0 0% 100%',
+              '--card-foreground': '222 47% 11%',
+              '--border': '220 13% 91%',
+              '--input': '220 13% 91%',
+              '--primary': '188 78% 41%',
+              '--primary-foreground': '0 0% 100%',
+              '--muted': '220 14% 96%',
+              '--muted-foreground': '220 9% 46%',
+              '--accent': '220 14% 96%',
+              '--accent-foreground': '222 47% 11%',
+            } as React.CSSProperties : undefined}>
               <ChatInterface
                 apiEndpoint="/api/chat/portal"
                 extraHeaders={extraHeaders}
                 portalMode
                 portalTitle={activeDoc?.title || portal.title}
                 portalClientName={portal.client_name ?? undefined}
-                portalBrandColor={accentColor}
+                portalBrandColor={accentTextColor}
                 portalLogoUrl={portal.logo_url ?? undefined}
                 compactMode
                 hideContextBar
-                containerClassName={isDark ? undefined : "bg-white [&_.shrink-0]:!bg-white [&_.shrink-0.sticky]:!bg-white [&_.shrink-0.sticky]:!bg-none [&_textarea]:!bg-white [&_.bg-gradient-to-t]:!bg-none [&_.bg-gradient-to-t]:!bg-white [&_[style*='linear-gradient']]:!bg-white [&_[style*='linear-gradient']]:![background:white]"}
+                containerClassName={!isDark ? "bg-white" : undefined}
+                onToolOutput={handleToolOutput}
               />
             </div>
           </div>
@@ -1927,6 +2287,7 @@ export function PortalExperience({ portal }: { portal: PortalData }) {
         </button>
       )}
     </div>
+    
     </ThemeContext.Provider>
   );
 }

@@ -1158,8 +1158,8 @@ function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: Tool
         <iframe
           srcDoc={htmlOut.html}
           sandbox="allow-scripts"
-          className="rounded-lg border my-2"
-          style={{ width: htmlOut.width || 600, height: htmlOut.height || 400 }}
+          className="rounded-lg border border-white/10 my-2 w-full max-w-full bg-[rgba(20,20,30,0.5)]"
+          style={{ height: htmlOut.height || 260, aspectRatio: htmlOut.width && htmlOut.height ? `${htmlOut.width} / ${htmlOut.height}` : undefined }}
         />
       );
     }
@@ -2929,7 +2929,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         <div
           className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "")}
           style={{
-            background: "linear-gradient(to bottom, transparent, hsl(168 14% 5% / 0.8) 30%, hsl(168 14% 5%) 60%)",
+            background: `linear-gradient(to bottom, transparent, hsl(var(--background) / 0.85) 35%, hsl(var(--background)) 65%)`,
           }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}

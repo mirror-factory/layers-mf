@@ -141,25 +141,61 @@ function createPortalTools(
     });
   }
 
+  if (enabled.has("navigate_portal")) {
+    tools.navigate_portal = tool({
+      description:
+        "Navigate the experience portal to a specific view or section. Use this when the user asks to see a specific document tab or topic.",
+      inputSchema: z.object({
+        target: z.string().describe("The tab or section identifier. E.g., 'proposal', 'scope-of-work', 'additional-docs', or a specific section inside the proposal."),
+        reason: z.string().optional().describe("Brief explanation of why navigating here"),
+      }),
+      execute: async ({ target, reason }: { target: string; reason?: string }) => {
+        return {
+          action: "navigate",
+          target,
+          reason: reason ?? `Navigating to ${target}`,
+        };
+      },
+    });
+  }
+  
+  if (enabled.has("highlight_text")) {
+    tools.highlight_text = tool({
+      description:
+        "Highlight exactly matched text on the screen for the user. Use this when pointing out a specific clause or sentence in the currently visible document.",
+      inputSchema: z.object({
+        text: z.string().describe("The exact text strictly matching the document to highlight"),
+        reason: z.string().optional().describe("Brief explanation of the highlight"),
+      }),
+      execute: async ({ text, reason }: { text: string; reason?: string }) => {
+        return {
+          action: "highlight",
+          text,
+          reason: reason ?? `Highlighting referenced text`,
+        };
+      },
+    });
+  }
+
   if (enabled.has("render_chart")) {
     tools.render_chart = tool({
       description:
-        "Render a Chart.js chart. Returns inline HTML that the client will display.",
+        "Render a Chart.js chart. Returns inline HTML that the client will display. IMPORTANT: The chart is shown in a small chat panel (~340px wide), so keep dimensions small.",
       inputSchema: z.object({
         chart_config: z
           .string()
           .describe(
-            "A JSON string of a Chart.js configuration object (type, data, options)"
+            "A JSON string of a Chart.js configuration object (type, data, options). MUST include dark theme colors: use transparent background, white/light text, and the brand cyan (#0CE4F2) as the primary color. Use compact font sizes (10-11px). Include options.responsive=true and options.maintainAspectRatio=true."
           ),
         title: z.string().optional().describe("Optional chart title"),
         width: z
           .number()
           .optional()
-          .describe("Chart width in pixels (default 600)"),
+          .describe("Chart width in pixels (DEPRECATED, UI handles sizing natively)"),
         height: z
           .number()
           .optional()
-          .describe("Chart height in pixels (default 400)"),
+          .describe("Chart height in pixels (DEPRECATED)"),
       }),
       execute: async ({
         chart_config,
@@ -172,18 +208,35 @@ function createPortalTools(
         width?: number;
         height?: number;
       }) => {
-        const w = width ?? 600;
-        const h = height ?? 400;
+        const w = width ?? 340;
+        const h = height ?? 220;
+        // Output responsive chart using flexible iframe layout
         const html = `<!DOCTYPE html>
 <html><head>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:transparent;font-family:system-ui}</style>
+<style>
+  body{margin:0;padding:4px;background:transparent;font-family:system-ui,-apple-system,sans-serif;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+  .container{position:relative;width:100%;height:100%;max-height:240px;display:flex;flex-direction:column;}
+  canvas{flex:1;width:100% !important;height:100% !important;object-fit:contain;}
+</style>
 </head><body>
-${title ? `<h3 style="text-align:center;margin-bottom:8px">${title}</h3>` : ""}
-<canvas id="c" width="${w}" height="${h}"></canvas>
-<script>new Chart(document.getElementById('c'),${chart_config})</script>
+<div class="container">
+${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:600">${title}</h3>` : ""}
+<canvas id="c"></canvas>
+</div>
+<script>
+  // Force transparent background, default text color and cyan primary
+  Chart.defaults.color = 'rgba(255,255,255,0.6)';
+  Chart.defaults.font.size = 10;
+  Chart.defaults.plugins.legend.labels.boxWidth = 10;
+  var cfg = ${chart_config};
+  if(!cfg.options) cfg.options = {};
+  cfg.options.responsive = true;
+  cfg.options.maintainAspectRatio = false;
+  new Chart(document.getElementById('c'), cfg);
+</script>
 </body></html>`;
-        return { html, width: w, height: h, title };
+        return { html };
       },
     });
   }
@@ -462,8 +515,15 @@ You are helping the reader understand "${portal.title}".
 
 You have access to the full document content. When answering questions:
 1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
-2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the PDF), add_annotation (to add visual callouts on the PDF), walkthrough_document (to give an animated tour).
+2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_portal (to switch tabs/scroll to sections), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the document), add_annotation (to add visual callouts), walkthrough_document (to give an animated tour).
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
+   CRITICAL CHART RULES:
+   - The chart displays in a SMALL chat panel (~340px wide). Use width=340, height=220.
+   - ALWAYS use dark theme: transparent background, white text (#e0e0e0), light grid lines (rgba(255,255,255,0.08)).
+   - Use the brand color #0CE4F2 as primary, #0891B2 as secondary. Use rgba(12,228,242,0.3) for fills.
+   - Use compact font sizes: 10px for labels, 11px for titles.
+   - Set options.responsive=true, options.maintainAspectRatio=true.
+   - Keep charts simple — 2-5 data points max for horizontal bar charts, 3-8 for line/pie.
 4. When the user asks to "walk me through", "give me a tour", "explain the whole document", or "walkthrough", use the walkthrough_document tool. Identify 8-15 key sections, estimate a page number for each, and provide a brief 1-2 sentence explanation per section.
 5. Always reference specific sections and quote relevant text.
 6. Be concise but thorough.
@@ -545,6 +605,8 @@ export async function POST(request: NextRequest) {
   const enabledTools = (portal.enabled_tools as string[]) ?? [
     "search_document",
     "navigate_pdf",
+    "navigate_portal",
+    "highlight_text",
     "render_chart",
   ];
 
