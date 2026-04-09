@@ -87,6 +87,7 @@ function parseContent(text: string): Section[] {
       while (j + 2 < lines.length) {
         const p = clean(lines[j]), t = clean(lines[j + 1]), inv = clean(lines[j + 2]);
         if (!p || /^(Phase\s*$|Timeline|Milestones)/i.test(p)) break;
+        if (!inv.includes("$") && !/scoped|tbd|n\/a|included|see|pending/i.test(inv)) break;
         budgetRows.push({ phase: p, timeline: t, investment: inv }); j += 3;
       }
       if (budgetRows.length > 0) { idx++; sections.push({ id: `s${idx}`, type: "budget", content: "", budgetRows }); i = j; continue; }

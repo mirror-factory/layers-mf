@@ -243,6 +243,8 @@ function parseDocument(content: string, portalTitle: string, clientName: string)
       while (j + 2 < lines.length) {
         const p = cleanBold(lines[j]), t = cleanBold(lines[j + 1]), inv = cleanBold(lines[j + 2]);
         if (!p || /^(Phase\s*$|Timeline|Milestones)/i.test(p)) break;
+        // Stop if this doesn't look like a budget row — investment should have $ or "Scoped" or "TBD"
+        if (!inv.includes("$") && !/scoped|tbd|n\/a|included|see|pending/i.test(inv)) break;
         budgetRows.push({ phase: p, timeline: t, investment: inv });
         j += 3;
       }
@@ -591,7 +593,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
 }) {
   const { isDark } = usePortalTheme();
   return (
-    <div className="relative flex min-h-[85vh] flex-col items-center justify-center overflow-hidden px-6 py-24">
+    <div className="relative flex min-h-[85vh] flex-col items-center justify-center px-6 py-24">
       {/* Animated gradient background + global section animations */}
       <style>{`
         @keyframes section-fade-in {
@@ -649,7 +651,7 @@ function HeroSection({ title, clientName, brandColor, logoUrl, subtitle }: {
       `}</style>
 
       {/* Animated gradient mesh — multiple rotating blurred ellipses */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-1/4 -left-1/4 h-[150%] w-[150%]"
           style={{
             background: `radial-gradient(ellipse 50% 40% at 40% 40%, ${brandColor}${isDark ? "18" : "12"} 0%, transparent 70%)`,
