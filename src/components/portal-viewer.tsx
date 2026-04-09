@@ -22,11 +22,14 @@ import {
   Download,
   Settings2,
   MessageSquarePlus,
+  MessageSquare,
   StickyNote,
   FileSpreadsheet,
   Image as ImageIcon,
   FileIcon,
-  FolderOpen
+  FolderOpen,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
@@ -40,9 +43,11 @@ import {
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { PortalData } from "@/app/portal/[token]/page";
@@ -318,76 +323,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
-  const handleToolOutput = useCallback(
-    (toolName: string, output: unknown) => {
-      const out = output as Record<string, unknown>;
-      if (toolName === "add_annotation" && out.action === "add_annotation") {
-        addAnnotation({
-          page: Number(out.page) || 1,
-          text: String(out.text ?? ""),
-          note: String(out.note ?? ""),
-          type: (out.type as Annotation["type"]) ?? "info",
-        });
-      } else if (toolName === "navigate_pdf" && out.action === "navigate") {
-        const page = Number(out.page);
-        if (page > 0 && pdfControls) {
-          pdfControls.goToPage?.(page);
-          setCurrentPage(page);
-        }
-      } else if (toolName === "highlight_text" && out.action === "highlight") {
-        setHighlightText(String(out.text ?? ""));
-        const page = Number(out.page);
-        if (page > 0 && pdfControls) {
-          pdfControls.goToPage?.(page);
-          setCurrentPage(page);
-        }
-      }
-    },
-    [addAnnotation, pdfControls]
-  );
-
-  // Feature 3: Tool toggles
-  const [activeTools, setActiveTools] = useState<Set<string>>(
-    () => new Set(portal.enabled_tools ?? [])
-  );
-
-  const toggleTool = useCallback((toolId: string) => {
-    setActiveTools((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolId)) {
-        next.delete(toolId);
-      } else {
-        next.add(toolId);
-      }
-      return next;
-    });
-  }, []);
-
-  // Build extra headers including active tools and context tags
-  const extraHeaders = useMemo(
-    () => ({
-      "x-portal-token": portal.share_token,
-      "x-active-tools": JSON.stringify([...activeTools]),
-      ...(contextTags.length > 0 && {
-        "x-portal-context": JSON.stringify(contextTags.map((t) => t.text)),
-      }),
-    }),
-    [portal.share_token, activeTools, contextTags]
-  );
-
-  // Multi-document switching
-  const documents = portal.documents ?? [];
-  const [activeDocIndex, setActiveDocIndex] = useState(() => {
-    const idx = documents.findIndex(d => d.is_active);
-    return idx >= 0 ? idx : 0;
-  });
-  const activeDoc = documents[activeDocIndex];
-  const [pdfFailed, setPdfFailed] = useState(false);
-  const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
-  // If PDF loading failed or no URL, fall back to text rendering (pass null to viewer)
-  const activePdfUrl = pdfFailed ? null : rawPdfUrl;
-
   // View mode and Library Previews
   const [activeView, setActiveView] = useState<"document" | "library" | "doc-preview">("document");
   const [previewDoc, setPreviewDoc] = useState<typeof BLUEWAVE_DOCUMENTS[0] | null>(null);
@@ -463,6 +398,95 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       setIsPreviewLoading(false);
     }
   };
+
+  // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
+  const handleToolOutput = useCallback(
+    (toolName: string, output: unknown) => {
+      const out = output as Record<string, unknown>;
+      if (toolName === "add_annotation" && out.action === "add_annotation") {
+        addAnnotation({
+          page: Number(out.page) || 1,
+          text: String(out.text ?? ""),
+          note: String(out.note ?? ""),
+          type: (out.type as Annotation["type"]) ?? "info",
+        });
+      } else if (toolName === "navigate_pdf" && out.action === "navigate") {
+        const page = Number(out.page);
+        if (page > 0 && pdfControls) {
+          pdfControls.goToPage?.(page);
+          setCurrentPage(page);
+        }
+      } else if (toolName === "highlight_text" && out.action === "highlight") {
+        setHighlightText(String(out.text ?? ""));
+        const page = Number(out.page);
+        if (page > 0 && pdfControls) {
+          pdfControls.goToPage?.(page);
+          setCurrentPage(page);
+        }
+      } else if (toolName === "open_document_preview" && out.action === "open_document_preview") {
+        const docId = String(out.document_id ?? "");
+        const doc = BLUEWAVE_DOCUMENTS.find((item) => item.id === docId);
+        if (doc) {
+          void handleOpenDocPreview(doc);
+        }
+      }
+    },
+    [addAnnotation, pdfControls, handleOpenDocPreview]
+  );
+
+  // Feature 3: Tool toggles
+  const [activeTools, setActiveTools] = useState<Set<string>>(
+    () => new Set(portal.enabled_tools ?? [])
+  );
+
+  const toggleTool = useCallback((toolId: string) => {
+    setActiveTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolId)) {
+        next.delete(toolId);
+      } else {
+        next.add(toolId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Build extra headers including active tools and context tags
+  const extraHeaders = useMemo(
+    () => ({
+      "x-portal-token": portal.share_token,
+      "x-active-tools": JSON.stringify([...activeTools]),
+      ...(contextTags.length > 0 && {
+        "x-portal-context": JSON.stringify(contextTags.map((t) => t.text)),
+      }),
+    }),
+    [portal.share_token, activeTools, contextTags]
+  );
+
+  // Multi-document switching
+  const documents = portal.documents ?? [];
+  const [activeDocIndex, setActiveDocIndex] = useState(() => {
+    const idx = documents.findIndex(d => d.is_active);
+    return idx >= 0 ? idx : 0;
+  });
+  const activeDoc = documents[activeDocIndex];
+
+  // Auto-add active document to context so AI knows what user is viewing
+  useEffect(() => {
+    const docTitle = activeView === "doc-preview" && previewDoc
+      ? previewDoc.title
+      : activeDoc?.title;
+    if (!docTitle) return;
+    setContextTags(prev => {
+      const filtered = prev.filter(t => !t.text.startsWith("Viewing: "));
+      return [{ id: "active-doc", text: `Viewing: ${docTitle}` }, ...filtered];
+    });
+  }, [activeView, activeDocIndex, previewDoc?.title, activeDoc?.title]);
+
+  const [pdfFailed, setPdfFailed] = useState(false);
+  const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
+  // If PDF loading failed or no URL, fall back to text rendering (pass null to viewer)
+  const activePdfUrl = pdfFailed ? null : rawPdfUrl;
 
   // Feature 1: TOC — rebuild when switching documents
   const activeDocContent = useMemo(() => {
@@ -583,18 +607,27 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   const brandColor = portal.brand_color || "#0DE4F2";
 
-  // Force light mode for portal view
-  const portalDark = false;
-  useEffect(() => {
-    document.documentElement.classList.remove("dark");
+  // Theme mode (default: dark)
+  const [portalDark, setPortalDark] = useState(() => {
+    if (typeof window === "undefined") return true;
     try {
-      localStorage.setItem("portal-theme", "light");
+      const stored = localStorage.getItem("portal-theme");
+      return stored ? stored === "dark" : true;
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", portalDark);
+    try {
+      localStorage.setItem("portal-theme", portalDark ? "dark" : "light");
     } catch {
       // Ignore storage quota errors in locked-down or full storage contexts
     }
-  }, []);
+  }, [portalDark]);
   const pd = portalDark;
   const brandAccent = portal.brand_color || "#0DE4F2";
+  const docPreviewIsLight = previewDoc?.type === "docx" || previewDoc?.type === "xlsx";
 
   // ---------------------------------------------------------------------------
   // Tool toggles dropdown menu (Bug 8)
@@ -736,7 +769,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   return (
     <div
-      className="flex h-screen flex-col overflow-hidden"
+      className={cn("flex h-screen flex-col overflow-hidden", pd ? "bg-[#070a0e]" : "bg-gray-50")}
     >
       {/* Welcome modal */}
       <PortalWelcomeModal
@@ -783,8 +816,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   </span>
                 )}
               </div>
-              {/* Document switcher tabs */}
-              <div className="flex gap-1 mt-1">
+              {/* Document switcher tabs (desktop) */}
+              <div className="hidden md:flex gap-1 mt-1">
                 <button
                   onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   className={cn(
@@ -812,6 +845,45 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     {doc.title}
                   </button>
                 ))}
+              </div>
+
+              {/* Mobile doc picker */}
+              <div className="mt-2 md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 text-xs font-medium gap-2",
+                        pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-sky-100 bg-white text-slate-600"
+                      )}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      <span className="truncate max-w-[140px]">
+                        {activeView === "library" ? "Document Library" : activeDoc?.title || portal.title}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuItem
+                      onClick={() => { setActiveView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" /> Full document library
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {documents.map((doc, i) => (
+                      <DropdownMenuItem
+                        key={doc.id}
+                        onClick={() => { setActiveDocIndex(i); setActiveView("document"); setCurrentPage(1); setPdfFailed(false); }}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span className="truncate">{doc.title}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -888,6 +960,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setPortalDark((prev) => !prev)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title={portalDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {portalDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowToc(!showToc)}
               className={cn(
                 "h-8 w-8 text-muted-foreground hover:text-foreground",
@@ -896,6 +978,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               title="Table of contents"
             >
               <List className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setChatOpen((prev) => !prev)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
+              title={chatOpen ? "Hide chat" : "Show chat"}
+            >
+              <MessageSquare className="h-4 w-4" />
             </Button>
 
             {/* Download PDF */}
@@ -937,7 +1029,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         {activeView === "document" && tocPanel}
         
         {activeView === "doc-preview" && previewDoc ? (
-          <div className="flex-1 overflow-y-auto">
+          <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-gray-50")}>
             {/* Sticky viewer header */}
             <div className={cn("sticky top-0 z-20 flex items-center justify-between backdrop-blur-xl px-4 py-3 border-b", pd ? "border-white/10 bg-[#0a0a0f]/95" : "border-sky-100 bg-white/95")}>
               <div className="flex items-center gap-3 overflow-hidden">
@@ -976,41 +1068,50 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <img src={previewDoc.url} alt={previewDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-sky-100")} />
                 </div>
               ) : previewDoc.type === "xlsx" ? (
-                <div className={cn("min-h-[60vh] rounded-2xl border p-6", pd ? "border-white/10 bg-[#0e1015]" : "border-sky-100 bg-white")}> 
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/10">
-                      <FileSpreadsheet className="h-5 w-5 text-green-500" />
-                    </div>
-                    <div>
-                      <p className={cn("text-sm font-semibold", pd ? "text-white" : "text-gray-900")}>{previewDoc.title}</p>
-                      <p className={cn("text-[11px]", pd ? "text-white/40" : "text-gray-500")}>First worksheet preview</p>
-                    </div>
-                    <a
-                      href={previewDoc.url}
-                      download
-                      className={cn("ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all", pd ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border-sky-100 text-gray-600 hover:bg-sky-50 hover:text-gray-900")}
-                    >
-                      <Download className="h-3.5 w-3.5" /> Download
-                    </a>
-                  </div>
-                  <div className="overflow-auto">
-                    <table className={cn("min-w-full text-left text-xs", pd ? "text-white/70" : "text-gray-700")}> 
-                      <tbody>
-                        {(docPreviewTable ?? [["Loading..."]]).map((row, rowIdx) => (
-                          <tr key={`row-${rowIdx}`} className={rowIdx === 0 ? (pd ? "bg-white/5" : "bg-gray-50") : ""}>
-                            {row.map((cell, cellIdx) => (
-                              <td
-                                key={`cell-${rowIdx}-${cellIdx}`}
-                                className={cn("border px-3 py-2 align-top", pd ? "border-white/10" : "border-sky-100")}
-                              >
-                                {cell || "—"}
+                <div className="min-h-[60vh] rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  {docPreviewTable ? (
+                    <div className="overflow-auto max-h-[80vh]">
+                      <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
+                        {docPreviewTable.length > 0 && (
+                          <thead className="sticky top-0 z-10">
+                            <tr>
+                              {/* Row number header */}
+                              <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
+                              {docPreviewTable[0].map((cell, cellIdx) => (
+                                <th
+                                  key={`h-${cellIdx}`}
+                                  className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap"
+                                >
+                                  {cell || String.fromCharCode(65 + cellIdx)}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                        )}
+                        <tbody>
+                          {docPreviewTable.slice(1).map((row, rowIdx) => (
+                            <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                              <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">
+                                {rowIdx + 2}
                               </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              {row.map((cell, cellIdx) => (
+                                <td
+                                  key={`cell-${rowIdx}-${cellIdx}`}
+                                  className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap"
+                                >
+                                  {cell || ""}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-xs text-slate-500">
+                      {docPreviewText || "Loading spreadsheet..."}
+                    </div>
+                  )}
                 </div>
               ) : isPreviewLoading ? (
                 <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
@@ -1018,20 +1119,40 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <p className={cn("text-sm", pd ? "text-white/50" : "text-gray-500")}>Loading document...</p>
                 </div>
               ) : (
-                <div className={cn("mx-auto max-w-3xl rounded-xl p-8 shadow-sm sm:p-12 border", pd ? "border-white/10 bg-[#0e1015]" : "border-sky-100 bg-white")}>
+                <div
+                  className={cn(
+                    "mx-auto max-w-4xl rounded-xl shadow-sm border",
+                    "bg-white border-slate-200"
+                  )}
+                  style={{ padding: "2.5rem 3rem", minHeight: "80vh" }}
+                >
                   {docPreviewHtml ? (
                     <div
-                      className={cn("prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-a:text-blue-500", pd ? "prose-invert prose-a:text-blue-400" : "prose-headings:text-gray-900 prose-p:text-gray-700")}
+                      className="prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600 prose-table:border-collapse prose-td:border prose-td:border-slate-200 prose-td:px-3 prose-td:py-2 prose-th:border prose-th:border-slate-300 prose-th:bg-slate-50 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:font-semibold prose-img:rounded-lg prose-li:text-gray-700"
                       dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
                     />
                   ) : (
-                    <pre className={cn("whitespace-pre-wrap font-sans text-sm leading-relaxed", pd ? "text-gray-300" : "text-gray-700")}>
+                    <pre
+                      className="whitespace-pre-wrap font-serif text-[15px] leading-[1.8] text-gray-700 tracking-normal"
+                    >
                       {docPreviewText || "No text content could be extracted from this document."}
                     </pre>
                   )}
                   {docPreviewMessages.length > 0 && (
-                    <div className={cn("mt-6 rounded-lg border p-3 text-xs", pd ? "border-white/10 text-white/50" : "border-sky-100 text-gray-500")}> 
-                      <p className={cn("mb-1 text-[11px] font-semibold uppercase tracking-wide", pd ? "text-white/40" : "text-gray-400")}>Conversion notes</p>
+                    <div
+                      className={cn(
+                        "mt-6 rounded-lg border p-3 text-xs",
+                        docPreviewIsLight ? "border-sky-100 text-gray-500" : pd ? "border-white/10 text-white/50" : "border-sky-100 text-gray-500"
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "mb-1 text-[11px] font-semibold uppercase tracking-wide",
+                          docPreviewIsLight ? "text-gray-400" : pd ? "text-white/40" : "text-gray-400"
+                        )}
+                      >
+                        Conversion notes
+                      </p>
                       <ul className="space-y-1">
                         {docPreviewMessages.map((message, idx) => (
                           <li key={`m-${idx}`}>• {message}</li>
@@ -1114,7 +1235,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         ) : (
           <div className={cn(
             "relative overflow-y-auto h-full transition-all duration-300",
-            expanded ? cn("w-[65%] border-r", pd ? "border-white/5" : "border-sky-100") : "flex-1 pb-20"
+            expanded ? cn("w-[65%] border-r", pd ? "border-white/5" : "border-sky-100") : "flex-1 pb-20",
+            pd ? "" : "bg-gray-100"
           )}>
           <PortalPdfViewer
             pdfUrl={activePdfUrl}
@@ -1172,7 +1294,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           "fixed z-40 flex flex-col",
           expanded
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-sky-100")
-            : "bottom-0 left-0 right-0 md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
+            : cn(
+                "left-0 right-0",
+                chatOpen ? "top-12 bottom-0" : "bottom-0",
+                "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:top-auto"
+              )
         )}
       >
         {!expanded && !chatOpen && (
@@ -1231,7 +1357,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             ? "flex-1"
             : cn(
                 cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-sky-100 bg-white/95"),
-                chatOpen ? "h-[60vh] md:h-[40vh]" : "h-0"
+                chatOpen ? "flex-1 md:h-[40vh]" : "h-0"
               )
         )}>
           <ChatInterface

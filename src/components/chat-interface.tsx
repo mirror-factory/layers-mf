@@ -2808,7 +2808,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
                   {/* Text response — with inline json-render detection */}
                   {text && (
-                    <MessageContent>
+                    <MessageContent
+                      className={cn(
+                        portalMode &&
+                          "group-[.is-user]:bg-sky-50 group-[.is-user]:text-slate-700 group-[.is-user]:border group-[.is-user]:border-sky-100 group-[.is-assistant]:text-slate-700"
+                      )}
+                    >
                       {m.role === "user" ? (
                         text
                       ) : (
@@ -2897,7 +2902,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </>
               )}
-              <span className="text-xs text-muted-foreground pt-3">Thinking…</span>
+              <span className={cn("text-xs pt-3", portalMode ? "text-slate-400" : "text-muted-foreground")}>Thinking…</span>
             </div>
           )}
 
@@ -3059,7 +3064,10 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   }}
                   placeholder={portalMode ? "Ask about this document…" : "Ask anything… (type / for commands)"}
                   rows={1}
-                  className="flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:text-muted-foreground placeholder:truncate"
+                  className={cn(
+                    "flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:truncate",
+                    portalMode ? "text-slate-700 placeholder:text-slate-400" : "text-foreground placeholder:text-muted-foreground"
+                  )}
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
                     // Slash menu navigation

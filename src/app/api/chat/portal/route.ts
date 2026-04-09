@@ -432,18 +432,43 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     inputSchema: z.object({}),
     execute: async () => {
       const { BLUEWAVE_DOCUMENTS } = await import("@/lib/bluewave-docs");
+      const portalDocs = (portal.documents as { title: string; context_item_id?: string; is_active?: boolean }[]) ?? [];
       return {
-        total: BLUEWAVE_DOCUMENTS.length,
-        documents: BLUEWAVE_DOCUMENTS.map(d => ({
-          id: d.id,
-          title: d.title,
-          type: d.type,
-          category: d.category,
-          description: d.description,
-          url: d.url,
-        })),
+        total: BLUEWAVE_DOCUMENTS.length + portalDocs.length,
+        documents: [
+          ...BLUEWAVE_DOCUMENTS.map(d => ({
+            id: d.id,
+            title: d.title,
+            type: d.type,
+            category: d.category,
+            description: d.description,
+            url: d.url,
+            source: "library",
+          })),
+          ...portalDocs.map(d => ({
+            id: d.context_item_id || d.title,
+            title: d.title,
+            type: "portal",
+            category: "Portal Documents",
+            description: d.is_active ? "Currently viewed portal document." : "Portal document",
+            source: "portal",
+          })),
+        ],
       };
     },
+  });
+
+  tools.open_document_preview = tool({
+    description: "Open a document from the library in the portal viewer. Use this when the user asks to open/view a specific library document. Use get_document_registry first to find the document_id.",
+    inputSchema: z.object({
+      document_id: z.string().describe("The document ID from the registry to open in the viewer"),
+      reason: z.string().optional().describe("Why this document should be opened"),
+    }),
+    execute: async ({ document_id, reason }: { document_id: string; reason?: string }) => ({
+      action: "open_document_preview",
+      document_id,
+      reason: reason ?? "Opening requested document",
+    }),
   });
 
   tools.lookup_document = tool({
@@ -455,6 +480,38 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     }),
     execute: async ({ document_id, query, max_chars }: { document_id: string; query?: string; max_chars?: number }) => {
       try {
+        const portalDocs = (portal.documents as { title: string; context_item_id?: string; content?: string | null }[]) ?? [];
+        const portalDoc = portalDocs.find(d => d.context_item_id === document_id || d.title === document_id);
+        if (portalDoc?.content) {
+          return {
+            document_id,
+            content: portalDoc.content.slice(0, max_chars ?? 3000),
+            total_chars: portalDoc.content.length,
+            truncated: portalDoc.content.length > (max_chars ?? 3000),
+            source: "portal",
+          };
+        }
+
+        if (portalDoc?.context_item_id) {
+          const admin = createAdminClient();
+          const { data: item } = await (admin as ReturnType<typeof createAdminClient> & { from: (t: string) => { select: (s: string) => { eq: (k: string, v: string) => { single: () => Promise<{ data: { raw_content: string } | null }> } } } })
+            .from("context_items")
+            .select("raw_content")
+            .eq("id", portalDoc.context_item_id)
+            .single();
+
+          if (item?.raw_content) {
+            const limit = max_chars ?? 3000;
+            return {
+              document_id,
+              content: item.raw_content.slice(0, limit),
+              total_chars: item.raw_content.length,
+              truncated: item.raw_content.length > limit,
+              source: "portal",
+            };
+          }
+        }
+
         const fs = await import("fs/promises");
         const path = await import("path");
         const manifestPath = path.join(process.cwd(), "public", "portal-docs", "bluewave", "_manifest.json");
@@ -611,7 +668,7 @@ You are helping the reader understand "${portal.title}".
 
 You have access to the full document content. When answering questions:
 1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
-2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_portal (to switch tabs/scroll to sections), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the document), add_annotation (to add visual callouts), walkthrough_document (to give an animated tour).
+2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_portal (to switch tabs/scroll to sections), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the document), add_annotation (to add visual callouts), walkthrough_document (to give an animated tour), open_document_preview (to open a library document in the viewer).
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
    CRITICAL CHART RULES:
    - The chart displays in a SMALL chat panel (~340px wide). Use width=340, height=220.
@@ -624,7 +681,10 @@ You have access to the full document content. When answering questions:
 5. Always reference specific sections and quote relevant text.
 6. Be concise but thorough.
 7. NEVER call more than 3 tools per response (except walkthrough_document which counts as 1).
-8. Use get_document_registry to discover which files are in the document library, then lookup_document to read their content. These are useful when the user asks about topics that may be covered in a supplementary document.
+8. You have access to a full document library. ALWAYS call get_document_registry at the start of the conversation to know what documents are available.
+9. When the user asks about a topic, PROACTIVELY use lookup_document to find relevant content from the library before answering. Don't wait for the user to ask you to look it up.
+10. When the user asks to view/open/show a file from the library, call open_document_preview with its document_id.
+11. The currently opened document is automatically loaded in your context. When the user switches documents, the new document content is sent to you.
 
 Document: ${portal.title}
 Client: ${portal.client_name ?? "Unknown"}
@@ -742,7 +802,8 @@ export async function POST(request: NextRequest) {
 
   const modelMessages = await convertToModelMessages(uiMessages);
 
-  const modelId = portal.model ?? "google/gemini-3-flash";
+  const requestedModel = portal.model ?? "google/gemini-3.0-flash";
+  const modelId = requestedModel.includes("flash-lite") ? "google/gemini-3.0-flash" : requestedModel;
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),
