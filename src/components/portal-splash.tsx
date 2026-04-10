@@ -31,8 +31,8 @@ export function PortalSplash({
   subtitle,
   brandColor = "#0DE4F2",
   backgroundColor = "#f4fbff",
-  minDuration = 1800,
-  fadeDuration = 600,
+  minDuration = 2200,
+  fadeDuration = 800,
   children,
 }: PortalSplashConfig) {
   const [minTimePassed, setMinTimePassed] = useState(false);
