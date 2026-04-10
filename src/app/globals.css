@@ -335,6 +335,11 @@ mark.portal-pdf-highlight-active {
   width: 50% !important;
   flex: 0 0 50% !important;
 }
+/* Hide HTML table fallback when jspreadsheet successfully renders */
+.jexcel ~ .jspreadsheet-fallback {
+  display: none !important;
+}
+
 /* Screen capture flash animation */
 @keyframes capture-flash {
   0% { opacity: 0; }

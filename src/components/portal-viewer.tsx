@@ -1420,11 +1420,34 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 <div className="flex min-h-[70vh] items-center justify-center">
                   <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-slate-200")} />
                 </div>
-              ) : activeLibraryDoc.type === "xlsx" ? (
-                <div
-                  ref={jspreadsheetRef}
-                  className="min-h-[60vh] bg-white overflow-hidden w-full"
-                />
+              ) : activeLibraryDoc.type === "xlsx" && docPreviewTable ? (
+                <div className="min-h-[60vh] bg-white overflow-hidden w-full">
+                  <div ref={jspreadsheetRef} className="w-full" />
+                  <div className="overflow-auto max-h-[80vh] jspreadsheet-fallback">
+                    <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
+                      <thead className="sticky top-0 z-10">
+                        <tr>
+                          <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
+                          {docPreviewTable[0].map((cell, cellIdx) => (
+                            <th key={`h-${cellIdx}`} className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap">
+                              {cell || String.fromCharCode(65 + cellIdx)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {docPreviewTable.slice(1).map((row, rowIdx) => (
+                          <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                            <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">{rowIdx + 2}</td>
+                            {row.map((cell, cellIdx) => (
+                              <td key={`cell-${rowIdx}-${cellIdx}`} className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap">{cell || ""}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               ) : isPreviewLoading ? (
                 <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
