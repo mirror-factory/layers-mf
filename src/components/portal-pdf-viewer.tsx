@@ -252,31 +252,51 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
   textLayerElements.forEach((span) => {
     const el = span as HTMLElement;
     const text = el.textContent ?? "";
+    if (!text) return;
     const lowerText = text.toLowerCase();
-    const idx = lowerText.indexOf(lowerSearch);
+    if (!lowerText.includes(lowerSearch)) return;
 
-    if (idx !== -1) {
-      // Wrap matching portion in a highlight mark
-      const before = text.slice(0, idx);
-      const match = text.slice(idx, idx + searchText.length);
-      const after = text.slice(idx + searchText.length);
+    // The PDF text layer uses CSS transforms on each span — wrapping the text
+    // inline in a <mark> causes positioning bugs. Instead, create an absolutely
+    // positioned overlay div that shadows the span's bounding box.
+    const pageContainer = el.closest(".react-pdf__Page") as HTMLElement | null;
+    if (!pageContainer) return;
 
-      el.innerHTML = "";
-      if (before) el.appendChild(document.createTextNode(before));
-      const mark = document.createElement("mark");
-      mark.className = "portal-pdf-highlight";
-      mark.textContent = match;
-      el.appendChild(mark);
-      if (after) el.appendChild(document.createTextNode(after));
+    const pageRect = pageContainer.getBoundingClientRect();
+    const spanRect = el.getBoundingClientRect();
 
-      matchElements.push(mark);
+    // Skip zero-size spans
+    if (spanRect.width === 0 || spanRect.height === 0) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "portal-pdf-highlight-overlay portal-pdf-highlight";
+    overlay.dataset.matchText = searchText;
+    overlay.style.cssText = `
+      position: absolute;
+      left: ${spanRect.left - pageRect.left}px;
+      top: ${spanRect.top - pageRect.top}px;
+      width: ${spanRect.width}px;
+      height: ${spanRect.height}px;
+      pointer-events: none;
+      z-index: 10;
+    `;
+
+    // Ensure page container is positioned
+    if (getComputedStyle(pageContainer).position === "static") {
+      pageContainer.style.position = "relative";
     }
+    pageContainer.appendChild(overlay);
+    matchElements.push(overlay);
   });
 
   return matchElements;
 }
 
 function clearHighlightsInDom(container: HTMLElement) {
+  // Remove overlay-based highlights
+  const overlays = container.querySelectorAll(".portal-pdf-highlight-overlay");
+  overlays.forEach((el) => el.remove());
+  // Clean up any legacy inline marks (from old implementation)
   const marks = container.querySelectorAll("mark.portal-pdf-highlight, mark.portal-pdf-highlight-active");
   marks.forEach((mark) => {
     const parent = mark.parentNode;

@@ -246,39 +246,26 @@ body {
 }
 
 /* Portal PDF text highlights (search & chat tool highlights) */
-mark.portal-pdf-highlight {
-  background: linear-gradient(90deg, rgba(253, 224, 71, 0.5) 0%, rgba(253, 224, 71, 0.5) 100%) !important;
-  background-size: 0% 100%;
-  background-repeat: no-repeat;
-  animation: highlight-sweep 0.8s ease-out forwards;
-  color: inherit !important;
+/* Portal PDF highlights — overlay-based (absolute positioned div) */
+.portal-pdf-highlight-overlay.portal-pdf-highlight {
+  background: rgba(253, 224, 71, 0.55);
   border-radius: 2px;
-  padding: 0 1px;
+  animation: highlight-sweep 0.6s ease-out;
   mix-blend-mode: multiply;
 }
 
-mark.portal-pdf-highlight-active {
-  background: linear-gradient(90deg, rgba(253, 224, 71, 0.75) 0%, rgba(253, 224, 71, 0.75) 100%) !important;
-  background-size: 0% 100%;
-  background-repeat: no-repeat;
-  animation: highlight-sweep 0.8s ease-out forwards;
-  color: inherit !important;
-  border-radius: 2px;
-  padding: 0 1px;
+.portal-pdf-highlight-overlay.portal-pdf-highlight-active {
+  background: rgba(253, 224, 71, 0.75);
   outline: 2px solid rgba(234, 179, 8, 0.9);
   outline-offset: 1px;
+  border-radius: 2px;
+  animation: highlight-sweep 0.6s ease-out;
   mix-blend-mode: multiply;
-}
-
-/* Also highlight in docx-preview wrapper */
-.docx-preview-wrapper mark.portal-pdf-highlight,
-.docx-preview-wrapper mark.portal-pdf-highlight-active {
-  mix-blend-mode: normal;
 }
 
 @keyframes highlight-sweep {
-  from { background-size: 0% 100%; }
-  to { background-size: 100% 100%; }
+  from { opacity: 0; transform: scaleX(0); transform-origin: left; }
+  to { opacity: 1; transform: scaleX(1); }
 }
 
 /* Portal annotation animations */

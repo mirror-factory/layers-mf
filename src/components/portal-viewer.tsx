@@ -648,6 +648,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLibraryDocIndex, activeView, libDocLoadCounter]);
 
+  // Clear library doc state when leaving library-doc view (prevents stale content on view switch)
+  useEffect(() => {
+    if (activeView === "library-doc") return;
+    setDocxArrayBuffer(null);
+    setDocPreviewTable(null);
+    setDocPreviewHtml(null);
+    setDocPreviewText(null);
+    setIsPreviewLoading(false);
+  }, [activeView]);
+
   // Render DOCX via docx-preview when arrayBuffer is ready
   useEffect(() => {
     if (!docxArrayBuffer || !docxContainerRef.current) return;
@@ -1657,7 +1667,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             </div>
           </div>
         ) : activeView === "library-doc" && activeLibraryDoc ? (
-          <div className={cn("flex-1 overflow-y-auto p-6", pd ? "bg-[#0a0e1a]" : "bg-slate-100")}>
+          <div
+            key={`libdoc-${activeLibraryDoc.id}-${libDocLoadCounter}`}
+            className={cn("flex-1 overflow-y-auto p-6", pd ? "bg-[#0a0e1a]" : "bg-slate-100")}
+          >
             {/* Viewer content — no header bar, tabs handle navigation */}
             <div>
               {activeLibraryDoc.type === "image" ? (
