@@ -39,15 +39,35 @@ export function PortalVoiceMode({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenRef = useRef<string>("");
   const voiceEnabledRef = useRef(false);
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
 
   // Keep ref in sync with state
   useEffect(() => {
     voiceEnabledRef.current = voiceEnabled;
   }, [voiceEnabled]);
 
-  // Initialize speech recognition
+  // Barge-in: stop TTS audio when user starts speaking
+  const stopTTS = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, []);
+
+  // Start or restart speech recognition (reuses single instance)
   const startListening = useCallback(() => {
     if (disabled) return;
+
+    // If already have a recognition instance, just restart it
+    if (recognitionRef.current) {
+      try { recognitionRef.current.start(); } catch {}
+      setIsListening(true);
+      return;
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -64,6 +84,9 @@ export function PortalVoiceMode({
     let silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // Barge-in: stop TTS when user starts speaking
+      stopTTS();
+
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
@@ -75,37 +98,50 @@ export function PortalVoiceMode({
       }
       setTranscript(finalTranscript + interim);
 
-      // Reset silence timer — send after 2s of silence
+      // Reset silence timer — send after 1.5s of silence
       if (silenceTimer) clearTimeout(silenceTimer);
       silenceTimer = setTimeout(() => {
         if (finalTranscript.trim()) {
-          onTranscript(finalTranscript.trim());
+          onTranscriptRef.current(finalTranscript.trim());
           finalTranscript = "";
           setTranscript("");
         }
-      }, 2000);
+      }, 1500);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error("Speech recognition error:", event.error);
-      if (event.error !== "aborted") {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setIsListening(false);
+        return;
+      }
+      // For transient errors, auto-restart
+      if (voiceEnabledRef.current) {
+        setTimeout(() => {
+          try { recognition.start(); } catch {}
+        }, 500);
       }
     };
 
     recognition.onend = () => {
-      // Auto-restart if still in voice mode (use ref to avoid stale closure)
+      // Auto-restart if still in voice mode
       if (voiceEnabledRef.current) {
-        try {
-          recognition.start();
-        } catch {}
+        setTimeout(() => {
+          try { recognition.start(); } catch {}
+        }, 200);
+      } else {
+        setIsListening(false);
       }
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [disabled, onTranscript]);
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      console.error("Failed to start recognition");
+    }
+  }, [disabled, stopTTS]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -181,7 +217,11 @@ export function PortalVoiceMode({
           if (!cancelled) {
             const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 500));
             utterance.rate = 1.1;
-            utterance.onend = () => setIsSpeaking(false);
+            utterance.onend = () => {
+              setIsSpeaking(false);
+              // Restart listening after TTS finishes
+              if (voiceEnabledRef.current) startListening();
+            };
             utterance.onerror = () => setIsSpeaking(false);
             speechSynthesis.cancel();
             speechSynthesis.speak(utterance);
@@ -195,10 +235,14 @@ export function PortalVoiceMode({
         audioRef.current = audio;
         audio.onended = () => {
           setIsSpeaking(false);
+          audioRef.current = null;
           URL.revokeObjectURL(url);
+          // Restart listening after TTS finishes
+          if (voiceEnabledRef.current) startListening();
         };
         audio.onerror = () => {
           setIsSpeaking(false);
+          audioRef.current = null;
           URL.revokeObjectURL(url);
         };
         if (!cancelled) {

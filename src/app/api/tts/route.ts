@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         transcript: body.text,
         voice: {
           mode: "id",
-          id: body.voice_id || "a0e99841-438c-4a64-b679-ae501e7d6091", // Default: friendly female
+          id: body.voice_id || "e4d5f4c4-6601-4779-bee1-b3c14d629dc6", // Jillian - Happy Spirit (cheerful, upbeat)
         },
         output_format: {
           container: "mp3",
