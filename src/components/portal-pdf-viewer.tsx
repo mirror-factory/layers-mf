@@ -554,7 +554,7 @@ function PdfDocumentInner({
                 )}
               >
                 {item.pages.map((pageNum) => (
-                  <div key={pageNum} className="rounded-sm bg-white shadow-2xl">
+                  <div key={pageNum} className="rounded-sm bg-white shadow-2xl" style={{ minHeight: pageHeight, contain: "layout" }}>
                     <Page
                       pageNumber={pageNum}
                       width={pageWidth}

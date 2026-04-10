@@ -60,7 +60,11 @@ export function PortalSplash({
           "transition-opacity",
           phase === "fading" ? "opacity-100" : "opacity-0"
         )}
-        style={{ transitionDuration: `${fadeDuration}ms` }}
+        style={{
+          transitionDuration: `${fadeDuration}ms`,
+          willChange: phase === "fading" ? "opacity" : undefined,
+          contain: "layout",
+        }}
       >
         {children}
       </div>
