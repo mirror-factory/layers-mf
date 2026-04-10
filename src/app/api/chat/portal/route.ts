@@ -974,6 +974,29 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Intent detection: narrow tools for specific keywords so weaker models pick the right one
+  const lastUserMsg = uiMessages.filter((m) => m.role === "user").slice(-1)[0];
+  const lastUserText = lastUserMsg?.parts
+    ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join(" ")
+    .toLowerCase() ?? "";
+
+  const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
+  const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
+
+  if (wantsChart) {
+    // Force render_chart by keeping only essential tools + render_chart
+    activeToolsList = activeToolsList.filter((t) =>
+      t === "render_chart" || t === "get_page_content" || t === "summarize_section"
+    );
+  } else if (wantsWalkthrough) {
+    // Force walkthrough_document
+    activeToolsList = activeToolsList.filter((t) =>
+      t === "walkthrough_document" || t === "get_page_content"
+    );
+  }
+
   const portalTools = createPortalTools(documentContent, activeToolsList, portal);
 
   const pages = splitPages(documentContent);
