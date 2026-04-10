@@ -330,16 +330,12 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
   if (enabled.has("highlight_text")) {
     tools.highlight_text = tool({
       description:
-        "Highlight specific text in the PDF viewer. Returns the text and page number for the client to highlight.",
+        "ALWAYS use this tool for ANY highlight request. Call it DIRECTLY without searching first — this tool automatically finds the text and navigates to its page. Just pass the exact phrase to highlight. Example: user says 'highlight the total price' → call highlight_text({text: 'Total: $180,000'}) directly. DO NOT call search_document or get_page_content first.",
       inputSchema: z.object({
-        text: z.string().describe("The exact text to highlight in the document"),
-        page: z
-          .number()
-          .optional()
-          .describe("Page number where the text is located (if known)"),
+        text: z.string().describe("The exact text to find and highlight (phrase or sentence). Pick a specific, unique phrase from the document content."),
+        page: z.number().optional().describe("Optional page hint — leave empty if unknown"),
       }),
       execute: async ({ text, page }: { text: string; page?: number }) => {
-        // Try to find the text and its page if not provided
         let foundPage = page;
         if (!foundPage) {
           const results = searchDocumentContent(documentContent, text, 1);
@@ -984,16 +980,25 @@ export async function POST(request: NextRequest) {
 
   const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
   const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
+  const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where)\b/.test(lastUserText);
+  const wantsBookmark = /\b(bookmark|save (this|a) (note|bookmark)|remember this|note this|save for later)\b/.test(lastUserText);
+  const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText);
 
   if (wantsChart) {
-    // Force render_chart by keeping only essential tools + render_chart
-    activeToolsList = activeToolsList.filter((t) =>
-      t === "render_chart" || t === "get_page_content" || t === "summarize_section"
-    );
+    activeToolsList = activeToolsList.filter((t) => t === "render_chart");
   } else if (wantsWalkthrough) {
-    // Force walkthrough_document
+    activeToolsList = activeToolsList.filter((t) => t === "walkthrough_document");
+  } else if (wantsHighlight) {
+    // Highlight requests: only need switch_document (to open correct doc), navigate_pdf (to scroll), highlight_text (the main action)
     activeToolsList = activeToolsList.filter((t) =>
-      t === "walkthrough_document" || t === "get_page_content"
+      t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
+    );
+  } else if (wantsBookmark) {
+    activeToolsList = activeToolsList.filter((t) => t === "save_bookmark");
+  } else if (wantsNavigate) {
+    // Pure navigation — don't let the agent search or loop
+    activeToolsList = activeToolsList.filter((t) =>
+      t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
     );
   }
 
@@ -1042,7 +1047,7 @@ export async function POST(request: NextRequest) {
     model: gateway(modelId),
     instructions: systemPrompt,
     tools: portalTools,
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(4),
   });
 
   const response = await createAgentUIStreamResponse({
