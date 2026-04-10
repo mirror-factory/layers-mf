@@ -6,7 +6,7 @@ import { DefaultChatTransport, UIMessage, lastAssistantMessageIsCompleteWithTool
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, Square,
-  FileText, Mic, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
+  FileText, Mic, MicOff, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
   LayoutGrid, ThumbsUp, ThumbsDown,
   MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
   PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
@@ -1707,9 +1707,13 @@ interface ChatInterfaceProps {
   hideContextBar?: boolean;
   /** Additional CSS classes for the outermost container */
   containerClassName?: string;
+  /** Callback to toggle voice mode (portal only) */
+  onVoiceToggle?: () => void;
+  /** Whether voice mode is currently active (portal only) */
+  voiceActive?: boolean;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1768,6 +1772,8 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       compactMode={compactMode}
       hideContextBar={hideContextBar}
       containerClassName={containerClassName}
+      onVoiceToggle={onVoiceToggle}
+      voiceActive={voiceActive}
     />
   );
 }
@@ -1791,9 +1797,11 @@ interface ChatInterfaceInnerProps {
   compactMode?: boolean;
   hideContextBar?: boolean;
   containerClassName?: string;
+  onVoiceToggle?: () => void;
+  voiceActive?: boolean;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -3321,6 +3329,24 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     </DropdownMenu>
                   </div>
                 </div>
+
+                {/* Voice toggle — portal only */}
+                {portalMode && onVoiceToggle && (
+                  <button
+                    type="button"
+                    onClick={onVoiceToggle}
+                    className={cn(
+                      "p-2 rounded-xl transition-colors",
+                      voiceActive
+                        ? "text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    style={voiceActive ? { backgroundColor: portalBrandColor || "#0DE4F2" } : undefined}
+                    title={voiceActive ? "Stop voice" : "Voice mode"}
+                  >
+                    {voiceActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                  </button>
+                )}
 
                 {/* Send / Stop button — single toggle */}
                 <button

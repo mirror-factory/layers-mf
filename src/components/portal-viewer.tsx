@@ -462,7 +462,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, []);
 
   // View mode and Library Previews
-  const [activeView, setActiveView] = useState<"document" | "library-doc">("document");
+  const [activeView, setActiveView] = useState<"document" | "library-doc" | "library">("document");
   const [openedLibraryDocs, setOpenedLibraryDocs] = useState<typeof BLUEWAVE_DOCUMENTS>([]);
   const [activeLibraryDocIndex, setActiveLibraryDocIndex] = useState<number>(-1);
   const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
@@ -568,13 +568,17 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   useEffect(() => {
     const doc = openedLibraryDocs[activeLibraryDocIndex];
     if (!doc || activeView !== "library-doc") return;
-    // Clear previous content and reload
-    setDocxArrayBuffer(null);
-    setDocPreviewTable(null);
-    setDocPreviewHtml(null);
-    setDocPreviewText(null);
-    setIsPreviewLoading(true);
-    void handleOpenDocPreview(doc);
+
+    const timer = setTimeout(() => {
+      setDocxArrayBuffer(null);
+      setDocPreviewTable(null);
+      setDocPreviewHtml(null);
+      setDocPreviewText(null);
+      setIsPreviewLoading(true);
+      void handleOpenDocPreview(doc);
+    }, 150); // Debounce rapid clicks
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLibraryDocIndex, activeView, libDocLoadCounter]);
 
@@ -686,6 +690,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           pdfControls.goToPage?.(page);
           setCurrentPage(page);
         }
+        // Add persistent annotation for the highlight
+        addAnnotation({
+          page: page || currentPage,
+          text: String(out.text ?? ""),
+          note: String(out.reason ?? "Highlighted by AI"),
+          type: "highlight",
+        });
       } else if (toolName === "capture_screen" && out.action === "capture_screen") {
         // Animate a capture effect on the document viewer
         const viewerEl = document.querySelector("[data-portal-viewer]");
@@ -776,9 +787,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // Auto-add active document to context so AI knows what user is viewing
   useEffect(() => {
-    const docTitle = activeView === "library-doc" && openedLibraryDocs[activeLibraryDocIndex]
-      ? openedLibraryDocs[activeLibraryDocIndex].title
-      : activeDoc?.title;
+    const docTitle = activeView === "library"
+      ? "Document Library"
+      : activeView === "library-doc" && openedLibraryDocs[activeLibraryDocIndex]
+        ? openedLibraryDocs[activeLibraryDocIndex].title
+        : activeDoc?.title;
     if (!docTitle) return;
     setContextTags(prev => {
       const filtered = prev.filter(t => !t.text.startsWith("Viewing: "));
@@ -1020,8 +1033,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       </div>
       {/* Desktop: sidebar */}
-      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#1a1f2e]/60" : "border-slate-200 bg-white/80")}>
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#1a1f2e]/80" : "border-slate-200 bg-white/90")}>
+      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#1a1f2e]/60" : "border-slate-200 bg-slate-50/80")}>
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#1a1f2e]/80" : "border-slate-200 bg-slate-50/90")}>
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
             variant="ghost"
@@ -1109,343 +1122,403 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         />
       )}
 
-      {/* Unified Header — includes PDF page nav */}
+      {/* Unified Header — two-row layout: Row 1 = logo+title+actions, Row 2 = tabs/picker */}
       <header className={cn(
-        "sticky top-0 z-50 flex items-center justify-between px-4 py-2 backdrop-blur-xl",
-        pd ? "border-b border-white/5 bg-[#1a1f2e]/80" : "border-b border-slate-200 bg-white/95"
+        "sticky top-0 z-50 backdrop-blur-xl",
+        pd ? "border-b border-white/5 bg-[#1a1f2e]/80" : "border-b border-slate-200 bg-slate-50/95"
       )}>
-          <div className="flex items-center gap-2 md:gap-3">
-            {portal.logo_url && (
-              <div className="h-7 w-7 md:h-9 md:w-9 rounded-lg overflow-hidden shrink-0">
-                <img
-                  src={portal.logo_url}
-                  alt="Logo"
-                  className="h-full w-auto object-cover object-left"
-                />
-              </div>
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className={cn("text-sm md:text-base font-semibold tracking-tight truncate", pd ? "text-white" : "text-slate-900")}>
-                  {activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : (activeDoc?.title || portal.title)}
-                </h1>
-                {portal.client_name && (
-                  <span
-                    className="text-sm font-medium hidden md:inline"
-                    style={{ color: brandColor }}
-                  >
-                    {portal.client_name}
-                  </span>
-                )}
-              </div>
-              {/* Document switcher tabs (desktop) — docs first, then Library */}
-              <div className="hidden md:flex gap-1 mt-1">
-                {documents.map((doc, i) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => { setActiveDocIndex(i); setActiveView("document"); setCurrentPage(1); setPdfFailed(false); }}
-                    className={cn(
-                      "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                      i === activeDocIndex && activeView === "document"
-                        ? "text-primary-foreground"
-                        : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                    )}
-                    style={i === activeDocIndex && activeView === "document" ? { backgroundColor: brandColor } : undefined}
-                  >
-                    {doc.title}
-                  </button>
-                ))}
-                {/* Opened library doc tabs */}
-                {openedLibraryDocs.map((ldoc, i) => (
-                  <button
-                    key={ldoc.id}
-                    onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
-                    className={cn(
-                      "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
-                      i === activeLibraryDocIndex && activeView === "library-doc"
-                        ? "text-primary-foreground"
-                        : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                    )}
-                    style={i === activeLibraryDocIndex && activeView === "library-doc" ? { backgroundColor: brandColor } : undefined}
-                  >
-                    {ldoc.title}
+          {/* Row 1: Logo + Title + Actions */}
+          <div className="flex items-center justify-between px-3 md:px-4 py-2">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              {portal.logo_url && (
+                <div className="h-7 w-7 md:h-9 md:w-9 rounded-lg overflow-hidden shrink-0">
+                  <img
+                    src={portal.logo_url}
+                    alt="Logo"
+                    className="h-full w-auto object-cover object-left"
+                  />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className={cn("text-sm md:text-base font-semibold tracking-tight truncate", pd ? "text-white" : "text-slate-900")}>
+                    {activeView === "library" ? "Document Library" : activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : (activeDoc?.title || portal.title)}
+                  </h1>
+                  {portal.client_name && (
                     <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenedLibraryDocs(prev => prev.filter((_, idx) => idx !== i));
-                        if (openedLibraryDocs.length <= 1) {
-                          setActiveView("document");
-                          setActiveLibraryDocIndex(-1);
-                        } else if (activeLibraryDocIndex >= i) {
-                          setActiveLibraryDocIndex(prev => Math.max(0, prev - 1));
-                        }
-                      }}
-                      className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                      className="text-sm font-medium hidden md:inline shrink-0"
+                      style={{ color: brandColor }}
                     >
-                      <X className="h-2.5 w-2.5" />
+                      {portal.client_name}
                     </span>
-                  </button>
-                ))}
-                {/* Library dropdown picker */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className={cn(
-                      "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
-                      pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-                    )}>
-                      <FolderOpen className="h-3 w-3" /> Library
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
-                    {["Core Documents", "Planning", "Proposal Library", "Architecture"].map((category) => {
-                      const categoryDocs = BLUEWAVE_DOCUMENTS.filter(d => d.category === category);
-                      if (categoryDocs.length === 0) return null;
-                      return (
-                        <div key={category}>
-                          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{category}</div>
-                          {categoryDocs.map(ldoc => (
-                            <DropdownMenuItem key={ldoc.id} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
-                              {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
-                               ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
-                               ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
-                               <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
-                              <div className="min-w-0">
-                                <p className="text-xs font-medium truncate">{ldoc.title}</p>
-                                <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                        </div>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Mobile doc picker */}
-              <div className="mt-1 md:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-8 px-2 text-xs font-medium gap-2",
-                        pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600"
-                      )}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                      <span className="truncate max-w-[140px]">
-                        {activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : activeDoc?.title || portal.title}
-                      </span>
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
-                    {/* Portal documents */}
-                    {documents.map((doc, i) => (
-                      <DropdownMenuItem
-                        key={doc.id}
-                        onClick={() => { setActiveDocIndex(i); setActiveView("document"); setCurrentPage(1); setPdfFailed(false); }}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span className="truncate">{doc.title}</span>
-                      </DropdownMenuItem>
-                    ))}
-                    {/* Opened library doc tabs */}
-                    {openedLibraryDocs.length > 0 && <DropdownMenuSeparator />}
-                    {openedLibraryDocs.map((ldoc, i) => (
-                      <DropdownMenuItem
-                        key={`lib-${ldoc.id}`}
-                        onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span className="truncate">{ldoc.title}</span>
-                      </DropdownMenuItem>
-                    ))}
-                    {/* Library picker */}
-                    <DropdownMenuSeparator />
-                    {BLUEWAVE_DOCUMENTS.map(ldoc => (
-                      <DropdownMenuItem key={`pick-${ldoc.id}`} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
-                        {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
-                         ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
-                         ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
-                         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium truncate">{ldoc.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1">
-            {/* PDF page navigation — merged into header */}
-            {pdfControls && pdfControls.numPages > 0 && (
-              <div className={cn("hidden md:flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-slate-200")}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={pdfControls.goToPrev}
-                  disabled={currentPage <= 1}
-                  className="h-7 w-7 text-muted-foreground"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-[60px] text-center text-xs text-muted-foreground tabular-nums">
-                  {pdfControls.showSpread && currentPage + 1 <= pdfControls.numPages
-                    ? `${currentPage}-${currentPage + 1}`
-                    : currentPage}{" "}
-                  / {pdfControls.numPages}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={pdfControls.goToNext}
-                  disabled={currentPage >= pdfControls.numPages}
-                  className="h-7 w-7 text-muted-foreground"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* PDF page navigation — desktop only */}
+              {pdfControls && pdfControls.numPages > 0 && (
+                <div className={cn("hidden md:flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-slate-200")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={pdfControls.goToPrev}
+                    disabled={currentPage <= 1}
+                    className="h-7 w-7 text-muted-foreground"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[60px] text-center text-xs text-muted-foreground tabular-nums">
+                    {pdfControls.showSpread && currentPage + 1 <= pdfControls.numPages
+                      ? `${currentPage}-${currentPage + 1}`
+                      : currentPage}{" "}
+                    / {pdfControls.numPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={pdfControls.goToNext}
+                    disabled={currentPage >= pdfControls.numPages}
+                    className="h-7 w-7 text-muted-foreground"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
 
-            {/* Search button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                document.dispatchEvent(
-                  new KeyboardEvent("keydown", {
-                    key: "f",
-                    metaKey: true,
-                    bubbles: true,
-                  })
-                );
-              }}
-              className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
-              title="Search in document (Cmd+F)"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-
-            {/* Audio progress bar — shown when playing */}
-            {audioProgressBar}
-
-            {portal.audio_url && (
+              {/* Search button — desktop only */}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={toggleAudio}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                title={audioPlaying ? "Pause audio" : "Play audio"}
+                onClick={() => {
+                  document.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                      key: "f",
+                      metaKey: true,
+                      bubbles: true,
+                    })
+                  );
+                }}
+                className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Search in document (Cmd+F)"
               >
-                {audioPlaying ? (
-                  <Pause className="h-4 w-4" />
+                <Search className="h-4 w-4" />
+              </Button>
+
+              {/* Audio progress bar — shown when playing */}
+              {audioProgressBar}
+
+              {portal.audio_url && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleAudio}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title={audioPlaying ? "Pause audio" : "Play audio"}
+                >
+                  {audioPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+
+              {/* Column toggle — desktop only */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTwoColumnMode(prev => !prev)}
+                disabled={chatPosition === "sidebar"}
+                className={cn(
+                  "hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground",
+                  chatPosition === "sidebar" && "opacity-30 cursor-not-allowed"
+                )}
+                title={chatPosition === "sidebar" ? "Single column (sidebar active)" : effectiveTwoColumn ? "Single column" : "Two column view"}
+              >
+                {effectiveTwoColumn ? <RectangleVertical className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+              </Button>
+
+              {/* Theme toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setPortalDark((prev) => !prev)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title={portalDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {portalDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+
+              {/* Chat toggle — mobile only */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatOpen((prev) => !prev)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
+                title={chatOpen ? "Hide chat" : "Show chat"}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
+
+              {/* Download All — ZIP of all library documents */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={async () => {
+                  try {
+                    const { default: JSZip } = await import("jszip");
+                    const zip = new JSZip();
+                    const folder = zip.folder("Mirror-Factory-BlueWave-Proposal");
+                    if (!folder) return;
+                    for (const doc of BLUEWAVE_DOCUMENTS) {
+                      try {
+                        const res = await fetch(encodeURI(doc.url));
+                        if (res.ok) {
+                          const blob = await res.blob();
+                          folder.file(doc.filename, blob);
+                        }
+                      } catch {
+                        // Skip failed downloads
+                      }
+                    }
+                    const content = await zip.generateAsync({ type: "blob" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(content);
+                    a.download = "Mirror-Factory-BlueWave-Proposal.zip";
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  } catch (err) {
+                    console.error("ZIP download failed:", err);
+                  }
+                }}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Download all documents"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+
+              {/* Expand/shrink — desktop only */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatPosition(prev => prev === "sidebar" ? "corner" : "sidebar")}
+                className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
+                title={expanded ? "Compact mode" : "Expanded mode"}
+              >
+                {chatPosition === "sidebar" ? (
+                  <Shrink className="h-4 w-4" />
                 ) : (
-                  <Volume2 className="h-4 w-4" />
+                  <Expand className="h-4 w-4" />
                 )}
               </Button>
-            )}
+            </div>
+          </div>
 
-            {/* Column toggle — disabled when sidebar is docked */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTwoColumnMode(prev => !prev)}
-              disabled={chatPosition === "sidebar"}
-              className={cn(
-                "hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground",
-                chatPosition === "sidebar" && "opacity-30 cursor-not-allowed"
-              )}
-              title={chatPosition === "sidebar" ? "Single column (sidebar active)" : effectiveTwoColumn ? "Single column" : "Two column view"}
-            >
-              {effectiveTwoColumn ? <RectangleVertical className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setPortalDark((prev) => !prev)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title={portalDark ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {portalDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setChatOpen((prev) => !prev)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
-              title={chatOpen ? "Hide chat" : "Show chat"}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
-
-            {/* Download All — ZIP of all library documents */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={async () => {
-                try {
-                  const { default: JSZip } = await import("jszip");
-                  const zip = new JSZip();
-                  const folder = zip.folder("Mirror-Factory-BlueWave-Proposal");
-                  if (!folder) return;
-                  for (const doc of BLUEWAVE_DOCUMENTS) {
-                    try {
-                      const res = await fetch(encodeURI(doc.url));
-                      if (res.ok) {
-                        const blob = await res.blob();
-                        folder.file(doc.filename, blob);
+          {/* Row 2: Desktop tabs OR Mobile doc picker */}
+          <div className="px-3 md:px-4 pb-2">
+            {/* Desktop: inline tabs */}
+            <div className="hidden md:flex gap-1">
+              {documents.map((doc, i) => (
+                <button
+                  key={doc.id}
+                  onClick={() => { setActiveDocIndex(i); setActiveView("document"); setCurrentPage(1); setPdfFailed(false); }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                    i === activeDocIndex && activeView === "document"
+                      ? "text-primary-foreground"
+                      : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                  )}
+                  style={i === activeDocIndex && activeView === "document" ? { backgroundColor: brandColor } : undefined}
+                >
+                  {doc.title}
+                </button>
+              ))}
+              {/* Opened library doc tabs */}
+              {openedLibraryDocs.map((ldoc, i) => (
+                <button
+                  key={ldoc.id}
+                  onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                    i === activeLibraryDocIndex && activeView === "library-doc"
+                      ? "text-primary-foreground"
+                      : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                  )}
+                  style={i === activeLibraryDocIndex && activeView === "library-doc" ? { backgroundColor: brandColor } : undefined}
+                >
+                  {ldoc.title}
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenedLibraryDocs(prev => prev.filter((_, idx) => idx !== i));
+                      if (openedLibraryDocs.length <= 1) {
+                        setActiveView("document");
+                        setActiveLibraryDocIndex(-1);
+                      } else if (activeLibraryDocIndex >= i) {
+                        setActiveLibraryDocIndex(prev => Math.max(0, prev - 1));
                       }
-                    } catch {
-                      // Skip failed downloads
-                    }
-                  }
-                  const content = await zip.generateAsync({ type: "blob" });
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(content);
-                  a.download = "Mirror-Factory-BlueWave-Proposal.zip";
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                } catch (err) {
-                  console.error("ZIP download failed:", err);
-                }
-              }}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title="Download all documents"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
+                    }}
+                    className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </span>
+                </button>
+              ))}
+              {/* Library page tab */}
+              <button
+                onClick={() => setActiveView("library")}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
+                  activeView === "library"
+                    ? "text-primary-foreground"
+                    : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                )}
+                style={activeView === "library" ? { backgroundColor: brandColor } : undefined}
+              >
+                <FolderOpen className="h-3 w-3" /> Library
+              </button>
+              {/* Library dropdown picker */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn(
+                    "px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors",
+                    pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
+                  )}>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
+                  {["Core Documents", "Planning", "Proposal Library", "Architecture"].map((category) => {
+                    const categoryDocs = BLUEWAVE_DOCUMENTS.filter(d => d.category === category);
+                    if (categoryDocs.length === 0) return null;
+                    return (
+                      <div key={category}>
+                        <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{category}</div>
+                        {categoryDocs.map(ldoc => (
+                          <DropdownMenuItem key={ldoc.id} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
+                            {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
+                             ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
+                             ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
+                             <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium truncate">{ldoc.title}</p>
+                              <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                      </div>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setChatPosition(prev => prev === "sidebar" ? "corner" : "sidebar")}
-              className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
-              title={expanded ? "Compact mode" : "Expanded mode"}
-            >
-              {chatPosition === "sidebar" ? (
-                <Shrink className="h-4 w-4" />
-              ) : (
-                <Expand className="h-4 w-4" />
-              )}
-            </Button>
+            {/* Mobile: full-width doc picker dropdown */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "w-full h-8 px-2 text-xs font-medium gap-2 justify-between",
+                      pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {activeView === "library" ? "Library" : activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : activeDoc?.title || portal.title}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[calc(100vw-1.5rem)] max-h-80 overflow-y-auto">
+                  {/* Portal documents */}
+                  {documents.map((doc, i) => (
+                    <DropdownMenuItem
+                      key={doc.id}
+                      onClick={() => { setActiveDocIndex(i); setActiveView("document"); setCurrentPage(1); setPdfFailed(false); }}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span className="truncate">{doc.title}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  {/* Opened library doc tabs */}
+                  {openedLibraryDocs.length > 0 && <DropdownMenuSeparator />}
+                  {openedLibraryDocs.map((ldoc, i) => (
+                    <DropdownMenuItem
+                      key={`lib-${ldoc.id}`}
+                      onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span className="truncate">{ldoc.title}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  {/* Library page */}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setActiveView("library")}>
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    <span className="font-medium">Browse Library</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {BLUEWAVE_DOCUMENTS.map(ldoc => (
+                    <DropdownMenuItem key={`pick-${ldoc.id}`} onClick={() => handleOpenDocPreview(ldoc)} className="flex items-start gap-2">
+                      {ldoc.type === "pdf" ? <FileIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /> :
+                       ldoc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-green-500" /> :
+                       ldoc.type === "image" ? <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> :
+                       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />}
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{ldoc.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{ldoc.type.toUpperCase()} · {ldoc.sizeHuman}</p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 
       {/* PDF viewer area */}
       <div data-portal-viewer className="flex flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 3rem)' }}>
         {activeView === "document" && tocPanel}
-        
-        {activeView === "library-doc" && activeLibraryDoc ? (
+
+        {activeView === "library" ? (
+          <div className={cn("flex-1 overflow-y-auto p-6 md:p-12", pd ? "" : "bg-slate-100")}>
+            <div className="mx-auto max-w-5xl">
+              <h2 className={cn("text-2xl font-bold mb-6", pd ? "text-white" : "text-slate-900")}>Document Library</h2>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {BLUEWAVE_DOCUMENTS.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => handleOpenDocPreview(doc)}
+                    className={cn(
+                      "text-left rounded-xl p-4 border transition-all",
+                      pd ? "border-white/10 hover:border-white/20 bg-white/[0.03]" : "border-slate-200 hover:border-slate-300 bg-white"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {doc.type === "pdf" ? <FileIcon className="mt-0.5 h-5 w-5 shrink-0 text-red-500" /> :
+                       doc.type === "xlsx" ? <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-green-500" /> :
+                       doc.type === "image" ? <ImageIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /> :
+                       <FileText className="mt-0.5 h-5 w-5 shrink-0 text-cyan-400" />}
+                      <div className="min-w-0">
+                        <p className={cn("font-semibold text-sm", pd ? "text-white" : "text-slate-900")}>{doc.title}</p>
+                        <p className={cn("text-xs mt-1", pd ? "text-white/40" : "text-slate-500")}>{doc.type.toUpperCase()} · {doc.sizeHuman}</p>
+                        {doc.description && <p className={cn("text-xs mt-2 line-clamp-2", pd ? "text-white/30" : "text-slate-400")}>{doc.description}</p>}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : activeView === "library-doc" && activeLibraryDoc ? (
           <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-slate-100")}>
             {/* Viewer content — no header bar, tabs handle navigation */}
             <div>
@@ -1560,9 +1633,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         className={cn(
           "fixed z-40 flex flex-col transition-transform duration-300",
           chatPosition === "sidebar"
-            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#1a1f2e] border-white/5" : "bg-white border-slate-200")
+            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#1a1f2e] border-white/5" : "bg-slate-50 border-slate-200")
             : chatPosition === "corner"
-              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-white border-slate-200")
+              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-slate-50 border-slate-200")
               : cn(
                   "left-0 right-0 bottom-0",
                   chatOpen ? "h-[85vh] rounded-t-2xl overflow-hidden" : "",
@@ -1639,7 +1712,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {chatPosition === "center" && !chatOpen && (
           /* Floating prompt bar — just the input + expand button */
-          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#1a1f2e]/95" : "border-slate-200 bg-white/95")}>
+          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#1a1f2e]/95" : "border-slate-200 bg-slate-50/95")}>
             <button
               onClick={() => setChatOpen(true)}
               className="flex-1 text-left text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
@@ -1671,7 +1744,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {chatPosition === "center" && chatOpen && (
           /* Expanded floating chat — full toggle bar */
-          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl md:border-t md:border-x md:border", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-white/95")}>
+          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl md:border-t md:border-x md:border", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-slate-50/95")}>
             {/* Mobile close handle */}
             <div className="md:hidden flex items-center justify-center py-2">
               <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
@@ -1720,7 +1793,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded || chatPosition === "corner"
             ? "flex-1"
             : cn(
-                cn("rounded-b-2xl md:border-x md:border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-white/95"),
+                cn("rounded-b-2xl md:border-x md:border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-slate-50/95"),
                 chatOpen ? "flex-1 min-h-0" : "h-0"
               )
         )}>
@@ -1736,6 +1809,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             initialPrompt={pendingPrompt ?? undefined}
             onToolOutput={handleToolOutput}
             onAssistantText={setLastAIResponse}
+            onVoiceToggle={toggleVoiceMode}
+            voiceActive={voiceActive}
           />
         </div>
       </div>

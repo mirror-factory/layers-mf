@@ -157,7 +157,7 @@ function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches,
   return (
     <div
       className={cn(
-        "sticky top-0 z-50 ml-auto flex w-fit items-center gap-2 rounded-lg border px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200",
+        "flex w-fit items-center gap-2 rounded-lg border px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200",
         isDark ? "border-white/10 bg-[hsl(168,14%,8%)]/95" : "border-gray-200 bg-white"
       )}
     >
@@ -886,29 +886,30 @@ export function PortalPdfViewer({
 
   // PDF Viewer with continuous scroll, bubble menu and search
   return (
-    <div ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
+    <div ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden">
+      {/* Search bar — absolute over the scroll area */}
+      {searchVisible && (
+        <div className="absolute top-2 right-2 z-30">
+          <PdfSearchBar
+            visible={searchVisible}
+            onSearch={handleSearch}
+            onNavigate={handleSearchNavigate}
+            onClose={handleSearchClose}
+            matchIndex={searchMatchIndex}
+            totalMatches={searchMatches.length}
+            isDark={isDark}
+          />
+        </div>
+      )}
+
       {/* PDF Document — scrollable container */}
       <div
         ref={pdfAreaRef}
         className={cn(
-          "relative flex-1 overflow-auto p-6",
+          "flex-1 overflow-auto p-6",
           isDark ? "bg-[hsl(168,14%,3%)]" : "bg-[#f7fbff]"
         )}
       >
-        {/* Search bar — absolutely positioned within scroll viewport */}
-        <div className="sticky top-0 z-50 pointer-events-none flex justify-end -mt-6 -mx-6 px-6 pt-4 pb-2">
-          <div className="pointer-events-auto">
-            <PdfSearchBar
-              visible={searchVisible}
-              onSearch={handleSearch}
-              onNavigate={handleSearchNavigate}
-              onClose={handleSearchClose}
-              matchIndex={searchMatchIndex}
-              totalMatches={searchMatches.length}
-              isDark={isDark}
-            />
-          </div>
-        </div>
         <div className="flex items-start justify-center">
           {pdfLoaded && (
             <PdfDocumentInner
