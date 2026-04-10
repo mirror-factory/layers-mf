@@ -599,30 +599,31 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Render XLSX via jspreadsheet-ce when table data is ready
   useEffect(() => {
     const currentLibDoc = openedLibraryDocs[activeLibraryDocIndex];
-    if (!docPreviewTable || !jspreadsheetRef.current || activeView !== "library-doc" || currentLibDoc?.type !== "xlsx") return;
+    if (!docPreviewTable || activeView !== "library-doc" || currentLibDoc?.type !== "xlsx") return;
 
-    const container = jspreadsheetRef.current;
-    container.innerHTML = "";
+    // Wait a tick for the ref to be available after React renders the xlsx container
+    const timer = setTimeout(() => {
+      const container = jspreadsheetRef.current;
+      if (!container) return;
+      container.innerHTML = "";
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const jspreadsheet = (await import("jspreadsheet-ce")).default;
-        // @ts-expect-error -- CSS import
-        await import("jsuites/dist/jsuites.css");
-        // @ts-expect-error -- CSS import
-        await import("jspreadsheet-ce/dist/jspreadsheet.css");
-        if (cancelled) return;
+      (async () => {
+        try {
+          const jspreadsheet = (await import("jspreadsheet-ce")).default;
+          // @ts-expect-error -- CSS import
+          await import("jsuites/dist/jsuites.css");
+          // @ts-expect-error -- CSS import
+          await import("jspreadsheet-ce/dist/jspreadsheet.css");
 
-        const columns = docPreviewTable[0]?.map((header: string, i: number) => ({
-          title: header || String.fromCharCode(65 + i),
-          width: 120,
-        })) || [];
+          const columns = docPreviewTable[0]?.map((header: string, i: number) => ({
+            title: header || String.fromCharCode(65 + i),
+            width: 120,
+          })) || [];
 
-        jspreadsheet(container, {
-          data: docPreviewTable.slice(1) as unknown as string[][],
-          columns: columns as unknown[],
-          tableOverflow: true,
+          jspreadsheet(container, {
+            data: docPreviewTable.slice(1) as unknown as string[][],
+            columns: columns as unknown[],
+            tableOverflow: true,
           tableWidth: "100%",
           tableHeight: "calc(100vh - 6rem)",
           editable: false,
@@ -637,8 +638,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         console.error("Jspreadsheet init failed:", err);
       }
     })();
+    }, 100); // Wait for React to render the xlsx container
 
-    return () => { cancelled = true; };
+    return () => { clearTimeout(timer); };
   }, [docPreviewTable, activeView, openedLibraryDocs, activeLibraryDocIndex]);
 
   // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
@@ -1544,6 +1546,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <div className={cn("flex items-center justify-between px-3 py-1.5 border-b", pd ? "border-white/10" : "border-slate-200")}>
               <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
               <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={toggleVoiceMode}
+                  className={cn("p-1.5 rounded-lg transition-colors", voiceActive ? "" : pd ? "hover:bg-white/10" : "hover:bg-slate-100")}
+                  style={voiceActive ? { backgroundColor: brandColor } : undefined}
+                  title={voiceActive ? "Stop voice" : "Voice mode"}
+                >
+                  {voiceActive ? <Mic className="h-3.5 w-3.5 text-white" /> : <MicOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                </button>
                 {sidebarToggleButton}
                 <Button
                   variant="ghost"

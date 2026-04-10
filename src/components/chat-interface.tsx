@@ -2677,12 +2677,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               )}
               <div className={cn("flex flex-wrap justify-center gap-2 max-w-lg", compactMode ? "mt-3" : "mt-5")}>
                 {(portalMode ? [
-                  { text: "Give me a summary of this document", accent: true },
-                  { text: "What are the key milestones and timeline?", accent: false },
-                  { text: "What's the total budget and payment structure?", accent: false },
-                  { text: "Visualize the project phases as a chart", accent: true },
-                  { text: "What are the main risks or concerns?", accent: false },
-                  { text: "Compare the two documents", accent: true },
+                  { text: "Summarize this document", accent: true },
+                  { text: "Walk me through the key points", accent: false },
+                  { text: "Visualize the timeline as a chart", accent: true },
                 ] : [
                   { text: "Chart my overdue Linear tasks by priority", accent: true },
                   { text: "Research competitor pricing and write a brief", accent: false },
