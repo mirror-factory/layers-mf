@@ -718,20 +718,23 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             width: 120,
           })) || [];
 
+          // Skip jspreadsheet on small screens — falls back to HTML table
+          if (container.clientWidth < 400) return;
+
           jspreadsheet(container, {
             data: docPreviewTable.slice(1) as unknown as string[][],
             columns: columns as unknown[],
             tableOverflow: true,
-          tableWidth: "100%",
-          tableHeight: "calc(100vh - 6rem)",
-          editable: false,
-          columnSorting: true,
-          search: true,
-          pagination: false,
-          freezeColumns: 0,
-          defaultColWidth: 120,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
+            tableWidth: "100%",
+            tableHeight: "calc(100vh - 6rem)",
+            editable: false,
+            columnSorting: true,
+            search: true,
+            pagination: false,
+            freezeColumns: 0,
+            defaultColWidth: Math.max(80, Math.floor(container.clientWidth / Math.max(columns.length, 1))),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any);
       } catch (err) {
         console.error("Jspreadsheet init failed:", err);
       }

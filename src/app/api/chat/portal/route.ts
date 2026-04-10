@@ -986,36 +986,40 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Intent detection: narrow tools for specific keywords so weaker models pick the right one
-  const lastUserMsg = uiMessages.filter((m) => m.role === "user").slice(-1)[0];
-  const lastUserText = lastUserMsg?.parts
-    ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-    .map((p) => p.text)
-    .join(" ")
-    .toLowerCase() ?? "";
+  // Intent detection: only narrow tools on FIRST message (no history).
+  // On subsequent messages, we MUST keep all tools registered because
+  // the AI SDK needs their schemas to deserialize previous tool calls in history.
+  const isFirstMessage = uiMessages.filter((m) => m.role === "user").length <= 1;
 
-  const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
-  const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
-  const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where)\b/.test(lastUserText);
-  const wantsBookmark = /\b(bookmark|save (this|a) (note|bookmark)|remember this|note this|save for later)\b/.test(lastUserText);
-  const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText);
+  if (isFirstMessage) {
+    const lastUserMsg = uiMessages.filter((m) => m.role === "user").slice(-1)[0];
+    const lastUserText = lastUserMsg?.parts
+      ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join(" ")
+      .toLowerCase() ?? "";
 
-  if (wantsChart) {
-    activeToolsList = activeToolsList.filter((t) => t === "render_chart");
-  } else if (wantsWalkthrough) {
-    activeToolsList = activeToolsList.filter((t) => t === "walkthrough_document");
-  } else if (wantsHighlight) {
-    // Highlight requests: only need switch_document (to open correct doc), navigate_pdf (to scroll), highlight_text (the main action)
-    activeToolsList = activeToolsList.filter((t) =>
-      t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
-    );
-  } else if (wantsBookmark) {
-    activeToolsList = activeToolsList.filter((t) => t === "save_bookmark");
-  } else if (wantsNavigate) {
-    // Pure navigation — don't let the agent search or loop
-    activeToolsList = activeToolsList.filter((t) =>
-      t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
-    );
+    const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
+    const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
+    const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where)\b/.test(lastUserText);
+    const wantsBookmark = /\b(bookmark|save (this|a) (note|bookmark)|remember this|note this|save for later)\b/.test(lastUserText);
+    const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText);
+
+    if (wantsChart) {
+      activeToolsList = activeToolsList.filter((t) => t === "render_chart");
+    } else if (wantsWalkthrough) {
+      activeToolsList = activeToolsList.filter((t) => t === "walkthrough_document");
+    } else if (wantsHighlight) {
+      activeToolsList = activeToolsList.filter((t) =>
+        t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
+      );
+    } else if (wantsBookmark) {
+      activeToolsList = activeToolsList.filter((t) => t === "save_bookmark");
+    } else if (wantsNavigate) {
+      activeToolsList = activeToolsList.filter((t) =>
+        t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
+      );
+    }
   }
 
   const portalTools = createPortalTools(documentContent, activeToolsList, portal);
