@@ -792,7 +792,7 @@ TOOL USAGE RULES — MANDATORY:
 - Only call navigate_pdf when the user says an EXPLICIT page number like "page 5" or "go to page 3".
 - NEVER call navigate_pdf with a page number greater than the total page count.
 
-4. HIGHLIGHT: When asked to highlight, point out, or mark text, call highlight_text with the exact text from the document.
+4. HIGHLIGHT: When asked to highlight text, FIRST call switch_document to open the relevant document (if not already viewing one), THEN call highlight_text. Highlights only work on a document page, not the library grid. Use a short distinctive phrase (2-6 words) from the document content.
 
 5. BOOKMARK: When the user says "bookmark this", "save this", or "remember this", call save_bookmark immediately (don't ask for clarification).
 
