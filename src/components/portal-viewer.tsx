@@ -563,6 +563,23 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
   };
 
+  // Reload library doc content when switching between already-opened tabs
+  const prevLibDocIndexRef = useRef(-1);
+  useEffect(() => {
+    if (activeLibraryDocIndex === prevLibDocIndexRef.current) return;
+    prevLibDocIndexRef.current = activeLibraryDocIndex;
+    const doc = openedLibraryDocs[activeLibraryDocIndex];
+    if (!doc || activeView !== "library-doc") return;
+    // Clear and reload
+    setDocxArrayBuffer(null);
+    setDocPreviewTable(null);
+    setDocPreviewHtml(null);
+    setDocPreviewText(null);
+    setIsPreviewLoading(true);
+    void handleOpenDocPreview(doc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLibraryDocIndex, activeView]);
+
   // Render DOCX via docx-preview when arrayBuffer is ready
   useEffect(() => {
     if (!docxArrayBuffer || !docxContainerRef.current) return;
@@ -888,24 +905,26 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         addContextTag(text);
         setChatOpen(true);
       } else {
-        // Clear first then set on next tick — ensures React sees a state change
-        // even if the same prompt text is generated (e.g. selecting the same text twice)
+        const prompts: Record<string, string> = {
+          explain: `Explain this section: "${truncated}"`,
+          visualize: `Visualize this data as a chart: "${truncated}"`,
+          research: `Research and fact-check this claim: "${truncated}"`,
+        };
+        const prompt = prompts[action] || truncated;
+        // Force state change by clearing first
         setPendingPrompt(null);
-        let prompt = "";
-        if (action === "explain") {
-          prompt = `Explain this section: "${truncated}"`;
-        } else if (action === "visualize") {
-          prompt = `Visualize this data as a chart: "${truncated}"`;
-        } else if (action === "research") {
-          prompt = `Research and fact-check this claim: "${truncated}"`;
-        }
-        setTimeout(() => {
-          setPendingPrompt(prompt);
-          setChatOpen(true);
-        }, 50);
+        requestAnimationFrame(() => {
+          // Append an invisible ref comment to guarantee uniqueness even for repeated selections
+          setPendingPrompt(prompt + `\n<!-- ref:${Date.now()} -->`);
+          if (chatPosition === "corner" || chatPosition === "sidebar") {
+            // Chat is already visible in these modes
+          } else {
+            setChatOpen(true);
+          }
+        });
       }
     },
-    [addContextTag]
+    [addContextTag, chatPosition]
   );
 
   const brandColor = portal.brand_color || "#0DE4F2";
@@ -1530,41 +1549,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
         )}
 
-        {/* Chat sidebar — only visible when expanded, animates in */}
+        {/* Chat sidebar spacer — reserves width when expanded, header is in the fixed overlay */}
         <div className={cn(
           "flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 border-l",
           pd ? "border-white/5" : "border-slate-200",
           expanded ? "w-[35%]" : "w-0"
-        )}>
-          {expanded && (
-            <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b min-w-0", pd ? "border-white/5" : "border-slate-200")}>
-              <div className="flex-1 min-w-0 overflow-x-auto">
-                <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowToolsInfo(true)}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                  title="AI Tools info"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </Button>
-                {sidebarToggleButton}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setChatKey((k) => k + 1)}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                  title="New chat"
-                >
-                  <MessageSquarePlus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        )} />
       </div>
 
       {/* SINGLE ChatInterface — always mounted, positioned via CSS */}
@@ -1582,6 +1572,35 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 )
         )}
       >
+        {chatPosition === "sidebar" && (
+          /* Sidebar header — inside fixed overlay so it's visible above content */
+          <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b min-w-0", pd ? "border-white/5" : "border-slate-200")}>
+            <div className="flex-1 min-w-0 overflow-x-auto">
+              <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowToolsInfo(true)}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                title="AI Tools info"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </Button>
+              {sidebarToggleButton}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatKey((k) => k + 1)}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                title="New chat"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
         {chatPosition === "corner" && (
           /* Corner mini chat — context pill + inline voice */
           <div className={cn("rounded-t-2xl", pd ? "border-white/10" : "border-slate-200")}>

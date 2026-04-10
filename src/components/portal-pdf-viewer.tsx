@@ -895,16 +895,20 @@ export function PortalPdfViewer({
           isDark ? "bg-[hsl(168,14%,3%)]" : "bg-[#f7fbff]"
         )}
       >
-        {/* Search bar — sticky inside scroll container */}
-        <PdfSearchBar
-          visible={searchVisible}
-          onSearch={handleSearch}
-          onNavigate={handleSearchNavigate}
-          onClose={handleSearchClose}
-          matchIndex={searchMatchIndex}
-          totalMatches={searchMatches.length}
-          isDark={isDark}
-        />
+        {/* Search bar — absolutely positioned within scroll viewport */}
+        <div className="sticky top-0 z-50 pointer-events-none flex justify-end -mt-6 -mx-6 px-6 pt-4 pb-2">
+          <div className="pointer-events-auto">
+            <PdfSearchBar
+              visible={searchVisible}
+              onSearch={handleSearch}
+              onNavigate={handleSearchNavigate}
+              onClose={handleSearchClose}
+              matchIndex={searchMatchIndex}
+              totalMatches={searchMatches.length}
+              isDark={isDark}
+            />
+          </div>
+        </div>
         <div className="flex items-start justify-center">
           {pdfLoaded && (
             <PdfDocumentInner
