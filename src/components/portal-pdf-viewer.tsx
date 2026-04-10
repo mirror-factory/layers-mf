@@ -793,15 +793,21 @@ export function PortalPdfViewer({
       // Scroll to first match
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        // scrollIntoView doesn't work on absolutely-positioned overlays.
-        // Manually scroll the PDF container to the overlay's offset.
-        const scrollContainer = pdfAreaRef.current;
-        if (scrollContainer) {
-          const overlayTop = matches[0].offsetTop;
-          const pageEl = matches[0].closest(".react-pdf__Page") as HTMLElement | null;
-          const pageOffset = pageEl ? pageEl.offsetTop : 0;
-          const targetScroll = pageOffset + overlayTop - scrollContainer.clientHeight / 3;
-          scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+        // Find which page the match is on and scroll using the page element
+        const pageEl = matches[0].closest("[data-page-number]") as HTMLElement | null;
+        if (pageEl) {
+          // Use the page element's native scrollIntoView (it's in normal flow, not absolute)
+          pageEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          // Then fine-tune to the overlay position after page is in view
+          setTimeout(() => {
+            const scrollContainer = pdfAreaRef.current;
+            if (scrollContainer && matches[0]) {
+              const rect = matches[0].getBoundingClientRect();
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const offset = rect.top - containerRect.top - containerRect.height / 3;
+              scrollContainer.scrollBy({ top: offset, behavior: "smooth" });
+            }
+          }, 400);
         }
       }
     },
@@ -858,13 +864,21 @@ export function PortalPdfViewer({
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
-          // Scroll to the first overlay
+          // Scroll to the first overlay's page
           const firstOverlay = overlays[0] as HTMLElement;
-          const scrollContainer = pdfAreaRef.current;
-          const pageEl = firstOverlay.closest(".react-pdf__Page") as HTMLElement | null;
-          const pageOffset = pageEl ? pageEl.offsetTop : 0;
-          const targetScroll = pageOffset + firstOverlay.offsetTop - scrollContainer.clientHeight / 3;
-          scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+          const pageEl = firstOverlay.closest("[data-page-number]") as HTMLElement | null;
+          if (pageEl) {
+            pageEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            setTimeout(() => {
+              const scrollContainer = pdfAreaRef.current;
+              if (scrollContainer) {
+                const rect = firstOverlay.getBoundingClientRect();
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const offset = rect.top - containerRect.top - containerRect.height / 3;
+                scrollContainer.scrollBy({ top: offset, behavior: "smooth" });
+              }
+            }, 400);
+          }
           setSearchVisible(true);
         }
       }, delay));
