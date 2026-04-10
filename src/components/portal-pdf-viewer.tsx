@@ -790,20 +790,28 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match — directly set scrollTop on the scroll container
-      if (matches.length > 0 && pdfAreaRef.current) {
+      // Scroll to first match — find the actual scrollable ancestor and scroll it
+      if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        const container = pdfAreaRef.current;
-        // Walk up from overlay to find cumulative offsetTop relative to scroll container
-        let totalOffset = 0;
-        let el: HTMLElement | null = matches[0];
-        while (el && el !== container) {
-          totalOffset += el.offsetTop;
-          el = el.offsetParent as HTMLElement | null;
+
+        // Find the nearest scrollable ancestor (scrollHeight > clientHeight)
+        let scrollContainer: HTMLElement | null = pdfAreaRef.current;
+        while (scrollContainer) {
+          if (scrollContainer.scrollHeight > scrollContainer.clientHeight + 10) break;
+          scrollContainer = scrollContainer.parentElement;
         }
-        // Scroll to position the match in the upper third of the viewport
-        const target = totalOffset - container.clientHeight / 3;
-        container.scrollTop = Math.max(0, target);
+
+        if (scrollContainer) {
+          // Walk offsetParent chain from overlay to scroll container
+          let totalOffset = 0;
+          let el: HTMLElement | null = matches[0];
+          while (el && el !== scrollContainer) {
+            totalOffset += el.offsetTop;
+            el = el.offsetParent as HTMLElement | null;
+          }
+          const target = totalOffset - scrollContainer.clientHeight / 3;
+          scrollContainer.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+        }
       }
     },
     []
@@ -859,16 +867,16 @@ export function PortalPdfViewer({
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
-          // Scroll container directly to the overlay's offset
+          // Find scrollable ancestor and scroll to overlay
           const firstOverlay = overlays[0] as HTMLElement;
-          const container = pdfAreaRef.current;
-          let totalOffset = 0;
-          let walkEl: HTMLElement | null = firstOverlay;
-          while (walkEl && walkEl !== container) {
-            totalOffset += walkEl.offsetTop;
-            walkEl = walkEl.offsetParent as HTMLElement | null;
+          let sc: HTMLElement | null = pdfAreaRef.current;
+          while (sc && sc.scrollHeight <= sc.clientHeight + 10) sc = sc.parentElement;
+          if (sc) {
+            let totalOffset = 0;
+            let walkEl: HTMLElement | null = firstOverlay;
+            while (walkEl && walkEl !== sc) { totalOffset += walkEl.offsetTop; walkEl = walkEl.offsetParent as HTMLElement | null; }
+            sc.scrollTo({ top: Math.max(0, totalOffset - sc.clientHeight / 3), behavior: "smooth" });
           }
-          container.scrollTop = Math.max(0, totalOffset - container.clientHeight / 3);
           setSearchVisible(true);
         }
       }, delay));
