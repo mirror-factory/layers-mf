@@ -777,9 +777,11 @@ function buildSystemPrompt(
 
 TOOL USAGE RULES — MANDATORY:
 
-1. CHARTS: When the user asks to visualize, chart, graph, or display data as a chart, you MUST call render_chart with a Chart.js config. NEVER describe a chart in text. Keywords: "chart", "graph", "visualize", "plot", "pie", "bar graph", "show me a chart of".
+0. TOOL LIMIT: Call AT MOST 2 tools per response. Never call the same tool twice in one response. If you need more data, ask the user.
 
-2. WALKTHROUGH: When the user asks for a "walkthrough", "walk me through", "tour", "guide me", or "explain the whole document", you MUST call walkthrough_document with 8-15 sections. Do NOT write a text summary — call the tool.
+1. CHARTS: When the user asks to visualize, chart, graph, or display data as a chart, you MUST call render_chart ONCE with a Chart.js config. NEVER describe a chart in text. NEVER call lookup_document for chart requests — use the document content already in your context. Keywords: "chart", "graph", "visualize", "plot", "pie", "bar graph", "show me a chart of".
+
+2. WALKTHROUGH: When the user asks for a "walkthrough", "walk me through", "tour", "guide me", or "explain the whole document", you MUST call walkthrough_document ONCE with 8-15 sections. Do NOT write a text summary. Do NOT call lookup_document.
 
 3. NAVIGATION:
 - Portal documents: ${portalDocList}
