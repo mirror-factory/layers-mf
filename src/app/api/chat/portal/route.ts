@@ -422,7 +422,8 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     });
   }
 
-  // Always-available: document library registry + lookup
+  // Library registry + lookup tools — respect enabled set so intent-narrowing can filter them
+  if (enabled.has("get_document_registry")) {
   tools.get_document_registry = tool({
     description: "Get the registry of all documents available in the document library for this portal. Returns each document's title, type, category, description, and ID. Use this to know WHICH document to look up when a user asks about topics that might be covered in a specific file.",
     inputSchema: z.object({}),
@@ -453,7 +454,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
+  if (enabled.has("open_document_preview")) {
   tools.open_document_preview = tool({
     description: "Open a document from the library in the portal viewer. Use this when the user asks to open/view a specific library document. Use get_document_registry first to find the document_id.",
     inputSchema: z.object({
@@ -466,7 +469,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       reason: reason ?? "Opening requested document",
     }),
   });
+  }
 
+  if (enabled.has("capture_screen")) {
   tools.capture_screen = tool({
     description: "Capture a screenshot of a specific area of the currently visible document. Use this when the user says 'look at this', 'see this part', 'the bottom right section', 'capture this area', or points to a specific region. Returns a description of what's visible in that area based on the document content.",
     inputSchema: z.object({
@@ -485,7 +490,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
+  if (enabled.has("lookup_document")) {
   tools.lookup_document = tool({
     description: "Look up content from a specific document in the library by its ID. Optionally filter by a search query to find relevant excerpts. Use get_document_registry first to know which document IDs are available.",
     inputSchema: z.object({
@@ -593,8 +600,10 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       }
     },
   });
+  }
 
-  // Always-on: compare two documents side by side
+  // Compare + feedback + brief + track + bookmark — respect enabled set
+  if (enabled.has("compare_documents")) {
   tools.compare_documents = tool({
     description: "Compare two documents from the library and highlight key differences, similarities, and important changes. Use when the user asks to 'compare', 'what's different', or 'how do these relate'.",
     inputSchema: z.object({
@@ -641,8 +650,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
-  // Always-on: share feedback back to the document sender
+  if (enabled.has("share_feedback")) {
   tools.share_feedback = tool({
     description: "Compile and share the viewer's feedback, questions, and annotations back to the document sender. Use when the user says 'share my notes', 'send feedback', or 'let them know my questions'.",
     inputSchema: z.object({
@@ -662,10 +672,11 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
   // Document switching — works with the portal's documents array
   const documents = (portal.documents as { id: string; title: string; context_item_id: string; is_active: boolean }[]) ?? [];
-  if (documents.length > 1) {
+  if (documents.length > 1 && enabled.has("switch_document")) {
     tools.list_documents = tool({
       description: "List all documents available in this portal. Shows which one is currently active.",
       inputSchema: z.object({}),
@@ -704,7 +715,7 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     });
   }
 
-  // Always-on: generate executive brief
+  if (enabled.has("generate_brief")) {
   tools.generate_brief = tool({
     description: "Generate a concise executive brief summarizing all documents in the portal. Use this when the user asks for an overview, executive summary, or 'give me the highlights'. Returns key numbers, timeline, risks, and decision points.",
     inputSchema: z.object({
@@ -718,8 +729,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
-  // Always-on: track reading progress
+  if (enabled.has("track_reading")) {
   tools.track_reading = tool({
     description: "Check what parts of the document the user has viewed and suggest sections they haven't read yet. Use when the user asks 'what haven't I seen?' or 'what should I look at next?'.",
     inputSchema: z.object({
@@ -734,8 +746,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
-  // Always-on: save bookmark / note
+  if (enabled.has("save_bookmark")) {
   tools.save_bookmark = tool({
     description: "Save a bookmark or note on a specific section of the document. The user can say 'bookmark this', 'save a note here', or 'remember this section'. Returns confirmation that the note was saved.",
     inputSchema: z.object({
@@ -754,6 +767,7 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       };
     },
   });
+  }
 
   return tools;
 }
@@ -950,6 +964,15 @@ export async function POST(request: NextRequest) {
     "summarize_section",
     "web_search",
     "capture_screen",
+    "get_document_registry",
+    "open_document_preview",
+    "lookup_document",
+    "switch_document",
+    "compare_documents",
+    "share_feedback",
+    "generate_brief",
+    "track_reading",
+    "save_bookmark",
   ];
   const portalConfigTools = (portal.enabled_tools as string[]) ?? [];
   // Union of DB-configured + core tools (dedup)

@@ -848,13 +848,13 @@ export function PortalPdfViewer({
       return false;
     };
 
-    // Small delay to allow page navigation to settle before searching
+    // Longer delay to allow page navigation + text layer rendering
     const initialTimer = setTimeout(() => {
       if (attemptHighlight()) return;
 
       // If no matches yet, observe DOM changes for text layer rendering
       let attempts = 0;
-      const maxAttempts = 20;
+      const maxAttempts = 40; // more attempts for slow page loads
       const observer = new MutationObserver(() => {
         attempts++;
         if (attemptHighlight() || attempts >= maxAttempts) {
@@ -866,6 +866,16 @@ export function PortalPdfViewer({
         childList: true,
         subtree: true,
       });
+
+      // Fallback: retry every 200ms for up to 8s in case mutations don't fire
+      let fallbackAttempts = 0;
+      const fallbackInterval = setInterval(() => {
+        fallbackAttempts++;
+        if (attemptHighlight() || fallbackAttempts >= 40) {
+          clearInterval(fallbackInterval);
+          observer.disconnect();
+        }
+      }, 200);
 
       // Fallback timeout to disconnect observer
       const fallbackTimer = setTimeout(() => {
