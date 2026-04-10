@@ -310,7 +310,7 @@ mark.portal-pdf-highlight-active {
 }
 .docx-preview-wrapper .docx-wrapper > section.docx {
   background: white !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
   margin: 0 !important;
   padding: 1.5cm 2cm !important;
   max-width: none !important;
@@ -327,6 +327,13 @@ mark.portal-pdf-highlight-active {
   width: 50% !important;
   flex: 0 0 50% !important;
 }
+/* Screen capture flash animation */
+@keyframes capture-flash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .docx-preview-wrapper table {
   border-collapse: collapse;
 }

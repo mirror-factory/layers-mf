@@ -471,6 +471,25 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     }),
   });
 
+  tools.capture_screen = tool({
+    description: "Capture a screenshot of a specific area of the currently visible document. Use this when the user says 'look at this', 'see this part', 'the bottom right section', 'capture this area', or points to a specific region. Returns a description of what's visible in that area based on the document content.",
+    inputSchema: z.object({
+      region: z.enum(["full", "top-left", "top-right", "bottom-left", "bottom-right", "top-half", "bottom-half", "left-half", "right-half", "center"])
+        .describe("Which region of the current page/view to capture"),
+      page: z.number().optional().describe("Page number to capture (defaults to current page)"),
+      description_request: z.string().optional().describe("What the user wants to know about this area"),
+    }),
+    execute: async ({ region, page, description_request }: { region: string; page?: number; description_request?: string }) => {
+      return {
+        action: "capture_screen",
+        region,
+        page: page ?? 1,
+        description_request: description_request ?? "Describe what you see",
+        note: "The client will capture this region visually. Use the document content you already have to describe what's in this area of the document.",
+      };
+    },
+  });
+
   tools.lookup_document = tool({
     description: "Look up content from a specific document in the library by its ID. Optionally filter by a search query to find relevant excerpts. Use get_document_registry first to know which document IDs are available.",
     inputSchema: z.object({

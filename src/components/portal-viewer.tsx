@@ -59,6 +59,7 @@ import { PortalPdfViewer, type PdfControls, type TextAction } from "@/components
 import { ChatInterface } from "@/components/chat-interface";
 import { AnnotationOverlay, type Annotation } from "@/components/portal-annotation-overlay";
 import { PortalWelcomeModal } from "@/components/portal-welcome-modal";
+import { PortalVoiceMode } from "@/components/portal-voice-mode";
 
 // ---------------------------------------------------------------------------
 // Context Tag type
@@ -403,7 +404,8 @@ interface PortalViewerProps {
 }
 
 export function PortalViewer({ portal }: PortalViewerProps) {
-  const [expanded, setExpanded] = useState(portal.default_expanded);
+  const [chatPosition, setChatPosition] = useState<"sidebar" | "center" | "corner">(portal.default_expanded ? "sidebar" : "center");
+  const expanded = chatPosition === "sidebar";
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -414,10 +416,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [pdfControls, setPdfControls] = useState<PdfControls | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chatKey, setChatKey] = useState(0);
+  const [lastAIResponse, setLastAIResponse] = useState<string>("");
   const [showToolsInfo, setShowToolsInfo] = useState(false);
   const [twoColumnMode, setTwoColumnMode] = useState(false);
   // Force single column when sidebar is docked
-  const effectiveTwoColumn = twoColumnMode && !expanded;
+  const effectiveTwoColumn = twoColumnMode && chatPosition !== "sidebar";
   const progressRef = useRef<HTMLDivElement | null>(null);
 
   // Context tags state
@@ -651,6 +654,20 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           pdfControls.goToPage?.(page);
           setCurrentPage(page);
         }
+      } else if (toolName === "capture_screen" && out.action === "capture_screen") {
+        // Animate a capture effect on the document viewer
+        const viewerEl = document.querySelector("[data-portal-viewer]");
+        if (viewerEl) {
+          const flash = document.createElement("div");
+          flash.style.cssText = `
+            position: absolute; inset: 0; z-index: 100;
+            background: rgba(12, 228, 242, 0.15);
+            pointer-events: none;
+            animation: capture-flash 0.6s ease-out forwards;
+          `;
+          viewerEl.appendChild(flash);
+          setTimeout(() => flash.remove(), 700);
+        }
       } else if (toolName === "open_document_preview" && out.action === "open_document_preview") {
         const docId = String(out.document_id ?? "");
         // Check library documents first (exact match, then partial title match)
@@ -841,6 +858,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
   }, [pendingPrompt]);
 
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setPendingPrompt(text);
+    setChatOpen(true);
+  }, []);
+
   const handleTextAction = useCallback(
     (action: TextAction, text: string) => {
       const truncated = text.length > 200 ? text.slice(0, 200) + "..." : text;
@@ -890,11 +912,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setExpanded(!expanded)}
+      onClick={() => setChatPosition(prev => prev === "sidebar" ? "center" : prev === "center" ? "corner" : "sidebar")}
       className="h-7 w-7 text-muted-foreground hover:text-foreground"
-      title={expanded ? "Float chat" : "Dock to sidebar"}
+      title={chatPosition === "sidebar" ? "Float chat" : chatPosition === "center" ? "Mini chat" : "Dock to sidebar"}
     >
-      {expanded ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
+      {chatPosition === "sidebar" ? <Shrink className="h-3.5 w-3.5" /> : chatPosition === "center" ? <MessageSquare className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
     </Button>
   );
 
@@ -1013,6 +1035,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         isDark={portalDark}
       />
 
+      {/* Voice mode */}
+      <PortalVoiceMode
+        onTranscript={handleVoiceTranscript}
+        brandColor={brandColor}
+        isDark={portalDark}
+        disabled={expanded}
+      />
       {/* Tools info modal */}
       <ToolsInfoModal
         open={showToolsInfo}
@@ -1279,12 +1308,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               variant="ghost"
               size="icon"
               onClick={() => setTwoColumnMode(prev => !prev)}
-              disabled={expanded}
+              disabled={chatPosition === "sidebar"}
               className={cn(
                 "hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground",
-                expanded && "opacity-30 cursor-not-allowed"
+                chatPosition === "sidebar" && "opacity-30 cursor-not-allowed"
               )}
-              title={expanded ? "Single column (sidebar active)" : effectiveTwoColumn ? "Single column" : "Two column view"}
+              title={chatPosition === "sidebar" ? "Single column (sidebar active)" : effectiveTwoColumn ? "Single column" : "Two column view"}
             >
               {effectiveTwoColumn ? <RectangleVertical className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
             </Button>
@@ -1349,7 +1378,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setExpanded(!expanded)}
+              onClick={() => setChatPosition(prev => prev === "sidebar" ? "center" : "sidebar")}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
               title={expanded ? "Compact mode" : "Expanded mode"}
             >
@@ -1363,7 +1392,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </header>
 
       {/* PDF viewer area */}
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 3rem)' }}>
+      <div data-portal-viewer className="flex flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 3rem)' }}>
         {activeView === "document" && tocPanel}
         
         {activeView === "library-doc" && activeLibraryDoc ? (
@@ -1388,7 +1417,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 /* docx-preview renders directly into this container — edge-to-edge */
                 <div
                   ref={docxContainerRef}
-                  className={cn("docx-preview-wrapper w-full min-h-[80vh] bg-white overflow-hidden", effectiveTwoColumn && "two-column")}
+                  className={cn("docx-preview-wrapper w-full min-h-[80vh] overflow-hidden", effectiveTwoColumn && "two-column")}
                 />
               ) : (
                 <div
@@ -1483,16 +1512,36 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       <div
         className={cn(
           "fixed z-40 flex flex-col",
-          expanded
+          chatPosition === "sidebar"
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-slate-200")
-            : cn(
-                "left-0 right-0",
-                chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl" : "bottom-0",
-                chatOpen ? "md:top-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
-              )
+            : chatPosition === "corner"
+              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#070a0e] border-white/10" : "bg-white border-slate-200")
+              : cn(
+                  "left-0 right-0",
+                  chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl" : "bottom-0",
+                  chatOpen ? "md:top-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
+                )
         )}
       >
-        {!expanded && !chatOpen && (
+        {chatPosition === "corner" && (
+          /* Corner mini chat — compact header bar */
+          <div className={cn("flex items-center justify-between px-3 py-2 border-b rounded-t-2xl", pd ? "border-white/10" : "border-slate-200")}>
+            <span className="text-xs font-medium text-muted-foreground">Chat</span>
+            <div className="flex items-center gap-0.5">
+              {sidebarToggleButton}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatKey((k) => k + 1)}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                title="New chat"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+        {chatPosition === "center" && !chatOpen && (
           /* Floating prompt bar — just the input + expand button */
           <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95")}>
             <button
@@ -1524,7 +1573,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             </div>
           </div>
         )}
-        {!expanded && chatOpen && (
+        {chatPosition === "center" && chatOpen && (
           /* Expanded floating chat — full toggle bar */
           <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95")}>
             {/* Mobile close handle */}
@@ -1566,7 +1615,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         <div className={cn(
           "overflow-hidden",
-          expanded
+          expanded || chatPosition === "corner"
             ? "flex-1"
             : cn(
                 cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95"),
