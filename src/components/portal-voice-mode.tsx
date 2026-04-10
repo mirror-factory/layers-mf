@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface PortalVoiceModeProps {
   onTranscript: (text: string) => void;
+  lastAIResponse?: string;
   recentMessages?: { role: "user" | "assistant"; text: string }[];
   brandColor?: string;
   isDark?: boolean;
@@ -14,6 +15,7 @@ interface PortalVoiceModeProps {
 
 export function PortalVoiceMode({
   onTranscript,
+  lastAIResponse,
   recentMessages,
   brandColor = "#0DE4F2",
   isDark = true,
@@ -33,13 +35,6 @@ export function PortalVoiceMode({
   useEffect(() => {
     voiceEnabledRef.current = voiceEnabled;
   }, [voiceEnabled]);
-
-  // Derive lastAIResponse from recentMessages for TTS
-  const lastAIResponse =
-    recentMessages
-      ?.slice()
-      .reverse()
-      .find((m) => m.role === "assistant")?.text ?? undefined;
 
   // Initialize speech recognition
   const startListening = useCallback(() => {
