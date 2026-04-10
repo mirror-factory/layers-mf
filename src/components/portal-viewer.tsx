@@ -801,13 +801,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           });
         }
 
-        // Add persistent annotation on current page (will update when highlight found)
-        addAnnotation({
-          page: currentPage,
-          text,
-          note: String(out.reason ?? "Highlighted by AI"),
-          type: "highlight",
-        });
+        // Note: annotation omitted — the yellow highlight on the text is sufficient.
+        // Adding an annotation here used currentPage (often wrong page) which was confusing.
       } else if (toolName === "capture_screen" && out.action === "capture_screen") {
         // Animate a capture effect on the document viewer
         const viewerEl = document.querySelector("[data-portal-viewer]");

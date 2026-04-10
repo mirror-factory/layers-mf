@@ -790,10 +790,21 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match using manual calculation (scrollIntoView unreliable in overflow-auto + CSS transforms)
+      // Scroll to first match — find its page container and scroll there
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        scrollElementIntoContainer(matches[0], pdfAreaRef.current);
+        // Find which page this match is on
+        const pageEl = matches[0].closest(".react-pdf__Page") as HTMLElement | null;
+        if (pageEl && pdfAreaRef.current) {
+          // Scroll the page into view first, then fine-tune to the match
+          scrollElementIntoContainer(pageEl, pdfAreaRef.current);
+          // After page is in view, scroll to the exact match
+          setTimeout(() => {
+            if (pdfAreaRef.current) scrollElementIntoContainer(matches[0], pdfAreaRef.current);
+          }, 300);
+        } else if (pdfAreaRef.current) {
+          scrollElementIntoContainer(matches[0], pdfAreaRef.current);
+        }
       }
     },
     []
