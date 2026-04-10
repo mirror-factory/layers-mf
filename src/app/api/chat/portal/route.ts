@@ -330,9 +330,9 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
   if (enabled.has("highlight_text")) {
     tools.highlight_text = tool({
       description:
-        "Highlight text in the currently visible document. Call this DIRECTLY with a phrase to highlight — the client will search all pages and scroll to the first match. Use a distinctive phrase (3-8 words) that likely appears verbatim in the document. DO NOT guess text you haven't confirmed — use words from the section/topic the user mentioned. For 'total price', try phrases like 'Total' or '$' or 'budget' or 'investment'.",
+        "Highlight text in the currently visible document. Call this DIRECTLY with a phrase to highlight — the client will search all pages and scroll to the first match. Use a DISTINCTIVE multi-word phrase (4-8 words) that uniquely identifies the section. For budget/pricing, use the EXACT heading like 'Budget and Schedule' or the specific dollar amount like '$120,000 to $180,000'. Single common words like 'budget' will match the first occurrence, not necessarily the one the user wants. DO NOT guess text you haven't confirmed — use words from the section/topic the user mentioned.",
       inputSchema: z.object({
-        text: z.string().describe("The exact phrase to find and highlight. Use 2-6 words that are likely in the document verbatim."),
+        text: z.string().describe("The exact phrase to find and highlight. Use a DISTINCTIVE multi-word phrase (4-8 words) that uniquely identifies the section. Prefer exact headings or specific dollar amounts over single common words."),
       }),
       execute: async ({ text }: { text: string }) => {
         return {

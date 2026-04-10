@@ -1553,10 +1553,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   className={cn(
                     "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
                     i === activeDocIndex && activeView === "document"
-                      ? "text-primary-foreground"
+                      ? ""
                       : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                   )}
-                  style={i === activeDocIndex && activeView === "document" ? { backgroundColor: brandColor } : undefined}
+                  style={i === activeDocIndex && activeView === "document" ? { backgroundColor: `${brandColor}20`, color: brandColor } : undefined}
                 >
                   {doc.title}
                 </button>
@@ -1569,10 +1569,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   className={cn(
                     "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
                     i === activeLibraryDocIndex && activeView === "library-doc"
-                      ? "text-primary-foreground"
+                      ? ""
                       : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-50"
                   )}
-                  style={i === activeLibraryDocIndex && activeView === "library-doc" ? { backgroundColor: brandColor } : undefined}
+                  style={i === activeLibraryDocIndex && activeView === "library-doc" ? { backgroundColor: `${brandColor}20`, color: brandColor } : undefined}
                 >
                   {ldoc.title}
                   <span
@@ -1598,10 +1598,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 className={cn(
                   "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
                   activeView === "library"
-                    ? "text-primary-foreground"
+                    ? ""
                     : pd ? "text-muted-foreground hover:text-foreground hover:bg-white/5" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                 )}
-                style={activeView === "library" ? { backgroundColor: brandColor } : undefined}
+                style={activeView === "library" ? { backgroundColor: `${brandColor}20`, color: brandColor } : undefined}
               >
                 <FolderOpen className="h-3 w-3" /> Library
               </button>
@@ -1811,7 +1811,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 <div className="relative">
                   <div
                     ref={docxContainerRef}
-                    className={cn("docx-preview-wrapper mx-auto bg-white rounded-lg shadow-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl")}
+                    className={cn("docx-preview-wrapper mx-auto rounded-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl", pd ? "bg-[#141821]" : "bg-slate-100")}
                     onMouseUp={() => {
                       const selection = window.getSelection();
                       const selectedText = selection?.toString().trim();

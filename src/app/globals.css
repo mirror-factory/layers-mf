@@ -315,14 +315,15 @@ body {
 }
 .docx-preview-wrapper .docx-wrapper {
   background: transparent !important;
-  padding: 0 !important;
+  padding: 1rem !important;
   margin: 0 !important;
   overflow: visible !important;
 }
 .docx-preview-wrapper .docx-wrapper > section.docx {
   background: white !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
-  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  margin: 0.5rem auto !important;
+  border-radius: 4px;
   padding: 1.5cm 2cm !important;
   max-width: none !important;
   min-height: auto !important;
