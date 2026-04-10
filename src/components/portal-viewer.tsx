@@ -34,7 +34,9 @@ import {
   Footprints,
   Library as LibraryIcon,
   Columns2,
-  RectangleVertical
+  RectangleVertical,
+  Mic,
+  MicOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BLUEWAVE_DOCUMENTS } from "@/lib/bluewave-docs";
@@ -409,7 +411,7 @@ interface PortalViewerProps {
 }
 
 export function PortalViewer({ portal }: PortalViewerProps) {
-  const [chatPosition, setChatPosition] = useState<"sidebar" | "center" | "corner">(portal.default_expanded ? "sidebar" : "center");
+  const [chatPosition, setChatPosition] = useState<"sidebar" | "center" | "corner">(portal.default_expanded ? "sidebar" : "corner");
   const expanded = chatPosition === "sidebar";
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioDuration, setAudioDuration] = useState(0);
@@ -422,6 +424,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [chatKey, setChatKey] = useState(0);
   const [lastAIResponse, setLastAIResponse] = useState<string>("");
+  const [voiceActive, setVoiceActive] = useState(false);
+  const toggleVoiceMode = useCallback(() => setVoiceActive(prev => !prev), []);
   const [showToolsInfo, setShowToolsInfo] = useState(false);
   const [twoColumnMode, setTwoColumnMode] = useState(false);
   // Force single column when sidebar is docked
@@ -471,18 +475,24 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Check if already opened
+    // Check if already opened — switch tab but still reload content
     const existingIdx = openedLibraryDocs.findIndex(d => d.id === doc.id);
     if (existingIdx >= 0) {
       setActiveLibraryDocIndex(existingIdx);
       setActiveView("library-doc");
-      return;
+    } else {
+      // Add to opened tabs
+      setOpenedLibraryDocs(prev => [...prev, doc]);
+      setActiveLibraryDocIndex(openedLibraryDocs.length);
+      setActiveView("library-doc");
     }
 
-    // Add to opened tabs
-    setOpenedLibraryDocs(prev => [...prev, doc]);
-    setActiveLibraryDocIndex(openedLibraryDocs.length);
-    setActiveView("library-doc");
+    // Always clear previous content and reload for the selected doc
+    setDocxArrayBuffer(null);
+    setDocPreviewText(null);
+    setDocPreviewHtml(null);
+    setDocPreviewTable(null);
+    setDocPreviewMessages([]);
 
     if (doc.type === "image" || doc.type === "pdf") {
       setIsPreviewLoading(false);
@@ -490,10 +500,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
 
     setIsPreviewLoading(true);
-    setDocPreviewText(null);
-    setDocPreviewHtml(null);
-    setDocPreviewTable(null);
-    setDocPreviewMessages([]);
 
     try {
       const docUrl = encodeURI(doc.url);
@@ -1040,14 +1046,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         isDark={portalDark}
       />
 
-      {/* Voice mode */}
-      <PortalVoiceMode
-        onTranscript={handleVoiceTranscript}
-        lastAIResponse={lastAIResponse}
-        brandColor={brandColor}
-        isDark={portalDark}
-        disabled={expanded}
-      />
+      {/* Voice mode — standalone (fixed) only when NOT in corner mode */}
+      {chatPosition !== "corner" && (
+        <PortalVoiceMode
+          onTranscript={handleVoiceTranscript}
+          lastAIResponse={lastAIResponse}
+          brandColor={brandColor}
+          isDark={portalDark}
+          disabled={expanded}
+        />
+      )}
       {/* Tools info modal */}
       <ToolsInfoModal
         open={showToolsInfo}
@@ -1525,26 +1533,47 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               : cn(
                   "left-0 right-0",
                   chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl overflow-hidden" : "bottom-0",
-                  chatOpen ? "md:top-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
+                  chatOpen ? "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
                 )
         )}
       >
         {chatPosition === "corner" && (
-          /* Corner mini chat — compact header bar */
-          <div className={cn("flex items-center justify-between px-3 py-2 border-b rounded-t-2xl", pd ? "border-white/10" : "border-slate-200")}>
-            <span className="text-xs font-medium text-muted-foreground">Chat</span>
-            <div className="flex items-center gap-0.5">
-              {sidebarToggleButton}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setChatKey((k) => k + 1)}
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                title="New chat"
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-              </Button>
+          /* Corner mini chat — compact header bar + inline voice mode */
+          <div className={cn("rounded-t-2xl", pd ? "border-white/10" : "border-slate-200")}>
+            <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+            <div className={cn("flex items-center justify-between px-3 py-2 border-b", pd ? "border-white/10" : "border-slate-200")}>
+              <span className="text-xs font-medium text-muted-foreground">Chat</span>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={toggleVoiceMode}
+                  className={cn("p-1.5 rounded-lg transition-colors", voiceActive ? "" : "hover:bg-white/10")}
+                  style={voiceActive ? { backgroundColor: brandColor } : undefined}
+                  title={voiceActive ? "Stop voice" : "Voice mode"}
+                >
+                  {voiceActive ? <Mic className="h-3.5 w-3.5 text-white" /> : <MicOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                </button>
+                {sidebarToggleButton}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setChatKey((k) => k + 1)}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  title="New chat"
+                >
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
+            {/* Inline voice mode panel */}
+            <PortalVoiceMode
+              onTranscript={handleVoiceTranscript}
+              lastAIResponse={lastAIResponse}
+              brandColor={brandColor}
+              isDark={portalDark}
+              inline
+              active={voiceActive}
+              onActiveChange={setVoiceActive}
+            />
           </div>
         )}
         {chatPosition === "center" && !chatOpen && (
@@ -1586,6 +1615,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <div className="md:hidden flex items-center justify-center py-2">
               <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
             </div>
+            <button
+              onClick={() => setChatOpen(false)}
+              className="absolute top-3 right-3 md:hidden p-1.5 rounded-full bg-slate-200/80 dark:bg-white/10"
+            >
+              <X className="h-4 w-4 text-slate-500 dark:text-white/60" />
+            </button>
             <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
             <div className="flex items-center justify-between px-3 py-1">
               <button
