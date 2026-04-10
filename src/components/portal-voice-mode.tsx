@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface PortalVoiceModeProps {
   onTranscript: (text: string) => void;
-  lastAIResponse?: string;
+  recentMessages?: { role: "user" | "assistant"; text: string }[];
   brandColor?: string;
   isDark?: boolean;
   disabled?: boolean;
@@ -14,7 +14,7 @@ interface PortalVoiceModeProps {
 
 export function PortalVoiceMode({
   onTranscript,
-  lastAIResponse,
+  recentMessages,
   brandColor = "#0DE4F2",
   isDark = true,
   disabled = false,
@@ -27,6 +27,19 @@ export function PortalVoiceMode({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenRef = useRef<string>("");
+  const voiceEnabledRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    voiceEnabledRef.current = voiceEnabled;
+  }, [voiceEnabled]);
+
+  // Derive lastAIResponse from recentMessages for TTS
+  const lastAIResponse =
+    recentMessages
+      ?.slice()
+      .reverse()
+      .find((m) => m.role === "assistant")?.text ?? undefined;
 
   // Initialize speech recognition
   const startListening = useCallback(() => {
@@ -77,16 +90,18 @@ export function PortalVoiceMode({
     };
 
     recognition.onend = () => {
-      // Auto-restart if still in voice mode
-      if (voiceEnabled && isListening) {
-        try { recognition.start(); } catch {}
+      // Auto-restart if still in voice mode (use ref to avoid stale closure)
+      if (voiceEnabledRef.current) {
+        try {
+          recognition.start();
+        } catch {}
       }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [disabled, onTranscript, voiceEnabled, isListening]);
+  }, [disabled, onTranscript]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -155,7 +170,7 @@ export function PortalVoiceMode({
       <button
         onClick={toggleVoice}
         className={cn(
-          "fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full shadow-2xl transition-all duration-300",
+          "fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center justify-center rounded-full shadow-2xl transition-all duration-300",
           voiceEnabled ? "h-16 w-16" : "h-12 w-12",
           voiceEnabled && isListening && "animate-pulse"
         )}
@@ -172,66 +187,74 @@ export function PortalVoiceMode({
         )}
       </button>
 
-      {/* Voice mode overlay — shows transcript and controls */}
+      {/* Voice mode overlay — shows transcript, recent messages, and controls */}
       {voiceEnabled && (
         <div className={cn(
-          "fixed bottom-24 right-6 z-50 w-72 rounded-2xl p-4 shadow-2xl border backdrop-blur-xl",
+          "fixed bottom-24 right-4 md:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-3 shadow-2xl border backdrop-blur-xl",
           isDark ? "bg-[#0a0a0f]/95 border-white/10" : "bg-white/95 border-slate-200"
         )}>
-          {/* Controls */}
-          <div className="flex items-center justify-between mb-3">
+          {/* Controls row */}
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div
                 className={cn("h-2 w-2 rounded-full", isListening ? "animate-pulse" : "")}
                 style={{ backgroundColor: isListening ? "#22c55e" : "#94a3b8" }}
               />
-              <span className={cn("text-xs font-medium", isDark ? "text-white/70" : "text-slate-600")}>
-                {isListening ? "Listening..." : isSpeaking ? "Speaking..." : "Paused"}
+              <span className={cn("text-[11px] font-medium", isDark ? "text-white/60" : "text-slate-500")}>
+                {isListening ? "Listening..." : isSpeaking ? "Speaking..." : "Ready"}
               </span>
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setTtsEnabled(!ttsEnabled)}
-                className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
-                title={ttsEnabled ? "Mute responses" : "Unmute responses"}
+                className={cn("p-1 rounded-lg", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
               >
-                {ttsEnabled ? (
-                  <Volume2 className={cn("h-3.5 w-3.5", isDark ? "text-white/60" : "text-slate-500")} />
-                ) : (
-                  <VolumeX className={cn("h-3.5 w-3.5", isDark ? "text-white/40" : "text-slate-400")} />
-                )}
+                {ttsEnabled ? <Volume2 className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} /> : <VolumeX className={cn("h-3 w-3", isDark ? "text-white/30" : "text-slate-300")} />}
               </button>
-              <button
-                onClick={toggleVoice}
-                className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
-              >
-                <X className={cn("h-3.5 w-3.5", isDark ? "text-white/60" : "text-slate-500")} />
+              <button onClick={toggleVoice} className={cn("p-1 rounded-lg", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}>
+                <X className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} />
               </button>
             </div>
           </div>
 
+          {/* Recent messages — last 4 */}
+          {recentMessages && recentMessages.length > 0 && (
+            <div className="space-y-1.5 mb-2 max-h-32 overflow-y-auto">
+              {recentMessages.slice(-4).map((msg, i) => (
+                <div key={i} className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-[12px] leading-relaxed",
+                  msg.role === "user"
+                    ? isDark ? "bg-white/5 text-white/70 ml-6" : "bg-sky-50 text-slate-700 ml-6"
+                    : isDark ? "text-white/80 mr-6" : "text-slate-700 mr-6"
+                )}>
+                  {msg.text.length > 120 ? msg.text.slice(0, 120) + "..." : msg.text}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Live transcript */}
           {transcript && (
             <div className={cn(
-              "rounded-lg p-2.5 text-sm min-h-[2rem]",
-              isDark ? "bg-white/5 text-white/80" : "bg-slate-50 text-slate-700"
+              "rounded-lg p-2 text-[12px] animate-pulse",
+              isDark ? "bg-white/5 text-white/70" : "bg-slate-50 text-slate-600"
             )}>
               {transcript}
             </div>
           )}
 
-          {/* Waveform visualization placeholder */}
-          {isListening && !transcript && (
-            <div className="flex items-center justify-center gap-1 h-8">
+          {/* Waveform when idle */}
+          {isListening && !transcript && (!recentMessages || recentMessages.length === 0) && (
+            <div className="flex items-center justify-center gap-1 h-6">
               {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="w-1 rounded-full animate-pulse"
+                  className="w-0.5 rounded-full animate-pulse"
                   style={{
                     backgroundColor: brandColor,
-                    height: `${12 + Math.random() * 16}px`,
+                    height: `${8 + Math.random() * 12}px`,
                     animationDelay: `${i * 150}ms`,
-                    opacity: 0.6,
+                    opacity: 0.5,
                   }}
                 />
               ))}

@@ -233,7 +233,7 @@ function ToolsInfoModal({
       <div
         className={cn(
           "relative z-10 w-full max-w-md mx-4 rounded-2xl border p-6 shadow-2xl",
-          isDark ? "bg-[#0a0a0f] border-white/10" : "bg-white border-gray-200"
+          isDark ? "bg-[#1e2433] border-white/10" : "bg-white border-gray-200"
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -865,7 +865,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   const handleVoiceTranscript = useCallback((text: string) => {
     setPendingPrompt(text);
-    setChatOpen(true);
+    // Don't open full chat — voice mode shows messages inline
   }, []);
 
   const handleTextAction = useCallback(
@@ -963,7 +963,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const tocPanel = showToc && tocEntries.length > 0 ? (
     <>
       {/* Mobile: fullscreen overlay */}
-      <div className={cn("fixed inset-0 z-[100] flex flex-col backdrop-blur-xl md:hidden", pd ? "bg-[#070a0e]/95" : "bg-slate-50/95")}>
+      <div className={cn("fixed inset-0 z-[100] flex flex-col backdrop-blur-xl md:hidden", pd ? "bg-[#1a1f2e]/95" : "bg-slate-50/95")}>
         <div className={cn("flex items-center justify-between px-4 py-3 border-b", pd ? "border-white/5" : "border-slate-200")}>
           <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
@@ -980,8 +980,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         </div>
       </div>
       {/* Desktop: sidebar */}
-      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#070a0e]/60" : "border-slate-200 bg-white/80")}>
-        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#070a0e]/80" : "border-slate-200 bg-white/90")}>
+      <div className={cn("hidden md:block w-64 shrink-0 overflow-y-auto backdrop-blur-xl border-r", pd ? "border-white/5 bg-[#1a1f2e]/60" : "border-slate-200 bg-white/80")}>
+        <div className={cn("sticky top-0 z-10 flex items-center justify-between px-3 py-2 backdrop-blur-xl border-b", pd ? "border-white/5 bg-[#1a1f2e]/80" : "border-slate-200 bg-white/90")}>
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contents</span>
           <Button
             variant="ghost"
@@ -1030,7 +1030,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   return (
     <div
-      className={cn("flex h-screen flex-col overflow-hidden", pd ? "bg-[#070a0e]" : "bg-slate-50")}
+      className={cn("flex h-screen flex-col overflow-hidden", pd ? "bg-[#1a1f2e]" : "bg-slate-50")}
     >
       {/* Welcome modal */}
       <PortalWelcomeModal
@@ -1043,6 +1043,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* Voice mode */}
       <PortalVoiceMode
         onTranscript={handleVoiceTranscript}
+        lastAIResponse={lastAIResponse}
         brandColor={brandColor}
         isDark={portalDark}
         disabled={expanded}
@@ -1069,19 +1070,19 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* Unified Header — includes PDF page nav */}
       <header className={cn(
         "sticky top-0 z-50 flex items-center justify-between px-4 py-2 backdrop-blur-xl",
-        pd ? "border-b border-white/5 bg-[#070a0e]/80" : "border-b border-slate-200 bg-white/95"
+        pd ? "border-b border-white/5 bg-[#1a1f2e]/80" : "border-b border-slate-200 bg-white/95"
       )}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             {portal.logo_url && (
               <img
                 src={portal.logo_url}
                 alt="Logo"
-                className="h-9 w-9 rounded-lg object-contain"
+                className="h-7 w-7 md:h-9 md:w-9 rounded-lg object-cover object-left"
               />
             )}
             <div>
               <div className="flex items-center gap-2">
-                <h1 className={cn("text-base font-semibold tracking-tight truncate", pd ? "text-white" : "text-slate-900")}>
+                <h1 className={cn("text-sm md:text-base font-semibold tracking-tight truncate", pd ? "text-white" : "text-slate-900")}>
                   {activeView === "library-doc" && activeLibraryDoc ? activeLibraryDoc.title : (activeDoc?.title || portal.title)}
                 </h1>
                 {portal.client_name && (
@@ -1384,7 +1385,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               variant="ghost"
               size="icon"
               onClick={() => setChatPosition(prev => prev === "sidebar" ? "center" : "sidebar")}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
               title={expanded ? "Compact mode" : "Expanded mode"}
             >
               {expanded ? (
@@ -1518,12 +1519,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         className={cn(
           "fixed z-40 flex flex-col",
           chatPosition === "sidebar"
-            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#070a0e] border-white/5" : "bg-white border-slate-200")
+            ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#1a1f2e] border-white/5" : "bg-white border-slate-200")
             : chatPosition === "corner"
-              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#070a0e] border-white/10" : "bg-white border-slate-200")
+              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-white border-slate-200")
               : cn(
                   "left-0 right-0",
-                  chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl" : "bottom-0",
+                  chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl overflow-hidden" : "bottom-0",
                   chatOpen ? "md:top-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
                 )
         )}
@@ -1548,7 +1549,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {chatPosition === "center" && !chatOpen && (
           /* Floating prompt bar — just the input + expand button */
-          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95")}>
+          <div className={cn("flex items-center gap-2 rounded-none md:rounded-2xl backdrop-blur-xl shadow-2xl px-4 py-2.5 pb-4 md:pb-2.5 border-t md:border", pd ? "border-white/10 bg-[#1a1f2e]/95" : "border-slate-200 bg-white/95")}>
             <button
               onClick={() => setChatOpen(true)}
               className="flex-1 text-left text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
@@ -1580,7 +1581,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
         {chatPosition === "center" && chatOpen && (
           /* Expanded floating chat — full toggle bar */
-          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl border-t border-x md:border", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95")}>
+          <div className={cn("rounded-t-2xl overflow-hidden backdrop-blur-xl shadow-2xl md:border-t md:border-x md:border", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-white/95")}>
             {/* Mobile close handle */}
             <div className="md:hidden flex items-center justify-center py-2">
               <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
@@ -1623,7 +1624,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded || chatPosition === "corner"
             ? "flex-1"
             : cn(
-                cn("rounded-b-2xl border-x border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "border-white/10 bg-[#070a0e]/95" : "border-slate-200 bg-white/95"),
+                cn("rounded-b-2xl md:border-x md:border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-white/95"),
                 chatOpen ? "flex-1 min-h-0" : "h-0"
               )
         )}>
@@ -1638,6 +1639,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             portalLogoUrl={portal.logo_url ?? undefined}
             initialPrompt={pendingPrompt ?? undefined}
             onToolOutput={handleToolOutput}
+            onAssistantText={setLastAIResponse}
           />
         </div>
       </div>

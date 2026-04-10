@@ -1699,6 +1699,8 @@ interface ChatInterfaceProps {
   portalLogoUrl?: string;
   /** Callback fired when a tool completes with output (used by portal to react to tool results) */
   onToolOutput?: (toolName: string, output: unknown) => void;
+  /** Callback fired with the latest assistant text response (used by voice mode for TTS) */
+  onAssistantText?: (text: string) => void;
   /** Compact mode — reduced spacing, no empty state, minimal chrome (for embedded drawers) */
   compactMode?: boolean;
   /** Hide the context window bar (token counter) */
@@ -1707,7 +1709,7 @@ interface ChatInterfaceProps {
   containerClassName?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1762,6 +1764,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       portalBrandColor={portalBrandColor}
       portalLogoUrl={portalLogoUrl}
       onToolOutput={onToolOutput}
+      onAssistantText={onAssistantText}
       compactMode={compactMode}
       hideContextBar={hideContextBar}
       containerClassName={containerClassName}
@@ -1784,12 +1787,13 @@ interface ChatInterfaceInnerProps {
   portalBrandColor?: string;
   portalLogoUrl?: string;
   onToolOutput?: (toolName: string, output: unknown) => void;
+  onAssistantText?: (text: string) => void;
   compactMode?: boolean;
   hideContextBar?: boolean;
   containerClassName?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2240,6 +2244,20 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       onToolOutput(toolName, output as Record<string, unknown>);
     }
   }, [messages, onToolOutput]);
+
+  // Notify parent of latest assistant text (used by voice mode for TTS)
+  const lastAssistantTextRef = useRef<string>("");
+  useEffect(() => {
+    if (!onAssistantText || messages.length === 0 || isLoading) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    const parts = (lastMsg.parts ?? []) as { type: string; text?: string }[];
+    const textPart = parts.find(p => p.type === "text" && p.text);
+    if (textPart?.text && textPart.text !== lastAssistantTextRef.current) {
+      lastAssistantTextRef.current = textPart.text;
+      onAssistantText(textPart.text);
+    }
+  }, [messages, isLoading, onAssistantText]);
 
   // Load context panel preference from localStorage
   // Context panel hidden by default — user can open via button
@@ -2959,7 +2977,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-slate-50/90 to-slate-50 dark:via-[#070a0e]/85 dark:to-[#070a0e]")}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-slate-50/90 to-slate-50 dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]")}
           style={{
             background: portalMode
               ? undefined

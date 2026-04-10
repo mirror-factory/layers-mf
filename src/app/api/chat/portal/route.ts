@@ -221,12 +221,12 @@ function createPortalTools(
 </style>
 </head><body>
 <div class="container">
-${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:600">${title}</h3>` : ""}
+${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba(100,100,100,0.8);font-weight:600">${title}</h3>` : ""}
 <canvas id="c"></canvas>
 </div>
 <script>
   // Force transparent background, default text color and cyan primary
-  Chart.defaults.color = 'rgba(255,255,255,0.6)';
+  Chart.defaults.color = 'rgba(100,100,100,0.8)';
   Chart.defaults.font.size = 10;
   Chart.defaults.plugins.legend.labels.boxWidth = 10;
   var cfg = ${chart_config};
@@ -691,7 +691,10 @@ You have access to the full document content. When answering questions:
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
    CRITICAL CHART RULES:
    - The chart displays in a SMALL chat panel (~340px wide). Use width=340, height=220.
-   - ALWAYS use dark theme: transparent background, white text (#e0e0e0), light grid lines (rgba(255,255,255,0.08)).
+   - Use ADAPTIVE theme colors that work on both light and dark backgrounds:
+     - Background: always transparent
+     - Text/labels: use rgba(100,100,100,0.8) — works on both light and dark
+     - Grid lines: use rgba(128,128,128,0.15)
    - Use the brand color #0CE4F2 as primary, #0891B2 as secondary. Use rgba(12,228,242,0.3) for fills.
    - Use compact font sizes: 10px for labels, 11px for titles.
    - Set options.responsive=true, options.maintainAspectRatio=true.

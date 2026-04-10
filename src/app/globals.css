@@ -322,8 +322,16 @@ mark.portal-pdf-highlight-active {
 .docx-preview-wrapper.two-column .docx-wrapper {
   display: flex !important;
   flex-wrap: wrap !important;
+  align-items: flex-start !important;
 }
 .docx-preview-wrapper.two-column .docx-wrapper > section.docx {
+  width: 50% !important;
+  flex: 0 0 50% !important;
+  min-height: auto !important;
+  break-inside: avoid !important;
+}
+/* Force even the first/cover page to be 50% */
+.docx-preview-wrapper.two-column .docx-wrapper > section.docx:first-child {
   width: 50% !important;
   flex: 0 0 50% !important;
 }
