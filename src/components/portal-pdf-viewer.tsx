@@ -253,7 +253,6 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
   if (textLayerElements.length === 0) {
     textLayerElements = container.querySelectorAll("[class*='textLayer'] span, [class*='textContent'] span");
   }
-  console.log(`[Highlight] Searching for "${searchText}" in ${textLayerElements.length} text spans`);
   const matchElements: HTMLElement[] = [];
   const lowerSearch = searchText.toLowerCase();
 
@@ -297,7 +296,6 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
     matchElements.push(overlay);
   });
 
-  console.log(`[Highlight] Found ${matchElements.length} matches for "${searchText}"`);
   return matchElements;
 }
 
@@ -846,14 +844,12 @@ export function PortalPdfViewer({
     delays.forEach((delay) => {
       timers.push(setTimeout(() => {
         if (found || !pdfAreaRef.current) return;
-        console.log(`[Highlight] Retry at ${delay}ms for "${highlightTextProp}"`);
         handleSearch(highlightTextProp);
         // Check if any matches were created
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
           setSearchVisible(true);
-          console.log(`[Highlight] Found ${overlays.length} matches at ${delay}ms`);
         }
       }, delay));
     });
