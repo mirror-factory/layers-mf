@@ -313,6 +313,11 @@ mark.portal-pdf-highlight-active {
 }
 
 /* docx-preview styles — edge-to-edge, no wrapper chrome */
+.docx-preview-wrapper,
+.docx-preview-wrapper .docx-preview-body,
+.docx-preview-wrapper .docx-preview-body-wrapper {
+  background: transparent !important;
+}
 .docx-preview-wrapper .docx-wrapper {
   background: transparent !important;
   padding: 0 !important;

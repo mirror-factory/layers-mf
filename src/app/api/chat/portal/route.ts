@@ -680,7 +680,7 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     });
 
     tools.switch_document = tool({
-      description: "Switch the active document being viewed in the portal. The viewer will update to show the new document.",
+      description: "ALWAYS use this when the user asks to go to, open, switch to, show, or navigate to a different portal document. The viewer will actually switch to the new document. Use this instead of navigate_pdf for document switching.",
       inputSchema: z.object({
         title: z.string().describe("Title of the document to switch to"),
       }),
@@ -806,8 +806,12 @@ ${clientContext}
 You are helping the reader understand "${portal.title}".
 
 You have access to the full document content. When answering questions:
-1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, list_documents, or switch_document. You already have everything.
-2. Only use tools for ACTIONS: render_chart (to visualize data), navigate_portal (to switch tabs/scroll to sections), navigate_pdf (to scroll the viewer), highlight_text (to highlight text in the document), add_annotation (to add visual callouts), walkthrough_document (to give an animated tour), open_document_preview (to open a library document in the viewer).
+1. The FULL document content is below — just READ it and answer. Do NOT call search_document, get_page_content, or list_documents — you already have everything.
+2. CRITICAL NAVIGATION: When the user says "go to", "open", "switch to", "show me the [doc name]", or "bring me to the [doc]", you MUST call switch_document with the doc title (for portal docs) or open_document_preview (for library docs). DO NOT just acknowledge verbally — actually call the tool to switch the view. Examples:
+   - "go to the scope of work" → call switch_document({title: "Scope of Work — Aqueduct v2"})
+   - "show me the executive summary" → call open_document_preview({document_id: "executive_summary_docx"})
+   - "take me to the proposal" → call switch_document({title: "Proposal — Swell"})
+3. Only use tools for ACTIONS: render_chart (visualize data), switch_document (change active document), navigate_pdf (scroll to a specific PAGE within current doc), highlight_text (highlight text), add_annotation (visual callouts), walkthrough_document (animated tour), open_document_preview (open library doc).
 3. IMPORTANT: When asked to visualize or chart anything, you MUST call the render_chart tool. NEVER write chart JSON in your text response.
    CRITICAL CHART RULES:
    - The chart displays in a SMALL chat panel (~340px wide). Use width=340, height=220.
