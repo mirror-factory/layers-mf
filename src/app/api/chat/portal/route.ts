@@ -1031,11 +1031,12 @@ export async function POST(request: NextRequest) {
     } else if (wantsWalkthrough) {
       intentTools = ["walkthrough_document"];
     } else if (wantsHighlight) {
-      intentTools = ["highlight_text", "switch_document", "navigate_pdf", "open_document_preview", "get_document_registry"];
+      // AI already has full doc content in system prompt — just highlight directly
+      intentTools = ["highlight_text", "switch_document"];
     } else if (wantsBookmark) {
       intentTools = ["save_bookmark"];
     } else if (wantsNavigate) {
-      intentTools = ["switch_document", "navigate_pdf", "open_document_preview", "get_document_registry"];
+      intentTools = ["switch_document", "navigate_pdf", "open_document_preview"];
     }
 
     if (intentTools) {
