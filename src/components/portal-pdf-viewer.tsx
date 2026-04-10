@@ -907,7 +907,7 @@ export function PortalPdfViewer({
         ref={pdfAreaRef}
         className={cn(
           "flex-1 overflow-auto p-6",
-          isDark ? "bg-[hsl(168,14%,3%)]" : "bg-[#f7fbff]"
+          isDark ? "bg-[#1a1f2e]" : "bg-slate-100"
         )}
       >
         <div className="flex items-start justify-center">

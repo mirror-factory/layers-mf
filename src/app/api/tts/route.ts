@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model_id: "sonic-2",
+        model_id: "sonic-turbo", // 40ms first byte (vs 90ms for sonic-2)
         transcript: body.text,
         voice: {
           mode: "id",
@@ -48,11 +48,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "TTS generation failed" }, { status: 502 });
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    return new NextResponse(audioBuffer, {
+    // Stream the response body instead of buffering the full MP3
+    return new NextResponse(response.body, {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",
+        "Transfer-Encoding": "chunked",
       },
     });
   } catch (err) {

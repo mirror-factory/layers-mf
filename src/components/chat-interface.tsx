@@ -58,6 +58,7 @@ import { Entropy } from "@/components/ui/entropy";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { NeuralMorph } from "@/components/ui/neural-morph";
 import { MCPOAuthCard, MCPBearerCard } from "@/components/mcp-connect-cards";
+import { PortalVoiceMode } from "@/components/portal-voice-mode";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
 
@@ -1711,9 +1712,11 @@ interface ChatInterfaceProps {
   onVoiceToggle?: () => void;
   /** Whether voice mode is currently active (portal only) */
   voiceActive?: boolean;
+  /** Latest AI response text (used to speak via TTS when voice mode is active) */
+  lastAIResponse?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1774,6 +1777,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       containerClassName={containerClassName}
       onVoiceToggle={onVoiceToggle}
       voiceActive={voiceActive}
+      lastAIResponse={lastAIResponse}
     />
   );
 }
@@ -1799,9 +1803,10 @@ interface ChatInterfaceInnerProps {
   containerClassName?: string;
   onVoiceToggle?: () => void;
   voiceActive?: boolean;
+  lastAIResponse?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceInnerProps) {
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -3004,10 +3009,34 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
+          {/* Voice mode UI — replaces the input area when active (portal only) */}
+          {portalMode && voiceActive && (
+            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <PortalVoiceMode
+                inline
+                active={voiceActive}
+                onActiveChange={(a) => {
+                  if (!a) onVoiceToggle?.();
+                }}
+                onTranscript={(text) => {
+                  if (text.trim()) sendMessage({ text: text.trim() });
+                }}
+                lastAIResponse={lastAIResponse}
+                recentMessages={messages.slice(-4).map((m) => ({
+                  role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+                  text: getTextContent(m.parts as { type: string; text?: string }[]),
+                })).filter((m) => m.text)}
+                brandColor={portalBrandColor || "#0DE4F2"}
+                isDark={typeof document !== "undefined" && document.documentElement.classList.contains("dark")}
+              />
+            </div>
+          )}
+
           <div
             className={cn(
-              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3",
-              portalMode ? "border-slate-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60"
+              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3 transition-all duration-500",
+              portalMode ? "border-slate-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60",
+              portalMode && voiceActive && "opacity-0 h-0 p-0 border-0 overflow-hidden pointer-events-none shadow-none"
             )}
           >
             {/* Interview UI — renders as overlay above the input area */}

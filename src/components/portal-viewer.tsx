@@ -822,9 +822,57 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           pdfControls.goToPage?.(sections[0]?.page ?? 1);
           setCurrentPage(sections[0]?.page ?? 1);
         }
+      } else if (toolName === "switch_document" && out.action === "switch_document") {
+        const title = String(out.title ?? "");
+        // Try portal documents first
+        const portalDocs = portal.documents ?? [];
+        const portalIdx = portalDocs.findIndex(d =>
+          d.title.toLowerCase().includes(title.toLowerCase()) ||
+          title.toLowerCase().includes(d.title.toLowerCase())
+        );
+        if (portalIdx >= 0) {
+          setActiveDocIndex(portalIdx);
+          setActiveView("document");
+          setCurrentPage(1);
+          setPdfFailed(false);
+          return;
+        }
+        // Try library documents
+        const libraryDoc = BLUEWAVE_DOCUMENTS.find(d =>
+          d.title.toLowerCase().includes(title.toLowerCase()) ||
+          title.toLowerCase().includes(d.title.toLowerCase())
+        );
+        if (libraryDoc) {
+          void handleOpenDocPreview(libraryDoc);
+        }
+      } else if (toolName === "navigate_portal" && out.action === "navigate") {
+        const target = String(out.target ?? "").toLowerCase();
+        // Match target to portal docs or library or tab names
+        if (target.includes("library")) {
+          setActiveView("library");
+          return;
+        }
+        // Try matching portal docs
+        const portalDocs = portal.documents ?? [];
+        const portalIdx = portalDocs.findIndex(d =>
+          d.title.toLowerCase().includes(target) || target.includes(d.title.toLowerCase())
+        );
+        if (portalIdx >= 0) {
+          setActiveDocIndex(portalIdx);
+          setActiveView("document");
+          setCurrentPage(1);
+          return;
+        }
+        // Try library docs
+        const libraryDoc = BLUEWAVE_DOCUMENTS.find(d =>
+          d.title.toLowerCase().includes(target) || target.includes(d.title.toLowerCase())
+        );
+        if (libraryDoc) {
+          void handleOpenDocPreview(libraryDoc);
+        }
       }
     },
-    [addAnnotation, pdfControls, handleOpenDocPreview, openedLibraryDocs]
+    [addAnnotation, pdfControls, handleOpenDocPreview, openedLibraryDocs, portal.documents]
   );
 
   // Feature 3: Tool toggles
@@ -1615,31 +1663,33 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                   <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-slate-200")} />
                 </div>
               ) : activeLibraryDoc.type === "xlsx" && docPreviewTable ? (
-                <div className="min-h-[60vh] bg-white overflow-hidden w-full">
-                  <div ref={jspreadsheetRef} className="w-full" />
-                  <div className="overflow-auto max-h-[80vh] jspreadsheet-fallback">
-                    <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
-                      <thead className="sticky top-0 z-10">
-                        <tr>
-                          <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
-                          {docPreviewTable[0].map((cell, cellIdx) => (
-                            <th key={`h-${cellIdx}`} className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap">
-                              {cell || String.fromCharCode(65 + cellIdx)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {docPreviewTable.slice(1).map((row, rowIdx) => (
-                          <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                            <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">{rowIdx + 2}</td>
-                            {row.map((cell, cellIdx) => (
-                              <td key={`cell-${rowIdx}-${cellIdx}`} className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap">{cell || ""}</td>
+                <div className="p-4 md:p-6">
+                  <div className="mx-auto max-w-6xl min-h-[60vh] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div ref={jspreadsheetRef} className="w-full" />
+                    <div className="overflow-auto max-h-[80vh] jspreadsheet-fallback">
+                      <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
+                        <thead className="sticky top-0 z-10">
+                          <tr>
+                            <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
+                            {docPreviewTable[0].map((cell, cellIdx) => (
+                              <th key={`h-${cellIdx}`} className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap">
+                                {cell || String.fromCharCode(65 + cellIdx)}
+                              </th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {docPreviewTable.slice(1).map((row, rowIdx) => (
+                            <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                              <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">{rowIdx + 2}</td>
+                              {row.map((cell, cellIdx) => (
+                                <td key={`cell-${rowIdx}-${cellIdx}`} className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap">{cell || ""}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               ) : isPreviewLoading ? (
@@ -1786,16 +1836,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 </Button>
               </div>
             </div>
-            {/* Inline voice mode panel */}
-            <PortalVoiceMode
-              onTranscript={handleVoiceTranscript}
-              lastAIResponse={lastAIResponse}
-              brandColor={brandColor}
-              isDark={portalDark}
-              inline
-              active={voiceActive}
-              onActiveChange={setVoiceActive}
-            />
+            {/* Inline voice mode is now rendered inside ChatInterface —
+                it replaces the input area when voiceActive is true */}
             <QuickActions
               onAction={(prompt) => {
                 setPendingPrompt(null);
@@ -1909,6 +1951,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             onAssistantText={setLastAIResponse}
             onVoiceToggle={toggleVoiceMode}
             voiceActive={voiceActive}
+            lastAIResponse={lastAIResponse}
           />
         </div>
       </div>
