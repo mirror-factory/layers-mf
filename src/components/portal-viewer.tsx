@@ -789,26 +789,34 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         const text = String(out.text ?? "");
 
+        // If we're on the library page or no PDF is loaded, auto-switch to first portal doc
+        if (activeView !== "document" || !pdfControls || pdfControls.numPages <= 0) {
+          const docs = portal.documents ?? [];
+          if (docs.length > 0) {
+            setActiveDocIndex(0);
+            setActiveView("document");
+            setCurrentPage(1);
+            setPdfFailed(false);
+          }
+        }
+
         const applyHighlight = () => {
           setHighlightText(text);
           highlightNonceRef.current += 1;
           setHighlightNonce(highlightNonceRef.current);
         };
 
-        if (pdfControls && pdfControls.numPages > 0) {
-          applyHighlight();
-        } else {
-          pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
-          const retryTimers = [500, 1500, 3000, 5000, 8000];
-          retryTimers.forEach((delay) => {
-            setTimeout(() => {
-              if (pendingHighlightRef.current && pendingHighlightRef.current.text === text && pdfControls && pdfControls.numPages > 0) {
-                applyHighlight();
-                pendingHighlightRef.current = null;
-              }
-            }, delay);
-          });
-        }
+        // Always defer — give the doc time to load/switch
+        pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
+        const retryTimers = [500, 1500, 3000, 5000, 8000, 12000];
+        retryTimers.forEach((delay) => {
+          setTimeout(() => {
+            if (pendingHighlightRef.current && pendingHighlightRef.current.text === text && pdfControls && pdfControls.numPages > 0) {
+              applyHighlight();
+              pendingHighlightRef.current = null;
+            }
+          }, delay);
+        });
 
         // Note: annotation omitted — the yellow highlight on the text is sufficient.
         // Adding an annotation here used currentPage (often wrong page) which was confusing.
