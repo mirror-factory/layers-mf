@@ -200,6 +200,11 @@ const TOOL_CONFIG: Record<
     icon: FileText,
     description: "Open a library document in the viewer",
   },
+  capture_screen: {
+    label: "Capture",
+    icon: ImageIcon,
+    description: "Capture and describe a region of the document",
+  },
 };
 
 // Tools info modal
