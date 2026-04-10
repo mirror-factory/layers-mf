@@ -61,6 +61,13 @@ import { MCPOAuthCard, MCPBearerCard } from "@/components/mcp-connect-cards";
 import { PortalVoiceMode } from "@/components/portal-voice-mode";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import { Suggestions, Suggestion } from "@/components/ai-elements/suggestion";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 
 // ---------------------------------------------------------------------------
 // ChatVariant — typed config for visual/behavioral variants of ChatInterface
@@ -2722,8 +2729,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             />
           </div>
         )}
-        <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", compactMode ? "p-3" : "p-4 sm:p-6")}>
-          <div className={cn("max-w-4xl mx-auto w-full", compactMode ? "space-y-3" : "space-y-6")}>
+        <Conversation className={cn("flex-1 min-h-0", compactMode ? "p-3" : "p-4 sm:p-6")}>
+          <ConversationContent className={cn("max-w-4xl mx-auto w-full", compactMode ? "gap-3 p-0" : isPortal ? "gap-3 p-0" : "gap-6 p-0")}>
           {messages.length === 0 && (
             <div className={cn("flex flex-col items-center justify-center text-center", isPortal ? v.mutedColor : "text-muted-foreground", compactMode ? "py-4" : "h-full")}>
               {!compactMode && (isPortal ? (
@@ -2758,30 +2765,32 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   {"Granger searches your documents, meetings, and notes to answer."}
                 </p>
               )}
-              <div className={cn("flex flex-wrap justify-center gap-2 max-w-lg", compactMode ? "mt-3" : "mt-5")}>
-                {(v.suggestions.length > 0 ? v.suggestions : [
-                  { text: "Chart my overdue Linear tasks by priority", accent: true },
-                  { text: "Research competitor pricing and write a brief", accent: false },
-                  { text: "Summarize my last Granola meeting into action items", accent: false },
-                  { text: "Build a dashboard app from our recent metrics", accent: true },
-                  { text: "Look up our brand guidelines and create a landing page", accent: false },
-                  { text: "Show my week ahead — tasks, meetings, deadlines", accent: true },
-                ]).map(({ text: prompt, accent }) => (
-                  <button
-                    key={prompt}
-                    onClick={() => sendMessage({ text: prompt })}
-                    className={cn(
-                      "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                      !isPortal && accent && "border-primary/30 text-primary hover:bg-primary/10",
-                      !isPortal && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                      isPortal && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white",
-                      isPortal && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-200 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
-                    )}
-                    style={isPortal && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
-                  >
-                    {prompt}
-                  </button>
-                ))}
+              <div className={cn("flex flex-wrap justify-center max-w-lg", compactMode ? "mt-3" : "mt-5")}>
+                <Suggestions className="justify-center flex-wrap gap-2">
+                  {(v.suggestions.length > 0 ? v.suggestions : [
+                    { text: "Chart my overdue Linear tasks by priority", accent: true },
+                    { text: "Research competitor pricing and write a brief", accent: false },
+                    { text: "Summarize my last Granola meeting into action items", accent: false },
+                    { text: "Build a dashboard app from our recent metrics", accent: true },
+                    { text: "Look up our brand guidelines and create a landing page", accent: false },
+                    { text: "Show my week ahead — tasks, meetings, deadlines", accent: true },
+                  ]).map(({ text: prompt, accent }) => (
+                    <Suggestion
+                      key={prompt}
+                      suggestion={prompt}
+                      onClick={(s) => sendMessage({ text: s })}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "whitespace-normal text-left h-auto py-1.5",
+                        isPortal && accent && "border-sky-200 dark:border-white/10 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-white/10",
+                        isPortal && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10",
+                        !isPortal && accent && "border-primary/30 text-primary hover:bg-primary/10",
+                      )}
+                      style={isPortal && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
+                    />
+                  ))}
+                </Suggestions>
               </div>
             </div>
           )}
@@ -2801,16 +2810,16 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             const isStreaming = isLastAssistant && isLoading;
 
             return (
-              <div key={m.id} className={cn("flex gap-2 sm:gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+              <div key={m.id} className={cn("flex group", isPortal ? "gap-2" : "gap-2 sm:gap-3", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 {m.role === "user" ? (
-                  <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
+                  <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: isPortal ? 24 : 32, height: isPortal ? 24 : 32 }}>
                     {isPortal ? (
                       <span
                         className="inline-flex h-full w-full items-center justify-center rounded-full"
                         style={{ backgroundColor: `${portalBrandColor || "#0DE4F2"}20` }}
                       >
                         <span
-                          className="inline-block h-2 w-2 rounded-full"
+                          className="inline-block h-1.5 w-1.5 rounded-full"
                           style={{ backgroundColor: portalBrandColor || "#0DE4F2" }}
                         />
                       </span>
@@ -2820,18 +2829,18 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 ) : isPortal ? (
                   <>
-                    {/* Portal mode: brand-colored animated avatar */}
-                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                    {/* Portal mode: brand-colored animated avatar — compact */}
+                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 24, height: 24 }}>
                       <NeuralMorph
-                        size={36}
-                        dotCount={isStreaming ? 14 : 10}
+                        size={24}
+                        dotCount={isStreaming ? 10 : 8}
                         formation={isStreaming ? "active" : "orbit"}
                         color={portalBrandColor || "#0DE4F2"}
                       />
                     </div>
                     <div className="sm:hidden shrink-0 mt-0.5">
                       <NeuralMorph
-                        size={22}
+                        size={20}
                         dotCount={8}
                         formation={isStreaming ? "active" : "orbit"}
                         color={portalBrandColor || "#0DE4F2"}
@@ -2991,14 +3000,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             const hasTools = getToolParts(lastMsg.parts as { type: string }[]).length > 0;
             return !hasText && !hasTools; // Hide thinking once content streams in
           })() && (
-            <div className="flex gap-3 max-w-4xl">
+            <div className={cn("flex max-w-4xl", isPortal ? "gap-2" : "gap-3")}>
               {isPortal ? (
                 <>
-                  <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 36, height: 36, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
-                    <span className="inline-block h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                  <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 24, height: 24, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
                   </div>
                   <div className="sm:hidden shrink-0 mt-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                    <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
                   </div>
                 </>
               ) : (
@@ -3011,7 +3020,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </>
               )}
-              <span className={cn("text-xs pt-3", isPortal ? v.mutedColor : "text-muted-foreground")}>Thinking…</span>
+              {isPortal ? (
+                <Shimmer className="text-xs pt-1" duration={1.5}>Thinking...</Shimmer>
+              ) : (
+                <span className="text-xs pt-3 text-muted-foreground">Thinking...</span>
+              )}
             </div>
           )}
 
@@ -3049,11 +3062,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
 
           <div ref={bottomRef} />
-          </div>
-        </div>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", isPortal && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", isPortal && cn("bg-gradient-to-b", v.gradientFrom, "via-slate-50/90", v.gradientTo, "dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]"))}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : isPortal ? "px-3 sm:px-4 pt-3" : "px-4 sm:px-8 pt-6", isPortal && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", isPortal && cn("bg-gradient-to-b", v.gradientFrom, "via-slate-50/90", v.gradientTo, "dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]"))}
           style={{
             background: isPortal
               ? undefined
@@ -3100,8 +3114,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
           <div
             className={cn(
-              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3 transition-all duration-500",
-              isPortal ? cn(v.inputBorder, v.inputBg, "shadow-sm") : "border-border/50 bg-card/60",
+              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl transition-all duration-500",
+              isPortal ? cn(v.inputBorder, v.inputBg, "shadow-sm p-2") : "border-border/50 bg-card/60 p-3",
               isPortal && voiceActive && "opacity-0 h-0 p-0 border-0 overflow-hidden pointer-events-none shadow-none transition-all duration-500"
             )}
           >
