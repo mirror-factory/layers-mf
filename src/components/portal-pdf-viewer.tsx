@@ -793,8 +793,16 @@ export function PortalPdfViewer({
       // Scroll to first match
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        // Use native scrollIntoView — most reliable across browsers
-        matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
+        // scrollIntoView doesn't work on absolutely-positioned overlays.
+        // Manually scroll the PDF container to the overlay's offset.
+        const scrollContainer = pdfAreaRef.current;
+        if (scrollContainer) {
+          const overlayTop = matches[0].offsetTop;
+          const pageEl = matches[0].closest(".react-pdf__Page") as HTMLElement | null;
+          const pageOffset = pageEl ? pageEl.offsetTop : 0;
+          const targetScroll = pageOffset + overlayTop - scrollContainer.clientHeight / 3;
+          scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+        }
       }
     },
     []
@@ -846,10 +854,17 @@ export function PortalPdfViewer({
       timers.push(setTimeout(() => {
         if (found || !pdfAreaRef.current) return;
         handleSearch(highlightTextProp);
-        // Check if any matches were created
+        // Check if any matches were created and scroll to them
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
+          // Scroll to the first overlay
+          const firstOverlay = overlays[0] as HTMLElement;
+          const scrollContainer = pdfAreaRef.current;
+          const pageEl = firstOverlay.closest(".react-pdf__Page") as HTMLElement | null;
+          const pageOffset = pageEl ? pageEl.offsetTop : 0;
+          const targetScroll = pageOffset + firstOverlay.offsetTop - scrollContainer.clientHeight / 3;
+          scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
           setSearchVisible(true);
         }
       }, delay));
