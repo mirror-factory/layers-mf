@@ -330,21 +330,14 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
   if (enabled.has("highlight_text")) {
     tools.highlight_text = tool({
       description:
-        "ALWAYS use this tool for ANY highlight request. Call it DIRECTLY without searching first — this tool automatically finds the text and navigates to its page. Just pass the exact phrase to highlight. Example: user says 'highlight the total price' → call highlight_text({text: 'Total: $180,000'}) directly. DO NOT call search_document or get_page_content first.",
+        "Highlight text in the currently visible document. Call this DIRECTLY with a phrase to highlight — the client will search all pages and scroll to the first match. Use a distinctive phrase (3-8 words) that likely appears verbatim in the document. DO NOT guess text you haven't confirmed — use words from the section/topic the user mentioned. For 'total price', try phrases like 'Total' or '$' or 'budget' or 'investment'.",
       inputSchema: z.object({
-        text: z.string().describe("The exact text to find and highlight (phrase or sentence). Pick a specific, unique phrase from the document content."),
-        page: z.number().optional().describe("Optional page hint — leave empty if unknown"),
+        text: z.string().describe("The exact phrase to find and highlight. Use 2-6 words that are likely in the document verbatim."),
       }),
-      execute: async ({ text, page }: { text: string; page?: number }) => {
-        let foundPage = page;
-        if (!foundPage) {
-          const results = searchDocumentContent(documentContent, text, 1);
-          foundPage = results.length > 0 ? results[0].page : 1;
-        }
+      execute: async ({ text }: { text: string }) => {
         return {
           action: "highlight",
           text,
-          page: foundPage,
         };
       },
     });

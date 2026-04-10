@@ -762,26 +762,17 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         }
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         const text = String(out.text ?? "");
-        const page = Number(out.page);
 
-        // Helper to actually apply the highlight (may be deferred if PDF not loaded)
         const applyHighlight = () => {
           setHighlightText(text);
           highlightNonceRef.current += 1;
           setHighlightNonce(highlightNonceRef.current);
-          if (page > 0 && pdfControls) {
-            pdfControls.goToPage?.(page);
-            setCurrentPage(page);
-          }
         };
 
-        // If the PDF isn't ready yet (switching docs), wait for it
         if (pdfControls && pdfControls.numPages > 0) {
           applyHighlight();
         } else {
-          // Store as pending — retries when PDF loads
-          pendingHighlightRef.current = { text, page, timestamp: Date.now() };
-          // Also retry with delay as safety net
+          pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
           const retryTimers = [500, 1500, 3000, 5000, 8000];
           retryTimers.forEach((delay) => {
             setTimeout(() => {
@@ -793,9 +784,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           });
         }
 
-        // Add persistent annotation for the highlight
+        // Add persistent annotation on current page (will update when highlight found)
         addAnnotation({
-          page: page || currentPage,
+          page: currentPage,
           text,
           note: String(out.reason ?? "Highlighted by AI"),
           type: "highlight",
