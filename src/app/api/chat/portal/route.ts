@@ -996,12 +996,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Intent detection: only narrow tools on FIRST message (no history).
-  // On subsequent messages, we MUST keep all tools registered because
-  // the AI SDK needs their schemas to deserialize previous tool calls in history.
-  const isFirstMessage = uiMessages.filter((m) => m.role === "user").length <= 1;
+  // Intent detection on EVERY message — narrow tools to prevent loops.
+  // Also always include tools referenced in message history (for deserialization).
+  {
+    // Collect tool names from history so AI SDK can deserialize them
+    const historyTools = new Set<string>();
+    for (const msg of uiMessages) {
+      if (msg.role !== "assistant") continue;
+      for (const part of msg.parts ?? []) {
+        const p = part as { type?: string };
+        if (p.type?.startsWith("tool-")) {
+          historyTools.add(p.type.slice(5));
+        }
+      }
+    }
 
-  if (isFirstMessage) {
     const lastUserMsg = uiMessages.filter((m) => m.role === "user").slice(-1)[0];
     const lastUserText = lastUserMsg?.parts
       ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -1011,24 +1020,28 @@ export async function POST(request: NextRequest) {
 
     const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
     const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
-    const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where|bring me to the .+ section|show me the .+ section)\b/.test(lastUserText);
+    const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where|bring me to the .+ section|show me the .+ section|budget|schedule|pricing|timeline|scope)\b/.test(lastUserText);
     const wantsBookmark = /\b(bookmark|save (this|a) (note|bookmark)|remember this|note this|save for later)\b/.test(lastUserText);
     const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText) && !wantsHighlight;
 
+    let intentTools: string[] | null = null;
+
     if (wantsChart) {
-      activeToolsList = activeToolsList.filter((t) => t === "render_chart");
+      intentTools = ["render_chart"];
     } else if (wantsWalkthrough) {
-      activeToolsList = activeToolsList.filter((t) => t === "walkthrough_document");
+      intentTools = ["walkthrough_document"];
     } else if (wantsHighlight) {
-      activeToolsList = activeToolsList.filter((t) =>
-        t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview" || t === "get_document_registry"
-      );
+      intentTools = ["highlight_text", "switch_document", "navigate_pdf", "open_document_preview", "get_document_registry"];
     } else if (wantsBookmark) {
-      activeToolsList = activeToolsList.filter((t) => t === "save_bookmark");
+      intentTools = ["save_bookmark"];
     } else if (wantsNavigate) {
-      activeToolsList = activeToolsList.filter((t) =>
-        t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview" || t === "get_document_registry"
-      );
+      intentTools = ["switch_document", "navigate_pdf", "open_document_preview", "get_document_registry"];
+    }
+
+    if (intentTools) {
+      // Keep intent tools + any tools from history (for deserialization)
+      const keepSet = new Set([...intentTools, ...historyTools]);
+      activeToolsList = activeToolsList.filter((t) => keepSet.has(t));
     }
   }
 
