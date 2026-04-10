@@ -47,6 +47,8 @@ interface PortalPdfViewerProps {
   onTextAction?: (action: TextAction, text: string) => void;
   /** Text to highlight in the PDF (from chat tool or search) */
   highlightText?: string;
+  /** Nonce to force re-highlight even when text is the same */
+  highlightNonce?: number;
   /** Called when PDF loading fails — parent can fall back to text view */
   onLoadError?: () => void;
   /** Brand color for rich text rendering */
@@ -155,7 +157,7 @@ function PdfSearchBar({ onSearch, onNavigate, onClose, matchIndex, totalMatches,
   return (
     <div
       className={cn(
-        "absolute right-4 top-4 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200",
+        "sticky top-0 z-50 ml-auto flex w-fit items-center gap-2 rounded-lg border px-3 py-2 shadow-xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200",
         isDark ? "border-white/10 bg-[hsl(168,14%,8%)]/95" : "border-gray-200 bg-white"
       )}
     >
@@ -446,13 +448,9 @@ function PdfDocumentInner({
         pages: [i + 1],
       }));
     }
-    // Spread mode: pairs of pages (1 alone, then 2-3, 4-5, ...)
+    // Spread mode: pairs of pages (1-2, 3-4, ...)
     const items: { key: number; pages: number[] }[] = [];
-    // First page alone
-    if (numPages >= 1) {
-      items.push({ key: 1, pages: [1] });
-    }
-    for (let i = 2; i <= numPages; i += 2) {
+    for (let i = 1; i <= numPages; i += 2) {
       const pair = [i];
       if (i + 1 <= numPages) pair.push(i + 1);
       items.push({ key: i, pages: pair });
@@ -565,6 +563,7 @@ export function PortalPdfViewer({
   onControlsReady,
   onTextAction,
   highlightText: highlightTextProp,
+  highlightNonce,
   onLoadError,
   brandColor,
   isDark: isDarkProp,
@@ -806,11 +805,15 @@ export function PortalPdfViewer({
   }, []);
 
   // ---- Highlight text from chat tool (highlightText prop) ----
-  // Bug 6: Use MutationObserver to wait for text layer to fully render
+  // Uses MutationObserver to wait for text layer to fully render.
+  // highlightNonce in deps forces re-trigger even when the same text is highlighted again.
   useEffect(() => {
     if (!highlightTextProp || !pdfAreaRef.current) return;
 
     const container = pdfAreaRef.current;
+
+    // Clear previous highlights before attempting new ones
+    clearHighlightsInDom(container);
 
     const attemptHighlight = () => {
       const matches = highlightTextInDom(container, highlightTextProp);
@@ -825,36 +828,44 @@ export function PortalPdfViewer({
       return false;
     };
 
-    // Try immediately first
-    if (attemptHighlight()) return;
+    // Small delay to allow page navigation to settle before searching
+    const initialTimer = setTimeout(() => {
+      if (attemptHighlight()) return;
 
-    // If no matches yet, observe DOM changes for text layer rendering
-    let attempts = 0;
-    const maxAttempts = 20;
-    const observer = new MutationObserver(() => {
-      attempts++;
-      if (attemptHighlight() || attempts >= maxAttempts) {
+      // If no matches yet, observe DOM changes for text layer rendering
+      let attempts = 0;
+      const maxAttempts = 20;
+      const observer = new MutationObserver(() => {
+        attempts++;
+        if (attemptHighlight() || attempts >= maxAttempts) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(container, {
+        childList: true,
+        subtree: true,
+      });
+
+      // Fallback timeout to disconnect observer
+      const fallbackTimer = setTimeout(() => {
         observer.disconnect();
-      }
-    });
+        attemptHighlight();
+      }, 3000);
 
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-    });
-
-    // Fallback timeout to disconnect observer
-    const timer = setTimeout(() => {
-      observer.disconnect();
-      // One final attempt
-      attemptHighlight();
-    }, 3000);
+      // Store for cleanup
+      (container as HTMLDivElement & { __hlObserver?: MutationObserver; __hlFallback?: ReturnType<typeof setTimeout> }).__hlObserver = observer;
+      (container as HTMLDivElement & { __hlFallback?: ReturnType<typeof setTimeout> }).__hlFallback = fallbackTimer;
+    }, 150);
 
     return () => {
-      observer.disconnect();
-      clearTimeout(timer);
+      clearTimeout(initialTimer);
+      const c = container as HTMLDivElement & { __hlObserver?: MutationObserver; __hlFallback?: ReturnType<typeof setTimeout> };
+      c.__hlObserver?.disconnect();
+      if (c.__hlFallback) clearTimeout(c.__hlFallback);
     };
-  }, [highlightTextProp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightTextProp, highlightNonce]);
 
   // If no PDF URL, render rich text content with charts, tables, timelines
   if (!pdfUrl) {
@@ -876,17 +887,6 @@ export function PortalPdfViewer({
   // PDF Viewer with continuous scroll, bubble menu and search
   return (
     <div ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
-      {/* Search bar overlay */}
-      <PdfSearchBar
-        visible={searchVisible}
-        onSearch={handleSearch}
-        onNavigate={handleSearchNavigate}
-        onClose={handleSearchClose}
-        matchIndex={searchMatchIndex}
-        totalMatches={searchMatches.length}
-        isDark={isDark}
-      />
-
       {/* PDF Document — scrollable container */}
       <div
         ref={pdfAreaRef}
@@ -895,6 +895,16 @@ export function PortalPdfViewer({
           isDark ? "bg-[hsl(168,14%,3%)]" : "bg-[#f7fbff]"
         )}
       >
+        {/* Search bar — sticky inside scroll container */}
+        <PdfSearchBar
+          visible={searchVisible}
+          onSearch={handleSearch}
+          onNavigate={handleSearchNavigate}
+          onClose={handleSearchClose}
+          matchIndex={searchMatchIndex}
+          totalMatches={searchMatches.length}
+          isDark={isDark}
+        />
         <div className="flex items-start justify-center">
           {pdfLoaded && (
             <PdfDocumentInner

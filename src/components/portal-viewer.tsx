@@ -102,8 +102,8 @@ function ContextTagsBar({
           <Tooltip key={tag.id}>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1 rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-0.5 text-xs text-sky-600 transition-colors hover:bg-sky-400/15">
-                <span className="max-w-[160px] truncate">
-                  {truncateText(tag.text)}
+                <span className="max-w-[200px] md:max-w-none truncate">
+                  {tag.text}
                 </span>
                 <button
                   onClick={(e) => {
@@ -435,8 +435,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Context tags state
   const [contextTags, setContextTags] = useState<ContextTag[]>([]);
 
-  // Highlight text from chat tools
+  // Highlight text from chat tools (nonce forces re-trigger for same text)
+  const highlightNonceRef = useRef(0);
   const [highlightText, setHighlightText] = useState<string | undefined>(undefined);
+  const [highlightNonce, setHighlightNonce] = useState(0);
 
   // Annotations state
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -662,6 +664,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         }
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         setHighlightText(String(out.text ?? ""));
+        highlightNonceRef.current += 1;
+        setHighlightNonce(highlightNonceRef.current);
         const page = Number(out.page);
         if (page > 0 && pdfControls) {
           pdfControls.goToPage?.(page);
@@ -882,14 +886,24 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       const truncated = text.length > 200 ? text.slice(0, 200) + "..." : text;
       if (action === "send_to_chat") {
         addContextTag(text);
-      } else if (action === "explain") {
-        setPendingPrompt(`Explain this section: "${truncated}"`);
-      } else if (action === "visualize") {
-        setPendingPrompt(`Visualize this data as a chart: "${truncated}"`);
-      } else if (action === "research") {
-        setPendingPrompt(`Research and fact-check this claim: "${truncated}"`);
+        setChatOpen(true);
+      } else {
+        // Clear first then set on next tick — ensures React sees a state change
+        // even if the same prompt text is generated (e.g. selecting the same text twice)
+        setPendingPrompt(null);
+        let prompt = "";
+        if (action === "explain") {
+          prompt = `Explain this section: "${truncated}"`;
+        } else if (action === "visualize") {
+          prompt = `Visualize this data as a chart: "${truncated}"`;
+        } else if (action === "research") {
+          prompt = `Research and fact-check this claim: "${truncated}"`;
+        }
+        setTimeout(() => {
+          setPendingPrompt(prompt);
+          setChatOpen(true);
+        }, 50);
       }
-      setChatOpen(true);
     },
     [addContextTag]
   );
@@ -926,11 +940,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setChatPosition(prev => prev === "sidebar" ? "center" : prev === "center" ? "corner" : "sidebar")}
+      onClick={() => setChatPosition(prev => prev === "sidebar" ? "corner" : "sidebar")}
       className="h-7 w-7 text-muted-foreground hover:text-foreground"
-      title={chatPosition === "sidebar" ? "Float chat" : chatPosition === "center" ? "Mini chat" : "Dock to sidebar"}
+      title={chatPosition === "sidebar" ? "Float chat" : "Dock to sidebar"}
     >
-      {chatPosition === "sidebar" ? <Shrink className="h-3.5 w-3.5" /> : chatPosition === "center" ? <MessageSquare className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
+      {chatPosition === "sidebar" ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
     </Button>
   );
 
@@ -1085,11 +1099,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       )}>
           <div className="flex items-center gap-2 md:gap-3">
             {portal.logo_url && (
-              <img
-                src={portal.logo_url}
-                alt="Logo"
-                className="h-7 w-7 md:h-9 md:w-9 rounded-lg object-cover object-left"
-              />
+              <div className="h-7 w-7 md:h-9 md:w-9 rounded-lg overflow-hidden shrink-0">
+                <img
+                  src={portal.logo_url}
+                  alt="Logo"
+                  className="h-full w-auto object-cover object-left"
+                />
+              </div>
             )}
             <div>
               <div className="flex items-center gap-2">
@@ -1254,7 +1270,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           <div className="flex items-center gap-1">
             {/* PDF page navigation — merged into header */}
             {pdfControls && pdfControls.numPages > 0 && (
-              <div className={cn("flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-slate-200")}>
+              <div className={cn("hidden md:flex items-center gap-0.5 mr-2 pr-2 border-r", pd ? "border-white/10" : "border-slate-200")}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1395,11 +1411,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setChatPosition(prev => prev === "sidebar" ? "center" : "sidebar")}
+              onClick={() => setChatPosition(prev => prev === "sidebar" ? "corner" : "sidebar")}
               className="hidden md:inline-flex h-8 w-8 text-muted-foreground hover:text-foreground"
               title={expanded ? "Compact mode" : "Expanded mode"}
             >
-              {expanded ? (
+              {chatPosition === "sidebar" ? (
                 <Shrink className="h-4 w-4" />
               ) : (
                 <Expand className="h-4 w-4" />
@@ -1499,6 +1515,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             onControlsReady={handleControlsReady}
             onTextAction={handleTextAction}
             highlightText={highlightText}
+            highlightNonce={highlightNonce}
             onLoadError={() => setPdfFailed(true)}
             brandColor={brandColor}
             isDark={portalDark}
@@ -1520,8 +1537,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded ? "w-[35%]" : "w-0"
         )}>
           {expanded && (
-            <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b", pd ? "border-white/5" : "border-slate-200")}>
-              <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+            <div className={cn("flex items-center justify-between px-3 py-1.5 shrink-0 border-b min-w-0", pd ? "border-white/5" : "border-slate-200")}>
+              <div className="flex-1 min-w-0 overflow-x-auto">
+                <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+              </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button
                   variant="ghost"
@@ -1551,14 +1570,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       {/* SINGLE ChatInterface — always mounted, positioned via CSS */}
       <div
         className={cn(
-          "fixed z-40 flex flex-col",
+          "fixed z-40 flex flex-col transition-transform duration-300",
           chatPosition === "sidebar"
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#1a1f2e] border-white/5" : "bg-white border-slate-200")
             : chatPosition === "corner"
               ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-white border-slate-200")
               : cn(
-                  "left-0 right-0",
-                  chatOpen ? "bottom-0 left-0 right-0 h-[85vh] rounded-t-2xl overflow-hidden" : "bottom-0",
+                  "left-0 right-0 bottom-0",
+                  chatOpen ? "h-[85vh] rounded-t-2xl overflow-hidden" : "",
                   chatOpen ? "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
                 )
         )}

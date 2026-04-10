@@ -142,35 +142,80 @@ export function PortalVoiceMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // Speak AI response via browser TTS (fallback — ElevenLabs integration can be added)
+  // Speak AI response via Cartesia TTS API
   useEffect(() => {
     if (!ttsEnabled || !voiceEnabled || !lastAIResponse) return;
     if (lastAIResponse === lastSpokenRef.current) return;
     lastSpokenRef.current = lastAIResponse;
 
-    // Strip markdown formatting for speech
+    // Strip markdown for speech
     const cleanText = lastAIResponse
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/\*([^*]+)\*/g, "$1")
       .replace(/#{1,6}\s/g, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/```[\s\S]*?```/g, "code block omitted")
+      .replace(/```[\s\S]*?```/g, "")
       .replace(/`([^`]+)`/g, "$1")
+      .replace(/\|[^\n]+\|/g, "") // Remove markdown tables
       .replace(/\n{2,}/g, ". ")
       .replace(/\n/g, " ")
-      .slice(0, 500); // Limit to first 500 chars for TTS
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 1000);
 
-    if (!cleanText.trim()) return;
+    if (!cleanText || cleanText.length < 3) return;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.1;
-    utterance.pitch = 1.0;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    let cancelled = false;
 
-    speechSynthesis.cancel(); // Cancel any ongoing speech
-    speechSynthesis.speak(utterance);
+    (async () => {
+      try {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: cleanText }),
+        });
+
+        if (!res.ok || cancelled) {
+          // Fall back to browser TTS
+          if (!cancelled) {
+            const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 500));
+            utterance.rate = 1.1;
+            utterance.onend = () => setIsSpeaking(false);
+            utterance.onerror = () => setIsSpeaking(false);
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utterance);
+          }
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(url);
+        };
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(url);
+        };
+        if (!cancelled) {
+          await audio.play();
+        }
+      } catch {
+        if (!cancelled) setIsSpeaking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, [lastAIResponse, ttsEnabled, voiceEnabled]);
 
   // Cleanup on unmount
@@ -178,6 +223,10 @@ export function PortalVoiceMode({
     return () => {
       stopListening();
       speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, [stopListening]);
 
