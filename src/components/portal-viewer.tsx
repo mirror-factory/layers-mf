@@ -1775,137 +1775,30 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         ) : activeView === "library-doc" && activeLibraryDoc ? (
           <div
             key={`libdoc-${activeLibraryDoc.id}-${libDocLoadCounter}`}
-            className={cn("flex-1 overflow-y-auto p-6", pd ? "bg-[#0a0e1a]" : "bg-slate-100")}
+            className={cn("flex-1 overflow-y-auto", pd ? "bg-[#141821]" : "bg-slate-100")}
           >
-            {/* Viewer content — no header bar, tabs handle navigation */}
-            <div>
-              {activeLibraryDoc.type === "image" ? (
-                <div className="flex min-h-[70vh] items-center justify-center">
-                  <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-slate-200")} />
-                </div>
-              ) : activeLibraryDoc.type === "xlsx" && docPreviewTable ? (
-                <div className="p-4 md:p-6">
-                  <div className="mx-auto max-w-6xl min-h-[60vh] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div ref={jspreadsheetRef} className="w-full" />
-                    <div className="overflow-auto max-h-[80vh] jspreadsheet-fallback">
-                      <table className="min-w-full border-collapse text-left text-[13px] text-slate-700">
-                        <thead className="sticky top-0 z-10">
-                          <tr>
-                            <th className="border-b border-r border-slate-300 bg-slate-100 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">#</th>
-                            {docPreviewTable[0].map((cell, cellIdx) => (
-                              <th key={`h-${cellIdx}`} className="border-b border-r border-slate-300 bg-slate-100 px-3 py-2 font-semibold text-slate-800 text-xs whitespace-nowrap">
-                                {cell || String.fromCharCode(65 + cellIdx)}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {docPreviewTable.slice(1).map((row, rowIdx) => (
-                            <tr key={`row-${rowIdx}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                              <td className="border-b border-r border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-medium text-slate-400 w-10">{rowIdx + 2}</td>
-                              {row.map((cell, cellIdx) => (
-                                <td key={`cell-${rowIdx}-${cellIdx}`} className="border-b border-r border-slate-200 px-3 py-1.5 align-top whitespace-nowrap">{cell || ""}</td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              ) : isPreviewLoading ? (
-                <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
-                  <p className={cn("text-sm", pd ? "text-white/50" : "text-slate-500")}>Loading document...</p>
-                </div>
-              ) : docxArrayBuffer && activeLibraryDoc.type === "docx" ? (
-                /* docx-preview renders directly into this container — edge-to-edge */
-                <div className="relative">
-                  <div
-                    ref={docxContainerRef}
-                    className={cn("docx-preview-wrapper mx-auto rounded-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl", pd ? "bg-[#141821]" : "bg-slate-100")}
-                    onMouseUp={() => {
-                      const selection = window.getSelection();
-                      const selectedText = selection?.toString().trim();
-                      if (selectedText && selectedText.length > 2) {
-                        try {
-                          const rect = selection?.getRangeAt(0).getBoundingClientRect();
-                          if (rect) {
-                            setDocxBubbleMenu({
-                              text: selectedText,
-                              x: rect.left + rect.width / 2,
-                              y: rect.top - 10,
-                            });
-                          }
-                        } catch {
-                          // getRangeAt can throw if no range exists
-                        }
-                      } else {
-                        setDocxBubbleMenu(null);
-                      }
-                    }}
-                  />
-                  {docxBubbleMenu && (
-                    <div
-                      className={cn(
-                        "fixed z-50 flex items-center gap-1 rounded-lg border px-2 py-1.5 shadow-xl backdrop-blur-xl",
-                        pd ? "border-white/10 bg-[#1e2433]/95" : "border-slate-200 bg-white/95"
-                      )}
-                      style={{
-                        left: docxBubbleMenu.x,
-                        top: docxBubbleMenu.y,
-                        transform: "translate(-50%, -100%)",
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      {([
-                        { label: "Send to Chat", action: "send_to_chat" as const },
-                        { label: "Explain", action: "explain" as const },
-                        { label: "Visualize", action: "visualize" as const },
-                        { label: "Research", action: "research" as const },
-                      ] as const).map(({ label, action }) => (
-                        <button
-                          key={action}
-                          onClick={() => {
-                            handleTextAction(action, docxBubbleMenu.text);
-                            setDocxBubbleMenu(null);
-                          }}
-                          className={cn(
-                            "rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                            pd
-                              ? "text-white/70 hover:bg-white/10 hover:text-white"
-                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "mx-auto max-w-4xl rounded-xl shadow-sm border",
-                    "bg-white border-slate-200"
-                  )}
-                  style={{ padding: "2.5rem 3rem", minHeight: "80vh" }}
-                >
-                  {docPreviewHtml ? (
-                    <div
-                      className="prose prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600 prose-table:border-collapse prose-td:border prose-td:border-slate-200 prose-td:px-3 prose-td:py-2 prose-th:border prose-th:border-slate-300 prose-th:bg-slate-50 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:font-semibold prose-img:rounded-lg prose-li:text-gray-700"
-                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
-                    />
-                  ) : (
-                    <pre
-                      className="whitespace-pre-wrap font-serif text-[15px] leading-[1.8] text-gray-700 tracking-normal"
-                    >
-                      {docPreviewText || "No text content could be extracted from this document."}
-                    </pre>
-                  )}
-                </div>
-              )}
-            </div>
+            {activeLibraryDoc.type === "image" ? (
+              /* Keep image viewer for PNGs/JPGs */
+              <div className="flex min-h-[70vh] items-center justify-center p-6">
+                <img src={activeLibraryDoc.url} alt={activeLibraryDoc.title} className={cn("max-h-[85vh] max-w-full rounded-xl shadow-2xl object-contain border", pd ? "border-white/10" : "border-slate-200")} />
+              </div>
+            ) : (
+              /* Use PDF viewer for DOCX, XLSX, and PDF files */
+              <PortalPdfViewer
+                pdfUrl={activeLibraryDoc.pdf_url || activeLibraryDoc.url}
+                textContent={null}
+                spread={effectiveTwoColumn}
+                currentPage={1}
+                onPageChange={() => {}}
+                onTotalPages={() => {}}
+                onControlsReady={() => {}}
+                onTextAction={handleTextAction}
+                highlightText={highlightText}
+                highlightNonce={highlightNonce}
+                brandColor={brandColor}
+                isDark={portalDark}
+              />
+            )}
           </div>
         ) : (
           <div className={cn(
