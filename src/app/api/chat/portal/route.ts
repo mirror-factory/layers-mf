@@ -775,13 +775,25 @@ function buildSystemPrompt(
   const portalDocList = (portal.documents ?? []).map((d: { title: string }) => `"${d.title}"`).join(", ") || "none";
   const navigationRules = `
 
-NAVIGATION RULES — CRITICAL:
+TOOL USAGE RULES — MANDATORY:
+
+1. CHARTS: When the user asks to visualize, chart, graph, or display data as a chart, you MUST call render_chart with a Chart.js config. NEVER describe a chart in text. Keywords: "chart", "graph", "visualize", "plot", "pie", "bar graph", "show me a chart of".
+
+2. WALKTHROUGH: When the user asks for a "walkthrough", "walk me through", "tour", "guide me", or "explain the whole document", you MUST call walkthrough_document with 8-15 sections. Do NOT write a text summary — call the tool.
+
+3. NAVIGATION:
 - Portal documents: ${portalDocList}
-- If the user mentions any of these document names (even with "page" like "scope of work page"), you MUST call switch_document with the exact title. The word "page" in that phrase refers to a DOCUMENT, not a page number.
-- Only call navigate_pdf when the user says an EXPLICIT page number like "page 5", "next page", or "go to page 3".
+- If the user mentions any of these document names (even with "page" like "scope of work page"), you MUST call switch_document with the exact title.
+- Only call navigate_pdf when the user says an EXPLICIT page number like "page 5" or "go to page 3".
 - NEVER call navigate_pdf with a page number greater than the total page count.
 
-Examples:
+4. HIGHLIGHT: When asked to highlight, point out, or mark text, call highlight_text with the exact text from the document.
+
+5. BOOKMARK: When the user says "bookmark this", "save this", or "remember this", call save_bookmark immediately (don't ask for clarification).
+
+Navigation examples:
+- "show me a chart of the phases" → render_chart (not text)
+- "walk me through this proposal" → walkthrough_document (not text summary)
 - "go to the scope of work page" → switch_document({title: "Scope of Work — Aqueduct v2"})
 - "show me the proposal" → switch_document({title: "Proposal — Swell"})
 - "go to page 3" → navigate_pdf({page: 3})`;
@@ -927,13 +939,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const enabledTools = (portal.enabled_tools as string[]) ?? [
+  // Always enable all these core tools regardless of portal config
+  const coreTools = [
     "search_document",
     "navigate_pdf",
     "navigate_portal",
     "highlight_text",
     "render_chart",
+    "walkthrough_document",
+    "add_annotation",
+    "get_page_content",
+    "summarize_section",
+    "web_search",
+    "capture_screen",
   ];
+  const portalConfigTools = (portal.enabled_tools as string[]) ?? [];
+  // Union of DB-configured + core tools (dedup)
+  const enabledTools = Array.from(new Set([...coreTools, ...portalConfigTools]));
 
   // If the client sends x-active-tools, only build those tools (intersection with enabled)
   let activeToolsList = enabledTools;
