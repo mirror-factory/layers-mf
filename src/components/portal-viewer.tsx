@@ -742,10 +742,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           type: (out.type as Annotation["type"]) ?? "info",
         });
       } else if (toolName === "navigate_pdf" && out.action === "navigate") {
-        const page = Number(out.page);
-        if (page > 0 && pdfControls) {
-          pdfControls.goToPage?.(page);
-          setCurrentPage(page);
+        const rawPage = Number(out.page);
+        const maxPage = pdfControls?.numPages ?? totalPages ?? 1;
+        const clampedPage = Math.max(1, Math.min(rawPage, maxPage));
+        if (clampedPage > 0 && pdfControls) {
+          pdfControls.goToPage?.(clampedPage);
+          setCurrentPage(clampedPage);
         }
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         setHighlightText(String(out.text ?? ""));

@@ -771,7 +771,22 @@ function buildSystemPrompt(
   portal: Record<string, any>,
   pageCount: number
 ): string {
-  if (portal.system_prompt) return portal.system_prompt;
+  // Always-appended navigation rules — prevent AI from misusing navigate_pdf for doc switching
+  const portalDocList = (portal.documents ?? []).map((d: { title: string }) => `"${d.title}"`).join(", ") || "none";
+  const navigationRules = `
+
+NAVIGATION RULES — CRITICAL:
+- Portal documents: ${portalDocList}
+- If the user mentions any of these document names (even with "page" like "scope of work page"), you MUST call switch_document with the exact title. The word "page" in that phrase refers to a DOCUMENT, not a page number.
+- Only call navigate_pdf when the user says an EXPLICIT page number like "page 5", "next page", or "go to page 3".
+- NEVER call navigate_pdf with a page number greater than the total page count.
+
+Examples:
+- "go to the scope of work page" → switch_document({title: "Scope of Work — Aqueduct v2"})
+- "show me the proposal" → switch_document({title: "Proposal — Swell"})
+- "go to page 3" → navigate_pdf({page: 3})`;
+
+  if (portal.system_prompt) return portal.system_prompt + navigationRules;
 
   const now = new Date();
   const formatter = new Intl.DateTimeFormat("en-US", {
