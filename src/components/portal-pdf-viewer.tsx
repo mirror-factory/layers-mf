@@ -245,7 +245,15 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
 
   if (!searchText.trim()) return [];
 
-  const textLayerElements = container.querySelectorAll(".react-pdf__Page__textContent span");
+  // Try multiple selectors (pdfjs text layer structure varies by version)
+  let textLayerElements = container.querySelectorAll(".react-pdf__Page__textContent span");
+  if (textLayerElements.length === 0) {
+    textLayerElements = container.querySelectorAll(".textLayer span");
+  }
+  if (textLayerElements.length === 0) {
+    textLayerElements = container.querySelectorAll("[class*='textLayer'] span, [class*='textContent'] span");
+  }
+  console.log(`[Highlight] Searching for "${searchText}" in ${textLayerElements.length} text spans`);
   const matchElements: HTMLElement[] = [];
   const lowerSearch = searchText.toLowerCase();
 
@@ -289,6 +297,7 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
     matchElements.push(overlay);
   });
 
+  console.log(`[Highlight] Found ${matchElements.length} matches for "${searchText}"`);
   return matchElements;
 }
 
