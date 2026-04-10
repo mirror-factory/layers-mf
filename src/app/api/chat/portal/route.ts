@@ -598,6 +598,75 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
     },
   });
 
+  // Always-on: compare two documents side by side
+  tools.compare_documents = tool({
+    description: "Compare two documents from the library and highlight key differences, similarities, and important changes. Use when the user asks to 'compare', 'what's different', or 'how do these relate'.",
+    inputSchema: z.object({
+      doc_a_id: z.string().describe("ID of the first document (from get_document_registry)"),
+      doc_b_id: z.string().describe("ID of the second document"),
+      focus: z.string().optional().describe("Optional focus area: 'pricing', 'scope', 'timeline', 'terms', or 'all'"),
+    }),
+    execute: async ({ doc_a_id, doc_b_id, focus }: { doc_a_id: string; doc_b_id: string; focus?: string }) => {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const manifestPath = path.join(process.cwd(), "public", "portal-docs", "bluewave", "_manifest.json");
+
+      let docAText = "";
+      let docBText = "";
+
+      try {
+        const raw = await fs.readFile(manifestPath, "utf-8");
+        const manifest = JSON.parse(raw) as Array<{ id: string; extractedText?: string }>;
+        const docA = manifest.find(d => d.id === doc_a_id);
+        const docB = manifest.find(d => d.id === doc_b_id);
+        docAText = docA?.extractedText?.slice(0, 3000) ?? "";
+        docBText = docB?.extractedText?.slice(0, 3000) ?? "";
+      } catch {}
+
+      // Also check portal documents
+      const portalDocs = (portal.documents ?? []) as { title: string; content?: string | null; context_item_id?: string }[];
+      if (!docAText) {
+        const pd = portalDocs.find(d => d.title === doc_a_id || d.context_item_id === doc_a_id);
+        if (pd?.content) docAText = pd.content.slice(0, 3000);
+      }
+      if (!docBText) {
+        const pd = portalDocs.find(d => d.title === doc_b_id || d.context_item_id === doc_b_id);
+        if (pd?.content) docBText = pd.content.slice(0, 3000);
+      }
+
+      return {
+        action: "compare_documents",
+        doc_a_id,
+        doc_b_id,
+        doc_a_preview: docAText.slice(0, 2000),
+        doc_b_preview: docBText.slice(0, 2000),
+        focus: focus ?? "all",
+        note: "Compare these two document excerpts. Highlight: 1) Key differences in scope, pricing, timeline. 2) What's in one but not the other. 3) Any contradictions. Format as a clear comparison table or bullet points.",
+      };
+    },
+  });
+
+  // Always-on: share feedback back to the document sender
+  tools.share_feedback = tool({
+    description: "Compile and share the viewer's feedback, questions, and annotations back to the document sender. Use when the user says 'share my notes', 'send feedback', or 'let them know my questions'.",
+    inputSchema: z.object({
+      summary: z.string().describe("Brief summary of the viewer's overall feedback"),
+      questions: z.array(z.string()).optional().describe("List of questions the viewer has"),
+      concerns: z.array(z.string()).optional().describe("Any concerns or issues raised"),
+      approvals: z.array(z.string()).optional().describe("Sections the viewer approves of"),
+    }),
+    execute: async ({ summary, questions, concerns, approvals }: { summary: string; questions?: string[]; concerns?: string[]; approvals?: string[] }) => {
+      return {
+        action: "share_feedback",
+        summary,
+        questions: questions ?? [],
+        concerns: concerns ?? [],
+        approvals: approvals ?? [],
+        note: "Feedback compiled. In a production system, this would be emailed to the document sender or saved to the portal's feedback log.",
+      };
+    },
+  });
+
   // Document switching — works with the portal's documents array
   const documents = (portal.documents as { id: string; title: string; context_item_id: string; is_active: boolean }[]) ?? [];
   if (documents.length > 1) {
@@ -638,6 +707,57 @@ ${title ? `<h3 style="text-align:center;margin:0 0 6px;font-size:12px;color:rgba
       },
     });
   }
+
+  // Always-on: generate executive brief
+  tools.generate_brief = tool({
+    description: "Generate a concise executive brief summarizing all documents in the portal. Use this when the user asks for an overview, executive summary, or 'give me the highlights'. Returns key numbers, timeline, risks, and decision points.",
+    inputSchema: z.object({
+      focus: z.enum(["full", "budget", "timeline", "risks", "deliverables"]).optional().describe("Optional focus area for the brief"),
+    }),
+    execute: async ({ focus }: { focus?: string }) => {
+      return {
+        action: "generate_brief",
+        focus: focus ?? "full",
+        note: "Use the document content already in your context to generate a structured brief. Format as: Executive Summary (2-3 sentences), Key Numbers (budget, timeline, team size), Major Milestones (3-5 items), Risks/Concerns (2-3 items), Decision Points (what the reader needs to decide).",
+      };
+    },
+  });
+
+  // Always-on: track reading progress
+  tools.track_reading = tool({
+    description: "Check what parts of the document the user has viewed and suggest sections they haven't read yet. Use when the user asks 'what haven't I seen?' or 'what should I look at next?'.",
+    inputSchema: z.object({
+      current_page: z.number().optional().describe("Current page the user is on"),
+    }),
+    execute: async ({ current_page }: { current_page?: number }) => {
+      return {
+        action: "track_reading",
+        current_page: current_page ?? 1,
+        total_pages: pages.length,
+        note: "Based on the conversation history, suggest which sections of the document the user hasn't discussed yet. Recommend the most important unread sections first.",
+      };
+    },
+  });
+
+  // Always-on: save bookmark / note
+  tools.save_bookmark = tool({
+    description: "Save a bookmark or note on a specific section of the document. The user can say 'bookmark this', 'save a note here', or 'remember this section'. Returns confirmation that the note was saved.",
+    inputSchema: z.object({
+      page: z.number().describe("Page number to bookmark"),
+      title: z.string().describe("Short title for the bookmark"),
+      note: z.string().describe("The note or comment to save"),
+      section_text: z.string().optional().describe("The text of the section being bookmarked"),
+    }),
+    execute: async ({ page, title, note, section_text }: { page: number; title: string; note: string; section_text?: string }) => {
+      return {
+        action: "save_bookmark",
+        page,
+        title,
+        note,
+        section_text: section_text?.slice(0, 200),
+      };
+    },
+  });
 
   return tools;
 }

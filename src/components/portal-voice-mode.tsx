@@ -276,116 +276,141 @@ export function PortalVoiceMode({
 
   if (disabled) return null;
 
-  // Shared overlay content (transcript, messages, waveform)
-  const overlayContent = voiceEnabled ? (
+  // Shared voice chat bubble content
+  const voiceChatBubble = voiceEnabled ? (
     <div className={cn(
+      "flex flex-col",
       inline
-        ? "p-3 border-b"
-        : "fixed bottom-24 right-4 md:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-3 shadow-2xl border backdrop-blur-xl",
-      isDark ? (inline ? "border-white/10" : "bg-[#0a0a0f]/95 border-white/10") : (inline ? "border-slate-200" : "bg-white/95 border-slate-200")
+        ? "border-b"
+        : "fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border backdrop-blur-xl",
+      isDark
+        ? inline ? "border-white/10" : "bg-[#1a1f2e]/95 border-white/10"
+        : inline ? "border-slate-200" : "bg-slate-50/95 border-slate-200"
     )}>
-      {/* Controls row */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+      {/* Header — close + mute controls */}
+      <div className="flex items-center justify-between px-3 pt-2 pb-1">
+        <div className="flex items-center gap-1.5">
           <div
-            className={cn("h-2 w-2 rounded-full", isListening ? "animate-pulse" : "")}
-            style={{ backgroundColor: isListening ? "#22c55e" : "#94a3b8" }}
+            className={cn("h-1.5 w-1.5 rounded-full shrink-0", isListening ? "animate-pulse" : "")}
+            style={{ backgroundColor: isListening ? "#22c55e" : isSpeaking ? brandColor : "#94a3b8" }}
           />
-          <span className={cn("text-[11px] font-medium", isDark ? "text-white/60" : "text-slate-500")}>
+          <span className={cn("text-[10px]", isDark ? "text-white/40" : "text-slate-400")}>
             {isListening ? "Listening..." : isSpeaking ? "Speaking..." : "Ready"}
           </span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setTtsEnabled(!ttsEnabled)}
-            className={cn("p-1 rounded-lg", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
+            className={cn("p-1 rounded-lg transition-colors", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
           >
-            {ttsEnabled ? <Volume2 className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} /> : <VolumeX className={cn("h-3 w-3", isDark ? "text-white/30" : "text-slate-300")} />}
+            {ttsEnabled
+              ? <Volume2 className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} />
+              : <VolumeX className={cn("h-3 w-3", isDark ? "text-white/30" : "text-slate-300")} />}
           </button>
           {!inline && (
-            <button onClick={toggleVoice} className={cn("p-1 rounded-lg", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}>
+            <button onClick={toggleVoice} className={cn("p-1 rounded-lg transition-colors", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}>
               <X className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Recent messages — last 4 */}
-      {recentMessages && recentMessages.length > 0 && (
-        <div className="space-y-1.5 mb-2 max-h-32 overflow-y-auto">
-          {recentMessages.slice(-4).map((msg, i) => (
-            <div key={i} className={cn(
-              "rounded-lg px-2.5 py-1.5 text-[12px] leading-relaxed",
-              msg.role === "user"
-                ? isDark ? "bg-white/5 text-white/70 ml-6" : "bg-sky-50 text-slate-700 ml-6"
-                : isDark ? "text-white/80 mr-6" : "text-slate-700 mr-6"
-            )}>
-              {msg.text.length > 120 ? msg.text.slice(0, 120) + "..." : msg.text}
+      {/* Messages area with top fade */}
+      <div className="relative max-h-48 overflow-y-auto">
+        {/* Top fade gradient */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-8 z-10 pointer-events-none bg-gradient-to-b",
+          isDark ? "from-[#1a1f2e]" : "from-slate-50"
+        )} />
+
+        <div className="space-y-2 px-3 py-2">
+          {recentMessages?.slice(-4).map((msg, i) => (
+            <div
+              key={i}
+              className={cn(
+                "rounded-2xl px-3 py-2 text-[13px] leading-relaxed max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
+                msg.role === "user"
+                  ? cn("ml-auto", isDark ? "bg-white/10 text-white/90" : "bg-sky-100 text-slate-800")
+                  : cn("mr-auto", isDark ? "text-white/80" : "text-slate-700")
+              )}
+            >
+              {msg.text.length > 150 ? msg.text.slice(0, 150) + "..." : msg.text}
             </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Live transcript */}
+      {/* Current transcript as typing indicator */}
       {transcript && (
         <div className={cn(
-          "rounded-lg p-2 text-[12px] animate-pulse",
-          isDark ? "bg-white/5 text-white/70" : "bg-slate-50 text-slate-600"
+          "mx-3 mb-2 rounded-2xl px-3 py-2 text-[13px] ml-auto max-w-[85%]",
+          isDark ? "bg-white/5 text-white/50" : "bg-slate-100 text-slate-400"
         )}>
-          {transcript}
+          <span className="animate-pulse">{transcript}</span>
         </div>
       )}
 
-      {/* Waveform when idle */}
-      {isListening && !transcript && (!recentMessages || recentMessages.length === 0) && (
-        <div className="flex items-center justify-center gap-1 h-6">
-          {[0, 1, 2, 3, 4].map((i) => (
+      {/* Waveform visualization during listening */}
+      {isListening && !transcript && (
+        <div className="flex items-center justify-center gap-0.5 h-4 mb-1">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
               className="w-0.5 rounded-full animate-pulse"
               style={{
                 backgroundColor: brandColor,
-                height: `${8 + Math.random() * 12}px`,
-                animationDelay: `${i * 150}ms`,
-                opacity: 0.5,
+                height: `${4 + Math.random() * 10}px`,
+                animationDelay: `${i * 100}ms`,
+                opacity: 0.4,
               }}
             />
           ))}
         </div>
       )}
+
+      {/* Mic button — prominent, centered at bottom */}
+      <div className="flex items-center justify-center py-2">
+        <button
+          onClick={toggleVoice}
+          className={cn(
+            "flex items-center justify-center rounded-full h-12 w-12 transition-all duration-300 shadow-lg",
+            isListening && "animate-pulse"
+          )}
+          style={{
+            backgroundColor: brandColor,
+            border: `2px solid ${brandColor}`,
+          }}
+          title="Stop voice mode"
+        >
+          <Mic className="h-5 w-5 text-white" />
+        </button>
+      </div>
     </div>
   ) : null;
 
-  // Inline mode: only render the overlay content (mic button is in parent header)
+  // Inline mode: only render the chat bubble (mic button is also in parent header)
   if (inline) {
-    return overlayContent;
+    return voiceChatBubble;
   }
 
-  // Standalone (fixed) mode: render floating button + overlay
-  return (
-    <>
-      {/* Voice mode floating button */}
-      <button
-        onClick={toggleVoice}
-        className={cn(
-          "fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center justify-center rounded-full shadow-2xl transition-all duration-300",
-          voiceEnabled ? "h-16 w-16" : "h-12 w-12",
-          voiceEnabled && isListening && "animate-pulse"
-        )}
-        style={{
-          backgroundColor: voiceEnabled ? brandColor : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
-          border: `2px solid ${voiceEnabled ? brandColor : "transparent"}`,
-        }}
-        title={voiceEnabled ? "Disable voice mode" : "Enable voice mode"}
-      >
-        {voiceEnabled ? (
-          <Mic className={cn("h-6 w-6", voiceEnabled ? "text-white" : isDark ? "text-white/70" : "text-slate-600")} />
-        ) : (
-          <MicOff className={cn("h-5 w-5", isDark ? "text-white/50" : "text-slate-500")} />
-        )}
-      </button>
+  // Standalone (fixed) mode: show mic button when off, transformed card when on
+  if (voiceEnabled) {
+    return voiceChatBubble;
+  }
 
-      {overlayContent}
-    </>
+  return (
+    <button
+      onClick={toggleVoice}
+      className={cn(
+        "fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center justify-center rounded-full h-12 w-12 shadow-2xl transition-all duration-300"
+      )}
+      style={{
+        backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+        border: "2px solid transparent",
+      }}
+      title="Enable voice mode"
+    >
+      <MicOff className={cn("h-5 w-5", isDark ? "text-white/50" : "text-slate-500")} />
+    </button>
   );
 }

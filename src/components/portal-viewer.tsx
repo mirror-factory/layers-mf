@@ -62,6 +62,7 @@ import { ChatInterface } from "@/components/chat-interface";
 import { AnnotationOverlay, type Annotation } from "@/components/portal-annotation-overlay";
 import { PortalWelcomeModal } from "@/components/portal-welcome-modal";
 import { PortalVoiceMode } from "@/components/portal-voice-mode";
+import { PortalOnboarding } from "@/components/portal-onboarding";
 
 // ---------------------------------------------------------------------------
 // Context Tag type
@@ -126,6 +127,46 @@ function ContextTagsBar({
         ))}
       </div>
     </TooltipProvider>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick Actions Bar
+// ---------------------------------------------------------------------------
+
+function QuickActions({
+  onAction,
+  brandColor,
+  isDark,
+}: {
+  onAction: (prompt: string) => void;
+  brandColor: string;
+  isDark: boolean;
+}) {
+  const actions = [
+    { label: "Summarize", prompt: "Give me a concise summary of the key points in this document" },
+    { label: "Timeline", prompt: "Show me the project timeline and milestones" },
+    { label: "Budget", prompt: "What's the total budget and payment breakdown?" },
+    { label: "Compare", prompt: "Compare the main documents and highlight differences" },
+  ];
+
+  return (
+    <div className="flex gap-1.5 overflow-x-auto px-3 py-2 no-scrollbar">
+      {actions.map((a) => (
+        <button
+          key={a.label}
+          onClick={() => onAction(a.prompt)}
+          className={cn(
+            "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium border transition-colors",
+            isDark
+              ? "border-white/10 text-white/60 hover:bg-white/5 hover:text-white/80"
+              : "border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          )}
+        >
+          {a.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -207,6 +248,31 @@ const TOOL_CONFIG: Record<
     icon: ImageIcon,
     description: "Capture and describe a region of the document",
   },
+  generate_brief: {
+    label: "Brief",
+    icon: FileText,
+    description: "Generate an executive summary of all documents",
+  },
+  track_reading: {
+    label: "Progress",
+    icon: BookOpen,
+    description: "Track reading progress and suggest unread sections",
+  },
+  save_bookmark: {
+    label: "Bookmark",
+    icon: StickyNote,
+    description: "Save a note or bookmark on any section",
+  },
+  compare_documents: {
+    label: "Compare",
+    icon: Columns2,
+    description: "Compare two documents side by side",
+  },
+  share_feedback: {
+    label: "Feedback",
+    icon: MessageSquare,
+    description: "Share your notes and questions with the sender",
+  },
 };
 
 // Tools info modal
@@ -226,7 +292,7 @@ function ToolsInfoModal({
   if (!open) return null;
 
   // Always-on tools (not configurable)
-  const alwaysOnTools = ["get_document_registry", "lookup_document", "open_document_preview"];
+  const alwaysOnTools = ["get_document_registry", "lookup_document", "open_document_preview", "generate_brief", "track_reading", "save_bookmark"];
   const configurableTools = enabledTools.filter(t => !alwaysOnTools.includes(t));
 
   return (
@@ -462,7 +528,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   }, []);
 
   // View mode and Library Previews
-  const [activeView, setActiveView] = useState<"document" | "library-doc" | "library">("document");
+  const [activeView, setActiveView] = useState<"document" | "library-doc" | "library">("library");
   const [openedLibraryDocs, setOpenedLibraryDocs] = useState<typeof BLUEWAVE_DOCUMENTS>([]);
   const [activeLibraryDocIndex, setActiveLibraryDocIndex] = useState<number>(-1);
   const [docPreviewText, setDocPreviewText] = useState<string | null>(null);
@@ -741,6 +807,21 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             setPdfFailed(false);
           }
         }
+      } else if (toolName === "save_bookmark" && out.action === "save_bookmark") {
+        // Add as an annotation for visual persistence
+        addAnnotation({
+          page: Number(out.page) || currentPage,
+          text: String(out.title ?? "Bookmark"),
+          note: String(out.note ?? ""),
+          type: "tip",
+        });
+      } else if (toolName === "walkthrough_document" && out.action === "walkthrough") {
+        const sections = out.sections as { page: number; title: string; note: string }[];
+        if (sections && pdfControls) {
+          // Navigate to first section
+          pdfControls.goToPage?.(sections[0]?.page ?? 1);
+          setCurrentPage(sections[0]?.page ?? 1);
+        }
       }
     },
     [addAnnotation, pdfControls, handleOpenDocPreview, openedLibraryDocs]
@@ -971,7 +1052,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       variant="ghost"
       size="icon"
       onClick={() => setChatPosition(prev => prev === "sidebar" ? "corner" : "sidebar")}
-      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+      className="hidden md:inline-flex h-7 w-7 text-muted-foreground hover:text-foreground"
       title={chatPosition === "sidebar" ? "Float chat" : "Dock to sidebar"}
     >
       {chatPosition === "sidebar" ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
@@ -1090,6 +1171,13 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         clientName={portal.client_name ?? "Guest"}
         brandColor={brandColor}
         logoUrl={portal.logo_url ?? undefined}
+        isDark={portalDark}
+      />
+
+      {/* Guided onboarding (shows after welcome modal) */}
+      <PortalOnboarding
+        clientName={portal.client_name ?? undefined}
+        brandColor={brandColor}
         isDark={portalDark}
       />
 
@@ -1707,6 +1795,16 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               inline
               active={voiceActive}
               onActiveChange={setVoiceActive}
+            />
+            <QuickActions
+              onAction={(prompt) => {
+                setPendingPrompt(null);
+                requestAnimationFrame(() => {
+                  setPendingPrompt(prompt + `\n<!-- ref:${Date.now()} -->`);
+                });
+              }}
+              brandColor={brandColor}
+              isDark={portalDark}
             />
           </div>
         )}
