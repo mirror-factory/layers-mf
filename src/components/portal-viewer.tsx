@@ -563,14 +563,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     }
   };
 
-  // Reload library doc content when switching between already-opened tabs
-  const prevLibDocIndexRef = useRef(-1);
+  // Reload library doc content when switching tabs or re-visiting
+  const prevLibKeyRef = useRef("");
   useEffect(() => {
-    if (activeLibraryDocIndex === prevLibDocIndexRef.current) return;
-    prevLibDocIndexRef.current = activeLibraryDocIndex;
     const doc = openedLibraryDocs[activeLibraryDocIndex];
     if (!doc || activeView !== "library-doc") return;
-    // Clear and reload
+    const key = `${activeView}-${activeLibraryDocIndex}-${doc.id}`;
+    if (key === prevLibKeyRef.current) return;
+    prevLibKeyRef.current = key;
+    // Clear previous content and reload
     setDocxArrayBuffer(null);
     setDocPreviewTable(null);
     setDocPreviewHtml(null);

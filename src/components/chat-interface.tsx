@@ -1877,7 +1877,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   });
 
   const isLoading = status === "streaming" || status === "submitted";
-  const promptSentRef = useRef(false);
+  const lastSentPromptRef = useRef<string>("");
   const liveActivityStartedRef = useRef(false);
   const [messageQueue, setMessageQueue] = useState<string[]>([]);
 
@@ -1982,13 +1982,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
     });
   }, [addToolOutput]);
 
-  // Auto-send initial prompt from URL (e.g., sandbox "Try It" buttons)
+  // Auto-send initial prompt (from URL, bubble menu, voice mode, etc.)
   useEffect(() => {
-    if (initialPrompt && !promptSentRef.current && messages.length === 0) {
-      promptSentRef.current = true;
+    if (initialPrompt && initialPrompt !== lastSentPromptRef.current) {
+      lastSentPromptRef.current = initialPrompt;
       sendMessage({ text: initialPrompt });
     }
-  }, [initialPrompt, messages.length, sendMessage]);
+  }, [initialPrompt, sendMessage]);
 
   const addFiles = useCallback((fileList: FileList | File[]) => {
     const files = Array.from(fileList);
