@@ -718,9 +718,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             width: 120,
           })) || [];
 
-          // Skip jspreadsheet on small screens — falls back to HTML table
-          if (container.clientWidth < 400) return;
+          // Skip jspreadsheet on small screens or unmounted containers
+          if (container.clientWidth < 400 || !container.isConnected) return;
 
+          try {
           jspreadsheet(container, {
             data: docPreviewTable.slice(1) as unknown as string[][],
             columns: columns as unknown[],
@@ -735,6 +736,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             defaultColWidth: Math.max(80, Math.floor(container.clientWidth / Math.max(columns.length, 1))),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any);
+          } catch {
+            // jspreadsheet init can fail on unmounted containers or race conditions — HTML table fallback handles it
+          }
       } catch (err) {
         console.error("Jspreadsheet init failed:", err);
       }
