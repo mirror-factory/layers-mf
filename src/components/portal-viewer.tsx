@@ -528,6 +528,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  // Viewer analytics tracking
+  const [viewerAnalytics, setViewerAnalytics] = useState({
+    pagesViewed: new Set<number>(),
+    docsOpened: new Set<string>(),
+    timeOnPage: {} as Record<string, number>,
+    questionsAsked: 0,
+    sessionStart: Date.now(),
+  });
+
   // View mode and Library Previews
   const [activeView, setActiveView] = useState<"document" | "library-doc" | "library">("library");
   const [openedLibraryDocs, setOpenedLibraryDocs] = useState<typeof BLUEWAVE_DOCUMENTS>([]);
@@ -539,6 +548,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [docxArrayBuffer, setDocxArrayBuffer] = useState<ArrayBuffer | null>(null);
   const docxContainerRef = useRef<HTMLDivElement | null>(null);
+  const [docxBubbleMenu, setDocxBubbleMenu] = useState<{ text: string; x: number; y: number } | null>(null);
   const jspreadsheetRef = useRef<HTMLDivElement | null>(null);
 
   const handleOpenDocPreview = async (doc: typeof BLUEWAVE_DOCUMENTS[0], e?: React.MouseEvent) => {
@@ -963,6 +973,27 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     });
   }, [activeView, activeDocIndex, activeLibraryDocIndex, openedLibraryDocs, activeDoc?.title]);
 
+  // Track page views for analytics
+  useEffect(() => {
+    setViewerAnalytics(prev => ({
+      ...prev,
+      pagesViewed: new Set([...prev.pagesViewed, currentPage]),
+    }));
+  }, [currentPage]);
+
+  // Track docs opened for analytics
+  useEffect(() => {
+    const docTitle = activeView === "library-doc" && openedLibraryDocs[activeLibraryDocIndex]
+      ? openedLibraryDocs[activeLibraryDocIndex].title
+      : activeDoc?.title;
+    if (docTitle) {
+      setViewerAnalytics(prev => ({
+        ...prev,
+        docsOpened: new Set([...prev.docsOpened, docTitle]),
+      }));
+    }
+  }, [activeView, activeDocIndex, activeLibraryDocIndex]);
+
   const [pdfFailed, setPdfFailed] = useState(false);
   const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
   // If PDF loading failed or no URL, fall back to text rendering (pass null to viewer)
@@ -1117,6 +1148,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     },
     [addContextTag, chatPosition]
   );
+
+  // Dismiss docx bubble menu when clicking elsewhere
+  useEffect(() => {
+    if (!docxBubbleMenu) return;
+    const close = () => setDocxBubbleMenu(null);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [docxBubbleMenu]);
 
   const brandColor = portal.brand_color || "#0DE4F2";
 
@@ -1320,7 +1359,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
               {portal.logo_url && (
                 <div className="h-7 w-7 md:h-9 md:w-9 rounded-lg overflow-hidden shrink-0">
                   <img
-                    src={portal.logo_url}
+                    src={portal.logo_url.includes("bluewave") ? "/bluewave-icon.svg" : portal.logo_url}
                     alt="Logo"
                     className="h-full w-auto object-cover object-left"
                   />
@@ -1611,7 +1650,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "w-full h-8 px-2 text-xs font-medium gap-2 justify-between",
+                      "w-full h-8 px-2 text-xs font-medium gap-2 justify-between text-left",
                       pd ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10" : "border-slate-200 bg-slate-50 text-slate-600"
                     )}
                   >
@@ -1670,6 +1709,22 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             </div>
           </div>
         </header>
+
+        {/* Reading progress bar */}
+        {activeView === "document" && totalPages > 0 && (
+          <div className="h-0.5 w-full bg-slate-200 dark:bg-white/5">
+            <div
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${Math.min(100, (currentPage / totalPages) * 100)}%`,
+                backgroundColor: brandColor,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Subtle separator between header and content */}
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-300/50 dark:via-white/10 to-transparent" />
 
       {/* PDF viewer area */}
       <div data-portal-viewer className="flex flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 3rem)' }}>
@@ -1753,10 +1808,69 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 </div>
               ) : docxArrayBuffer && activeLibraryDoc.type === "docx" ? (
                 /* docx-preview renders directly into this container — edge-to-edge */
-                <div
-                  ref={docxContainerRef}
-                  className={cn("docx-preview-wrapper mx-auto bg-white rounded-lg shadow-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl")}
-                />
+                <div className="relative">
+                  <div
+                    ref={docxContainerRef}
+                    className={cn("docx-preview-wrapper mx-auto bg-white rounded-lg shadow-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl")}
+                    onMouseUp={() => {
+                      const selection = window.getSelection();
+                      const selectedText = selection?.toString().trim();
+                      if (selectedText && selectedText.length > 2) {
+                        try {
+                          const rect = selection?.getRangeAt(0).getBoundingClientRect();
+                          if (rect) {
+                            setDocxBubbleMenu({
+                              text: selectedText,
+                              x: rect.left + rect.width / 2,
+                              y: rect.top - 10,
+                            });
+                          }
+                        } catch {
+                          // getRangeAt can throw if no range exists
+                        }
+                      } else {
+                        setDocxBubbleMenu(null);
+                      }
+                    }}
+                  />
+                  {docxBubbleMenu && (
+                    <div
+                      className={cn(
+                        "fixed z-50 flex items-center gap-1 rounded-lg border px-2 py-1.5 shadow-xl backdrop-blur-xl",
+                        pd ? "border-white/10 bg-[#1e2433]/95" : "border-slate-200 bg-white/95"
+                      )}
+                      style={{
+                        left: docxBubbleMenu.x,
+                        top: docxBubbleMenu.y,
+                        transform: "translate(-50%, -100%)",
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      {([
+                        { label: "Send to Chat", action: "send_to_chat" as const },
+                        { label: "Explain", action: "explain" as const },
+                        { label: "Visualize", action: "visualize" as const },
+                        { label: "Research", action: "research" as const },
+                      ] as const).map(({ label, action }) => (
+                        <button
+                          key={action}
+                          onClick={() => {
+                            handleTextAction(action, docxBubbleMenu.text);
+                            setDocxBubbleMenu(null);
+                          }}
+                          className={cn(
+                            "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                            pd
+                              ? "text-white/70 hover:bg-white/10 hover:text-white"
+                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div
                   className={cn(
@@ -1829,9 +1943,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             : chatPosition === "corner"
               ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-slate-50 border-slate-200")
               : cn(
-                  "left-0 right-0 bottom-0",
-                  chatOpen ? "h-[85vh] rounded-t-2xl overflow-hidden" : "",
-                  chatOpen ? "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:pb-0 md:h-[55vh] md:rounded-2xl" : "md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4"
+                  "left-0 right-0 bottom-0 h-[85vh] rounded-t-2xl overflow-hidden transition-transform duration-300 ease-out",
+                  chatOpen ? "translate-y-0" : "translate-y-full",
+                  pd ? "bg-[#1a1f2e]" : "bg-slate-50",
+                  "md:h-[55vh] md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-3xl md:px-4 md:rounded-2xl",
+                  chatOpen ? "md:translate-y-0" : "md:translate-y-[calc(100%+1rem)]"
                 )
         )}
       >
@@ -1987,8 +2103,9 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           expanded || chatPosition === "corner"
             ? "flex-1"
             : cn(
-                cn("rounded-b-2xl md:border-x md:border-b backdrop-blur-xl shadow-2xl transition-all duration-200", pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-slate-50/95"),
-                chatOpen ? "flex-1 min-h-0" : "h-0"
+                "rounded-b-2xl md:border-x md:border-b backdrop-blur-xl shadow-2xl",
+                pd ? "md:border-white/10 bg-[#1a1f2e]/95" : "md:border-slate-200 bg-slate-50/95",
+                "flex-1 min-h-0"
               )
         )}>
           <ChatInterface

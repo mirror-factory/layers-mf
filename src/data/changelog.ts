@@ -11,6 +11,58 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.0",
+    date: "2026-04-10",
+    title: "Portal Experience: Voice Mode, Document Library & 20+ AI Tools",
+    highlights: [
+      "Voice mode with Cartesia TTS — speak to the AI and it speaks back using sonic-turbo",
+      "Document library as default landing page with two-column spread for PDFs and DOCX",
+      "20+ AI tools for document interaction: highlight, navigate, chart, walkthrough, bookmark, compare, brief, and more",
+      "AI Elements integration (Conversation, Suggestions, Shimmer) with ChatVariant config system",
+      "3-position chat layout (corner, sidebar, center) with quick actions bar and guided onboarding",
+    ],
+    changes: [
+      // Voice & Audio
+      { type: "feat", description: "Voice mode: speech-to-text input with microphone button and Cartesia sonic-turbo TTS for AI responses" },
+      { type: "feat", description: "Cartesia TTS integration: low-latency text-to-speech with streaming audio playback" },
+
+      // Document Library & Rendering
+      { type: "feat", description: "Document library as default landing page — browse and open documents before chatting" },
+      { type: "feat", description: "Two-column spread layout for PDFs and DOCX files (side-by-side page view)" },
+      { type: "feat", description: "DOCX rendering via docx-preview with edge-to-edge layout and proper two-column support" },
+      { type: "feat", description: "Excel rendering with Jspreadsheet CE for interactive spreadsheets, HTML table fallback for read-only" },
+      { type: "feat", description: "PDF highlight with overlay divs and sweep animation for AI-referenced passages" },
+
+      // AI Tools (20+)
+      { type: "feat", description: "20+ AI tools for document interaction: highlight, navigate, chart, walkthrough, bookmark, compare, brief, capture, track reading, share feedback" },
+      { type: "feat", description: "Intent detection system: automatically selects the right AI tool based on user message content" },
+      { type: "feat", description: "Quick actions bar with one-click Summarize, Timeline, Budget, and Compare buttons" },
+
+      // Chat & UI System
+      { type: "feat", description: "AI Elements integration: Conversation, Suggestions, and Shimmer components for polished chat experience" },
+      { type: "feat", description: "ChatVariant config system for reusable chat configurations across different contexts" },
+      { type: "feat", description: "3-position chat layout: corner (floating), sidebar (docked), and center (full-width) modes" },
+
+      // Onboarding & Branding
+      { type: "feat", description: "Guided onboarding: 3-step tutorial that walks new users through the portal experience" },
+      { type: "feat", description: "Splash screen with Mirror Factory branding and smooth entry animation" },
+      { type: "feat", description: "BlueWave icon-only SVG for compact header logo display" },
+
+      // Theme & Responsive
+      { type: "feat", description: "Light/dark mode with proper contrast ratios across all portal components" },
+      { type: "feat", description: "Mobile responsive layout: bottom-sheet chat, compact document cards, touch-friendly controls" },
+
+      // Fixes
+      { type: "fix", description: "Light mode slate palette corrected for proper text contrast and readability" },
+      { type: "fix", description: "TypeScript errors in Jspreadsheet integration resolved (type definitions and imports)" },
+      { type: "fix", description: "Chat history persistence: conversations saved and restored across sessions" },
+      { type: "fix", description: "DOCX preview padding removed for proper edge-to-edge document rendering" },
+      { type: "fix", description: "Doc info bar removed to maximize document viewing area" },
+      { type: "fix", description: "Portal header logo uses icon-only SVG instead of full wordmark for compact display" },
+      { type: "fix", description: "Mobile bottom-sheet chat positioning and interaction fixes" },
+    ],
+  },
+  {
     version: "0.6.0",
     date: "2026-04-07",
     title: "MCP-First Architecture, Chat Tool Management & Avatar Overhaul",
