@@ -247,25 +247,33 @@ body {
 
 /* Portal PDF text highlights (search & chat tool highlights) */
 mark.portal-pdf-highlight {
-  background: linear-gradient(90deg, rgba(12, 228, 242, 0.3) 0%, rgba(12, 228, 242, 0.3) 100%);
+  background: linear-gradient(90deg, rgba(253, 224, 71, 0.5) 0%, rgba(253, 224, 71, 0.5) 100%) !important;
   background-size: 0% 100%;
   background-repeat: no-repeat;
   animation: highlight-sweep 0.8s ease-out forwards;
-  color: inherit;
+  color: inherit !important;
   border-radius: 2px;
   padding: 0 1px;
+  mix-blend-mode: multiply;
 }
 
 mark.portal-pdf-highlight-active {
-  background: linear-gradient(90deg, rgba(12, 228, 242, 0.5) 0%, rgba(12, 228, 242, 0.5) 100%);
+  background: linear-gradient(90deg, rgba(253, 224, 71, 0.75) 0%, rgba(253, 224, 71, 0.75) 100%) !important;
   background-size: 0% 100%;
   background-repeat: no-repeat;
   animation: highlight-sweep 0.8s ease-out forwards;
-  color: inherit;
+  color: inherit !important;
   border-radius: 2px;
   padding: 0 1px;
-  outline: 2px solid rgba(12, 228, 242, 0.7);
+  outline: 2px solid rgba(234, 179, 8, 0.9);
   outline-offset: 1px;
+  mix-blend-mode: multiply;
+}
+
+/* Also highlight in docx-preview wrapper */
+.docx-preview-wrapper mark.portal-pdf-highlight,
+.docx-preview-wrapper mark.portal-pdf-highlight-active {
+  mix-blend-mode: normal;
 }
 
 @keyframes highlight-sweep {

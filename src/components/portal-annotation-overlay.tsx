@@ -191,11 +191,11 @@ export function AnnotationOverlay({
   if (pagesWithAnnotations.length === 0) return null;
 
   return (
-    <div className="absolute top-0 right-0 z-30 pointer-events-none w-full h-full">
+    <div className="absolute top-0 left-0 z-30 pointer-events-none w-full h-full">
       {pagesWithAnnotations.map(([page, pageAnnotations]) => (
         <div
           key={page}
-          className="pointer-events-auto absolute right-3 flex flex-col gap-2"
+          className="pointer-events-auto absolute left-3 flex flex-col gap-2"
           style={{
             // Position relative to page within the scrollable area
             top: `${((page - currentPage + 1) * 120) + 8}px`,

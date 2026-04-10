@@ -959,15 +959,15 @@ export async function POST(request: NextRequest) {
   // Union of DB-configured + core tools (dedup)
   const enabledTools = Array.from(new Set([...coreTools, ...portalConfigTools]));
 
-  // If the client sends x-active-tools, only build those tools (intersection with enabled)
+  // Client can send x-active-tools to opt INTO extra tools, but core tools are always enabled
   let activeToolsList = enabledTools;
   const activeToolsHeader = request.headers.get("x-active-tools");
   if (activeToolsHeader) {
     try {
       const clientTools = JSON.parse(activeToolsHeader) as string[];
       if (Array.isArray(clientTools) && clientTools.length > 0) {
-        const enabledSet = new Set(enabledTools);
-        activeToolsList = clientTools.filter((t) => enabledSet.has(t));
+        // Union: core tools + client-requested tools (not intersection — prevents stripping essential tools)
+        activeToolsList = Array.from(new Set([...enabledTools, ...clientTools]));
       }
     } catch {
       // Ignore malformed header, use all enabled tools
