@@ -197,8 +197,14 @@ export function AnnotationOverlay({
           key={page}
           className="pointer-events-auto absolute left-3 flex flex-col gap-2"
           style={{
-            // Position relative to page within the scrollable area
-            top: `${((page - currentPage + 1) * 120) + 8}px`,
+            top: page === currentPage
+              ? '50%'
+              : page < currentPage
+                ? '-100px'
+                : 'calc(100% + 20px)',
+            transform: page === currentPage ? 'translateY(-50%)' : 'none',
+            transition: 'top 0.3s ease, opacity 0.3s ease',
+            opacity: page === currentPage ? 1 : 0,
           }}
         >
           {/* Page badge */}

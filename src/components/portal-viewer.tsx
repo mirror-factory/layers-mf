@@ -777,6 +777,15 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           pdfControls.goToPage?.(clampedPage);
           setCurrentPage(clampedPage);
         }
+        // Auto-highlight the section heading when navigating
+        const highlightFromNav = out.highlight ? String(out.highlight) : null;
+        if (highlightFromNav) {
+          setTimeout(() => {
+            setHighlightText(highlightFromNav);
+            highlightNonceRef.current += 1;
+            setHighlightNonce(highlightNonceRef.current);
+          }, 500); // Delay for page to render
+        }
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         const text = String(out.text ?? "");
 

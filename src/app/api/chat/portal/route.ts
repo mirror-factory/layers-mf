@@ -100,21 +100,26 @@ function createPortalTools(
   if (enabled.has("navigate_pdf")) {
     tools.navigate_pdf = tool({
       description:
-        "Navigate the PDF viewer to a specific page. The client will scroll to that page.",
+        "Navigate the PDF viewer to a specific page AND highlight the section heading. Always include the section title or key text so it gets highlighted when the page scrolls.",
       inputSchema: z.object({
         page: z.number().describe("The page number to navigate to (1-based)"),
+        highlight: z
+          .string()
+          .optional()
+          .describe("Text to highlight on the target page — use the section heading or key phrase"),
         reason: z
           .string()
           .optional()
           .describe("Brief explanation of why navigating here"),
       }),
-      execute: async ({ page, reason }: { page: number; reason?: string }) => {
+      execute: async ({ page, highlight, reason }: { page: number; highlight?: string; reason?: string }) => {
         const totalPages = pages.length;
         const clampedPage = Math.max(1, Math.min(page, totalPages));
         return {
           action: "navigate",
           page: clampedPage,
           total_pages: totalPages,
+          highlight: highlight ?? null,
           reason: reason ?? `Navigating to page ${clampedPage}`,
         };
       },
@@ -792,9 +797,14 @@ TOOL USAGE RULES — MANDATORY:
 - Only call navigate_pdf when the user says an EXPLICIT page number like "page 5" or "go to page 3".
 - NEVER call navigate_pdf with a page number greater than the total page count.
 
-4. HIGHLIGHT: When asked to highlight text, FIRST call switch_document to open the relevant document (if not already viewing one), THEN call highlight_text. Highlights only work on a document page, not the library grid. Use a short distinctive phrase (2-6 words) from the document content.
+4. HIGHLIGHT: ALWAYS navigate to the content first, then highlight:
+   Step 1: Call switch_document to open the document containing the section
+   Step 2: Call highlight_text with the section heading (4-8 words)
+   You MUST call switch_document BEFORE highlight_text. Highlighting does NOT work on the library grid.
 
-5. BOOKMARK: When the user says "bookmark this", "save this", or "remember this", call save_bookmark immediately (don't ask for clarification).
+5. GENERAL RULE: Any request about a specific section (explain, highlight, point to, show, bring me to) should ALWAYS navigate to that section. The viewer should move to show it. Never just describe it — bring the user THERE.
+
+6. BOOKMARK: When the user says "bookmark this", "save this", or "remember this", call save_bookmark immediately (don't ask for clarification).
 
 Navigation examples:
 - "show me a chart of the phases" → render_chart (not text)
@@ -1001,9 +1011,9 @@ export async function POST(request: NextRequest) {
 
     const wantsChart = /\b(chart|graph|visualize|visualise|plot|bar chart|pie chart|line chart)\b/.test(lastUserText);
     const wantsWalkthrough = /\b(walkthrough|walk me through|walk-through|tour|guide me through|give me a tour)\b/.test(lastUserText);
-    const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where)\b/.test(lastUserText);
+    const wantsHighlight = /\b(highlight|underline|mark|point (to|out)|show me where|bring me to the .+ section|show me the .+ section)\b/.test(lastUserText);
     const wantsBookmark = /\b(bookmark|save (this|a) (note|bookmark)|remember this|note this|save for later)\b/.test(lastUserText);
-    const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText);
+    const wantsNavigate = /\b(go to|open|switch to|show me the|take me to|bring me to|navigate to)\b/.test(lastUserText) && !wantsHighlight;
 
     if (wantsChart) {
       activeToolsList = activeToolsList.filter((t) => t === "render_chart");
