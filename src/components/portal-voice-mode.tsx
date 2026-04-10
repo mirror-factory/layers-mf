@@ -233,11 +233,16 @@ export function PortalVoiceMode({
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioRef.current = audio;
+
+        // Ensure recognition stays active during TTS for barge-in
+        if (voiceEnabledRef.current) {
+          setTimeout(() => startListening(), 300);
+        }
+
         audio.onended = () => {
           setIsSpeaking(false);
           audioRef.current = null;
           URL.revokeObjectURL(url);
-          // Restart listening after TTS finishes
           if (voiceEnabledRef.current) startListening();
         };
         audio.onerror = () => {
@@ -284,103 +289,69 @@ export function PortalVoiceMode({
     const messageList = recentMessages?.slice(-3) ?? [];
 
     return (
-      <div className="relative flex flex-col items-center justify-end gap-3 py-6 px-4 min-h-[220px] animate-in fade-in zoom-in-95 duration-500">
-        {/* Top fade gradient — fades message history into background */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 right-0 h-12 z-10 pointer-events-none bg-gradient-to-b",
-            isDark ? "from-[#1a1f2e] via-[#1a1f2e]/80" : "from-slate-50 via-slate-50/80"
-          )}
-        />
-
-        {/* Recent messages — faded transcript bubbles above the mic */}
-        {messageList.length > 0 && (
-          <div className="w-full max-w-md flex flex-col gap-2 mb-1">
-            {messageList.map((msg, i) => {
-              // Older messages are more faded
-              const age = messageList.length - 1 - i;
-              const opacity = age === 0 ? 1 : age === 1 ? 0.55 : 0.3;
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
-                    msg.role === "user"
-                      ? cn("ml-auto", isDark ? "bg-white/10 text-white/90" : "bg-sky-100 text-slate-800")
-                      : cn("mr-auto", isDark ? "text-white/80" : "text-slate-700")
-                  )}
-                  style={{ opacity }}
-                >
-                  {msg.text.length > 160 ? msg.text.slice(0, 160) + "..." : msg.text}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Live transcript as typing indicator (above mic) */}
+      <div className="flex flex-col items-center gap-2 py-3 px-3 animate-in fade-in duration-300">
+        {/* Live transcript */}
         {transcript && (
-          <div
-            className={cn(
-              "rounded-2xl px-3.5 py-2 text-[13px] ml-auto max-w-[85%] animate-in fade-in duration-200",
-              isDark ? "bg-white/5 text-white/60" : "bg-slate-100 text-slate-500"
-            )}
-          >
+          <div className={cn(
+            "w-full rounded-lg px-3 py-1.5 text-[12px] text-center",
+            isDark ? "bg-white/5 text-white/60" : "bg-slate-100 text-slate-500"
+          )}>
             <span className="animate-pulse">{transcript}</span>
           </div>
         )}
 
-        {/* Mic button — large, centered, prominent */}
-        <div className="relative flex flex-col items-center gap-2 mt-2">
-          {/* Pulsing halo when listening */}
-          {isListening && (
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 h-16 w-16 rounded-full animate-ping pointer-events-none"
-              style={{ backgroundColor: brandColor, opacity: 0.25 }}
-            />
-          )}
+        {/* Waveform + mic row */}
+        <div className="flex items-center gap-3">
+          {/* Waveform bars (left) */}
+          <div className="flex items-center gap-0.5 h-8 w-12 justify-end">
+            {isListening && [0,1,2,3].map(i => (
+              <div key={i} className="w-[3px] rounded-full animate-pulse"
+                style={{ backgroundColor: brandColor, height: `${10 + Math.random() * 14}px`, animationDelay: `${i * 120}ms`, opacity: 0.6 }} />
+            ))}
+            {isSpeaking && [0,1,2,3].map(i => (
+              <div key={i} className="w-[3px] rounded-full animate-pulse"
+                style={{ backgroundColor: "#f59e0b", height: `${8 + Math.random() * 16}px`, animationDelay: `${i * 100}ms`, opacity: 0.7 }} />
+            ))}
+          </div>
+
+          {/* Mic button — compact */}
           <button
             onClick={toggleVoice}
             className={cn(
-              "relative flex items-center justify-center rounded-full h-16 w-16 transition-all duration-300 hover:scale-105",
+              "relative flex items-center justify-center rounded-full h-10 w-10 transition-all duration-200 hover:scale-105 shrink-0",
               isSpeaking && "animate-pulse"
             )}
-            style={{
-              backgroundColor: brandColor,
-              boxShadow: `0 0 0 4px ${brandColor}20, 0 8px 24px ${brandColor}40`,
-            }}
+            style={{ backgroundColor: brandColor, boxShadow: `0 0 0 3px ${brandColor}20` }}
             title="Stop voice mode"
-            aria-label="Stop voice mode"
           >
-            <Mic className="h-7 w-7 text-white" />
+            <Mic className="h-4 w-4 text-white" />
           </button>
 
-          {/* Status + TTS toggle */}
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex items-center gap-1.5">
-              <div
-                className={cn("h-1.5 w-1.5 rounded-full shrink-0", isListening ? "animate-pulse" : "")}
-                style={{ backgroundColor: isListening ? "#22c55e" : isSpeaking ? brandColor : "#94a3b8" }}
-              />
-              <span className={cn("text-[11px] font-medium", isDark ? "text-white/50" : "text-slate-500")}>
-                {isListening ? "Listening…" : isSpeaking ? "Speaking…" : "Ready"}
-              </span>
-            </div>
-            <button
-              onClick={() => setTtsEnabled(!ttsEnabled)}
-              className={cn(
-                "p-1 rounded-lg transition-colors",
-                isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-              )}
-              title={ttsEnabled ? "Mute voice" : "Unmute voice"}
-            >
-              {ttsEnabled ? (
-                <Volume2 className={cn("h-3 w-3", isDark ? "text-white/50" : "text-slate-400")} />
-              ) : (
-                <VolumeX className={cn("h-3 w-3", isDark ? "text-white/30" : "text-slate-300")} />
-              )}
-            </button>
+          {/* Waveform bars (right) */}
+          <div className="flex items-center gap-0.5 h-8 w-12">
+            {isListening && [0,1,2,3].map(i => (
+              <div key={i} className="w-[3px] rounded-full animate-pulse"
+                style={{ backgroundColor: brandColor, height: `${10 + Math.random() * 14}px`, animationDelay: `${i * 120 + 60}ms`, opacity: 0.6 }} />
+            ))}
+            {isSpeaking && [0,1,2,3].map(i => (
+              <div key={i} className="w-[3px] rounded-full animate-pulse"
+                style={{ backgroundColor: "#f59e0b", height: `${8 + Math.random() * 16}px`, animationDelay: `${i * 100 + 50}ms`, opacity: 0.7 }} />
+            ))}
           </div>
+        </div>
+
+        {/* Status row */}
+        <div className="flex items-center gap-2">
+          <div className={cn("h-1.5 w-1.5 rounded-full", isListening ? "bg-green-500 animate-pulse" : isSpeaking ? "animate-pulse" : "bg-slate-400")}
+            style={isSpeaking ? { backgroundColor: "#f59e0b" } : undefined} />
+          <span className={cn("text-[10px]", isDark ? "text-white/40" : "text-slate-400")}>
+            {isListening ? "Listening — speak to interrupt" : isSpeaking ? "Speaking — tap mic to stop" : "Ready"}
+          </span>
+          <button onClick={() => setTtsEnabled(!ttsEnabled)}
+            className={cn("p-0.5 rounded", isDark ? "hover:bg-white/10" : "hover:bg-slate-100")}
+            title={ttsEnabled ? "Mute" : "Unmute"}>
+            {ttsEnabled ? <Volume2 className="h-3 w-3 text-muted-foreground" /> : <VolumeX className="h-3 w-3 text-muted-foreground/50" />}
+          </button>
         </div>
       </div>
     );
