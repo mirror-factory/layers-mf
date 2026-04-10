@@ -564,13 +564,10 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   };
 
   // Reload library doc content when switching tabs or re-visiting
-  const prevLibKeyRef = useRef("");
+  const [libDocLoadCounter, setLibDocLoadCounter] = useState(0);
   useEffect(() => {
     const doc = openedLibraryDocs[activeLibraryDocIndex];
     if (!doc || activeView !== "library-doc") return;
-    const key = `${activeView}-${activeLibraryDocIndex}-${doc.id}`;
-    if (key === prevLibKeyRef.current) return;
-    prevLibKeyRef.current = key;
     // Clear previous content and reload
     setDocxArrayBuffer(null);
     setDocPreviewTable(null);
@@ -579,7 +576,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     setIsPreviewLoading(true);
     void handleOpenDocPreview(doc);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLibraryDocIndex, activeView]);
+  }, [activeLibraryDocIndex, activeView, libDocLoadCounter]);
 
   // Render DOCX via docx-preview when arrayBuffer is ready
   useEffect(() => {
@@ -1162,7 +1159,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 {openedLibraryDocs.map((ldoc, i) => (
                   <button
                     key={ldoc.id}
-                    onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); }}
+                    onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
                     className={cn(
                       "px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1",
                       i === activeLibraryDocIndex && activeView === "library-doc"
@@ -1261,7 +1258,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                     {openedLibraryDocs.map((ldoc, i) => (
                       <DropdownMenuItem
                         key={`lib-${ldoc.id}`}
-                        onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); }}
+                        onClick={() => { setActiveLibraryDocIndex(i); setActiveView("library-doc"); setLibDocLoadCounter(c => c + 1); }}
                       >
                         <FileText className="mr-2 h-4 w-4" />
                         <span className="truncate">{ldoc.title}</span>
