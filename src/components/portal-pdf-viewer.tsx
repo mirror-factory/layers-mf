@@ -834,75 +834,31 @@ export function PortalPdfViewer({
   }, []);
 
   // ---- Highlight text from chat tool (highlightText prop) ----
-  // Uses MutationObserver to wait for text layer to fully render.
-  // highlightNonce in deps forces re-trigger even when the same text is highlighted again.
+  // Simply triggers the search mechanism which already works well.
   useEffect(() => {
-    if (!highlightTextProp || !pdfAreaRef.current) return;
+    if (!highlightTextProp) return;
 
-    const container = pdfAreaRef.current;
+    // Use progressive retry delays — PDF may still be loading after doc switch
+    const delays = [200, 500, 1000, 2000, 3000, 5000, 8000, 12000];
+    let found = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Clear previous highlights before attempting new ones
-    clearHighlightsInDom(container);
-
-    const attemptHighlight = () => {
-      const matches = highlightTextInDom(container, highlightTextProp);
-      if (matches.length > 0) {
-        setSearchMatches(matches);
-        setSearchMatchIndex(0);
-        matches[0].classList.add("portal-pdf-highlight-active");
-        if (container) scrollElementIntoContainer(matches[0], container);
-        setSearchVisible(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Longer delay to allow page navigation + text layer rendering
-    const initialTimer = setTimeout(() => {
-      if (attemptHighlight()) return;
-
-      // If no matches yet, observe DOM changes for text layer rendering
-      let attempts = 0;
-      const maxAttempts = 40; // more attempts for slow page loads
-      const observer = new MutationObserver(() => {
-        attempts++;
-        if (attemptHighlight() || attempts >= maxAttempts) {
-          observer.disconnect();
+    delays.forEach((delay) => {
+      timers.push(setTimeout(() => {
+        if (found || !pdfAreaRef.current) return;
+        console.log(`[Highlight] Retry at ${delay}ms for "${highlightTextProp}"`);
+        handleSearch(highlightTextProp);
+        // Check if any matches were created
+        const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
+        if (overlays.length > 0) {
+          found = true;
+          setSearchVisible(true);
+          console.log(`[Highlight] Found ${overlays.length} matches at ${delay}ms`);
         }
-      });
+      }, delay));
+    });
 
-      observer.observe(container, {
-        childList: true,
-        subtree: true,
-      });
-
-      // Fallback: retry every 200ms for up to 8s in case mutations don't fire
-      let fallbackAttempts = 0;
-      const fallbackInterval = setInterval(() => {
-        fallbackAttempts++;
-        if (attemptHighlight() || fallbackAttempts >= 40) {
-          clearInterval(fallbackInterval);
-          observer.disconnect();
-        }
-      }, 200);
-
-      // Fallback timeout to disconnect observer
-      const fallbackTimer = setTimeout(() => {
-        observer.disconnect();
-        attemptHighlight();
-      }, 3000);
-
-      // Store for cleanup
-      (container as HTMLDivElement & { __hlObserver?: MutationObserver; __hlFallback?: ReturnType<typeof setTimeout> }).__hlObserver = observer;
-      (container as HTMLDivElement & { __hlFallback?: ReturnType<typeof setTimeout> }).__hlFallback = fallbackTimer;
-    }, 150);
-
-    return () => {
-      clearTimeout(initialTimer);
-      const c = container as HTMLDivElement & { __hlObserver?: MutationObserver; __hlFallback?: ReturnType<typeof setTimeout> };
-      c.__hlObserver?.disconnect();
-      if (c.__hlFallback) clearTimeout(c.__hlFallback);
-    };
+    return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightTextProp, highlightNonce]);
 
