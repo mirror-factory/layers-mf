@@ -62,6 +62,68 @@ import { PortalVoiceMode } from "@/components/portal-voice-mode";
 import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
 import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
 
+// ---------------------------------------------------------------------------
+// ChatVariant — typed config for visual/behavioral variants of ChatInterface
+// ---------------------------------------------------------------------------
+
+interface ChatVariant {
+  /** Visual style */
+  style: "default" | "portal";
+  /** Input area gradient colors */
+  gradientFrom: string;
+  gradientTo: string;
+  /** Text colors */
+  headingColor: string;
+  bodyColor: string;
+  mutedColor: string;
+  /** Input styling */
+  inputBorder: string;
+  inputBg: string;
+  /** Suggestion pills */
+  suggestions: { text: string; accent: boolean }[];
+  /** Whether voice mode is available */
+  voiceEnabled: boolean;
+  /** Tool list for info display */
+  tools: string[];
+}
+
+export type { ChatVariant };
+export { PORTAL_VARIANT, DEFAULT_VARIANT };
+
+const PORTAL_VARIANT: ChatVariant = {
+  style: "portal",
+  gradientFrom: "from-transparent",
+  gradientTo: "to-slate-50 dark:to-[#1a1f2e]",
+  headingColor: "text-slate-700 dark:text-white",
+  bodyColor: "text-slate-600 dark:text-white/70",
+  mutedColor: "text-slate-500 dark:text-white/40",
+  inputBorder: "border-slate-300 dark:border-white/10",
+  inputBg: "bg-white dark:bg-white/5",
+  suggestions: [
+    { text: "Summarize this document", accent: true },
+    { text: "Walk me through the key points", accent: false },
+    { text: "Visualize the timeline as a chart", accent: true },
+  ],
+  voiceEnabled: true,
+  tools: [],
+};
+
+const DEFAULT_VARIANT: ChatVariant = {
+  style: "default",
+  gradientFrom: "from-transparent",
+  gradientTo: "to-background",
+  headingColor: "text-foreground",
+  bodyColor: "text-muted-foreground",
+  mutedColor: "text-muted-foreground/60",
+  inputBorder: "border-border/50",
+  inputBg: "bg-card/60",
+  suggestions: [],
+  voiceEnabled: false,
+  tools: [],
+};
+
+// ---------------------------------------------------------------------------
+
 const CLOUD_MODELS = [
   // Flagship
   { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", tier: "flagship" },
@@ -1688,6 +1750,8 @@ interface ChatInterfaceProps {
   apiEndpoint?: string;
   /** Extra headers to send with every request */
   extraHeaders?: Record<string, string>;
+  /** Visual/behavioral variant config — overrides portalMode when provided */
+  variant?: ChatVariant;
   /** Hide features not needed in embedded/portal mode */
   portalMode?: boolean;
   /** Portal branding — document title for empty state */
@@ -1716,7 +1780,7 @@ interface ChatInterfaceProps {
   lastAIResponse?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, variant, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -1765,6 +1829,7 @@ export function ChatInterface({ conversationId, initialTemplateId, initialPrompt
       actionsRef={actionsRef}
       apiEndpoint={apiEndpoint}
       extraHeaders={extraHeaders}
+      variant={variant}
       portalMode={portalMode}
       portalTitle={portalTitle}
       portalClientName={portalClientName}
@@ -1791,6 +1856,7 @@ interface ChatInterfaceInnerProps {
   actionsRef?: React.MutableRefObject<ChatActions | null>;
   apiEndpoint?: string;
   extraHeaders?: Record<string, string>;
+  variant?: ChatVariant;
   portalMode?: boolean;
   portalTitle?: string;
   portalClientName?: string;
@@ -1806,7 +1872,11 @@ interface ChatInterfaceInnerProps {
   lastAIResponse?: string;
 }
 
-function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceInnerProps) {
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, variant, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceInnerProps) {
+  // Compute the active variant from either the explicit `variant` prop or the legacy `portalMode` boolean
+  const v = variant ?? (portalMode ? PORTAL_VARIANT : DEFAULT_VARIANT);
+  const isPortal = v.style === "portal";
+
   const { isLocal, availableModels: localModels } = useLocalModels();
   const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
   const [model, setModelState] = useState<string>(() => {
@@ -2655,8 +2725,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", compactMode ? "p-3" : "p-4 sm:p-6")}>
           <div className={cn("max-w-4xl mx-auto w-full", compactMode ? "space-y-3" : "space-y-6")}>
           {messages.length === 0 && (
-            <div className={cn("flex flex-col items-center justify-center text-center", portalMode ? "text-slate-500 dark:text-white/60" : "text-muted-foreground", compactMode ? "py-4" : "h-full")}>
-              {!compactMode && (portalMode ? (
+            <div className={cn("flex flex-col items-center justify-center text-center", isPortal ? v.mutedColor : "text-muted-foreground", compactMode ? "py-4" : "h-full")}>
+              {!compactMode && (isPortal ? (
                 <div className="mb-4 flex flex-col items-center gap-2">
                   {portalLogoUrl ? (
                     <img src={portalLogoUrl} alt="" className="h-8 w-auto opacity-80" />
@@ -2667,9 +2737,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     />
                   )}
                   {portalClientName && (
-                    <p className={cn("text-[11px]", portalMode ? "text-slate-500 dark:text-white/40" : "text-muted-foreground/60")}>
-                      Prepared by <span className={cn(portalMode ? "text-slate-600 dark:text-white/70" : "text-foreground/70")}>Mirror Factory</span> for{" "}
-                      <span className={cn(portalMode ? "text-slate-600 dark:text-white/70" : "text-foreground/70")}>{portalClientName}</span>
+                    <p className={cn("text-[11px]", isPortal ? v.mutedColor : "text-muted-foreground/60")}>
+                      Prepared by <span className={cn(isPortal ? v.bodyColor : "text-foreground/70")}>Mirror Factory</span> for{" "}
+                      <span className={cn(isPortal ? v.bodyColor : "text-foreground/70")}>{portalClientName}</span>
                     </p>
                   )}
                 </div>
@@ -2678,22 +2748,18 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   <NeuralMorph size={48} dotCount={14} formation="bloom" />
                 </div>
               ))}
-              <p className={cn("font-medium", portalMode ? "text-slate-700 dark:text-white" : "text-foreground", compactMode ? "text-xs" : "text-sm")}>
-                {portalMode && portalTitle
+              <p className={cn("font-medium", isPortal ? v.headingColor : "text-foreground", compactMode ? "text-xs" : "text-sm")}>
+                {isPortal && portalTitle
                   ? `Ask about ${portalTitle}`
                   : "Ask anything about your team\u2019s knowledge"}
               </p>
-              {!compactMode && !portalMode && (
+              {!compactMode && !isPortal && (
                 <p className="text-xs mt-1">
                   {"Granger searches your documents, meetings, and notes to answer."}
                 </p>
               )}
               <div className={cn("flex flex-wrap justify-center gap-2 max-w-lg", compactMode ? "mt-3" : "mt-5")}>
-                {(portalMode ? [
-                  { text: "Summarize this document", accent: true },
-                  { text: "Walk me through the key points", accent: false },
-                  { text: "Visualize the timeline as a chart", accent: true },
-                ] : [
+                {(v.suggestions.length > 0 ? v.suggestions : [
                   { text: "Chart my overdue Linear tasks by priority", accent: true },
                   { text: "Research competitor pricing and write a brief", accent: false },
                   { text: "Summarize my last Granola meeting into action items", accent: false },
@@ -2706,12 +2772,12 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     onClick={() => sendMessage({ text: prompt })}
                     className={cn(
                       "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                      !portalMode && accent && "border-primary/30 text-primary hover:bg-primary/10",
-                      !portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                      portalMode && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white",
-                      portalMode && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-200 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
+                      !isPortal && accent && "border-primary/30 text-primary hover:bg-primary/10",
+                      !isPortal && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      isPortal && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white",
+                      isPortal && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-200 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
                     )}
-                    style={portalMode && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
+                    style={isPortal && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
                   >
                     {prompt}
                   </button>
@@ -2738,7 +2804,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               <div key={m.id} className={cn("flex gap-2 sm:gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
                 {m.role === "user" ? (
                   <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: 32, height: 32 }}>
-                    {portalMode ? (
+                    {isPortal ? (
                       <span
                         className="inline-flex h-full w-full items-center justify-center rounded-full"
                         style={{ backgroundColor: `${portalBrandColor || "#0DE4F2"}20` }}
@@ -2752,7 +2818,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
                     )}
                   </div>
-                ) : portalMode ? (
+                ) : isPortal ? (
                   <>
                     {/* Portal mode: brand-colored animated avatar */}
                     <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
@@ -2853,7 +2919,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   {text && (
                     <MessageContent
                       className={cn(
-                        portalMode &&
+                        isPortal &&
                           "group-[.is-user]:bg-sky-100 dark:group-[.is-user]:bg-white/5 group-[.is-user]:text-gray-900 dark:group-[.is-user]:text-white group-[.is-user]:border group-[.is-user]:border-sky-200 dark:group-[.is-user]:border-white/10 group-[.is-assistant]:text-gray-900 dark:group-[.is-assistant]:text-white"
                       )}
                     >
@@ -2926,7 +2992,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             return !hasText && !hasTools; // Hide thinking once content streams in
           })() && (
             <div className="flex gap-3 max-w-4xl">
-              {portalMode ? (
+              {isPortal ? (
                 <>
                   <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 36, height: 36, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
                     <span className="inline-block h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
@@ -2945,7 +3011,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
                 </>
               )}
-              <span className={cn("text-xs pt-3", portalMode ? "text-slate-600 dark:text-white/40" : "text-muted-foreground")}>Thinking…</span>
+              <span className={cn("text-xs pt-3", isPortal ? v.mutedColor : "text-muted-foreground")}>Thinking…</span>
             </div>
           )}
 
@@ -2987,9 +3053,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-slate-50/90 to-slate-50 dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]")}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", isPortal && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", isPortal && cn("bg-gradient-to-b", v.gradientFrom, "via-slate-50/90", v.gradientTo, "dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]"))}
           style={{
-            background: portalMode
+            background: isPortal
               ? undefined
               : `linear-gradient(to bottom, transparent, hsl(var(--background) / 0.85) 35%, hsl(var(--background)) 65%)`,
           }}
@@ -3010,8 +3076,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
 
           {/* Voice mode UI — replaces the input area when active (portal only) */}
-          {portalMode && voiceActive && (
-            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {v.voiceEnabled && voiceActive && (
+            <div className="flex flex-col items-center justify-center py-6 px-4 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <PortalVoiceMode
                 inline
                 active={voiceActive}
@@ -3035,8 +3101,8 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div
             className={cn(
               "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3 transition-all duration-500",
-              portalMode ? "border-slate-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60",
-              portalMode && voiceActive && "opacity-0 h-0 p-0 border-0 overflow-hidden pointer-events-none shadow-none"
+              isPortal ? cn(v.inputBorder, v.inputBg, "shadow-sm") : "border-border/50 bg-card/60",
+              isPortal && voiceActive && "opacity-0 h-0 p-0 border-0 overflow-hidden pointer-events-none shadow-none transition-all duration-500"
             )}
           >
             {/* Interview UI — renders as overlay above the input area */}
@@ -3051,7 +3117,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             )}
 
             {/* Slash command autocomplete menu — positioned above input (hidden in portal mode) */}
-            {!portalMode && slashMenuFiltered.length > 0 && (
+            {!isPortal && slashMenuFiltered.length > 0 && (
               <div className="absolute bottom-full left-0 right-0 mb-1 z-20 px-3 sm:px-4">
                 <div className="max-w-5xl mx-auto">
                   <div className="border rounded-lg bg-background shadow-lg max-h-[calc(8*2.5rem)] overflow-y-auto">
@@ -3129,11 +3195,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     el.style.height = "auto";
                     el.style.height = Math.min(el.scrollHeight, 200) + "px";
                   }}
-                  placeholder={portalMode ? "Ask about this document…" : "Ask anything… (type / for commands)"}
+                  placeholder={isPortal ? "Ask about this document…" : "Ask anything… (type / for commands)"}
                   rows={1}
                   className={cn(
                     "flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:truncate",
-                    portalMode ? "text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
+                    isPortal ? "text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
                   )}
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
@@ -3169,7 +3235,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
                   {/* Mobile-only three-dot menu — combines chat actions + attach/chart/settings (hidden in portal mode) */}
-                  <div className={cn("md:hidden", portalMode && "hidden")}>
+                  <div className={cn("md:hidden", isPortal && "hidden")}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="More options">
@@ -3263,7 +3329,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   </div>
 
                   {/* Desktop-only buttons — hidden on mobile and in portal mode */}
-                  <div className={cn("hidden md:flex items-center gap-0.5", portalMode && "!hidden")}>
+                  <div className={cn("hidden md:flex items-center gap-0.5", isPortal && "!hidden")}>
                     <Button
                       type="button"
                       size="icon"
@@ -3360,7 +3426,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 </div>
 
                 {/* Voice toggle — portal only */}
-                {portalMode && onVoiceToggle && (
+                {v.voiceEnabled && onVoiceToggle && (
                   <button
                     type="button"
                     onClick={onVoiceToggle}
@@ -3385,7 +3451,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   data-testid={isLoading ? "chat-stop" : "chat-submit"}
                   aria-label={isLoading ? "Stop generation" : "Send message"}
                   className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground p-2.5 shrink-0 transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none"
-                  style={portalMode && portalBrandColor ? { backgroundColor: portalBrandColor } : undefined}
+                  style={isPortal && portalBrandColor ? { backgroundColor: portalBrandColor } : undefined}
                 >
                   {isLoading ? (
                     <Square className="h-4 w-4 fill-current" />
@@ -3423,7 +3489,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
 
       {/* Right panel — Artifact viewer with file tree (mini IDE) — hidden in portal mode */}
       {/* Mobile: full-screen overlay; Desktop: side panel */}
-      {!portalMode && activeArtifact ? (
+      {!isPortal && activeArtifact ? (
         <aside className="fixed inset-0 z-50 flex flex-col bg-background md:static md:z-auto md:flex-row md:w-[50%] md:min-w-[400px] md:shrink-0 md:border-l md:bg-card">
           {(() => {
             // Build file tree from multi-file project or single file
@@ -4120,7 +4186,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             );
           })()}
         </aside>
-      ) : !portalMode ? (
+      ) : !isPortal ? (
         <>
           {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
           {!contextPanelOpen && (
