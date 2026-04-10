@@ -2680,7 +2680,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                       "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
                       !portalMode && accent && "border-primary/30 text-primary hover:bg-primary/10",
                       !portalMode && !accent && "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                      portalMode && !accent && "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-white/70 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white",
+                      portalMode && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white",
                       portalMode && accent && "bg-sky-50/60 dark:bg-white/5 border-sky-200 dark:border-white/10 hover:bg-sky-100/60 dark:hover:bg-white/10"
                     )}
                     style={portalMode && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
@@ -2959,7 +2959,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
         </div>
 
         <div
-          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-gray-50/85 to-gray-50 dark:via-[#070a0e]/85 dark:to-[#070a0e]")}
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : "px-4 sm:px-8 pt-6", portalMode && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", portalMode && "bg-gradient-to-b from-transparent via-slate-50/90 to-slate-50 dark:via-[#070a0e]/85 dark:to-[#070a0e]")}
           style={{
             background: portalMode
               ? undefined
@@ -2984,7 +2984,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           <div
             className={cn(
               "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl p-3",
-              portalMode ? "border-gray-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60"
+              portalMode ? "border-slate-300 bg-white shadow-sm dark:border-white/10 dark:bg-white/5" : "border-border/50 bg-card/60"
             )}
           >
             {/* Interview UI — renders as overlay above the input area */}
@@ -3081,7 +3081,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   rows={1}
                   className={cn(
                     "flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:truncate",
-                    portalMode ? "text-gray-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
+                    portalMode ? "text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
                   )}
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
