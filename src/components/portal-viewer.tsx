@@ -292,7 +292,7 @@ function ToolsInfoModal({
   if (!open) return null;
 
   // Always-on tools (not configurable)
-  const alwaysOnTools = ["get_document_registry", "lookup_document", "open_document_preview", "generate_brief", "track_reading", "save_bookmark"];
+  const alwaysOnTools = ["get_document_registry", "lookup_document", "open_document_preview", "generate_brief", "track_reading", "save_bookmark", "compare_documents", "share_feedback"];
   const configurableTools = enabledTools.filter(t => !alwaysOnTools.includes(t));
 
   return (
