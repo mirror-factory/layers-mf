@@ -1655,7 +1655,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
             </div>
           </div>
         ) : activeView === "library-doc" && activeLibraryDoc ? (
-          <div className={cn("flex-1 overflow-y-auto", pd ? "" : "bg-slate-100")}>
+          <div className={cn("flex-1 overflow-y-auto p-6", pd ? "bg-[#0a0e1a]" : "bg-slate-100")}>
             {/* Viewer content — no header bar, tabs handle navigation */}
             <div>
               {activeLibraryDoc.type === "image" ? (
@@ -1701,7 +1701,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
                 /* docx-preview renders directly into this container — edge-to-edge */
                 <div
                   ref={docxContainerRef}
-                  className={cn("docx-preview-wrapper w-full min-h-[80vh] overflow-hidden", effectiveTwoColumn && "two-column")}
+                  className={cn("docx-preview-wrapper mx-auto bg-white rounded-lg shadow-lg min-h-[80vh] overflow-hidden", effectiveTwoColumn ? "max-w-6xl two-column" : "max-w-4xl")}
                 />
               ) : (
                 <div
