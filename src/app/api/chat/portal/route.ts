@@ -1011,13 +1011,13 @@ export async function POST(request: NextRequest) {
       activeToolsList = activeToolsList.filter((t) => t === "walkthrough_document");
     } else if (wantsHighlight) {
       activeToolsList = activeToolsList.filter((t) =>
-        t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
+        t === "highlight_text" || t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview" || t === "get_document_registry"
       );
     } else if (wantsBookmark) {
       activeToolsList = activeToolsList.filter((t) => t === "save_bookmark");
     } else if (wantsNavigate) {
       activeToolsList = activeToolsList.filter((t) =>
-        t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview"
+        t === "switch_document" || t === "navigate_pdf" || t === "open_document_preview" || t === "get_document_registry"
       );
     }
   }
