@@ -790,25 +790,20 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match
-      if (matches.length > 0) {
+      // Scroll to first match — directly set scrollTop on the scroll container
+      if (matches.length > 0 && pdfAreaRef.current) {
         matches[0].classList.add("portal-pdf-highlight-active");
-        // Find which page the match is on and scroll using the page element
-        const pageEl = matches[0].closest("[data-page-number]") as HTMLElement | null;
-        if (pageEl) {
-          // Use the page element's native scrollIntoView (it's in normal flow, not absolute)
-          pageEl.scrollIntoView({ behavior: "smooth", block: "start" });
-          // Then fine-tune to the overlay position after page is in view
-          setTimeout(() => {
-            const scrollContainer = pdfAreaRef.current;
-            if (scrollContainer && matches[0]) {
-              const rect = matches[0].getBoundingClientRect();
-              const containerRect = scrollContainer.getBoundingClientRect();
-              const offset = rect.top - containerRect.top - containerRect.height / 3;
-              scrollContainer.scrollBy({ top: offset, behavior: "smooth" });
-            }
-          }, 400);
+        const container = pdfAreaRef.current;
+        // Walk up from overlay to find cumulative offsetTop relative to scroll container
+        let totalOffset = 0;
+        let el: HTMLElement | null = matches[0];
+        while (el && el !== container) {
+          totalOffset += el.offsetTop;
+          el = el.offsetParent as HTMLElement | null;
         }
+        // Scroll to position the match in the upper third of the viewport
+        const target = totalOffset - container.clientHeight / 3;
+        container.scrollTop = Math.max(0, target);
       }
     },
     []
@@ -864,21 +859,16 @@ export function PortalPdfViewer({
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
-          // Scroll to the first overlay's page
+          // Scroll container directly to the overlay's offset
           const firstOverlay = overlays[0] as HTMLElement;
-          const pageEl = firstOverlay.closest("[data-page-number]") as HTMLElement | null;
-          if (pageEl) {
-            pageEl.scrollIntoView({ behavior: "smooth", block: "start" });
-            setTimeout(() => {
-              const scrollContainer = pdfAreaRef.current;
-              if (scrollContainer) {
-                const rect = firstOverlay.getBoundingClientRect();
-                const containerRect = scrollContainer.getBoundingClientRect();
-                const offset = rect.top - containerRect.top - containerRect.height / 3;
-                scrollContainer.scrollBy({ top: offset, behavior: "smooth" });
-              }
-            }, 400);
+          const container = pdfAreaRef.current;
+          let totalOffset = 0;
+          let walkEl: HTMLElement | null = firstOverlay;
+          while (walkEl && walkEl !== container) {
+            totalOffset += walkEl.offsetTop;
+            walkEl = walkEl.offsetParent as HTMLElement | null;
           }
+          container.scrollTop = Math.max(0, totalOffset - container.clientHeight / 3);
           setSearchVisible(true);
         }
       }, delay));
