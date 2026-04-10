@@ -737,11 +737,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     () => ({
       "x-portal-token": portal.share_token,
       "x-active-tools": JSON.stringify([...activeTools]),
+      ...(voiceActive && { "x-voice-mode": "true" }),
       ...(contextTags.length > 0 && {
         "x-portal-context": btoa(unescape(encodeURIComponent(JSON.stringify(contextTags.map((t) => t.text))))),
       }),
     }),
-    [portal.share_token, activeTools, contextTags]
+    [portal.share_token, activeTools, contextTags, voiceActive]
   );
 
   // Multi-document switching
@@ -1538,20 +1539,11 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         )}
       >
         {chatPosition === "corner" && (
-          /* Corner mini chat — compact header bar + inline voice mode */
+          /* Corner mini chat — context pill + inline voice */
           <div className={cn("rounded-t-2xl", pd ? "border-white/10" : "border-slate-200")}>
-            <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
-            <div className={cn("flex items-center justify-between px-3 py-2 border-b", pd ? "border-white/10" : "border-slate-200")}>
-              <span className="text-xs font-medium text-muted-foreground">Chat</span>
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={toggleVoiceMode}
-                  className={cn("p-1.5 rounded-lg transition-colors", voiceActive ? "" : "hover:bg-white/10")}
-                  style={voiceActive ? { backgroundColor: brandColor } : undefined}
-                  title={voiceActive ? "Stop voice" : "Voice mode"}
-                >
-                  {voiceActive ? <Mic className="h-3.5 w-3.5 text-white" /> : <MicOff className="h-3.5 w-3.5 text-muted-foreground" />}
-                </button>
+            <div className={cn("flex items-center justify-between px-3 py-1.5 border-b", pd ? "border-white/10" : "border-slate-200")}>
+              <ContextTagsBar tags={contextTags} onRemove={removeContextTag} />
+              <div className="flex items-center gap-0.5 shrink-0">
                 {sidebarToggleButton}
                 <Button
                   variant="ghost"

@@ -834,6 +834,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Voice mode — shorter responses unless explicitly asked for detail
+  const isVoiceMode = request.headers.get("x-voice-mode") === "true";
+  if (isVoiceMode) {
+    systemPrompt += `\n\nIMPORTANT — VOICE MODE ACTIVE: The user is speaking to you via voice. Keep responses SHORT and conversational (1-3 sentences max). Speak naturally as if in a conversation, not a written response. Only give longer answers if the user explicitly asks for detail or says "explain in detail", "tell me more", etc. Use simple language. Avoid markdown formatting, bullet points, and code blocks — these don't work well in voice. Focus on the key point first.`;
+  }
+
   const modelMessages = await convertToModelMessages(uiMessages);
 
   const requestedModel = portal.model ?? "google/gemini-3.0-flash";

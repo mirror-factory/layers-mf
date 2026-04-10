@@ -8,6 +8,11 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<"splash" | "fading" | "done">("splash");
 
   useEffect(() => {
+    // Skip splash for portal routes — they have their own PortalSplash
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/portal")) {
+      setPhase("done");
+      return;
+    }
     // Show splash for 1.8s, then fade out over 0.6s
     const showTimer = setTimeout(() => setPhase("fading"), 1800);
     const doneTimer = setTimeout(() => setPhase("done"), 2400);
