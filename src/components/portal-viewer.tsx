@@ -503,6 +503,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // Highlight text from chat tools (nonce forces re-trigger for same text)
   const highlightNonceRef = useRef(0);
+  const pendingHighlightRef = useRef<{ text: string; page: number; timestamp: number } | null>(null);
   const [highlightText, setHighlightText] = useState<string | undefined>(undefined);
   const [highlightNonce, setHighlightNonce] = useState(0);
 
@@ -760,18 +761,42 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           setCurrentPage(clampedPage);
         }
       } else if (toolName === "highlight_text" && out.action === "highlight") {
-        setHighlightText(String(out.text ?? ""));
-        highlightNonceRef.current += 1;
-        setHighlightNonce(highlightNonceRef.current);
+        const text = String(out.text ?? "");
         const page = Number(out.page);
-        if (page > 0 && pdfControls) {
-          pdfControls.goToPage?.(page);
-          setCurrentPage(page);
+
+        // Helper to actually apply the highlight (may be deferred if PDF not loaded)
+        const applyHighlight = () => {
+          setHighlightText(text);
+          highlightNonceRef.current += 1;
+          setHighlightNonce(highlightNonceRef.current);
+          if (page > 0 && pdfControls) {
+            pdfControls.goToPage?.(page);
+            setCurrentPage(page);
+          }
+        };
+
+        // If the PDF isn't ready yet (switching docs), wait for it
+        if (pdfControls && pdfControls.numPages > 0) {
+          applyHighlight();
+        } else {
+          // Store as pending — retries when PDF loads
+          pendingHighlightRef.current = { text, page, timestamp: Date.now() };
+          // Also retry with delay as safety net
+          const retryTimers = [500, 1500, 3000, 5000, 8000];
+          retryTimers.forEach((delay) => {
+            setTimeout(() => {
+              if (pendingHighlightRef.current && pendingHighlightRef.current.text === text && pdfControls && pdfControls.numPages > 0) {
+                applyHighlight();
+                pendingHighlightRef.current = null;
+              }
+            }, delay);
+          });
         }
+
         // Add persistent annotation for the highlight
         addAnnotation({
           page: page || currentPage,
-          text: String(out.text ?? ""),
+          text,
           note: String(out.reason ?? "Highlighted by AI"),
           type: "highlight",
         });
@@ -1018,6 +1043,22 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const handleControlsReady = useCallback((controls: PdfControls) => {
     setPdfControls(controls);
   }, []);
+
+  // Apply any pending highlight when the PDF finishes loading (numPages becomes known)
+  useEffect(() => {
+    if (!pendingHighlightRef.current) return;
+    if (!pdfControls || pdfControls.numPages <= 0) return;
+    // PDF is ready — apply the pending highlight
+    const { text, page } = pendingHighlightRef.current;
+    pendingHighlightRef.current = null;
+    setHighlightText(text);
+    highlightNonceRef.current += 1;
+    setHighlightNonce(highlightNonceRef.current);
+    if (page > 0) {
+      pdfControls.goToPage?.(page);
+      setCurrentPage(page);
+    }
+  }, [pdfControls?.numPages]);
 
   // ---- Context tag management ----
   const addContextTag = useCallback((text: string) => {
