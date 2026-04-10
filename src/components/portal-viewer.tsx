@@ -1941,7 +1941,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           chatPosition === "sidebar"
             ? cn("right-0 top-12 w-[35%] bottom-0 border-l", pd ? "bg-[#1a1f2e] border-white/5" : "bg-slate-50 border-slate-200")
             : chatPosition === "corner"
-              ? cn("right-4 bottom-4 w-96 h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-slate-50 border-slate-200")
+              ? cn("right-2 bottom-4 w-[calc(100vw-1rem)] sm:w-96 max-h-[70vh] sm:h-[500px] rounded-2xl shadow-2xl border z-50", pd ? "bg-[#1a1f2e] border-white/10" : "bg-slate-50 border-slate-200")
               : cn(
                   "left-0 right-0 bottom-0 h-[85vh] rounded-t-2xl overflow-hidden transition-transform duration-300 ease-out",
                   chatOpen ? "translate-y-0" : "translate-y-full",
