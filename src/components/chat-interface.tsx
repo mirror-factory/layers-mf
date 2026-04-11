@@ -3443,7 +3443,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 {v.voiceEnabled && onVoiceToggle && (
                   <button
                     type="button"
-                    onClick={onVoiceToggle}
+                    onClick={() => { console.log("[Voice] Mic button clicked, voiceActive:", voiceActive); onVoiceToggle(); }}
                     className={cn(
                       "p-2 rounded-xl transition-colors",
                       voiceActive
