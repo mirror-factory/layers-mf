@@ -810,7 +810,9 @@ export function PortalPdfViewer({
           const matchRect = matches[0].getBoundingClientRect();
           const containerRect = sc.getBoundingClientRect();
           const relativeTop = matchRect.top - containerRect.top;
-          sc.scrollTop += relativeTop - sc.clientHeight / 3;
+          const newScrollTop = sc.scrollTop + relativeTop - sc.clientHeight / 3;
+          // Set immediately (no smooth) to ensure it takes effect before React re-renders
+          sc.scrollTop = Math.max(0, newScrollTop);
         }
       }
     },
