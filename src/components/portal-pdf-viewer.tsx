@@ -790,27 +790,25 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match — find the actual scrollable ancestor and scroll it
+      // Scroll to first match using getBoundingClientRect (always accurate)
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
 
-        // Find the nearest scrollable ancestor (scrollHeight > clientHeight)
-        let scrollContainer: HTMLElement | null = pdfAreaRef.current;
-        while (scrollContainer) {
-          if (scrollContainer.scrollHeight > scrollContainer.clientHeight + 10) break;
-          scrollContainer = scrollContainer.parentElement;
+        // Find the nearest scrollable ancestor
+        let sc: HTMLElement | null = pdfAreaRef.current;
+        while (sc) {
+          if (sc.scrollHeight > sc.clientHeight + 10) break;
+          sc = sc.parentElement;
         }
 
-        if (scrollContainer) {
-          // Walk offsetParent chain from overlay to scroll container
-          let totalOffset = 0;
-          let el: HTMLElement | null = matches[0];
-          while (el && el !== scrollContainer) {
-            totalOffset += el.offsetTop;
-            el = el.offsetParent as HTMLElement | null;
-          }
-          const target = totalOffset - scrollContainer.clientHeight / 3;
-          scrollContainer.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+        if (sc) {
+          // getBoundingClientRect gives position relative to viewport
+          const matchRect = matches[0].getBoundingClientRect();
+          const containerRect = sc.getBoundingClientRect();
+          // How far the match is below the container's visible top
+          const relativeTop = matchRect.top - containerRect.top;
+          // Scroll so the match is in the upper third
+          sc.scrollTop += relativeTop - sc.clientHeight / 3;
         }
       }
     },
@@ -867,15 +865,14 @@ export function PortalPdfViewer({
         const overlays = pdfAreaRef.current.querySelectorAll(".portal-pdf-highlight-overlay, mark.portal-pdf-highlight");
         if (overlays.length > 0) {
           found = true;
-          // Find scrollable ancestor and scroll to overlay
+          // Find scrollable ancestor and scroll via getBoundingClientRect
           const firstOverlay = overlays[0] as HTMLElement;
           let sc: HTMLElement | null = pdfAreaRef.current;
           while (sc && sc.scrollHeight <= sc.clientHeight + 10) sc = sc.parentElement;
           if (sc) {
-            let totalOffset = 0;
-            let walkEl: HTMLElement | null = firstOverlay;
-            while (walkEl && walkEl !== sc) { totalOffset += walkEl.offsetTop; walkEl = walkEl.offsetParent as HTMLElement | null; }
-            sc.scrollTo({ top: Math.max(0, totalOffset - sc.clientHeight / 3), behavior: "smooth" });
+            const matchRect = firstOverlay.getBoundingClientRect();
+            const containerRect = sc.getBoundingClientRect();
+            sc.scrollTop += matchRect.top - containerRect.top - sc.clientHeight / 3;
           }
           setSearchVisible(true);
         }
