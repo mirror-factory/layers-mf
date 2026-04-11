@@ -61,6 +61,7 @@ export function PortalVoiceMode({
   // Start or restart speech recognition (reuses single instance)
   const startListening = useCallback(() => {
     if (disabled) return;
+    console.log("[Voice] startListening called, disabled:", disabled);
 
     // If already have a recognition instance, just restart it
     if (recognitionRef.current) {
@@ -84,6 +85,7 @@ export function PortalVoiceMode({
     let silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      console.log("[Voice] onresult fired, results:", event.results.length);
       // Barge-in: stop TTS when user starts speaking
       stopTTS();
 
@@ -110,7 +112,7 @@ export function PortalVoiceMode({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error("Speech recognition error:", event.error);
+      console.error("[Voice] Recognition error:", event.error, event.message);
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setIsListening(false);
         return;
@@ -167,8 +169,10 @@ export function PortalVoiceMode({
 
   // Sync external active prop with internal state
   useEffect(() => {
+    console.log("[Voice] active sync:", active, "voiceEnabled:", voiceEnabled);
     if (active === undefined) return;
     if (active && !voiceEnabled) {
+      console.log("[Voice] Starting recognition from active prop");
       setVoiceEnabled(true);
       startListening();
     } else if (!active && voiceEnabled) {
