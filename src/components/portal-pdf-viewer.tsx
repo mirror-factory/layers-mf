@@ -790,24 +790,26 @@ export function PortalPdfViewer({
       setSearchMatches(matches);
       setSearchMatchIndex(0);
 
-      // Scroll to first match using getBoundingClientRect (always accurate)
+      // Scroll to first match
       if (matches.length > 0) {
         matches[0].classList.add("portal-pdf-highlight-active");
 
-        // Find the nearest scrollable ancestor
-        let sc: HTMLElement | null = pdfAreaRef.current;
-        while (sc) {
-          if (sc.scrollHeight > sc.clientHeight + 10) break;
-          sc = sc.parentElement;
+        // Find the scrollable container — try explicit selector first, then walk up
+        let sc: HTMLElement | null = document.querySelector("[data-portal-viewer] .overflow-y-auto") as HTMLElement
+          ?? document.querySelector("[data-portal-viewer] .overflow-auto") as HTMLElement;
+
+        if (!sc) {
+          sc = pdfAreaRef.current;
+          while (sc) {
+            if (sc.scrollHeight > sc.clientHeight + 10) break;
+            sc = sc.parentElement;
+          }
         }
 
         if (sc) {
-          // getBoundingClientRect gives position relative to viewport
           const matchRect = matches[0].getBoundingClientRect();
           const containerRect = sc.getBoundingClientRect();
-          // How far the match is below the container's visible top
           const relativeTop = matchRect.top - containerRect.top;
-          // Scroll so the match is in the upper third
           sc.scrollTop += relativeTop - sc.clientHeight / 3;
         }
       }
