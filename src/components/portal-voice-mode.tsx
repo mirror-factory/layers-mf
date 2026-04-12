@@ -33,19 +33,18 @@ export function PortalVoiceMode({
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenRef = useRef<string>("");
-  const voiceEnabledRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    voiceEnabledRef.current = voiceEnabled;
-  }, [voiceEnabled]);
+  // Single source of truth: use `active` prop if provided, else internal state
+  const [internalActive, setInternalActive] = useState(false);
+  const voiceEnabled = active !== undefined ? active : internalActive;
+  const voiceEnabledRef = useRef(voiceEnabled);
+  voiceEnabledRef.current = voiceEnabled;
 
   // Barge-in: stop TTS audio when user starts speaking
   const stopTTS = useCallback(() => {
@@ -61,7 +60,6 @@ export function PortalVoiceMode({
   // Start or restart speech recognition (reuses single instance)
   const startListening = useCallback(() => {
     if (disabled) return;
-    console.log("[Voice] startListening called, disabled:", disabled);
 
     // If already have a recognition instance, just restart it
     if (recognitionRef.current) {
@@ -85,7 +83,6 @@ export function PortalVoiceMode({
     let silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      console.log("[Voice] onresult fired, results:", event.results.length);
       // Barge-in: stop TTS when user starts speaking
       stopTTS();
 
@@ -112,7 +109,7 @@ export function PortalVoiceMode({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error("[Voice] Recognition error:", event.error, event.message);
+      console.error("Speech recognition error:", event.error);
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setIsListening(false);
         return;
@@ -158,29 +155,25 @@ export function PortalVoiceMode({
   const toggleVoice = useCallback(() => {
     if (voiceEnabled) {
       stopListening();
-      setVoiceEnabled(false);
+      setInternalActive(false);
       onActiveChange?.(false);
     } else {
-      setVoiceEnabled(true);
-      startListening();
+      setInternalActive(true);
       onActiveChange?.(true);
+      // Start listening on next tick after state updates
+      setTimeout(() => startListening(), 50);
     }
   }, [voiceEnabled, startListening, stopListening, onActiveChange]);
 
-  // Sync external active prop with internal state
+  // Start/stop recognition when voiceEnabled changes
   useEffect(() => {
-    console.log("[Voice] active sync:", active, "voiceEnabled:", voiceEnabled);
-    if (active === undefined) return;
-    if (active && !voiceEnabled) {
-      console.log("[Voice] Starting recognition from active prop");
-      setVoiceEnabled(true);
+    if (voiceEnabled) {
       startListening();
-    } else if (!active && voiceEnabled) {
+    } else {
       stopListening();
-      setVoiceEnabled(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [voiceEnabled]);
 
   // Speak AI response via Cartesia TTS API
   useEffect(() => {
