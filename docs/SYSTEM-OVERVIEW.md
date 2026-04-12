@@ -765,16 +765,16 @@ Splash branding, 3-step onboarding, document library as default view, dark/light
 
 ### Testing Gaps
 
+- ~~**Portal chat route** --- no test file for `/api/chat/portal/route.ts`~~ **COVERED (v0.7.1)** --- 50 tests (validation, intent detection, helpers)
+- ~~**Portal tools** --- intent detection system has no test coverage~~ **COVERED (v0.7.1)** --- 26 intent detection tests across 5 categories
 - **Portal components** --- no unit tests for PortalViewer, PortalPdfViewer, PortalVoiceMode, or any portal component
-- **Portal chat route** --- no test file for `/api/chat/portal/route.ts`
 - **ChatInterface** --- no component tests for the main chat UI
-- **AI Elements** --- no tests for the installed AI Elements components
+- **AI Elements** --- no tests for the installed AI Elements components (size props verified correct)
 - **Canvas components** --- no unit tests
 - **Voice/TTS** --- no tests for `/api/tts` or voice mode logic
 - **MCP tools** --- limited testing of MCP connection flow
 - **Skills marketplace** --- no integration tests
 - **Cron jobs** --- no tests for cron routes
-- **Portal tools** --- intent detection system has no test coverage
 
 ### Recommended Testing Strategy
 
