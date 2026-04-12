@@ -359,6 +359,19 @@ body {
   100% { opacity: 0; }
 }
 
+/* Force dark text on white DOCX pages — prevents light-gray inline styles from being invisible */
+.docx-preview-wrapper .docx-wrapper > section.docx {
+  color: #1e293b !important;
+}
+.docx-preview-wrapper .docx-wrapper > section.docx h1,
+.docx-preview-wrapper .docx-wrapper > section.docx h2,
+.docx-preview-wrapper .docx-wrapper > section.docx h3,
+.docx-preview-wrapper .docx-wrapper > section.docx h4,
+.docx-preview-wrapper .docx-wrapper > section.docx h5,
+.docx-preview-wrapper .docx-wrapper > section.docx h6 {
+  color: #0f172a !important;
+}
+
 .docx-preview-wrapper table {
   border-collapse: collapse;
 }
@@ -366,4 +379,5 @@ body {
 .docx-preview-wrapper th {
   border: 1px solid #d1d5db;
   padding: 6px 10px;
+  color: #1e293b !important;
 }

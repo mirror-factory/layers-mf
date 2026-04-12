@@ -1084,8 +1084,8 @@ export async function POST(request: NextRequest) {
 
   const modelMessages = await convertToModelMessages(uiMessages);
 
-  // Default to gemini 3.1 flash-lite for cheaper testing
-  const modelId = portal.model ?? "google/gemini-3.1-flash-lite";
+  // Default to gemini 3.0 flash for production (better tool selection than flash-lite)
+  const modelId = portal.model ?? "google/gemini-3.0-flash";
 
   const agent = new ToolLoopAgent({
     model: gateway(modelId),

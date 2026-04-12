@@ -800,23 +800,17 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           }
         }
 
-        const applyHighlight = () => {
+        // Store as pending — the useEffect watching pdfControls?.numPages
+        // will apply it once the PDF is loaded and ready.
+        pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
+
+        // If PDF is already loaded, apply immediately
+        if (pdfControls && pdfControls.numPages > 0) {
           setHighlightText(text);
           highlightNonceRef.current += 1;
           setHighlightNonce(highlightNonceRef.current);
-        };
-
-        // Always defer — give the doc time to load/switch
-        pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
-        const retryTimers = [500, 1500, 3000, 5000, 8000, 12000];
-        retryTimers.forEach((delay) => {
-          setTimeout(() => {
-            if (pendingHighlightRef.current && pendingHighlightRef.current.text === text && pdfControls && pdfControls.numPages > 0) {
-              applyHighlight();
-              pendingHighlightRef.current = null;
-            }
-          }, delay);
-        });
+          pendingHighlightRef.current = null;
+        }
 
         // Note: annotation omitted — the yellow highlight on the text is sufficient.
         // Adding an annotation here used currentPage (often wrong page) which was confusing.
@@ -1010,6 +1004,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const rawPdfUrl = activeDoc?.pdf_path || portal.pdf_url;
   // If PDF loading failed or no URL, fall back to text rendering (pass null to viewer)
   const activePdfUrl = pdfFailed ? null : rawPdfUrl;
+
+  // Reset pdfControls when switching documents so stale references
+  // don't cause race conditions with pending highlights
+  useEffect(() => {
+    setPdfControls(null);
+  }, [activeDocIndex]);
 
   // Feature 1: TOC — rebuild when switching documents
   const activeDocContent = useMemo(() => {

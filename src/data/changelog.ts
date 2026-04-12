@@ -11,6 +11,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.1",
+    date: "2026-04-12",
+    title: "Portal Polish: Race Condition Fix, Model Upgrade & Dark Mode",
+    highlights: [
+      "Fixed highlight-after-doc-switch race condition — highlights now reliably appear after switching documents",
+      "Upgraded portal AI model from Gemini 3.1 Flash Lite to Gemini 3.0 Flash for better tool selection",
+      "Fixed DOCX dark mode text visibility — forced dark text on white pages to prevent invisible headers",
+    ],
+    changes: [
+      { type: "fix", description: "Highlight race condition: reset pdfControls on document switch and rely on useEffect guard instead of stale setTimeout closures" },
+      { type: "fix", description: "DOCX dark mode: force dark text color on white DOCX pages so light-gray inline styles are always readable" },
+      { type: "feat", description: "Upgraded portal AI model from gemini-3.1-flash-lite to gemini-3.0-flash for improved tool selection accuracy" },
+      { type: "refactor", description: "Simplified highlight application: immediate apply when PDF loaded, deferred via useEffect when not" },
+    ],
+  },
+  {
     version: "0.7.0",
     date: "2026-04-10",
     title: "Portal Experience: Voice Mode, Document Library & 20+ AI Tools",
