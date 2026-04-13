@@ -11,6 +11,38 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.8.0",
+    date: "2026-04-13",
+    title: "Portal Analytics, 105 Tests & Developer Documentation",
+    highlights: [
+      "Portal analytics: track viewer behavior (pages viewed, docs opened, messages, tool usage, voice) with sender dashboard",
+      "105 new tests covering portal API route, 4 component test suites, analytics tracker, and E2E across 5 viewports",
+      "Comprehensive portal documentation: theming guide, 20-tool reference, developer guide, and 988-line system overview",
+    ],
+    changes: [
+      // Analytics
+      { type: "feat", description: "Portal analytics tracker: client-side event collection with sendBeacon, 30s auto-flush, session management" },
+      { type: "feat", description: "Portal analytics API: POST to record events, GET to retrieve aggregated session summaries" },
+      { type: "feat", description: "Portal analytics dashboard component: stat cards, session timeline, tool usage breakdown" },
+      { type: "feat", description: "Supabase migration for portal_analytics table with indexes and RLS policies" },
+      { type: "feat", description: "Portal viewer integration: auto-tracks page views, doc opens, voice activation, tool outputs" },
+
+      // Tests
+      { type: "feat", description: "Portal chat route tests: 50 tests covering validation, model selection, intent detection, helper functions" },
+      { type: "feat", description: "PortalSplash tests: 8 tests for branding, timing, fade lifecycle, logo rendering" },
+      { type: "feat", description: "PortalOnboarding tests: 9 tests for step progression, dismissal, sessionStorage persistence" },
+      { type: "feat", description: "PortalAnnotationOverlay tests: 10 tests for visibility, expansion, grouping, type rendering" },
+      { type: "feat", description: "PortalVoiceMode tests: 15 tests for state management, toggle, inline mode, brand color" },
+      { type: "feat", description: "Portal analytics tracker tests: 13 tests for session IDs, event tracking, auto-flush, error handling" },
+      { type: "feat", description: "E2E portal tests: added dark/light mode toggle and mobile landscape viewport tests" },
+
+      // Documentation
+      { type: "docs", description: "Portal guide: theming (brand colors, ChatVariant, splash), all 20 tools with schemas, developer reference" },
+      { type: "docs", description: "System overview: 988-line comprehensive architecture map, updated for v0.7.1 fixes and test coverage" },
+      { type: "docs", description: "Handoff document: complete session summary from April 9-12 portal build" },
+    ],
+  },
+  {
     version: "0.7.1",
     date: "2026-04-12",
     title: "Portal Polish: Race Condition Fix, Model Upgrade & Dark Mode",

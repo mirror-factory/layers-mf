@@ -275,3 +275,69 @@ test.describe("Portal — desktop sidebar mode (1440x900)", () => {
     await expect(floatingBarText).not.toBeVisible({ timeout: 3000 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test 5: Dark/light mode toggle
+// ---------------------------------------------------------------------------
+
+test.describe("Portal — theme toggle (desktop)", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("toggles between dark and light mode", async ({ page }) => {
+    await gotoPortal(page);
+
+    await expect(page.locator("header h1")).toBeVisible({ timeout: 10000 });
+
+    // Portal defaults to dark mode — html should have "dark" class
+    const hasDarkClass = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    );
+    expect(hasDarkClass).toBe(true);
+
+    // Click the theme toggle (Sun icon in dark mode)
+    const themeToggle = page.locator(
+      'button[title="Switch to light mode"]'
+    );
+    await expect(themeToggle).toBeVisible({ timeout: 5000 });
+    await themeToggle.click();
+
+    // Now should be light mode
+    const isLight = await page.evaluate(() =>
+      !document.documentElement.classList.contains("dark")
+    );
+    expect(isLight).toBe(true);
+
+    // Toggle back
+    const darkToggle = page.locator(
+      'button[title="Switch to dark mode"]'
+    );
+    await expect(darkToggle).toBeVisible({ timeout: 5000 });
+    await darkToggle.click();
+
+    const isDarkAgain = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    );
+    expect(isDarkAgain).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 6: Mobile landscape
+// ---------------------------------------------------------------------------
+
+test.describe("Portal — mobile landscape (iPhone 14 Pro)", () => {
+  test.use({ viewport: { width: 844, height: 390 } });
+
+  test("renders in landscape with accessible header and chat", async ({
+    page,
+  }) => {
+    await gotoPortal(page);
+
+    const docHeading = page.locator("header h1");
+    await expect(docHeading).toBeVisible({ timeout: 10000 });
+
+    // Chat bar should be present
+    const floatingBar = page.getByText("Ask about this document...");
+    await expect(floatingBar).toBeVisible({ timeout: 8000 });
+  });
+});
