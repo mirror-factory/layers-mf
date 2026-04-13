@@ -63,6 +63,7 @@ import { AnnotationOverlay, type Annotation } from "@/components/portal-annotati
 import { PortalWelcomeModal } from "@/components/portal-welcome-modal";
 import { PortalVoiceMode } from "@/components/portal-voice-mode";
 import { PortalOnboarding } from "@/components/portal-onboarding";
+import { createPortalTracker, type PortalTracker } from "@/lib/portal-analytics";
 
 // ---------------------------------------------------------------------------
 // Context Tag type
@@ -491,7 +492,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const [chatKey, setChatKey] = useState(0);
   const [lastAIResponse, setLastAIResponse] = useState<string>("");
   const [voiceActive, setVoiceActive] = useState(false);
-  const toggleVoiceMode = useCallback(() => setVoiceActive(prev => !prev), []);
+  const toggleVoiceMode = useCallback(() => {
+    setVoiceActive(prev => {
+      if (!prev) trackerRef.current?.trackVoiceActivated();
+      return !prev;
+    });
+  }, []);
   const [showToolsInfo, setShowToolsInfo] = useState(false);
   const [twoColumnMode, setTwoColumnMode] = useState(false);
   // Force single column when sidebar is docked
@@ -536,6 +542,14 @@ export function PortalViewer({ portal }: PortalViewerProps) {
     questionsAsked: 0,
     sessionStart: Date.now(),
   });
+
+  // Portal analytics tracker — sends events to /api/portals/analytics
+  const trackerRef = useRef<PortalTracker | null>(null);
+  useEffect(() => {
+    const tracker = createPortalTracker(portal.share_token);
+    trackerRef.current = tracker;
+    return () => tracker.destroy();
+  }, [portal.share_token]);
 
   // View mode and Library Previews
   const [activeView, setActiveView] = useState<"document" | "library-doc" | "library">("library");
@@ -761,6 +775,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   // Handle tool outputs from ChatInterface (annotations, navigation, highlights)
   const handleToolOutput = useCallback(
     (toolName: string, output: unknown) => {
+      trackerRef.current?.trackToolUse(toolName);
       const out = output as Record<string, unknown>;
       if (toolName === "add_annotation" && out.action === "add_annotation") {
         addAnnotation({
@@ -985,6 +1000,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       ...prev,
       pagesViewed: new Set([...prev.pagesViewed, currentPage]),
     }));
+    trackerRef.current?.trackPageView(currentPage);
   }, [currentPage]);
 
   // Track docs opened for analytics
@@ -997,6 +1013,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         ...prev,
         docsOpened: new Set([...prev.docsOpened, docTitle]),
       }));
+      trackerRef.current?.trackDocOpen(docTitle);
     }
   }, [activeView, activeDocIndex, activeLibraryDocIndex]);
 
