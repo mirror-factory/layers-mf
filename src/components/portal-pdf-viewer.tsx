@@ -349,7 +349,9 @@ function PdfDocumentInner({
   const { Document, Page, pdfjs } = require("react-pdf");
   const [numPages, setNumPages] = useState<number>(0);
   const [ready, setReady] = useState(false);
-  const [pageHeight, setPageHeight] = useState(1000); // estimated height per page
+  // Estimate page height from width using standard US Letter aspect ratio (8.5:11 = 1:1.294)
+  // This prevents CLS by reserving close to the actual space before render
+  const [pageHeight, setPageHeight] = useState(() => Math.round(pageWidth * 1.294));
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const programmaticScrollRef = useRef(false);
 
@@ -388,6 +390,14 @@ function PdfDocumentInner({
     const end = Math.min(numPages, currentPage + PAGE_BUFFER);
     return { start, end };
   }, [currentPage, numPages]);
+
+  // Re-estimate page height when pageWidth changes (before real render)
+  useEffect(() => {
+    const estimated = Math.round(pageWidth * 1.294);
+    // Only update if no real measurement yet (within 5% of estimate)
+    if (Math.abs(pageHeight - estimated) / estimated > 0.3) return;
+    setPageHeight(estimated);
+  }, [pageWidth]);
 
   // Update estimated page height when first page renders
   const handlePageRenderSuccess = useCallback(() => {
