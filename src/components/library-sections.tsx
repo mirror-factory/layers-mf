@@ -350,30 +350,19 @@ export function LibrarySections({ onItemClick }: LibrarySectionsProps) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="my-items">
-          <SectionContent
-            tab="my-items"
-            search={search}
-            sourceFilter={sourceFilter}
-            onItemClick={onItemClick}
-          />
-        </TabsContent>
-        <TabsContent value="shared">
-          <SectionContent
-            tab="shared"
-            search={search}
-            sourceFilter={sourceFilter}
-            onItemClick={onItemClick}
-          />
-        </TabsContent>
-        <TabsContent value="org">
-          <SectionContent
-            tab="org"
-            search={search}
-            sourceFilter={sourceFilter}
-            onItemClick={onItemClick}
-          />
-        </TabsContent>
+        {/* Render each tab's content individually so Radix hides inactive ones */}
+        {(["my-items", "shared", "org"] as const).map((tab) => (
+          <TabsContent key={tab} value={tab}>
+            {activeTab === tab && (
+              <SectionContent
+                tab={tab}
+                search={search}
+                sourceFilter={sourceFilter}
+                onItemClick={onItemClick}
+              />
+            )}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
