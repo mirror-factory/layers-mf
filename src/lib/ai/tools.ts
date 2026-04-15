@@ -575,6 +575,21 @@ export function createTools(supabase: AnySupabase, orgId: string, userId?: strin
           const savedArtifactId = "artifactId" in artifactResult ? artifactResult.artifactId : null;
           _log(`Artifact saved: ${savedArtifactId}`);
 
+          if (savedArtifactId && userId) {
+            logArtifactInteraction({
+              artifactId: savedArtifactId,
+              userId,
+              type: "created",
+              metadata: { title: input.description ?? `Project: ${allFiles.length} files`, type: "sandbox", language: "javascript" },
+            });
+            logArtifactInteraction({
+              artifactId: savedArtifactId,
+              userId,
+              type: "sandbox_executed",
+              metadata: { exit_code: result.exitCode },
+            });
+          }
+
           return {
             stdout: result.stdout.slice(0, 4000),
             stderr: result.stderr.slice(0, 1000),
@@ -965,6 +980,20 @@ Be strict but fair. Return a check for every single rule listed above.`,
 
         if (artErr || !artifact) return { error: artErr?.message ?? "Artifact not found" };
 
+        // Fetch recent interactions for provenance
+        const { data: interactions } = await sb
+          .from("artifact_interactions")
+          .select("user_id, interaction_type, chat_context, created_at, version_number, metadata")
+          .eq("artifact_id", artifactId)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        const provenance = interactions?.map((i: { interaction_type: string; created_at: string; chat_context: string | null }) => {
+          const time = new Date(i.created_at).toLocaleDateString();
+          const context = i.chat_context ? ` — "${i.chat_context}"` : "";
+          return `${i.interaction_type} (${time})${context}`;
+        }).join("\n") || "No interaction history";
+
         // Fetch files for current version
         const { data: files } = await sb
           .from("artifact_files")
@@ -1022,6 +1051,9 @@ Be strict but fair. Return a check for every single rule listed above.`,
           currentVersion: artifact.current_version,
           versionCount: versionCount ?? 0,
           description: artifact.description_oneliner ?? undefined,
+
+          // Provenance
+          interaction_history: provenance,
         };
       },
     }),
@@ -1325,6 +1357,15 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           .eq("id", artifactId)
           .eq("org_id", orgId);
         if (error) return { error: "Failed to delete artifact" };
+
+        if (userId) {
+          logArtifactInteraction({
+            artifactId,
+            userId,
+            type: "deleted",
+          });
+        }
+
         return { deleted: true, artifactId, message: "Artifact deleted." };
       },
     }),
@@ -2394,6 +2435,183 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           };
         } catch (err) {
           return { error: err instanceof Error ? err.message : "Failed to list servers" };
+        }
+      },
+    }),
+
+    // === Search chat history tool ===
+    search_chat_history: tool({
+      description:
+        "Search through past chat messages for the user's org. " +
+        "Use when the user asks to find a previous conversation, recall something discussed, " +
+        "or search their chat history.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query to match against message content"),
+        limit: z.number().min(1).max(50).optional().describe("Maximum results to return, default 10"),
+      }),
+      execute: async ({ query, limit }: { query: string; limit?: number }) => {
+        try {
+          const maxResults = limit ?? 10;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sb = supabase as any;
+
+          // Search chat_messages with text matching on content, filtered to the org's conversations
+          const { data: conversations } = await sb
+            .from("conversations")
+            .select("id, title")
+            .eq("org_id", orgId);
+
+          if (!conversations || conversations.length === 0) {
+            return { results: [], message: "No conversations found for this org." };
+          }
+
+          const conversationIds = conversations.map((c: { id: string }) => c.id);
+          const convMap = new Map<string, string>(
+            conversations.map((c: { id: string; title: string | null }) => [c.id, c.title ?? "Untitled"])
+          );
+
+          // Search messages with ilike text matching
+          const { data: messages, error } = await sb
+            .from("chat_messages")
+            .select("id, conversation_id, role, content, created_at")
+            .in("conversation_id", conversationIds)
+            .ilike("content", `%${query}%`)
+            .order("created_at", { ascending: false })
+            .limit(maxResults);
+
+          if (error) {
+            return { error: error.message };
+          }
+
+          // Extract text content from message parts
+          const results = (messages ?? []).map((m: { id: string; conversation_id: string; role: string; content: string | object; created_at: string }) => {
+            let messageText = "";
+            if (typeof m.content === "string") {
+              messageText = m.content;
+            } else if (Array.isArray(m.content)) {
+              // content is an array of parts — extract text parts
+              messageText = (m.content as { type: string; text?: string }[])
+                .filter((p) => p.type === "text" && p.text)
+                .map((p) => p.text)
+                .join("\n");
+            }
+
+            return {
+              conversation_id: m.conversation_id,
+              conversation_title: convMap.get(m.conversation_id) ?? "Untitled",
+              message_text: messageText.slice(0, 500),
+              role: m.role,
+              created_at: m.created_at,
+            };
+          });
+
+          return { results, total: results.length };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Search failed" };
+        }
+      },
+    }),
+
+    // === Branch conversation tool ===
+    branch_conversation: tool({
+      description:
+        "Create a new conversation by branching from an existing one. " +
+        "Copies messages up to a specified point into a new conversation. " +
+        "Use when the user wants to fork a conversation, explore a different direction, " +
+        "or create a variant of an existing chat.",
+      inputSchema: z.object({
+        source_conversation_id: z.string().describe("The ID of the conversation to branch from"),
+        from_message_index: z.number().optional().describe(
+          "Copy messages up to this index (0-based). If omitted, copies all messages."
+        ),
+        new_title: z.string().optional().describe("Title for the new conversation. Defaults to 'Branch of <original title>'"),
+      }),
+      execute: async ({
+        source_conversation_id,
+        from_message_index,
+        new_title,
+      }: {
+        source_conversation_id: string;
+        from_message_index?: number;
+        new_title?: string;
+      }) => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sb = supabase as any;
+
+          // Fetch the source conversation
+          const { data: sourceConv, error: convError } = await sb
+            .from("conversations")
+            .select("id, title, org_id")
+            .eq("id", source_conversation_id)
+            .eq("org_id", orgId)
+            .single();
+
+          if (convError || !sourceConv) {
+            return { error: "Source conversation not found or not accessible" };
+          }
+
+          // Fetch messages from the source conversation, ordered by creation time
+          const { data: sourceMessages, error: msgError } = await sb
+            .from("chat_messages")
+            .select("role, content, created_at")
+            .eq("conversation_id", source_conversation_id)
+            .order("created_at", { ascending: true });
+
+          if (msgError) {
+            return { error: msgError.message };
+          }
+
+          const allMessages = sourceMessages ?? [];
+          const messagesToCopy =
+            from_message_index !== undefined
+              ? allMessages.slice(0, from_message_index + 1)
+              : allMessages;
+
+          // Create the new conversation
+          const branchTitle =
+            new_title ?? `Branch of ${sourceConv.title ?? "Untitled"}`;
+
+          const { data: newConv, error: createError } = await sb
+            .from("conversations")
+            .insert({
+              org_id: orgId,
+              title: branchTitle,
+              created_by: userId ?? null,
+              initiated_by: "branch",
+            })
+            .select("id, title")
+            .single();
+
+          if (createError || !newConv) {
+            return { error: createError?.message ?? "Failed to create branch conversation" };
+          }
+
+          // Copy messages into the new conversation
+          if (messagesToCopy.length > 0) {
+            const rows = messagesToCopy.map((m: { role: string; content: string | object }) => ({
+              conversation_id: newConv.id,
+              role: m.role,
+              content: m.content,
+            }));
+
+            const { error: insertError } = await sb
+              .from("chat_messages")
+              .insert(rows);
+
+            if (insertError) {
+              return { error: insertError.message };
+            }
+          }
+
+          return {
+            conversation_id: newConv.id,
+            title: newConv.title,
+            message_count: messagesToCopy.length,
+            url: `/chat/${newConv.id}`,
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Branch failed" };
         }
       },
     }),
