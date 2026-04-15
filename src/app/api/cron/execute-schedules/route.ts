@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { calculateNextCron } from "@/lib/cron";
-import { generateText, tool, stepCountIs } from "ai";
+import { ToolLoopAgent, tool, stepCountIs } from "ai";
 import { gateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { searchContext, searchContextChunks } from "@/lib/db/search";
+import { createTools } from "@/lib/ai/tools";
+
+// TODO: When @workflow/ai DurableAgent is GA, replace ToolLoopAgent with DurableAgent
+// for 'full' tier schedules to remove the 60s timeout limit.
+// See docs/architecture-plan-v2.md section 1.
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const DEFAULT_SCHEDULE_MODEL = "google/gemini-3-flash";
+
+export type ToolTier = "minimal" | "standard" | "full";
 
 const SYSTEM_PROMPT = `You are Granger, an AI assistant running a scheduled background task.
 You have access to a knowledge base via search_context. Use it when the user's prompt requires looking up information.
@@ -20,7 +27,7 @@ Do NOT use markdown headings. Use plain text with bullet points when listing ite
  * Build a minimal tool set for scheduled runs.
  * Only search_context (no sandbox, no integrations -- too expensive for background).
  */
-function createScheduleTools(supabase: ReturnType<typeof createAdminClient>, orgId: string) {
+export function createScheduleTools(supabase: ReturnType<typeof createAdminClient>, orgId: string) {
   return {
     search_context: tool({
       description: "Search the organization's knowledge base for documents, meetings, notes, and other context.",
@@ -69,6 +76,62 @@ function createScheduleTools(supabase: ReturnType<typeof createAdminClient>, org
       },
     }),
   };
+}
+
+/** Step limits per tier */
+const STEP_LIMITS: Record<ToolTier, number> = {
+  minimal: 5,
+  standard: 10,
+  full: 20,
+};
+
+/**
+ * Build tool sets based on tier.
+ *
+ * - minimal: search_context only (current behavior, cheapest)
+ * - standard: search + artifact + web tools (mid-range)
+ * - full: all 25+ tools from createTools (sandbox, MCP, etc.)
+ */
+export function createScheduleToolsByTier(
+  tier: ToolTier,
+  supabase: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  userId: string,
+) {
+  // Minimal: just search (current behavior)
+  if (tier === "minimal") {
+    return createScheduleTools(supabase, orgId);
+  }
+
+  // Full: everything from the main tool factory
+  if (tier === "full") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return createTools(supabase as any, orgId, userId);
+  }
+
+  // Standard: search + artifacts + web (mid-range)
+  const baseTools = createScheduleTools(supabase, orgId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fullTools = createTools(supabase as any, orgId, userId);
+
+  // Cherry-pick standard-tier tools: artifact management + web access + code tools
+  const standardToolNames = [
+    "artifact_list",
+    "artifact_get",
+    "write_code",
+    "edit_code",
+    "web_browse",
+    "web_search",
+  ] as const;
+
+  const standardExtras: Record<string, unknown> = {};
+  for (const name of standardToolNames) {
+    if (name in fullTools) {
+      standardExtras[name] = fullTools[name as keyof typeof fullTools];
+    }
+  }
+
+  return { ...baseTools, ...standardExtras };
 }
 
 /**
@@ -172,17 +235,19 @@ export async function GET(request: NextRequest) {
         channel: "schedule",
       });
 
-      // 4. Run AI with generateText
-      const tools = createScheduleTools(supabase, orgId);
+      // 4. Run AI with ToolLoopAgent (supports multi-step tool use)
+      const tier: ToolTier = (schedule.tool_tier as ToolTier) || "minimal";
+      const tools = createScheduleToolsByTier(tier, supabase, orgId, userId);
       const scheduleModel = (schedule.payload?.model as string) ?? DEFAULT_SCHEDULE_MODEL;
 
-      const { text } = await generateText({
+      const agent = new ToolLoopAgent({
         model: gateway(scheduleModel),
-        system: SYSTEM_PROMPT,
-        prompt,
+        instructions: SYSTEM_PROMPT,
         tools,
-        stopWhen: stepCountIs(5),
+        stopWhen: stepCountIs(STEP_LIMITS[tier]),
       });
+      const result = await agent.generate({ prompt });
+      const text = result.text;
 
       const responseText = text || "Schedule executed but produced no output.";
 

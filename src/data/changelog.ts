@@ -11,6 +11,23 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.8.1",
+    date: "2026-04-15",
+    title: "Sharing API, Chat History Search & Conversation Branching",
+    highlights: [
+      "Sharing API now supports the content_shares table with resource_type, scope, and granular permissions (view/edit/admin)",
+      "New search_chat_history tool lets the AI search through past conversations by text matching",
+      "New branch_conversation tool creates conversation forks by copying messages to a new thread",
+    ],
+    changes: [
+      { type: "feat", description: "Sharing API: added resource share schema supporting artifact, conversation, context_item, and collection resource types with user/org scoping" },
+      { type: "feat", description: "Sharing [id] route: added org_members check and expanded permission levels to include view, edit, and admin" },
+      { type: "feat", description: "search_chat_history tool: search chat_messages by text within the user's org, returns conversation context and message snippets" },
+      { type: "feat", description: "branch_conversation tool: fork conversations by copying messages up to a specified index into a new conversation with 'branch' origin" },
+      { type: "feat", description: "Sharing API tests: 7 tests covering auth, share creation, field validation, scope rules, and self-sharing prevention" },
+    ],
+  },
+  {
     version: "0.8.0",
     date: "2026-04-13",
     title: "Portal Analytics, 105 Tests & Developer Documentation",
