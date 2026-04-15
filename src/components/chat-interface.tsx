@@ -3293,6 +3293,29 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     }
                   }}
                 />
+                <MentionPicker
+                  open={mentionOpen}
+                  onClose={() => setMentionOpen(false)}
+                  onSelectUser={(user) => {
+                    const atIdx = input.lastIndexOf("@");
+                    if (atIdx >= 0) {
+                      setInput(input.slice(0, atIdx) + `@${user.name} `);
+                    }
+                    setMentionOpen(false);
+                    textareaRef.current?.focus();
+                  }}
+                  onSelectItem={(item) => {
+                    const atIdx = input.lastIndexOf("@");
+                    if (atIdx >= 0) {
+                      setInput(input.slice(0, atIdx) + `@[${item.title}] `);
+                    }
+                    setMentionOpen(false);
+                    textareaRef.current?.focus();
+                  }}
+                  query={mentionQuery}
+                  orgId={conversationId ?? ""}
+                  position={{ top: -320, left: 0 }}
+                />
 
                 {/* Right-side icon buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
@@ -3414,6 +3437,14 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     >
                       <BarChart3 className="h-4 w-4" />
                     </Button>
+
+                    <button
+                      onClick={() => setParticipantsOpen(true)}
+                      className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                      title="Participants"
+                    >
+                      <Users className="h-4 w-4" />
+                    </button>
 
                     {/* Settings dropdown — model selector + visual level */}
                     <DropdownMenu>
@@ -4328,6 +4359,13 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
           )}
         </>
       ) : null}
+      <ChatParticipantsModal
+        open={participantsOpen}
+        onClose={() => setParticipantsOpen(false)}
+        conversationId={conversationId ?? ""}
+        currentUserId=""
+        isOwner={true}
+      />
     </div>
   );
 }
