@@ -22,14 +22,14 @@ export async function embedConversationIfReady(
   // Check if already embedded recently (avoid re-embedding on every message)
   const { data: existing } = await supabase
     .from("context_items")
-    .select("id, updated_at")
+    .select("id, processed_at")
     .eq("source_type", "conversation")
     .eq("source_id", conversationId)
     .single();
 
-  // Skip if updated in last 30 minutes
-  if (existing?.updated_at) {
-    const lastUpdate = new Date(existing.updated_at).getTime();
+  // Skip if processed in last 30 minutes
+  if (existing?.processed_at) {
+    const lastUpdate = new Date(existing.processed_at).getTime();
     if (Date.now() - lastUpdate < 30 * 60 * 1000) return;
   }
 
@@ -46,12 +46,13 @@ export async function embedConversationIfReady(
   // Build transcript
   const transcript = messages
     .map((m) => {
-      const parts = Array.isArray(m.content)
-        ? m.content
-            .filter((p: { type: string }) => p.type === "text")
-            .map((p: { text: string }) => p.text)
+      const content = m.content as unknown;
+      const parts = Array.isArray(content)
+        ? (content as { type: string; text?: string }[])
+            .filter((p) => p.type === "text")
+            .map((p) => p.text ?? "")
             .join("\n")
-        : String(m.content);
+        : String(content);
       return `${m.role === "user" ? "User" : "Assistant"}: ${parts}`;
     })
     .join("\n\n");
@@ -71,17 +72,20 @@ export async function embedConversationIfReady(
 
   // Store in context_items using select-then-insert/update pattern
   // (partial unique index on (org_id, source_type, source_id) WHERE source_id IS NOT NULL makes upsert unreliable)
+  const now = new Date().toISOString();
+  const sourceMetadata = {
+    message_count: count,
+    last_embedded: now,
+  };
+
   if (existing) {
     await supabase
       .from("context_items")
       .update({
         title: conv?.title || "Untitled conversation",
         raw_content: summary,
-        metadata: {
-          message_count: count,
-          last_embedded: new Date().toISOString(),
-        },
-        updated_at: new Date().toISOString(),
+        source_metadata: sourceMetadata,
+        processed_at: now,
       })
       .eq("id", existing.id);
   } else {
@@ -89,12 +93,11 @@ export async function embedConversationIfReady(
       org_id: orgId,
       source_type: "conversation",
       source_id: conversationId,
+      content_type: "document",
       title: conv?.title || "Untitled conversation",
       raw_content: summary,
-      metadata: {
-        message_count: count,
-        last_embedded: new Date().toISOString(),
-      },
+      source_metadata: sourceMetadata,
+      status: "ready",
     });
   }
 }

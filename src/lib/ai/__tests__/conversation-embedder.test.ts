@@ -23,9 +23,8 @@ vi.mock("@/lib/ai/config", () => ({
 
 // Mock supabase admin client
 const mockInsert = vi.fn().mockResolvedValue({ data: null, error: null });
-const mockUpdate = vi.fn().mockReturnValue({
-  eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-});
+const mockUpdateEq = vi.fn().mockResolvedValue({ data: null, error: null });
+const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
 const mockSelectCount = vi.fn();
 const mockSelectExisting = vi.fn();
 const mockSelectMessages = vi.fn();
@@ -97,6 +96,9 @@ import { embedConversationIfReady } from "../conversation-embedder";
 beforeEach(() => {
   vi.clearAllMocks();
 
+  // Re-wire mockUpdate after clearAllMocks
+  mockUpdate.mockReturnValue({ eq: mockUpdateEq });
+
   // Default: no existing context_items row
   mockSelectExisting.mockResolvedValue({ data: null, error: null });
   // Default: conversation title
@@ -131,11 +133,11 @@ describe("embedConversationIfReady", () => {
 
   it("skips when recently embedded (< 30 minutes ago)", async () => {
     mockSelectCount.mockReturnValue({ count: 25, error: null });
-    // Existing row updated 10 minutes ago
+    // Existing row processed 10 minutes ago
     mockSelectExisting.mockResolvedValue({
       data: {
         id: "ci-1",
-        updated_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        processed_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
       },
       error: null,
     });
@@ -166,19 +168,21 @@ describe("embedConversationIfReady", () => {
     expect(inserted.org_id).toBe("org-1");
     expect(inserted.source_type).toBe("conversation");
     expect(inserted.source_id).toBe("conv-4");
+    expect(inserted.content_type).toBe("document");
     expect(inserted.title).toBe("Test Conversation");
     expect(inserted.raw_content).toBe("This is a summary of the conversation.");
-    expect(inserted.metadata.message_count).toBe(30);
-    expect(inserted.metadata.last_embedded).toBeDefined();
+    expect(inserted.source_metadata.message_count).toBe(30);
+    expect(inserted.source_metadata.last_embedded).toBeDefined();
+    expect(inserted.status).toBe("ready");
   });
 
   it("updates existing context_items row on subsequent embeds", async () => {
     mockSelectCount.mockReturnValue({ count: 40, error: null });
-    // Existing row updated 45 minutes ago (past the 30-min threshold)
+    // Existing row processed 45 minutes ago (past the 30-min threshold)
     mockSelectExisting.mockResolvedValue({
       data: {
         id: "ci-existing",
-        updated_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+        processed_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
       },
       error: null,
     });
@@ -200,9 +204,12 @@ describe("embedConversationIfReady", () => {
     const updated = mockUpdate.mock.calls[0][0];
     expect(updated.title).toBe("Test Conversation");
     expect(updated.raw_content).toBe("This is a summary of the conversation.");
-    expect(updated.metadata.message_count).toBe(40);
-    expect(updated.metadata.last_embedded).toBeDefined();
-    expect(updated.updated_at).toBeDefined();
+    expect(updated.source_metadata.message_count).toBe(40);
+    expect(updated.source_metadata.last_embedded).toBeDefined();
+    expect(updated.processed_at).toBeDefined();
+
+    // Should target the existing row by id
+    expect(mockUpdateEq).toHaveBeenCalledWith("id", "ci-existing");
   });
 
   it("handles array content parts (filters to text only)", async () => {
