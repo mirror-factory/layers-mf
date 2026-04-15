@@ -5,18 +5,27 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = { from: (table: string) => any };
 
-async function getAuthenticatedUser() {
+async function getAuthenticatedUserAndOrg() {
   const supabase = await createClient();
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
   if (error || !user) return null;
-  return user;
+
+  const { data: member } = await supabase
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!member) return null;
+
+  return { user, orgId: member.org_id };
 }
 
 const patchSchema = z.object({
-  permission: z.enum(["viewer", "editor", "owner"]),
+  permission: z.enum(["viewer", "editor", "owner", "view", "edit", "admin"]),
 });
 
 // --- DELETE: remove a content share by id (only if shared_by = current user) ---
@@ -25,8 +34,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAuthenticatedUser();
-  if (!user) return new Response("Unauthorized", { status: 401 });
+  const auth = await getAuthenticatedUserAndOrg();
+  if (!auth) return new Response("Unauthorized", { status: 401 });
+  const { user } = auth;
 
   const { id } = await params;
   const adminDb = createAdminClient() as unknown as AnyDb;
@@ -64,8 +74,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAuthenticatedUser();
-  if (!user) return new Response("Unauthorized", { status: 401 });
+  const auth = await getAuthenticatedUserAndOrg();
+  if (!auth) return new Response("Unauthorized", { status: 401 });
+  const { user } = auth;
 
   const { id } = await params;
   const body = await request.json();

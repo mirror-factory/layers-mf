@@ -43,6 +43,15 @@ const contentShareSchema = z.object({
   permission: z.enum(["viewer", "editor", "owner"]).default("viewer"),
 });
 
+// New content_shares table schema (from 20260415 migration)
+const resourceShareSchema = z.object({
+  resource_type: z.enum(["artifact", "conversation", "context_item", "collection"]),
+  resource_id: z.string().uuid(),
+  shared_with_user_id: z.string().uuid().optional().nullable(),
+  scope: z.enum(["user", "org"]),
+  permission: z.enum(["view", "edit", "admin"]),
+});
+
 const deleteSchema = z.object({
   type: z.enum(["conversation", "context", "skill"]),
   itemId: z.string().uuid(),
@@ -418,6 +427,45 @@ export async function POST(request: NextRequest) {
     })();
 
     return NextResponse.json({ share: data }, { status: 201 });
+  }
+
+  // Try resource share schema (content_shares table from 20260415 migration)
+  const resourceParsed = resourceShareSchema.safeParse(body);
+  if (resourceParsed.success) {
+    const { resource_type, resource_id, shared_with_user_id, scope, permission } = resourceParsed.data;
+
+    if (shared_with_user_id && shared_with_user_id === user.id) {
+      return NextResponse.json({ error: "Cannot share with yourself" }, { status: 400 });
+    }
+
+    if (scope === "user" && !shared_with_user_id) {
+      return NextResponse.json(
+        { error: "shared_with_user_id is required when scope is 'user'" },
+        { status: 400 }
+      );
+    }
+
+    const adminDb = createAdminClient() as unknown as AnyDb;
+
+    const { data: resourceShare, error: resourceError } = await adminDb
+      .from("content_shares")
+      .insert({
+        resource_type,
+        resource_id,
+        shared_with_user_id: shared_with_user_id ?? null,
+        scope,
+        permission,
+        shared_by: user.id,
+        org_id: auth.orgId,
+      })
+      .select("id, resource_type, resource_id, shared_with_user_id, scope, permission, shared_by, org_id, created_at")
+      .single();
+
+    if (resourceError) {
+      return NextResponse.json({ error: (resourceError as { message: string }).message }, { status: 500 });
+    }
+
+    return NextResponse.json({ share: resourceShare }, { status: 201 });
   }
 
   // Fall back to legacy share schema
