@@ -2,7 +2,7 @@ export const metadata = { title: "Context Library" };
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
-import { LibraryShell } from "@/components/library-shell";
+import { ContextLibraryTabs } from "@/components/context-library-tabs";
 
 export default async function ContextPage(props: {
   searchParams?: Promise<{
@@ -45,7 +45,7 @@ export default async function ContextPage(props: {
     : { data: [] };
 
   return (
-    <LibraryShell
+    <ContextLibraryTabs
       items={items ?? []}
       initialSearch={searchParams?.search ?? ""}
       initialSource={searchParams?.source ?? ""}

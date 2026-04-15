@@ -13,7 +13,7 @@ import {
   Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2, Save,
   RefreshCw, AlertCircle, AlertTriangle, Play, Plug, ClipboardList, Mail, StickyNote,
   Headphones, FolderOpen, CalendarClock, CheckCircle2, Puzzle, Wrench,
-  BookOpen, Search, HelpCircle, ArrowDownToLine, ChevronLeft,
+  BookOpen, Search, HelpCircle, ArrowDownToLine, ChevronLeft, Users,
 } from "lucide-react";
 import { InterviewUI } from "@/components/interview-ui";
 import { CodeSandbox } from "@/components/code-sandbox";
@@ -68,6 +68,9 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Suggestions, Suggestion } from "@/components/ai-elements/suggestion";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { MentionPicker } from "@/components/mention-picker";
+import { ChatParticipantsModal } from "@/components/chat-participants-modal";
+import { AmbientAICard, type AmbientAISuggestion } from "@/components/ambient-ai-card";
 
 // ---------------------------------------------------------------------------
 // ChatVariant — typed config for visual/behavioral variants of ChatInterface
@@ -1922,6 +1925,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
+  const [ambientSuggestion, setAmbientSuggestion] = useState<AmbientAISuggestion | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
@@ -2142,6 +2146,9 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
   }, [pendingFiles]);
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [participantsOpen, setParticipantsOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevSourceCountRef = useRef(0);
   const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
@@ -3061,6 +3068,26 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
             </div>
           )}
 
+          {ambientSuggestion && (
+            <div className="px-4 pb-2">
+              <AmbientAICard
+                suggestion={ambientSuggestion}
+                onAccept={(id) => {
+                  // Insert the suggestion's body as context
+                  setAmbientSuggestion(null);
+                }}
+                onDismiss={(id) => {
+                  setAmbientSuggestion(null);
+                }}
+                onModify={(id, prompt) => {
+                  // Send the modified prompt
+                  sendMessage({ text: prompt });
+                  setAmbientSuggestion(null);
+                }}
+              />
+            </div>
+          )}
+
           <div ref={bottomRef} />
           </ConversationContent>
           <ConversationScrollButton />
@@ -3196,7 +3223,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                 }}
               />
 
-              <div className="flex items-end gap-2">
+              <div className="relative flex items-end gap-2">
                 <textarea
                   ref={textareaRef}
                   data-testid="chat-input"
@@ -3208,6 +3235,22 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                     const el = e.target;
                     el.style.height = "auto";
                     el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                    // Detect @ mention
+                    const val = e.target.value;
+                    const cursorPos = e.target.selectionStart;
+                    const textBeforeCursor = val.slice(0, cursorPos);
+                    const atIndex = textBeforeCursor.lastIndexOf("@");
+                    if (atIndex >= 0 && (atIndex === 0 || textBeforeCursor[atIndex - 1] === " " || textBeforeCursor[atIndex - 1] === "\n")) {
+                      const query = textBeforeCursor.slice(atIndex + 1);
+                      if (!query.includes(" ") && query.length < 30) {
+                        setMentionOpen(true);
+                        setMentionQuery(query);
+                      } else {
+                        setMentionOpen(false);
+                      }
+                    } else {
+                      setMentionOpen(false);
+                    }
                   }}
                   placeholder={isPortal ? "Ask about this document…" : "Ask anything… (type / for commands)"}
                   rows={1}
@@ -3217,6 +3260,11 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   )}
                   style={{ maxHeight: "200px", overflowY: "auto" }}
                   onKeyDown={(e) => {
+                    if (e.key === "Escape" && mentionOpen) {
+                      e.preventDefault();
+                      setMentionOpen(false);
+                      return;
+                    }
                     // Slash menu navigation
                     if (slashMenuFiltered.length > 0) {
                       if (e.key === "ArrowDown") {
