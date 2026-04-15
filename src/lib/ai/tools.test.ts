@@ -19,6 +19,15 @@ vi.mock("@/lib/db/search", () => ({
   ]),
 }));
 
+vi.mock("@/lib/interactions/artifact-tracker", () => ({
+  logArtifactInteraction: vi.fn(),
+}));
+
+vi.mock("@/lib/artifacts", () => ({
+  createArtifact: vi.fn(),
+  createVersion: vi.fn(),
+}));
+
 function createMockSupabase() {
   return {
     rpc: vi.fn(),
@@ -124,5 +133,151 @@ describe("createTools", () => {
       { toolCallId: "tc-3", messages: [], abortSignal: new AbortController().signal }
     );
     expect(result).toEqual({ error: "Document not found" });
+  });
+
+  describe("artifact_get", () => {
+    function createArtifactMockSupabase(interactions?: { interaction_type: string; created_at: string; chat_context: string | null }[]) {
+      const mockFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === "artifacts") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: {
+                      id: "art-1",
+                      title: "Dashboard",
+                      type: "code",
+                      content: "console.log('hello');",
+                      language: "typescript",
+                      current_version: 1,
+                      description_oneliner: "A dashboard",
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_interactions") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({
+                    data: interactions ?? [],
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_files") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_versions") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ count: 1 }),
+            }),
+          };
+        }
+        return {};
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return { from: mockFrom, rpc: vi.fn() } as any;
+    }
+
+    it("includes interaction_history in the return value", async () => {
+      const supabase = createArtifactMockSupabase([
+        { interaction_type: "edited", created_at: "2026-04-10T10:00:00Z", chat_context: "User updated the title" },
+        { interaction_type: "viewed", created_at: "2026-04-09T08:00:00Z", chat_context: null },
+      ]);
+      const tools = createTools(supabase, "org-1", "user-1");
+      const result = await tools.artifact_get.execute!(
+        { artifactId: "art-1" },
+        { toolCallId: "tc-art-1", messages: [], abortSignal: new AbortController().signal }
+      );
+
+      expect(result).toHaveProperty("interaction_history");
+      expect((result as { interaction_history: string }).interaction_history).toContain("edited");
+      expect((result as { interaction_history: string }).interaction_history).toContain("User updated the title");
+      expect((result as { interaction_history: string }).interaction_history).toContain("viewed");
+    });
+
+    it("returns 'No interaction history' when no interactions exist", async () => {
+      const supabase = createArtifactMockSupabase([]);
+      const tools = createTools(supabase, "org-1", "user-1");
+      const result = await tools.artifact_get.execute!(
+        { artifactId: "art-1" },
+        { toolCallId: "tc-art-2", messages: [], abortSignal: new AbortController().signal }
+      );
+
+      expect((result as { interaction_history: string }).interaction_history).toBe("No interaction history");
+    });
+
+    it("returns 'No interaction history' when interactions query returns null", async () => {
+      const supabase = createArtifactMockSupabase();
+      // Override to return null data
+      supabase.from.mockImplementation((table: string) => {
+        if (table === "artifacts") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: { id: "art-1", title: "Dashboard", type: "code", content: "x", language: "ts", current_version: 1 },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_interactions") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_files") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+          };
+        }
+        if (table === "artifact_versions") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ count: 1 }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const tools = createTools(supabase, "org-1", "user-1");
+      const result = await tools.artifact_get.execute!(
+        { artifactId: "art-1" },
+        { toolCallId: "tc-art-3", messages: [], abortSignal: new AbortController().signal }
+      );
+
+      expect((result as { interaction_history: string }).interaction_history).toBe("No interaction history");
+    });
   });
 });

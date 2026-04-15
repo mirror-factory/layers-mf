@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logArtifactInteraction } from "@/lib/interactions/artifact-tracker";
 
 /**
  * GET /api/artifacts/[id] — Get full artifact with current content and files
@@ -34,6 +35,13 @@ export async function GET(
 
   // Update last_opened_at
   await sb.from("artifacts").update({ last_opened_at: new Date().toISOString() }).eq("id", id);
+
+  // Log viewed interaction
+  logArtifactInteraction({
+    artifactId: id,
+    userId: user.id,
+    type: "viewed",
+  });
 
   return NextResponse.json({
     ...artifact,
