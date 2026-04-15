@@ -43,13 +43,11 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           <NeuralMorph size={80} dotCount={20} formation="bloom" color="#0DE4F2" />
         </div>
 
-        {/* BlueWave logo */}
-        <img
-          src="/bluewave-logo.svg"
-          alt="BlueWave"
-          className="h-8 w-auto opacity-90"
-        />
-        <p className="mt-2 text-sm text-sky-700/70">Proposal Portal</p>
+        {/* Granger logo */}
+        <p className="text-2xl font-display font-extrabold tracking-tight text-primary opacity-90">
+          Granger
+        </p>
+        <p className="mt-2 text-sm text-sky-700/70">by Mirror Factory</p>
 
         {/* Subtle blue glow */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
