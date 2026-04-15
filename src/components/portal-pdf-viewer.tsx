@@ -246,57 +246,127 @@ function highlightTextInDom(container: HTMLElement, searchText: string): HTMLEle
   if (!searchText.trim()) return [];
 
   // Try multiple selectors (pdfjs text layer structure varies by version)
-  let textLayerElements = container.querySelectorAll(".react-pdf__Page__textContent span");
-  if (textLayerElements.length === 0) {
-    textLayerElements = container.querySelectorAll(".textLayer span");
-  }
-  if (textLayerElements.length === 0) {
-    textLayerElements = container.querySelectorAll("[class*='textLayer'] span, [class*='textContent'] span");
-  }
+  const pages = container.querySelectorAll(".react-pdf__Page");
   const matchElements: HTMLElement[] = [];
-  const lowerSearch = searchText.toLowerCase();
+  const lowerSearch = searchText.toLowerCase().replace(/\s+/g, " ").trim();
 
-  textLayerElements.forEach((span) => {
-    const el = span as HTMLElement;
-    const text = el.textContent ?? "";
-    if (!text) return;
-    const lowerText = text.toLowerCase();
-    if (!lowerText.includes(lowerSearch)) return;
-
-    // The PDF text layer uses CSS transforms on each span — wrapping the text
-    // inline in a <mark> causes positioning bugs. Instead, create an absolutely
-    // positioned overlay div that shadows the span's bounding box.
-    const pageContainer = el.closest(".react-pdf__Page") as HTMLElement | null;
-    if (!pageContainer) return;
-
-    const pageRect = pageContainer.getBoundingClientRect();
-    const spanRect = el.getBoundingClientRect();
-
-    // Skip zero-size spans
-    if (spanRect.width === 0 || spanRect.height === 0) return;
-
-    const overlay = document.createElement("div");
-    overlay.className = "portal-pdf-highlight-overlay portal-pdf-highlight";
-    overlay.dataset.matchText = searchText;
-    overlay.style.cssText = `
-      position: absolute;
-      left: ${spanRect.left - pageRect.left}px;
-      top: ${spanRect.top - pageRect.top}px;
-      width: ${spanRect.width}px;
-      height: ${spanRect.height}px;
-      pointer-events: none;
-      z-index: 10;
-    `;
-
-    // Ensure page container is positioned
-    if (getComputedStyle(pageContainer).position === "static") {
-      pageContainer.style.position = "relative";
+  pages.forEach((page) => {
+    const pageEl = page as HTMLElement;
+    let textLayerSpans = pageEl.querySelectorAll(".react-pdf__Page__textContent span");
+    if (textLayerSpans.length === 0) {
+      textLayerSpans = pageEl.querySelectorAll(".textLayer span, [class*='textLayer'] span, [class*='textContent'] span");
     }
-    pageContainer.appendChild(overlay);
-    matchElements.push(overlay);
+    if (textLayerSpans.length === 0) return;
+
+    const spans = Array.from(textLayerSpans) as HTMLElement[];
+
+    // Strategy 1: Single-span exact match (fast path)
+    for (const span of spans) {
+      const text = (span.textContent ?? "").toLowerCase();
+      if (text.includes(lowerSearch)) {
+        const overlay = createHighlightOverlay(span, pageEl, searchText);
+        if (overlay) matchElements.push(overlay);
+      }
+    }
+
+    // Strategy 2: Cross-span matching — concatenate adjacent spans and find matches
+    if (matchElements.length === 0) {
+      // Build a text map: concatenated text with span boundaries
+      const textMap: { span: HTMLElement; start: number; end: number }[] = [];
+      let fullText = "";
+      for (const span of spans) {
+        const text = span.textContent ?? "";
+        const start = fullText.length;
+        fullText += text;
+        textMap.push({ span, start, end: fullText.length });
+      }
+
+      // Also try with normalized whitespace
+      const normalizedFull = fullText.toLowerCase().replace(/\s+/g, " ");
+      const normalizedSearch = lowerSearch;
+
+      let searchIdx = normalizedFull.indexOf(normalizedSearch);
+      while (searchIdx !== -1 && matchElements.length < 5) {
+        const matchEnd = searchIdx + normalizedSearch.length;
+
+        // Find all spans that overlap with this match range
+        // Map normalized positions back to original positions
+        let origStart = 0, origEnd = 0, normPos = 0;
+        for (let i = 0; i < fullText.length; i++) {
+          if (normPos === searchIdx) origStart = i;
+          if (normPos === matchEnd) { origEnd = i; break; }
+          // Skip extra whitespace in original (normalized collapses it)
+          if (fullText[i] === " " && i + 1 < fullText.length && fullText[i + 1] === " ") {
+            continue; // skip, don't advance normPos
+          }
+          normPos++;
+        }
+        if (origEnd === 0) origEnd = fullText.length;
+
+        // Highlight all spans that overlap [origStart, origEnd)
+        for (const entry of textMap) {
+          if (entry.end <= origStart || entry.start >= origEnd) continue;
+          const overlay = createHighlightOverlay(entry.span, pageEl, searchText);
+          if (overlay) matchElements.push(overlay);
+        }
+
+        searchIdx = normalizedFull.indexOf(normalizedSearch, searchIdx + 1);
+      }
+    }
+
+    // Strategy 3: Fuzzy — try matching just the first few words (for partial matches)
+    if (matchElements.length === 0) {
+      const words = lowerSearch.split(/\s+/);
+      // Try first 2-3 significant words
+      const keyTerms = words.filter(w => w.length > 2).slice(0, 3);
+      for (const term of keyTerms) {
+        for (const span of spans) {
+          const text = (span.textContent ?? "").toLowerCase();
+          if (text.includes(term) && !matchElements.some(m => m.dataset.matchText === span.textContent)) {
+            const overlay = createHighlightOverlay(span, pageEl, searchText);
+            if (overlay) matchElements.push(overlay);
+            break; // Only highlight first match per key term
+          }
+        }
+        if (matchElements.length > 0) break;
+      }
+    }
   });
 
   return matchElements;
+}
+
+/** Create an absolutely-positioned highlight overlay on a span within a page */
+function createHighlightOverlay(
+  span: HTMLElement,
+  pageContainer: HTMLElement,
+  searchText: string
+): HTMLElement | null {
+  const pageRect = pageContainer.getBoundingClientRect();
+  const spanRect = span.getBoundingClientRect();
+
+  // Skip zero-size spans
+  if (spanRect.width === 0 || spanRect.height === 0) return null;
+
+  const overlay = document.createElement("div");
+  overlay.className = "portal-pdf-highlight-overlay portal-pdf-highlight";
+  overlay.dataset.matchText = searchText;
+  overlay.style.cssText = `
+    position: absolute;
+    left: ${spanRect.left - pageRect.left}px;
+    top: ${spanRect.top - pageRect.top}px;
+    width: ${spanRect.width}px;
+    height: ${spanRect.height}px;
+    pointer-events: none;
+    z-index: 10;
+  `;
+
+  // Ensure page container is positioned
+  if (getComputedStyle(pageContainer).position === "static") {
+    pageContainer.style.position = "relative";
+  }
+  pageContainer.appendChild(overlay);
+  return overlay;
 }
 
 function clearHighlightsInDom(container: HTMLElement) {

@@ -1756,7 +1756,7 @@ export function PortalViewer({ portal }: PortalViewerProps) {
         <div className="h-px bg-gradient-to-r from-transparent via-slate-300/50 dark:via-white/10 to-transparent" />
 
       {/* PDF viewer area */}
-      <div data-portal-viewer className="flex flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 3rem)' }}>
+      <div data-portal-viewer className="flex flex-1 overflow-hidden relative min-h-0">
         {activeView === "document" && tocPanel}
 
         {activeView === "library" ? (
