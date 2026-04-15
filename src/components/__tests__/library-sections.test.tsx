@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { LibrarySections } from "../library-sections";
 
 // Mock fetch globally
@@ -49,7 +49,7 @@ describe("LibrarySections", () => {
     vi.clearAllMocks();
   });
 
-  it("renders 3 tabs: My Items, Shared with Me, Org Library", async () => {
+  it("renders 3 tabs: My Items, Shared with Me, Org Library", () => {
     setupFetchSuccess();
     render(<LibrarySections />);
 
@@ -60,6 +60,24 @@ describe("LibrarySections", () => {
     expect(screen.getByTestId("tab-my-items")).toHaveTextContent("My Items");
     expect(screen.getByTestId("tab-shared")).toHaveTextContent("Shared with Me");
     expect(screen.getByTestId("tab-org")).toHaveTextContent("Org Library");
+  });
+
+  it("My Items tab is active by default", () => {
+    setupFetchSuccess();
+    render(<LibrarySections />);
+
+    expect(screen.getByTestId("tab-my-items")).toHaveAttribute(
+      "data-state",
+      "active"
+    );
+    expect(screen.getByTestId("tab-shared")).toHaveAttribute(
+      "data-state",
+      "inactive"
+    );
+    expect(screen.getByTestId("tab-org")).toHaveAttribute(
+      "data-state",
+      "inactive"
+    );
   });
 
   it("fetches from /api/context?owner=me for My Items tab", async () => {
@@ -141,33 +159,29 @@ describe("LibrarySections", () => {
     expect(screen.getByText("No items match your filters")).toBeInTheDocument();
   });
 
-  it("switches tab to Shared with Me", async () => {
+  it("renders the search input and type filter controls", () => {
     setupFetchSuccess();
     render(<LibrarySections />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Design Document")).toBeInTheDocument();
-    });
-
-    // Click the Shared tab — it should become active
-    fireEvent.click(screen.getByTestId("tab-shared"));
-
-    // The tab trigger should now have active state
-    const sharedTab = screen.getByTestId("tab-shared");
-    expect(sharedTab).toBeInTheDocument();
+    expect(screen.getByTestId("library-search")).toBeInTheDocument();
+    expect(screen.getByTestId("type-filter")).toBeInTheDocument();
   });
 
-  it("switches to Org Library tab", async () => {
+  it("each tab has correct role and aria attributes", () => {
     setupFetchSuccess();
     render(<LibrarySections />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Design Document")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("tab-org"));
+    const myItemsTab = screen.getByTestId("tab-my-items");
+    const sharedTab = screen.getByTestId("tab-shared");
     const orgTab = screen.getByTestId("tab-org");
-    expect(orgTab).toBeInTheDocument();
+
+    expect(myItemsTab).toHaveAttribute("role", "tab");
+    expect(sharedTab).toHaveAttribute("role", "tab");
+    expect(orgTab).toHaveAttribute("role", "tab");
+
+    expect(myItemsTab).toHaveAttribute("aria-selected", "true");
+    expect(sharedTab).toHaveAttribute("aria-selected", "false");
+    expect(orgTab).toHaveAttribute("aria-selected", "false");
   });
 
   it("calls onItemClick when an item is clicked", async () => {
@@ -197,6 +211,26 @@ describe("LibrarySections", () => {
     expect(screen.getByText("backend")).toBeInTheDocument();
   });
 
+  it("shows +N indicator when item has more than 3 tags", async () => {
+    const manyTagItems = [
+      {
+        id: "1",
+        title: "Tagged Item",
+        source_type: "document",
+        updated_at: new Date().toISOString(),
+        user_tags: ["tag1", "tag2", "tag3", "tag4", "tag5"],
+      },
+    ];
+    setupFetchSuccess(manyTagItems);
+    render(<LibrarySections />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Tagged Item")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("+2")).toBeInTheDocument();
+  });
+
   it("shows loading skeletons while fetching", () => {
     mockFetch.mockReturnValue(new Promise(() => {})); // never resolves
     render(<LibrarySections />);
@@ -219,7 +253,33 @@ describe("LibrarySections", () => {
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
 
-  it("search input exists and accepts text", async () => {
+  it("handles API returning array directly (no wrapper object)", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => MOCK_ITEMS,
+    });
+
+    render(<LibrarySections />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Design Document")).toBeInTheDocument();
+    });
+  });
+
+  it("handles API returning { data: [...] } format", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: MOCK_ITEMS }),
+    });
+
+    render(<LibrarySections />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Design Document")).toBeInTheDocument();
+    });
+  });
+
+  it("filters by tag text in search", async () => {
     setupFetchSuccess();
     render(<LibrarySections />);
 
@@ -228,7 +288,10 @@ describe("LibrarySections", () => {
     });
 
     const searchInput = screen.getByTestId("library-search");
-    fireEvent.change(searchInput, { target: { value: "Design" } });
-    expect((searchInput as HTMLInputElement).value).toBe("Design");
+    fireEvent.change(searchInput, { target: { value: "backend" } });
+
+    // Only item with "backend" tag should remain
+    expect(screen.getByText("API Handler")).toBeInTheDocument();
+    expect(screen.queryByText("Design Document")).not.toBeInTheDocument();
   });
 });

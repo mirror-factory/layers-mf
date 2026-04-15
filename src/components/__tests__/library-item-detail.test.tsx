@@ -6,7 +6,22 @@ import { LibraryItemDetail } from "../library-item-detail";
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-const MOCK_ITEM = {
+interface MockItem {
+  id: string;
+  title: string;
+  source_type: string;
+  content_type: string;
+  raw_content: string;
+  created_at: string;
+  updated_at: string;
+  user_tags: string[];
+  category: string;
+  source_url: string;
+  embedded: boolean;
+  embedding_model: string | null;
+}
+
+const MOCK_ITEM: MockItem = {
   id: "item-1",
   title: "Architecture Overview",
   source_type: "document",
