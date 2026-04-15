@@ -3314,7 +3314,6 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
                   }}
                   query={mentionQuery}
                   orgId={conversationId ?? ""}
-                  position={{ top: -320, left: 0 }}
                 />
 
                 {/* Right-side icon buttons */}

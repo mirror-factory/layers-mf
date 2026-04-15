@@ -222,13 +222,13 @@ export function MentionPicker({
     <div
       data-testid="mention-picker"
       className={cn(
-        "absolute z-50 w-72 rounded-lg border bg-popover text-popover-foreground shadow-md",
+        "absolute z-[100] w-72 max-h-[320px] rounded-lg border bg-popover text-popover-foreground shadow-lg overflow-hidden",
         "animate-in fade-in slide-in-from-bottom-2 duration-200"
       )}
       style={
         position
           ? { top: position.top, left: position.left }
-          : undefined
+          : { bottom: "100%", left: 0, marginBottom: 8 }
       }
     >
       <Tabs
