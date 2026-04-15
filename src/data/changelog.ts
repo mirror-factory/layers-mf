@@ -11,34 +11,67 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: "0.8.2",
+    version: "0.9.0",
     date: "2026-04-15",
-    title: "Ambient AI Suggestion Cards",
+    title: "Collaboration, Library Unification, Durable Schedules & 260 Tests",
     highlights: [
-      "Ambient AI card component surfaces proactive suggestions (info, action, question) during collaborative conversations",
-      "Ambient check utility uses Gemini Flash Lite to monitor team chats and generate contextual suggestions",
+      "Multi-user chat collaboration: conversation members, @ mention picker for people and documents, chat participants modal with role management",
+      "Library unification: artifacts and conversations auto-embedded into searchable library with My Items / Shared with Me / Org Library sections",
+      "Full sharing system: Google Drive-inspired content_shares with view/edit/admin permissions, share notifications, and sharing API",
+      "Schedule executor rewrite: configurable tool tiers (minimal/standard/full) with ToolLoopAgent replacing raw generateText",
+      "260 new tests across 22 test files covering every new feature, component, and utility",
     ],
     changes: [
-      { type: "feat", description: "Ambient AI card component with type-based icons, accept/dismiss/modify actions, inline follow-up input, and enter/escape keyboard support" },
-      { type: "feat", description: "Ambient check utility: analyzes last 5 messages via generateObject to detect when proactive suggestions would help team conversations" },
-      { type: "feat", description: "22 tests covering ambient AI card rendering, icon types, action callbacks, modify flow, and ambient check logic with mocked AI responses" },
-    ],
-  },
-  {
-    version: "0.8.1",
-    date: "2026-04-15",
-    title: "Sharing API, Chat History Search & Conversation Branching",
-    highlights: [
-      "Sharing API now supports the content_shares table with resource_type, scope, and granular permissions (view/edit/admin)",
-      "New search_chat_history tool lets the AI search through past conversations by text matching",
-      "New branch_conversation tool creates conversation forks by copying messages to a new thread",
-    ],
-    changes: [
-      { type: "feat", description: "Sharing API: added resource share schema supporting artifact, conversation, context_item, and collection resource types with user/org scoping" },
-      { type: "feat", description: "Sharing [id] route: added org_members check and expanded permission levels to include view, edit, and admin" },
-      { type: "feat", description: "search_chat_history tool: search chat_messages by text within the user's org, returns conversation context and message snippets" },
-      { type: "feat", description: "branch_conversation tool: fork conversations by copying messages up to a specified index into a new conversation with 'branch' origin" },
-      { type: "feat", description: "Sharing API tests: 7 tests covering auth, share creation, field validation, scope rules, and self-sharing prevention" },
+      // Collaboration
+      { type: "feat", description: "Conversation members table + RLS for multi-user chat with owner/participant/viewer roles" },
+      { type: "feat", description: "MentionPicker component: @ picker with People (org members) and Library (documents, artifacts) tabs, keyboard nav, query filtering" },
+      { type: "feat", description: "ChatParticipantsModal: member list with avatars, role badges, add/remove members, role changes (owner only)" },
+      { type: "feat", description: "Ambient AI suggestion cards: proactive info/action/question cards with accept/dismiss/modify actions in collaborative chats" },
+      { type: "feat", description: "Ambient check utility: Gemini Flash Lite analyzes conversation to detect when proactive suggestions would help" },
+
+      // Library
+      { type: "feat", description: "LibrarySections component: My Items / Shared with Me / Org Library tabs with type filter and search" },
+      { type: "feat", description: "LibraryItemDetail: sheet-based detail view with editable title, tags, embedding status, interaction history, sharing controls" },
+      { type: "feat", description: "Auto-embed artifacts into context_items on create and version (searchable via library)" },
+      { type: "feat", description: "Auto-embed conversation summaries into context_items after 20+ messages (searchable via library)" },
+      { type: "feat", description: "Auto-compaction middleware wired into main chat and portal routes for forever-persistence chats" },
+
+      // Sharing
+      { type: "feat", description: "Content shares table + RLS: per-item sharing with user/org scope and view/edit/admin permissions" },
+      { type: "feat", description: "Sharing API routes: CRUD for content_shares with resource type validation and self-share prevention" },
+      { type: "feat", description: "Share notification utility: notifies recipients when content is shared with them" },
+
+      // Tools
+      { type: "feat", description: "search_chat_history tool: AI can search past conversations by text within the user's org" },
+      { type: "feat", description: "branch_conversation tool: fork conversations by copying messages to a new thread" },
+      { type: "feat", description: "AI provenance: artifact_get now returns interaction history (who did what, when, why) for context" },
+
+      // Schedule Executor
+      { type: "feat", description: "Schedule executor rewrite: configurable tool tiers (minimal/standard/full) with ToolLoopAgent" },
+      { type: "feat", description: "Schedule tool_tier migration: scheduled_actions table gains tool_tier column" },
+
+      // Tracking
+      { type: "feat", description: "Artifact interaction tracking: artifact_interactions table logs created/viewed/edited/shared/executed/ai_read events" },
+      { type: "feat", description: "Interaction tracking wired into all tool paths: write_code, edit_code, artifact_get, run_project, artifact_delete, REST GET" },
+      { type: "feat", description: "Chat context extraction: edit_code captures editDescription as the 'why' for each change" },
+
+      // Infrastructure
+      { type: "feat", description: "Claude Code AI SDK provider: dev-only access via CLI auth (claude-code/opus, sonnet, haiku)" },
+      { type: "feat", description: "5 Supabase migrations: artifact_interactions, conversation_members, content_shares, schedule_tool_tier, portal_analytics" },
+      { type: "feat", description: "Notification bell: 'View chat' indicator with MessageSquare icon for schedule completion notifications" },
+
+      // Fixes
+      { type: "fix", description: "Highlight cross-span matching: 3-strategy search (single-span, cross-span concatenation, fuzzy key terms) for PDF text layer" },
+      { type: "fix", description: "Highlight pdfControls gate removed: highlights now always fire regardless of PDF load state" },
+      { type: "fix", description: "Content cutoff at bottom: replaced calc(100vh-3rem) with flex min-h-0 layout" },
+      { type: "fix", description: "BlueWave branding fixed: splash screen now shows Granger / Mirror Factory instead of portal demo assets" },
+      { type: "fix", description: "CLS optimization: page height estimated from aspect ratio instead of hardcoded 1000px" },
+      { type: "fix", description: "Model upgraded from gemini-3.1-flash-lite to gemini-3.0-flash for portal chat" },
+
+      // Docs
+      { type: "docs", description: "Architecture plan v2: 415-line system design covering Vercel Workflow, DurableAgent, sharing, collaboration, ambient AI" },
+      { type: "docs", description: "Portal guide: theming, 20 tools with schemas, developer reference, architecture decisions" },
+      { type: "docs", description: "System overview: 988-line comprehensive architecture map updated through v0.9.0" },
     ],
   },
   {

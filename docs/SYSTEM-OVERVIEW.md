@@ -1,7 +1,7 @@
 # Layers MF / Granger --- System Overview
 
-**Last updated:** April 12, 2026
-**Version:** 0.7.1
+**Last updated:** April 15, 2026
+**Version:** 0.9.0
 **Repository:** `layers-mf`
 
 ---
@@ -763,27 +763,36 @@ Splash branding, 3-step onboarding, document library as default view, dark/light
 
 `agents`, `api`, `auth`, `billing`, `canvas`, `chat`, `context-library`, `dashboard`, `ditto`, `full-flow`, `inbox-actions`, `integrations`, `landing`, `marketing`, `onboarding`, `portal`, `production-smoke`, `sessions`, `settings` (3 files), `smoke-drive-chat`
 
-### Testing Gaps
+### Test Coverage (v0.9.0) --- 260 new tests
 
-- ~~**Portal chat route** --- no test file for `/api/chat/portal/route.ts`~~ **COVERED (v0.7.1)** --- 50 tests (validation, intent detection, helpers)
-- ~~**Portal tools** --- intent detection system has no test coverage~~ **COVERED (v0.7.1)** --- 26 intent detection tests across 5 categories
-- **Portal components** --- no unit tests for PortalViewer, PortalPdfViewer, PortalVoiceMode, or any portal component
-- **ChatInterface** --- no component tests for the main chat UI
-- **AI Elements** --- no tests for the installed AI Elements components (size props verified correct)
+| Area | Tests | Status |
+|------|-------|--------|
+| Portal chat route (validation, intent, helpers) | 50 | Covered |
+| Portal components (Splash, Onboarding, Annotations, VoiceMode) | 42 | Covered |
+| Portal analytics tracker | 13 | Covered |
+| Artifact interaction tracker | 6 | Covered |
+| Conversation embedder | 7 | Covered |
+| Tools interaction tracking (write/edit/get/run/delete) | 11 | Covered |
+| AI provenance (artifact_get) | 3 | Covered |
+| Sharing API routes | 7 | Covered |
+| Share notification utility | 7 | Covered |
+| Schedule executor tool tiers | 8 | Covered |
+| MentionPicker component | 16 | Covered |
+| ChatParticipantsModal component | 14 | Covered |
+| LibrarySections component | 14 | Covered |
+| LibraryItemDetail component | 18 | Covered |
+| AmbientAICard component | 13 | Covered |
+| Ambient check utility | 9 | Covered |
+| E2E portal (6 viewports) | 11 | Covered |
+
+### Remaining Test Gaps
+
+- **PortalViewer** (2038 lines) --- no component tests (complex, needs integration-level testing)
+- **PortalPdfViewer** (962 lines) --- no component tests (depends on react-pdf)
+- **ChatInterface** (3000+ lines) --- no component tests
 - **Canvas components** --- no unit tests
-- **Voice/TTS** --- no tests for `/api/tts` or voice mode logic
-- **MCP tools** --- limited testing of MCP connection flow
-- **Skills marketplace** --- no integration tests
-- **Cron jobs** --- no tests for cron routes
-
-### Recommended Testing Strategy
-
-1. **Unit tests** for all portal tools (intent detection, tool selection)
-2. **Component tests** for ChatInterface and PortalViewer using Testing Library
-3. **E2E portal flow** via Playwright across 4 screen sizes (desktop, tablet, mobile portrait, mobile landscape)
-4. **AI eval suite** for portal tool accuracy (does highlight_text highlight the right passage?)
-5. **Snapshot tests** for AI Elements rendering
-6. **Integration tests** for MCP connection lifecycle (discover -> OAuth -> connect -> use -> disconnect)
+- **Voice/TTS** --- needs real browser testing (STT is browser-only API)
+- **MCP tools** --- limited testing of OAuth lifecycle
 
 ---
 
