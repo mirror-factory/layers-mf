@@ -157,8 +157,8 @@ export async function createArtifact(
             .update({
               title: input.title,
               raw_content: rawContent,
-              metadata: { type: input.type, language: input.language ?? null, version: 1 },
-              updated_at: new Date().toISOString(),
+              source_metadata: { type: input.type, language: input.language ?? null, version: 1 },
+              processed_at: new Date().toISOString(),
             })
             .eq("id", existing.id);
         } else {
@@ -168,9 +168,11 @@ export async function createArtifact(
               org_id: input.orgId,
               source_type: "artifact",
               source_id: artifactId,
+              content_type: input.type === "document" ? "document" : "file",
               title: input.title,
               raw_content: rawContent,
-              metadata: { type: input.type, language: input.language ?? null, version: 1 },
+              source_metadata: { type: input.type, language: input.language ?? null, version: 1 },
+              status: "ready",
             });
         }
       } catch {
@@ -279,8 +281,8 @@ export async function createVersion(
             .from("context_items")
             .update({
               raw_content: rawContent,
-              metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
-              updated_at: new Date().toISOString(),
+              source_metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
+              processed_at: new Date().toISOString(),
             })
             .eq("id", existing.id);
         } else {
@@ -291,9 +293,11 @@ export async function createVersion(
               org_id: fullArtifact.org_id,
               source_type: "artifact",
               source_id: input.artifactId,
+              content_type: fullArtifact.type === "document" ? "document" : "file",
               title: fullArtifact.title,
               raw_content: rawContent,
-              metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
+              source_metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
+              status: "ready",
             });
         }
       } catch {

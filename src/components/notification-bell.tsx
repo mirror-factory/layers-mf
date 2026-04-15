@@ -283,9 +283,17 @@ export function NotificationBell({ collapsed }: { collapsed?: boolean }) {
                         {notification.body}
                       </p>
                     )}
-                    <p className="mt-1 text-[11px] text-muted-foreground/60">
-                      {relativeTime(notification.created_at)}
-                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <p className="text-[11px] text-muted-foreground/60">
+                        {relativeTime(notification.created_at)}
+                      </p>
+                      {notification.link?.startsWith("/chat") && (
+                        <span className="flex items-center gap-0.5 text-[11px] text-primary/70">
+                          <MessageSquare className="h-3 w-3" />
+                          <span>View chat</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
