@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.8.2",
+    date: "2026-04-15",
+    title: "Ambient AI Suggestion Cards",
+    highlights: [
+      "Ambient AI card component surfaces proactive suggestions (info, action, question) during collaborative conversations",
+      "Ambient check utility uses Gemini Flash Lite to monitor team chats and generate contextual suggestions",
+    ],
+    changes: [
+      { type: "feat", description: "Ambient AI card component with type-based icons, accept/dismiss/modify actions, inline follow-up input, and enter/escape keyboard support" },
+      { type: "feat", description: "Ambient check utility: analyzes last 5 messages via generateObject to detect when proactive suggestions would help team conversations" },
+      { type: "feat", description: "22 tests covering ambient AI card rendering, icon types, action callbacks, modify flow, and ambient check logic with mocked AI responses" },
+    ],
+  },
+  {
     version: "0.8.1",
     date: "2026-04-15",
     title: "Sharing API, Chat History Search & Conversation Branching",
