@@ -18,7 +18,7 @@ interface LogInteractionParams {
 export async function logArtifactInteraction(params: LogInteractionParams) {
   try {
     const supabase = createAdminClient();
-    await supabase.from("artifact_interactions").insert({
+    await (supabase as any).from("artifact_interactions").insert({
       artifact_id: params.artifactId,
       user_id: params.userId,
       interaction_type: params.type,
