@@ -4,6 +4,7 @@ import { searchContext, searchContextChunks } from "@/lib/db/search";
 import { createArtifact, createVersion } from "@/lib/artifacts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { calculateNextCron } from "@/lib/cron";
+import { logArtifactInteraction } from "@/lib/interactions/artifact-tracker";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = SupabaseClient<any>;
@@ -984,6 +985,16 @@ Be strict but fair. Return a check for every single rule listed above.`,
         const primaryContent = primaryFile?.content ?? artifact.content ?? "";
         const primaryLanguage = primaryFile?.language ?? artifact.language ?? "text";
 
+        // Log ai_read interaction
+        if (userId) {
+          logArtifactInteraction({
+            artifactId,
+            userId,
+            type: "ai_read",
+            metadata: { model: "tool_invocation" },
+          });
+        }
+
         // Build openable response matching run_project/write_code output shape
         const isDocument = artifact.type === "document";
         const isSandbox = artifact.type === "sandbox";
@@ -1057,6 +1068,16 @@ Be strict but fair. Return a check for every single rule listed above.`,
           createdBy: userId,
           createdByAi: true,
         });
+
+        if (userId) {
+          logArtifactInteraction({
+            artifactId,
+            userId,
+            type: "restored",
+            metadata: { restored_to_version: versionNumber },
+            versionNumber,
+          });
+        }
 
         return result;
       },
@@ -1409,6 +1430,15 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
 
         const artifactId = "artifactId" in result ? result.artifactId : undefined;
 
+        if (artifactId && userId) {
+          logArtifactInteraction({
+            artifactId,
+            userId,
+            type: "created",
+            metadata: { title: input.filename, type: "code", language: input.language },
+          });
+        }
+
         return {
           filename: input.filename,
           language: input.language,
@@ -1540,6 +1570,23 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
           } catch (restartErr) {
             console.warn("[edit_code] Sandbox restart failed:", restartErr instanceof Error ? restartErr.message : restartErr);
           }
+        }
+
+        // Log artifact interaction
+        if (userId) {
+          const diffSize = Math.abs(newContent.length - targetContent.length);
+          logArtifactInteraction({
+            artifactId: artifact.id,
+            userId,
+            type: "edited",
+            metadata: {
+              version_from: artifact.current_version,
+              version_to: artifact.current_version + 1,
+              diff_size: diffSize,
+            },
+            chatContext: input.editDescription,
+            versionNumber: artifact.current_version + 1,
+          });
         }
 
         // Return in the same shape as write_code/run_project so the panel auto-opens with Live button
