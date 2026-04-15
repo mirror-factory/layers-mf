@@ -48,6 +48,33 @@ export const TASK_MODELS = {
 export const extractionModel = gateway(TASK_MODELS.extraction);
 export const embeddingModel = gateway.textEmbeddingModel(TASK_MODELS.embedding);
 
+// Dev-only Claude Code models
+if (process.env.NODE_ENV === "development") {
+  ALLOWED_MODELS.add("claude-code/opus");
+  ALLOWED_MODELS.add("claude-code/sonnet");
+  ALLOWED_MODELS.add("claude-code/haiku");
+}
+
+// Dev-only: Claude Code provider (uses CLI auth, no API key needed)
+// Install: pnpm add ai-sdk-provider-claude-code
+// Auth: claude auth login (via Claude Code CLI)
+let claudeCodeModel: ((tier: "opus" | "sonnet" | "haiku") => ReturnType<typeof gateway>) | null = null;
+try {
+  if (process.env.NODE_ENV === "development") {
+    // Dynamic import to avoid build errors in production
+    const { claudeCode } = require("ai-sdk-provider-claude-code");
+    claudeCodeModel = (tier: "opus" | "sonnet" | "haiku") =>
+      claudeCode(tier, {
+        allowedTools: ["Read", "Write", "Bash", "Glob", "Grep"],
+        maxBudgetUsd: 5,
+        permissionMode: "acceptEdits",
+      });
+  }
+} catch {
+  // Provider not installed — skip silently
+}
+export { claudeCodeModel };
+
 // Per-partner gateway with personal API key fallback
 export async function getPartnerGateway(userApiKey?: string | null) {
   if (userApiKey) {
