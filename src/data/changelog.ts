@@ -28,6 +28,7 @@ export const changelog: ChangelogEntry[] = [
       { type: "feat", description: "ChatParticipantsModal: member list with avatars, role badges, add/remove members, role changes (owner only)" },
       { type: "feat", description: "Ambient AI suggestion cards: proactive info/action/question cards with accept/dismiss/modify actions in collaborative chats" },
       { type: "feat", description: "Ambient check utility: Gemini Flash Lite analyzes conversation to detect when proactive suggestions would help" },
+      { type: "feat", description: "AmbientAICard wired into chat message stream with accept/dismiss/modify handlers" },
 
       // Library
       { type: "feat", description: "LibrarySections component: My Items / Shared with Me / Org Library tabs with type filter and search" },
@@ -72,6 +73,7 @@ export const changelog: ChangelogEntry[] = [
       { type: "docs", description: "Architecture plan v2: 415-line system design covering Vercel Workflow, DurableAgent, sharing, collaboration, ambient AI" },
       { type: "docs", description: "Portal guide: theming, 20 tools with schemas, developer reference, architecture decisions" },
       { type: "docs", description: "System overview: 988-line comprehensive architecture map updated through v0.9.0" },
+      { type: "docs", description: "Migration checklist: ordered list of v0.9.0 Supabase migrations with run instructions and verification queries" },
     ],
   },
   {
