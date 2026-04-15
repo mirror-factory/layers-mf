@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MentionPicker, type MentionPickerProps } from "../mention-picker";
 
 // ---------------------------------------------------------------------------
@@ -13,8 +13,7 @@ class MockResizeObserver {
 }
 
 beforeEach(() => {
-  // @ts-expect-error - mock browser API
-  globalThis.ResizeObserver = MockResizeObserver;
+  globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 });
 
 // ---------------------------------------------------------------------------
@@ -192,10 +191,8 @@ describe("MentionPicker", () => {
 
   // ---- Library tab ----
 
-  it("shows library items when Library tab is clicked", async () => {
-    render(<MentionPicker {...defaultProps} />);
-
-    fireEvent.click(screen.getByText("Library"));
+  it("shows library items in Library tab", async () => {
+    render(<MentionPicker {...defaultProps} defaultTab="library" />);
 
     await waitFor(() => {
       expect(screen.getByText("Project Roadmap")).toBeInTheDocument();
@@ -207,10 +204,12 @@ describe("MentionPicker", () => {
   it("calls onSelectItem when library item clicked", async () => {
     const onSelectItem = vi.fn();
     render(
-      <MentionPicker {...defaultProps} onSelectItem={onSelectItem} />
+      <MentionPicker
+        {...defaultProps}
+        defaultTab="library"
+        onSelectItem={onSelectItem}
+      />
     );
-
-    fireEvent.click(screen.getByText("Library"));
 
     await waitFor(() => {
       expect(screen.getByText("Project Roadmap")).toBeInTheDocument();
@@ -226,29 +225,28 @@ describe("MentionPicker", () => {
   });
 
   it("shows My Items and Shared with me toggles in Library tab", async () => {
-    render(<MentionPicker {...defaultProps} />);
-
-    fireEvent.click(screen.getByText("Library"));
+    render(<MentionPicker {...defaultProps} defaultTab="library" />);
 
     expect(screen.getByText("My Items")).toBeInTheDocument();
     expect(screen.getByText("Shared with me")).toBeInTheDocument();
   });
 
   it("switches library scope when Shared with me is clicked", async () => {
-    render(<MentionPicker {...defaultProps} />);
+    render(<MentionPicker {...defaultProps} defaultTab="library" />);
 
-    fireEvent.click(screen.getByText("Library"));
-    fireEvent.click(screen.getByText("Shared with me"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Shared with me"));
+    });
 
     // Should re-fetch with scope=shared
     await waitFor(() => {
-      const fetchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const fetchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls as Array<[string | URL | Request, ...unknown[]]>;
       const contextCalls = fetchCalls.filter(
-        (c: [string | URL | Request]) =>
-          typeof c[0] === "string" && c[0].includes("/api/context")
+        (c) => typeof c[0] === "string" && c[0].includes("/api/context")
       );
       const hasSharedScope = contextCalls.some(
-        (c: [string]) => c[0].includes("scope=shared")
+        (c) => typeof c[0] === "string" && c[0].includes("scope=shared")
       );
       expect(hasSharedScope).toBe(true);
     });
@@ -278,9 +276,13 @@ describe("MentionPicker", () => {
 
   it("shows empty state when no library items match", async () => {
     mockFetchEmpty();
-    render(<MentionPicker {...defaultProps} query="nonexistent" />);
-
-    fireEvent.click(screen.getByText("Library"));
+    render(
+      <MentionPicker
+        {...defaultProps}
+        defaultTab="library"
+        query="nonexistent"
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByText("No items found.")).toBeInTheDocument();

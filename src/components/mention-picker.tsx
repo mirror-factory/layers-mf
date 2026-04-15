@@ -36,6 +36,8 @@ export interface MentionPickerProps {
   query: string;
   orgId: string;
   position?: { top: number; left: number };
+  /** Which tab to show initially. Defaults to "people". */
+  defaultTab?: "people" | "library";
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +83,9 @@ export function MentionPicker({
   query,
   orgId,
   position,
+  defaultTab = "people",
 }: MentionPickerProps) {
-  const [activeTab, setActiveTab] = useState<"people" | "library">("people");
+  const [activeTab, setActiveTab] = useState<"people" | "library">(defaultTab);
   const [libraryScope, setLibraryScope] = useState<"mine" | "shared">("mine");
 
   // ---- Data fetching state ----
