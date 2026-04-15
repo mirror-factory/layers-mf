@@ -376,6 +376,24 @@ describe("POST /api/chat", () => {
     expect(await res.text()).toBe("Invalid messages");
   });
 
+  it("applies compaction middleware via wrapLanguageModel for cloud models", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFromWithOrg();
+
+    const { createCompactionMiddleware } = await import("@/lib/ai/compaction-middleware");
+
+    await POST(
+      makeRequest({
+        model: "openai/gpt-4o",
+        messages: [{ role: "user", parts: [{ type: "text", text: "test" }] }],
+      })
+    );
+
+    expect(createCompactionMiddleware).toHaveBeenCalledWith(
+      expect.any(Number), // context window size
+    );
+  });
+
   it("accepts valid assistant role in messages", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
     mockFromWithOrg();

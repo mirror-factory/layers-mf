@@ -138,21 +138,45 @@ export async function createArtifact(
     }
 
     // 4. Also save to context_items for search indexing
-    // (artifacts are searchable through the existing hybrid search)
-    await supabase
-      .from("context_items")
-      .insert({
-        org_id: input.orgId,
-        source_type: input.type === "sandbox" ? "code" : input.type,
-        source_id: `artifact-${artifactId}`,
-        content_type: input.type === "document" ? "document" : "file",
-        title: input.title,
-        raw_content: input.content ?? input.files?.map(f => `// ${f.path}\n${f.content}`).join("\n\n").slice(0, 50000),
-        description_short: input.description ?? `${input.type}: ${input.title}`,
-        status: "ready",
-      })
-      .then(() => {}) // fire and forget
-      .catch(() => {}); // don't fail if indexing fails
+    // Uses select-then-insert pattern (partial unique index makes upsert unreliable)
+    const contentPreview = (input.content ?? input.files?.map(f => `// ${f.path}\n${f.content}`).join("\n\n") ?? "").slice(0, 5000);
+    const rawContent = [input.title, input.description, contentPreview].filter(Boolean).join("\n\n");
+    void (async () => {
+      try {
+        const { data: existing } = await supabase
+          .from("context_items")
+          .select("id")
+          .eq("org_id", input.orgId)
+          .eq("source_type", "artifact")
+          .eq("source_id", artifactId)
+          .single();
+
+        if (existing) {
+          await supabase
+            .from("context_items")
+            .update({
+              title: input.title,
+              raw_content: rawContent,
+              metadata: { type: input.type, language: input.language ?? null, version: 1 },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+        } else {
+          await supabase
+            .from("context_items")
+            .insert({
+              org_id: input.orgId,
+              source_type: "artifact",
+              source_id: artifactId,
+              title: input.title,
+              raw_content: rawContent,
+              metadata: { type: input.type, language: input.language ?? null, version: 1 },
+            });
+        }
+      } catch {
+        // don't fail if indexing fails
+      }
+    })();
 
     return { artifactId, versionNumber: 1 };
   } catch (err) {
@@ -225,6 +249,57 @@ export async function createVersion(
         total_output_tokens: (artifact.total_output_tokens ?? 0) + (input.outputTokens ?? 0),
       })
       .eq("id", input.artifactId);
+
+    // 4. Update context_items entry for search indexing
+    // Uses select-then-update pattern (partial unique index makes upsert unreliable)
+    void (async () => {
+      try {
+        // Get artifact title/type for the context_items update
+        const { data: fullArtifact } = await supabase
+          .from("artifacts")
+          .select("org_id, title, type, language, description_short")
+          .eq("id", input.artifactId)
+          .single();
+
+        if (!fullArtifact) return;
+
+        const contentPreview = (input.content ?? input.files?.map(f => `// ${f.path}\n${f.content}`).join("\n\n") ?? "").slice(0, 5000);
+        const rawContent = [fullArtifact.title, fullArtifact.description_short, contentPreview].filter(Boolean).join("\n\n");
+
+        const { data: existing } = await supabase
+          .from("context_items")
+          .select("id")
+          .eq("org_id", fullArtifact.org_id)
+          .eq("source_type", "artifact")
+          .eq("source_id", input.artifactId)
+          .single();
+
+        if (existing) {
+          await supabase
+            .from("context_items")
+            .update({
+              raw_content: rawContent,
+              metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+        } else {
+          // Edge case: context_items row was missing — create it
+          await supabase
+            .from("context_items")
+            .insert({
+              org_id: fullArtifact.org_id,
+              source_type: "artifact",
+              source_id: input.artifactId,
+              title: fullArtifact.title,
+              raw_content: rawContent,
+              metadata: { type: fullArtifact.type, language: fullArtifact.language ?? null, version: newVersion },
+            });
+        }
+      } catch {
+        // don't fail if indexing fails
+      }
+    })();
 
     return { versionNumber: newVersion };
   } catch (err) {

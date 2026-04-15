@@ -5,10 +5,13 @@ import {
   UIMessage,
   convertToModelMessages,
   stepCountIs,
+  wrapLanguageModel,
   tool,
 } from "ai";
 import { z } from "zod";
 import { gateway } from "@/lib/ai/config";
+import { createCompactionMiddleware } from "@/lib/ai/compaction-middleware";
+import { getContextWindow } from "@/lib/ai/token-counter";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -1087,8 +1090,13 @@ export async function POST(request: NextRequest) {
   // Default to gemini 3.0 flash for production (better tool selection than flash-lite)
   const modelId = portal.model ?? "google/gemini-3.0-flash";
 
-  const agent = new ToolLoopAgent({
+  const compactedModel = wrapLanguageModel({
     model: gateway(modelId),
+    middleware: createCompactionMiddleware(getContextWindow(modelId)),
+  });
+
+  const agent = new ToolLoopAgent({
+    model: compactedModel,
     instructions: systemPrompt,
     tools: portalTools,
     stopWhen: stepCountIs(4),
