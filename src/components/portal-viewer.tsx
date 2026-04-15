@@ -509,7 +509,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
 
   // Highlight text from chat tools (nonce forces re-trigger for same text)
   const highlightNonceRef = useRef(0);
-  const pendingHighlightRef = useRef<{ text: string; page: number; timestamp: number } | null>(null);
   const [highlightText, setHighlightText] = useState<string | undefined>(undefined);
   const [highlightNonce, setHighlightNonce] = useState(0);
 
@@ -804,8 +803,8 @@ export function PortalViewer({ portal }: PortalViewerProps) {
       } else if (toolName === "highlight_text" && out.action === "highlight") {
         const text = String(out.text ?? "");
 
-        // If we're on the library page or no PDF is loaded, auto-switch to first portal doc
-        if (activeView !== "document" || !pdfControls || pdfControls.numPages <= 0) {
+        // If we're on the library page, auto-switch to first portal doc
+        if (activeView !== "document") {
           const docs = portal.documents ?? [];
           if (docs.length > 0) {
             setActiveDocIndex(0);
@@ -815,17 +814,12 @@ export function PortalViewer({ portal }: PortalViewerProps) {
           }
         }
 
-        // Store as pending — the useEffect watching pdfControls?.numPages
-        // will apply it once the PDF is loaded and ready.
-        pendingHighlightRef.current = { text, page: 0, timestamp: Date.now() };
-
-        // If PDF is already loaded, apply immediately
-        if (pdfControls && pdfControls.numPages > 0) {
-          setHighlightText(text);
-          highlightNonceRef.current += 1;
-          setHighlightNonce(highlightNonceRef.current);
-          pendingHighlightRef.current = null;
-        }
+        // Always set highlight immediately — the PDF viewer component handles
+        // retry timing internally via progressive delays (200ms-12s).
+        // No pdfControls gate needed; removes stale-closure bugs.
+        setHighlightText(text);
+        highlightNonceRef.current += 1;
+        setHighlightNonce(highlightNonceRef.current);
 
         // Note: annotation omitted — the yellow highlight on the text is sufficient.
         // Adding an annotation here used currentPage (often wrong page) which was confusing.
@@ -1101,22 +1095,6 @@ export function PortalViewer({ portal }: PortalViewerProps) {
   const handleControlsReady = useCallback((controls: PdfControls) => {
     setPdfControls(controls);
   }, []);
-
-  // Apply any pending highlight when the PDF finishes loading (numPages becomes known)
-  useEffect(() => {
-    if (!pendingHighlightRef.current) return;
-    if (!pdfControls || pdfControls.numPages <= 0) return;
-    // PDF is ready — apply the pending highlight
-    const { text, page } = pendingHighlightRef.current;
-    pendingHighlightRef.current = null;
-    setHighlightText(text);
-    highlightNonceRef.current += 1;
-    setHighlightNonce(highlightNonceRef.current);
-    if (page > 0) {
-      pdfControls.goToPage?.(page);
-      setCurrentPage(page);
-    }
-  }, [pdfControls?.numPages]);
 
   // ---- Context tag management ----
   const addContextTag = useCallback((text: string) => {
