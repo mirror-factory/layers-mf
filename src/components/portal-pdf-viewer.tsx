@@ -459,13 +459,22 @@ function PdfDocumentInner({
     return { start, end };
   }, [currentPage, numPages]);
 
+  // Track whether we have a real measurement from a rendered page
+  const hasRealHeight = useRef(false);
+
   // Re-estimate page height when pageWidth changes (before real render)
+  // Only apply estimate if we haven't measured a real page yet
   useEffect(() => {
+    if (hasRealHeight.current) {
+      // We have a real aspect ratio — scale from it instead of guessing
+      return;
+    }
     const estimated = Math.round(pageWidth * 1.294);
-    // Only update if no real measurement yet (within 5% of estimate)
-    if (Math.abs(pageHeight - estimated) / estimated > 0.3) return;
     setPageHeight(estimated);
   }, [pageWidth]);
+
+  // Track actual aspect ratio once measured from a rendered page
+  const measuredAspectRatio = useRef<number | null>(null);
 
   // Update estimated page height when first page renders
   const handlePageRenderSuccess = useCallback(() => {
@@ -474,10 +483,19 @@ function PdfDocumentInner({
     if (firstRef) {
       const h = firstRef.getBoundingClientRect().height;
       if (h > 0 && Math.abs(h - pageHeight) > 20) {
+        hasRealHeight.current = true;
+        measuredAspectRatio.current = h / pageWidth;
         setPageHeight(h);
       }
     }
-  }, [visibleRange.start, pageHeight]);
+  }, [visibleRange.start, pageHeight, pageWidth]);
+
+  // When pageWidth changes and we have a real aspect ratio, scale proportionally
+  useEffect(() => {
+    if (measuredAspectRatio.current) {
+      setPageHeight(Math.round(pageWidth * measuredAspectRatio.current));
+    }
+  }, [pageWidth]);
 
   // IntersectionObserver to detect which page is in view
   useEffect(() => {
