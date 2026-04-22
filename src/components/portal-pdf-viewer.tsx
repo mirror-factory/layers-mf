@@ -419,9 +419,6 @@ function PdfDocumentInner({
   const { Document, Page, pdfjs } = require("react-pdf");
   const [numPages, setNumPages] = useState<number>(0);
   const [ready, setReady] = useState(false);
-  // Estimate page height from width using standard US Letter aspect ratio (8.5:11 = 1:1.294)
-  // This prevents CLS by reserving close to the actual space before render
-  const [pageHeight, setPageHeight] = useState(() => Math.round(pageWidth * 1.294));
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const programmaticScrollRef = useRef(false);
 
@@ -435,14 +432,15 @@ function PdfDocumentInner({
     const padding = 64;
     const baseAvailable = containerWidth - padding;
     if (showSpread) {
-      // Base width per page at zoom=1, then scale
       const baseWidth = Math.min((baseAvailable - 24) / 2, 550);
       return baseWidth * zoom;
     }
-    // Base width at zoom=1 (max 700px), then scale — this lets zoom go past 100%
     const baseWidth = Math.min(baseAvailable, 700);
     return baseWidth * zoom;
   }, [containerWidth, zoom, showSpread]);
+
+  // Estimate page height from width using standard US Letter aspect ratio (8.5:11 = 1:1.294)
+  const [pageHeight, setPageHeight] = useState(() => Math.round(700 * 1.294));
 
   const onLoadSuccess = useCallback(
     ({ numPages: pages }: { numPages: number }) => {
