@@ -69,7 +69,7 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
 
-    const siteUrl = "https://layers.hustletogether.com";
+    const siteUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || "https://layers.hustletogether.com");
     const isNative = Capacitor.isNativePlatform();
 
     const { data, error } = await supabase.auth.signInWithOAuth({
