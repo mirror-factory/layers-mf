@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChatInterface, ChatActions } from "@/components/chat-interface";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen, X, MoreHorizontal, Copy, Download, FileJson, Share2 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, PanelLeftClose, PanelLeftOpen, X, MoreHorizontal, Copy, Download, FileJson, Share2, Clock, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -35,6 +35,9 @@ interface Conversation {
   title: string | null;
   created_at: string;
   updated_at: string;
+  /** 'user' | 'system' | 'schedule' — indicates origin of the conversation */
+  initiated_by?: "user" | "system" | "schedule" | null;
+  schedule_id?: string | null;
 }
 
 export default function ChatPage() {
@@ -205,6 +208,14 @@ export default function ChatPage() {
 
           {conversations.filter((conv) => !searchQuery || (conv.title ?? "").toLowerCase().includes(searchQuery)).map((conv) => {
             const displayTitle = conv.title || "New conversation";
+            const isSchedule = conv.initiated_by === "schedule";
+            const isSystem = conv.initiated_by === "system";
+            const Icon = isSchedule ? Clock : isSystem ? Bot : MessageSquare;
+            const iconTone = isSchedule
+              ? "text-amber-500"
+              : isSystem
+                ? "text-emerald-500"
+                : "text-muted-foreground";
             return (
               <div
                 key={conv.id}
@@ -213,14 +224,15 @@ export default function ChatPage() {
                   activeId === conv.id && "bg-accent border-l-2 border-l-primary"
                 )}
                 onClick={() => { setActiveId(conv.id); setSidebarOpen(false); }}
+                data-initiated-by={conv.initiated_by ?? "user"}
               >
-                <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", iconTone)} aria-label={isSchedule ? "Scheduled conversation" : isSystem ? "System conversation" : "Conversation"} />
                 <div className="flex-1 min-w-0">
                   <span className="block truncate text-xs">
                     {displayTitle}
                   </span>
                   <span className="block text-[10px] text-muted-foreground mt-0.5">
-                    {relativeTime(conv.updated_at)}
+                    {isSchedule ? "Scheduled · " : isSystem ? "System · " : ""}{relativeTime(conv.updated_at)}
                   </span>
                 </div>
                 <button

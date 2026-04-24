@@ -6,6 +6,7 @@ import { gateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { searchContext, searchContextChunks } from "@/lib/db/search";
 import { createTools } from "@/lib/ai/tools";
+import { getUserTimezone } from "@/lib/timezone";
 
 // TODO: When @workflow/ai DurableAgent is GA, replace ToolLoopAgent with DurableAgent
 // for 'full' tier schedules to remove the 60s timeout limit.
@@ -286,7 +287,13 @@ export async function GET(request: NextRequest) {
       const isCompleted = schedule.max_runs && newRunCount >= schedule.max_runs;
       const isOneShot = typeof schedule.schedule === "string" && schedule.schedule.startsWith("once:");
 
-      const nextRun = isOneShot ? null : calculateNextCron(schedule.schedule);
+      // Resolve timezone: payload.timezone takes priority (saved at create time),
+      // otherwise look up the creator's partner_settings.timezone.
+      const scheduleTz =
+        (schedule.payload?.timezone as string | undefined) ||
+        (await getUserTimezone(supabase, userId));
+
+      const nextRun = isOneShot ? null : calculateNextCron(schedule.schedule, scheduleTz);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateErr } = await (supabase as any)

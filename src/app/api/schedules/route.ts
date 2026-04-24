@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateNextCron } from "@/lib/cron";
+import { getUserTimezone } from "@/lib/timezone";
 
 export async function GET() {
   const supabase = await createClient();
@@ -59,17 +60,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const timezone = await getUserTimezone(supabase, user.id);
   const nextRun = schedule.startsWith("once:")
     ? schedule.replace("once:", "")
-    : calculateNextCron(schedule);
+    : calculateNextCron(schedule, timezone);
 
-  // Merge prompt + email config into payload so the cron executor can find them
+  // Merge prompt + email config into payload so the cron executor can find them.
+  // Persist the timezone used at create time so the executor honors it on each run.
   const mergedPayload = {
     ...(payload ?? {}),
     ...(prompt ? { prompt } : {}),
     ...(model ? { model } : {}),
     ...(email_recipients?.length ? { email_recipients } : {}),
     ...(email_template ? { email_template } : {}),
+    timezone,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -22,10 +22,10 @@ export async function GET() {
     return new Response("No organization found", { status: 400 });
   }
 
-  const { data: conversations, error } = await supabase
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- initiated_by / schedule_id columns pending DB types regen
+  const { data: conversations, error } = await (supabase as any)
     .from("conversations")
-    .select("id, title, created_at, updated_at")
+    .select("id, title, created_at, updated_at, initiated_by, schedule_id")
     .eq("org_id", member.org_id)
     .order("updated_at", { ascending: false });
 

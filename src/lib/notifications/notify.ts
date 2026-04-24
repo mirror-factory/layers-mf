@@ -64,10 +64,18 @@ export async function notify(params: NotifyParams): Promise<void> {
           return prefs.email_on_action_item;
         case "library_update":
           return prefs.email_on_new_context;
+        case "schedule_started":
+          return false; // in-app only; avoid email spam for starts
         case "schedule_complete":
           return prefs.digest_enabled; // included in digest
+        case "system_message":
+          return false; // in-app/push only — AI-initiated chat updates
+        case "mcp_health_failed":
+          return prefs.email_on_system_alert ?? false;
         case "credit_low":
           return true; // always email for credit alerts
+        case "system_alert":
+          return prefs.email_on_system_alert ?? true;
         default:
           return false;
       }

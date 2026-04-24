@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateNextCron } from "@/lib/cron";
+import { getUserTimezone } from "@/lib/timezone";
 
 export async function PATCH(
   request: NextRequest,
@@ -107,13 +108,16 @@ export async function PATCH(
       return NextResponse.json({ error: "Schedule cannot be empty" }, { status: 400 });
     }
     updates.schedule = schedule.trim();
+    const timezone = await getUserTimezone(supabase, user.id);
     const nextRun = schedule.startsWith("once:")
       ? schedule.replace("once:", "")
-      : calculateNextCron(schedule);
+      : calculateNextCron(schedule, timezone);
     if (!nextRun && !schedule.startsWith("once:")) {
       return NextResponse.json({ error: "Invalid cron expression" }, { status: 400 });
     }
     updates.next_run_at = nextRun;
+    // Keep payload.timezone in sync so the executor uses the same tz on each run.
+    updates.payload = { ...(updates.payload ?? {}), timezone };
   }
 
   if (Object.keys(updates).length === 0) {
