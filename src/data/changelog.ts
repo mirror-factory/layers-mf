@@ -11,6 +11,30 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.1",
+    date: "2026-04-23",
+    title: "Central Improvement Plan, Timezone Scheduling & Self-Improve Loop",
+    highlights: [
+      "Master improvement plan and testing checklist as single source of truth — every feature, device, and theme tracked in one place",
+      "Timezone-aware scheduling: schedules now honor the user's partner_settings.timezone at create, edit, and run time",
+      "Chat sidebar surfaces schedule-initiated (Clock) and system-initiated (Bot) conversations with distinct colors and subtitles",
+      "/self-improve slash command runs the 5-step flywheel: eval → research → design → implement → re-eval",
+      "Expect test plans for every feature area: chat, scheduling, library, MCP, skills, artifacts, mobile, tools",
+    ],
+    changes: [
+      { type: "docs", description: "Central planning docs: master-improvement-plan.md (feature matrix + AI Tool Coverage) + master-testing-checklist.md + self-improve-loop.md" },
+      { type: "docs", description: "Expect test plans for every area: chat, scheduling, library, mcp, skills, artifacts, mobile, tools" },
+      { type: "docs", description: "Research docs: library architecture rethink (Files/Photos/Notes/Sources), skills + MCP safety review agent design with threat model" },
+      { type: "feat", description: "Timezone utility (src/lib/timezone.ts) with getUserTimezone/detectBrowserTimezone/formatInTimezone/tzAbbreviation" },
+      { type: "feat", description: "Timezone-aware schedule POST + PATCH: resolves user TZ from partner_settings, persists into payload.timezone" },
+      { type: "feat", description: "Cron executor honors payload.timezone when computing next_run_at" },
+      { type: "feat", description: "Conversations API returns initiated_by + schedule_id; chat sidebar renders per-origin icon (amber Clock / emerald Bot / default MessageSquare)" },
+      { type: "feat", description: "Notification types: schedule_started, system_message, mcp_health_failed, system_alert with sensible email defaults" },
+      { type: "feat", description: "Expect test infrastructure: pnpm expect:<area> scripts + run-expect-all.sh + /self-improve slash command" },
+      { type: "feat", description: "Migration 20260423_schedule_last_conversation: adds scheduled_actions.last_conversation_id" },
+    ],
+  },
+  {
     version: "0.9.0",
     date: "2026-04-15",
     title: "Collaboration, Library Unification, Durable Schedules & 260 Tests",
