@@ -171,7 +171,7 @@ function DiscordSection() {
         <div>
           <h3 className="text-base font-medium">Discord Bot</h3>
           <p className="text-sm text-muted-foreground">
-            Use Granger directly in your Discord server
+            Use Layers directly in your Discord server
           </p>
         </div>
         <StatusBadge status={state.status} />
@@ -363,7 +363,7 @@ function SlackSection() {
         <div>
           <h3 className="text-base font-medium">Slack App</h3>
           <p className="text-sm text-muted-foreground">
-            Use Granger in your Slack workspace
+            Use Layers in your Slack workspace
           </p>
         </div>
         <StatusBadge status={state.status} />
@@ -670,7 +670,7 @@ export default function IntegrationsSettingsPage() {
           </h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Connect Granger to external platforms so your team can use the full AI
+          Connect Layers to external platforms so your team can use the full AI
           experience from Discord, Slack, or any webhook-compatible tool.
         </p>
       </div>

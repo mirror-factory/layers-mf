@@ -1,0 +1,1056 @@
+kind: pages
+schema_version: 1
+last_synced_on: 2026-04-29T19:39:10.468Z
+entries:
+  - route: /forgot-password
+    path: src/app/(auth)/forgot-password/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /login
+    path: src/app/(auth)/login/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /reset-password
+    path: src/app/(auth)/reset-password/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /signup
+    path: src/app/(auth)/signup/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /actions
+    path: src/app/(dashboard)/actions/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /admin
+    path: src/app/(dashboard)/admin/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /agents
+    path: src/app/(dashboard)/agents/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /analytics/costs
+    path: src/app/(dashboard)/analytics/costs/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /analytics/health
+    path: src/app/(dashboard)/analytics/health/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /analytics
+    path: src/app/(dashboard)/analytics/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /api-docs
+    path: src/app/(dashboard)/api-docs/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /approvals
+    path: src/app/(dashboard)/approvals/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /artifacts
+    path: src/app/(dashboard)/artifacts/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: "/canvas/[id]"
+    path: "src/app/(dashboard)/canvas/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /canvas
+    path: src/app/(dashboard)/canvas/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /changelog
+    path: src/app/(dashboard)/changelog/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: "/chat/[id]"
+    path: "src/app/(dashboard)/chat/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /chat
+    path: src/app/(dashboard)/chat/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /connectors
+    path: src/app/(dashboard)/connectors/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: "/context/[id]"
+    path: "src/app/(dashboard)/context/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /context
+    path: src/app/(dashboard)/context/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /context/upload-meeting
+    path: src/app/(dashboard)/context/upload-meeting/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /ditto
+    path: src/app/(dashboard)/ditto/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: "/docs/[...slug]"
+    path: "src/app/(dashboard)/docs/[...slug]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /docs
+    path: src/app/(dashboard)/docs/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /entropy-showcase
+    path: src/app/(dashboard)/entropy-showcase/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /features
+    path: src/app/(dashboard)/features/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /features/use-cases
+    path: src/app/(dashboard)/features/use-cases/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /guide
+    path: src/app/(dashboard)/guide/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /home
+    path: src/app/(dashboard)/home/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /how-it-works
+    path: src/app/(dashboard)/how-it-works/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /inbox
+    path: src/app/(dashboard)/inbox/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /integrations
+    path: src/app/(dashboard)/integrations/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /issues
+    path: src/app/(dashboard)/issues/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /library
+    path: src/app/(dashboard)/library/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /mcp
+    path: src/app/(dashboard)/mcp/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /notifications
+    path: src/app/(dashboard)/notifications/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /overview
+    path: src/app/(dashboard)/overview/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /priority
+    path: src/app/(dashboard)/priority/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /sandbox/demo
+    path: src/app/(dashboard)/sandbox/demo/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /sandbox
+    path: src/app/(dashboard)/sandbox/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /schedules
+    path: src/app/(dashboard)/schedules/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: "/sessions/[id]"
+    path: "src/app/(dashboard)/sessions/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /sessions
+    path: src/app/(dashboard)/sessions/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/api-keys
+    path: src/app/(dashboard)/settings/api-keys/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/audit
+    path: src/app/(dashboard)/settings/audit/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/billing
+    path: src/app/(dashboard)/settings/billing/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/integrations
+    path: src/app/(dashboard)/settings/integrations/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/mcp
+    path: src/app/(dashboard)/settings/mcp/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/notifications
+    path: src/app/(dashboard)/settings/notifications/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/org/dashboard
+    path: src/app/(dashboard)/settings/org/dashboard/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/org
+    path: src/app/(dashboard)/settings/org/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/org/rules
+    path: src/app/(dashboard)/settings/org/rules/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings
+    path: src/app/(dashboard)/settings/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/permissions
+    path: src/app/(dashboard)/settings/permissions/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/profile
+    path: src/app/(dashboard)/settings/profile/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/source-trust
+    path: src/app/(dashboard)/settings/source-trust/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /settings/team
+    path: src/app/(dashboard)/settings/team/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /sharing
+    path: src/app/(dashboard)/sharing/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /skills
+    path: src/app/(dashboard)/skills/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /tools
+    path: src/app/(dashboard)/tools/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /pricing
+    path: src/app/(marketing)/pricing/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /onboarding/choose-template
+    path: src/app/(onboarding)/onboarding/choose-template/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /onboarding/complete
+    path: src/app/(onboarding)/onboarding/complete/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /onboarding/connect-tools
+    path: src/app/(onboarding)/onboarding/connect-tools/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /onboarding/first-session
+    path: src/app/(onboarding)/onboarding/first-session/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /onboarding
+    path: src/app/(onboarding)/onboarding/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:13:47.282Z"
+  - route: /dev-kit/config
+    path: src/app/dev-kit/config/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/connectors
+    path: src/app/dev-kit/connectors/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/cost
+    path: src/app/dev-kit/cost/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/coverage
+    path: src/app/dev-kit/coverage/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/dependencies
+    path: src/app/dev-kit/dependencies/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/deployments
+    path: src/app/dev-kit/deployments/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/design-system
+    path: src/app/dev-kit/design-system/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/dev-kit/evals/[id]"
+    path: "src/app/dev-kit/evals/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/evals
+    path: src/app/dev-kit/evals/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/dev-kit/features/[name]"
+    path: "src/app/dev-kit/features/[name]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/features
+    path: src/app/dev-kit/features/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/index
+    path: src/app/dev-kit/index/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit
+    path: src/app/dev-kit/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/registries
+    path: src/app/dev-kit/registries/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/regressions
+    path: src/app/dev-kit/regressions/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/dev-kit/runs/[run_id]"
+    path: "src/app/dev-kit/runs/[run_id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/runs
+    path: src/app/dev-kit/runs/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/dev-kit/sessions/[id]"
+    path: "src/app/dev-kit/sessions/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/sessions
+    path: src/app/dev-kit/sessions/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/status
+    path: src/app/dev-kit/status/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /dev-kit/tools
+    path: src/app/dev-kit/tools/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /hero-lab
+    path: src/app/hero-lab/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /observability
+    path: src/app/observability/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /
+    path: src/app/page.tsx
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-29T19:14:35.178Z"
+  - route: "/portal/[token]/analytics"
+    path: "src/app/portal/[token]/analytics/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/portal/[token]/experience"
+    path: "src/app/portal/[token]/experience/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/portal/[token]"
+    path: "src/app/portal/[token]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/s/[token]"
+    path: "src/app/s/[token]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: "/share/[token]"
+    path: "src/app/share/[token]/page.tsx"
+    owner: null
+    auth: public
+    features: 
+    created_on: "2026-04-28T19:33:04.890Z"
+  - route: /page.tsx
+    path: src/app/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:14:35.178Z"
+  - route: /(auth)/forgot-password
+    path: src/app/(auth)/forgot-password/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(auth)/login
+    path: src/app/(auth)/login/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(auth)/reset-password
+    path: src/app/(auth)/reset-password/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(auth)/signup
+    path: src/app/(auth)/signup/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/actions
+    path: src/app/(dashboard)/actions/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/admin
+    path: src/app/(dashboard)/admin/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/agents
+    path: src/app/(dashboard)/agents/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/analytics/costs
+    path: src/app/(dashboard)/analytics/costs/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/analytics/health
+    path: src/app/(dashboard)/analytics/health/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/analytics
+    path: src/app/(dashboard)/analytics/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/api-docs
+    path: src/app/(dashboard)/api-docs/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/approvals
+    path: src/app/(dashboard)/approvals/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/artifacts
+    path: src/app/(dashboard)/artifacts/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: "/(dashboard)/canvas/[id]"
+    path: "src/app/(dashboard)/canvas/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/canvas
+    path: src/app/(dashboard)/canvas/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/changelog
+    path: src/app/(dashboard)/changelog/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: "/(dashboard)/chat/[id]"
+    path: "src/app/(dashboard)/chat/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/chat
+    path: src/app/(dashboard)/chat/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/connectors
+    path: src/app/(dashboard)/connectors/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: "/(dashboard)/context/[id]"
+    path: "src/app/(dashboard)/context/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/context
+    path: src/app/(dashboard)/context/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/context/upload-meeting
+    path: src/app/(dashboard)/context/upload-meeting/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/ditto
+    path: src/app/(dashboard)/ditto/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: "/(dashboard)/docs/[...slug]"
+    path: "src/app/(dashboard)/docs/[...slug]/page.tsx"
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/docs
+    path: src/app/(dashboard)/docs/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/entropy-showcase
+    path: src/app/(dashboard)/entropy-showcase/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/features
+    path: src/app/(dashboard)/features/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/features/use-cases
+    path: src/app/(dashboard)/features/use-cases/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/guide
+    path: src/app/(dashboard)/guide/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/home
+    path: src/app/(dashboard)/home/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/how-it-works
+    path: src/app/(dashboard)/how-it-works/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/inbox
+    path: src/app/(dashboard)/inbox/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/integrations
+    path: src/app/(dashboard)/integrations/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/issues
+    path: src/app/(dashboard)/issues/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/library
+    path: src/app/(dashboard)/library/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-29T19:12:26.017Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/mcp
+    path: src/app/(dashboard)/mcp/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/notifications
+    path: src/app/(dashboard)/notifications/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/overview
+    path: src/app/(dashboard)/overview/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/priority
+    path: src/app/(dashboard)/priority/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/sandbox/demo
+    path: src/app/(dashboard)/sandbox/demo/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/sandbox
+    path: src/app/(dashboard)/sandbox/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/schedules
+    path: src/app/(dashboard)/schedules/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: "/(dashboard)/sessions/[id]"
+    path: "src/app/(dashboard)/sessions/[id]/page.tsx"
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/sessions
+    path: src/app/(dashboard)/sessions/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/api-keys
+    path: src/app/(dashboard)/settings/api-keys/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/audit
+    path: src/app/(dashboard)/settings/audit/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/billing
+    path: src/app/(dashboard)/settings/billing/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/integrations
+    path: src/app/(dashboard)/settings/integrations/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/mcp
+    path: src/app/(dashboard)/settings/mcp/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/notifications
+    path: src/app/(dashboard)/settings/notifications/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/org/dashboard
+    path: src/app/(dashboard)/settings/org/dashboard/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/org
+    path: src/app/(dashboard)/settings/org/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/org/rules
+    path: src/app/(dashboard)/settings/org/rules/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings
+    path: src/app/(dashboard)/settings/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/permissions
+    path: src/app/(dashboard)/settings/permissions/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/profile
+    path: src/app/(dashboard)/settings/profile/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/source-trust
+    path: src/app/(dashboard)/settings/source-trust/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/settings/team
+    path: src/app/(dashboard)/settings/team/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/sharing
+    path: src/app/(dashboard)/sharing/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/skills
+    path: src/app/(dashboard)/skills/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(dashboard)/tools
+    path: src/app/(dashboard)/tools/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(marketing)/pricing
+    path: src/app/(marketing)/pricing/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(onboarding)/onboarding/choose-template
+    path: src/app/(onboarding)/onboarding/choose-template/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(onboarding)/onboarding/complete
+    path: src/app/(onboarding)/onboarding/complete/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(onboarding)/onboarding/connect-tools
+    path: src/app/(onboarding)/onboarding/connect-tools/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(onboarding)/onboarding/first-session
+    path: src/app/(onboarding)/onboarding/first-session/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"
+  - route: /(onboarding)/onboarding
+    path: src/app/(onboarding)/onboarding/page.tsx
+    owner: null
+    auth: public
+    features: null
+    created_on: "2026-04-28T19:33:04.890Z"
+    removed_on: "2026-04-29T19:13:47.282Z"

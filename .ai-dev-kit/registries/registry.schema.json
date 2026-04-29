@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vendor Registry",
+  "description": "Canonical schema for a vendor registry. Every vendor the project talks to should have one JSON file in .ai-dev-kit/registries/ conforming to this shape. Registries are the single source of truth for model IDs, pricing, and deprecation patterns. Pre-commit and doctor read them to validate hardcoded strings and flag staleness.",
+  "type": "object",
+  "required": ["vendor", "label", "validated_on"],
+  "properties": {
+    "vendor": {
+      "type": "string",
+      "description": "Short lowercase identifier. File name should match (assemblyai.json -> vendor: 'assemblyai').",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable vendor name (e.g. 'AssemblyAI')."
+    },
+    "docs_root": {
+      "type": "string",
+      "format": "uri",
+      "description": "Vendor's docs home. The spec-enricher agent fetches from here on `registry refresh`."
+    },
+    "console_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Where to get an API key / dashboard login."
+    },
+    "validated_on": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date the registry was last verified against the vendor's current docs. Doctor warns when older than 90 days."
+    },
+    "validated_against_sdk": {
+      "type": "string",
+      "description": "Semver range of the SDK this registry was validated against (e.g. 'assemblyai@^4.15.0')."
+    },
+    "required_env": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Env vars the vendor's SDK needs. Doctor's Vendor Secrets section cross-references imports to these."
+    },
+    "id_patterns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Regex patterns that match this vendor's model IDs. The pre-commit scanner compiles these across all registries and flags any source literal that matches a pattern but isn't in the vendor's model lists. Example: ['universal-[\\\\w-]+', 'u3-[\\\\w-]+', 'slam-\\\\d+', 'nano', 'whisper-rt']. Omit and this registry contributes only to explicit validModels() validation, not to the source-literal scanner."
+    },
+    "deprecations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern", "deprecated_on", "replacement"],
+        "properties": {
+          "pattern": { "type": "string", "description": "Literal or regex pattern of the deprecated usage (e.g. 'speech_model:' -- the field rename, not a model id)." },
+          "deprecated_on": { "type": "string", "format": "date" },
+          "replacement": { "type": "string", "description": "What to use instead." },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "what"],
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "what": { "type": "string", "description": "What this URL validates (e.g. 'current speech_models values', 'per-model pricing')." }
+        }
+      }
+    }
+  },
+  "patternProperties": {
+    "^[a-z_]+_models$": {
+      "type": "array",
+      "description": "A 'slot' of models. Name any way that's meaningful for this vendor (chat_models, batch_models, streaming_models, embedding_models, speech_models, tts_models, image_models, video_models, etc). Each entry is a ModelEntry.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "deprecated"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The exact string the vendor's API accepts. This is what goes on the wire."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable name for UIs."
+          },
+          "description": { "type": "string" },
+          "use_for": {
+            "type": "string",
+            "description": "When to pick this model vs others in the same slot."
+          },
+          "price_per_hour_usd": { "type": "number" },
+          "input_price_per_million_usd": { "type": "number" },
+          "output_price_per_million_usd": { "type": "number" },
+          "price_per_million_chars_usd": { "type": "number" },
+          "price_notes": { "type": "string" },
+          "pricing": {
+            "type": "object",
+            "description": "Unit-price declaration for non-LLM vendor calls (per-minute transcription, per-page scrape, per-request search, etc.). `withExternalCall` looks this up via vendor-pricing.ts to compute per-call USD attributed to a run_id. The cost-drift checker (scripts/check-cost-drift.mts) re-fetches source_url weekly and fails the run if scraped price drifts by >2%.",
+            "required": ["unit", "usd_per_unit"],
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": ["minute", "second", "hour", "request", "page", "character", "image", "gb"],
+                "description": "Unit the vendor bills by."
+              },
+              "usd_per_unit": {
+                "type": "number",
+                "description": "USD charged per unit at the moment of validated_on."
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "The vendor's pricing page. The cost-drift checker scrapes this."
+              },
+              "validated_on": {
+                "type": "string",
+                "format": "date",
+                "description": "ISO date the price was last confirmed."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Tier details, volume discounts, commit-terms, etc."
+              }
+            }
+          },
+          "context_window": { "type": "integer" },
+          "dimensions": { "type": "integer", "description": "Embedding dimension size." },
+          "deprecated": {
+            "type": "boolean",
+            "description": "If true, doctor and registry.ts emit a warning when this ID is used. Still valid for migration-period code."
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

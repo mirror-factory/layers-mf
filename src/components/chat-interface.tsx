@@ -353,7 +353,7 @@ function InlineApproval({ approvalId, reasoning, actionType, targetService, conf
           resultMsg = `Approved (not auto-executed: ${data.execution.reason})`;
         }
         setResult(resultMsg);
-        // Notify the conversation so Granger knows what happened
+        // Notify the conversation so Dewey knows what happened
         onExecuted?.(resultMsg);
       } else {
         setResult("Rejected");
@@ -1530,7 +1530,7 @@ function formatMessagesAsMarkdown(
     const text = getTextContent(parts);
     const toolParts = getToolParts(parts);
 
-    const roleName = m.role === "user" ? "User" : "Granger";
+    const roleName = m.role === "user" ? "User" : "Dewey";
     lines.push(`## ${roleName}`);
 
     if (text) {
@@ -2624,7 +2624,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
       const handler = SLASH_COMMANDS[cmd.toLowerCase()];
       if (handler) {
         const expanded = handler(args?.trim() ?? "");
-        console.log(`[Granger] Slash command ${cmd} → "${expanded}"`);
+        console.log(`[Dewey] Slash command ${cmd} → "${expanded}"`);
         text = expanded;
       }
     }
@@ -2769,7 +2769,7 @@ function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, 
               </p>
               {!compactMode && !isPortal && (
                 <p className="text-xs mt-1">
-                  {"Granger searches your documents, meetings, and notes to answer."}
+                  {"Dewey searches your documents, meetings, and notes to answer."}
                 </p>
               )}
               <div className={cn("flex flex-wrap justify-center max-w-lg", compactMode ? "mt-3" : "mt-5")}>

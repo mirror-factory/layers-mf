@@ -1,4 +1,4 @@
-> **⚠️ ARCHIVED** — This document is outdated. See [org-permissions-system.md](../org-permissions-system.md) for current information.
+> **⚠️ ARCHIVED** — This document is outdated. See [org-permissions-system.md](../organization/org-permissions-system.md) for current information.
 > Moved to archive on 2026-04-06.
 
 ---

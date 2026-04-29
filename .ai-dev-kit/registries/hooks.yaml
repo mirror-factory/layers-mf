@@ -1,0 +1,130 @@
+kind: hooks
+schema_version: 1
+last_synced_on: 2026-04-28T19:46:08.689Z
+entries:
+  - name: post-commit
+    surface: husky
+    event: post-commit
+    path: .husky/post-commit
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.948Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: pre-commit
+    surface: husky
+    event: pre-commit
+    path: .husky/pre-commit
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.947Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: pre-push
+    surface: husky
+    event: pre-push
+    path: .husky/pre-push
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.947Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: context7-suggest.py
+    surface: claude
+    event: PreToolUse
+    path: .claude/hooks/context7-suggest.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: "Write|Edit"
+    last_modified: "2026-04-28T19:31:41.950Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: periodic-reground.py
+    surface: claude
+    event: PostToolUse
+    path: .claude/hooks/periodic-reground.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: "*"
+    last_modified: "2026-04-28T19:31:41.948Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: postuse-format.py
+    surface: claude
+    event: PostToolUse
+    path: .claude/hooks/postuse-format.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: "Write|Edit"
+    last_modified: "2026-04-28T19:31:41.949Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: record-docs-lookup.py
+    surface: claude
+    event: PostToolUse
+    path: .claude/hooks/record-docs-lookup.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: "WebFetch|mcp__context7.*|mcp__firecrawl.*|WebSearch"
+    last_modified: "2026-04-28T19:31:41.950Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: record-kit-event.py
+    surface: claude
+    event: SessionStart
+    path: .claude/hooks/record-kit-event.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.963Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: record-skill-use.py
+    surface: claude
+    event: PreToolUse
+    path: .claude/hooks/record-skill-use.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: Skill
+    last_modified: "2026-04-28T19:31:41.950Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: session-start-run.py
+    surface: claude
+    event: SessionStart
+    path: .claude/hooks/session-start-run.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.950Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: session-startup.py
+    surface: claude
+    event: SessionStart
+    path: .claude/hooks/session-startup.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.948Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: track-edits.py
+    surface: claude
+    event: PostToolUse
+    path: .claude/hooks/track-edits.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: "Write|Edit"
+    last_modified: "2026-04-28T19:31:41.949Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: verify-before-stop.py
+    surface: claude
+    event: Stop
+    path: .claude/hooks/verify-before-stop.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: null
+    last_modified: "2026-04-28T19:31:41.950Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: verify-claims.py
+    surface: claude
+    event: PostToolUse
+    path: .claude/hooks/verify-claims.py
+    wired_in_settings: true
+    kit_audit_instrumented: true
+    tool_filter: Bash
+    last_modified: "2026-04-28T19:31:41.949Z"
+    created_on: "2026-04-28T19:33:04.890Z"

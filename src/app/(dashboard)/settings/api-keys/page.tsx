@@ -32,14 +32,14 @@ export default async function ApiKeysPage() {
           API Keys & Integrations
         </h1>
         <p className="text-muted-foreground text-sm">
-          Connect your tools to Granger. API keys are encrypted and stored
+          Connect your tools to Layers. API keys are encrypted and stored
           securely.
         </p>
       </div>
       <PageExplainer
         title="How API Keys Work"
         sections={[
-          { title: "Gateway Access", content: "API keys let external tools and scripts access Granger through the AI Gateway on your behalf." },
+          { title: "Gateway Access", content: "API keys let external tools and scripts access Layers through the AI Gateway on your behalf." },
           { title: "Key Rotation", content: "Rotate keys regularly. Old keys are revoked immediately when you generate a replacement." },
           { title: "Security", content: "Keys are encrypted at rest. Never share them in public repos or client-side code." },
         ]}

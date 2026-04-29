@@ -152,14 +152,14 @@ export function NotificationSettings() {
               onClick={async () => {
                 if (!('Notification' in window)) return;
                 if (Notification.permission === 'granted') {
-                  new Notification('Granger: Test notification', {
+                  new Notification('Layers: Test notification', {
                     body: 'Desktop notifications are working.',
                     icon: '/favicon.ico',
                   });
                 } else if (Notification.permission !== 'denied') {
                   const result = await Notification.requestPermission();
                   if (result === 'granted') {
-                    new Notification('Granger: Notifications enabled', {
+                    new Notification('Layers: Notifications enabled', {
                       body: 'You will receive desktop alerts for important events.',
                       icon: '/favicon.ico',
                     });
@@ -358,7 +358,7 @@ export function NotificationSettings() {
               });
               // Also fire a desktop notification immediately
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("Granger: Test notification", {
+                new Notification("Layers: Test notification", {
                   body: "In-app + desktop notifications are working.",
                   icon: "/favicon.ico",
                 });

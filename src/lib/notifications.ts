@@ -46,14 +46,14 @@ export function showNotification(title: string, options?: {
 }
 
 /**
- * Show a Granger-branded notification
+ * Show a Layers-branded notification
  */
 export function grangerNotify(message: string, options?: {
   body?: string;
   tag?: string;
   url?: string;
 }) {
-  return showNotification(`Granger: ${message}`, {
+  return showNotification(`Layers: ${message}`, {
     body: options?.body,
     tag: options?.tag ?? 'granger',
     onClick: options?.url ? () => window.open(options.url, '_self') : undefined,

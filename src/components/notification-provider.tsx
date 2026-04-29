@@ -91,7 +91,7 @@ export function NotificationProvider() {
         const url = isLinear ? '/context?q=Linear+Status' : '/schedules';
 
         notify(
-          `Granger: ${event.name}`,
+          `Layers: ${event.name}`,
           body,
           `schedule-${event.id}-${event.last_run_at ?? event.id}`,
           url,

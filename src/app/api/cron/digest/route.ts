@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       month: "long",
       day: "numeric",
     });
-    const fullDigest = `**Granger Daily Digest** — ${dateStr}\n\n${discordDigests.join("\n\n---\n\n")}`;
+    const fullDigest = `**Dewey Daily Digest** — ${dateStr}\n\n${discordDigests.join("\n\n---\n\n")}`;
 
     await sendDiscordChunked(digestChannelId, fullDigest);
   }

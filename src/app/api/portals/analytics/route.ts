@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = createAdminClient();
+  const supabase = createAdminClient() as any;
 
   // Verify portal exists (lightweight check)
   const { data: portal } = await supabase
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = createAdminClient();
+  const supabase = createAdminClient() as any;
 
   // Fetch all events for this portal
   const { data: events, error } = await supabase

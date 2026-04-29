@@ -1,0 +1,201 @@
+# Style Guide
+
+_Template. Fill in per project. Doctor warns when absent and `.tsx` files exist._
+
+## Why this file exists
+
+Component-level rules: how to compose primitives, what patterns we use, what patterns we avoid. Read `docs/brand-guide.md` first for the visual identity; this file is the implementation contract on top of it.
+
+Every component PR should follow these rules. The kit's Evaluator subagent grades against them during sprint review.
+
+---
+
+## Component anatomy
+
+Every component file structure:
+
+```tsx
+/**
+ * <ComponentName> -- one-sentence description of what it renders.
+ *
+ * Why it exists: what problem it solves that couldn't be done with
+ * the primitive it wraps. If you can't answer this in one sentence,
+ * the component shouldn't exist.
+ */
+import { /* primitives from design-system only */ } from '@/components/ui';
+
+interface <ComponentName>Props {
+  /* minimal props interface */
+}
+
+export function <ComponentName>(props: <ComponentName>Props) {
+  /* no local state unless genuinely necessary */
+  /* no data fetching -- components are pure renderers */
+  return <div>...</div>;
+}
+```
+
+Rules:
+
+- File name matches component name: `Foo.tsx` exports `function Foo`.
+- One component per file (primitives + composition) — exception: tightly coupled sub-components private to a file.
+- Every component has a one-sentence "why it exists" docstring. Delete the component if you can't write it.
+- Every component has a `.stories.tsx` sibling (enforced by kit — doctor counts ratio).
+
+---
+
+## Props discipline
+
+- **Never** accept `className` as a user-facing knob unless you've documented exactly which classes are allowed.
+- **Never** accept `style` as a prop. Use tokens from `docs/brand-guide.md`.
+- **Prefer variants to conditionals.** `variant="primary"` not `isPrimary={true}`.
+- **Enum variants over booleans.** Three booleans is one enum with four values and one invariant violation.
+
+---
+
+## Composition patterns
+
+### Layout components (do)
+
+```tsx
+<Card>
+  <Card.Header>...</Card.Header>
+  <Card.Body>...</Card.Body>
+  <Card.Footer>...</Card.Footer>
+</Card>
+```
+
+### Layout components (don't)
+
+```tsx
+<Card
+  header={<div>...</div>}
+  body={<div>...</div>}
+  footer={<div>...</div>}
+/>
+```
+
+(The slot-prop pattern is hard to type, hard to style, and invisible in the React tree.)
+
+---
+
+## State
+
+- **Server state** belongs in a data-fetching layer (SWR, React Query, RSC). Never in `useState`.
+- **Form state** belongs in a form library (React Hook Form, useActionState). Never hand-rolled.
+- **Ephemeral UI state** (open/close, hover) is the only thing that belongs in `useState`.
+
+---
+
+## CSS Variable Naming Conventions
+
+All design tokens are declared as CSS custom properties.
+
+### Naming pattern
+
+```
+--{category}-{name}
+```
+
+Categories: `--color-*`, `--space-*`, `--radius-*`, `--shadow-*`, `--font-*`, `--motion-*`, `--ease-*`, `--z-*`.
+
+### Theme-adaptive variables
+
+```css
+:root {
+  --bg: var(--color-bg-dark);
+  --text: var(--color-text-dark);
+}
+
+[data-theme="light"] {
+  --bg: var(--color-bg-light);
+  --text: var(--color-text-light);
+}
+```
+
+---
+
+## Using Brand Tokens (Correct vs Incorrect)
+
+### Correct
+
+```tsx
+<div className="bg-[var(--bg)] text-[var(--text)] rounded-[var(--radius-md)]">
+  <button className="bg-[var(--accent)] text-white">Action</button>
+</div>
+```
+
+### Incorrect
+
+```tsx
+// WRONG: hardcoded values
+<div className="bg-[#18181b] text-[#fafafa]">
+  <button className="bg-[#6366f1]">Action</button>
+</div>
+```
+
+```tsx
+// WRONG: no dark/light mode support
+<div style={{ background: '#fff', color: '#000' }}>...</div>
+```
+
+```tsx
+// WRONG: arbitrary breakpoints
+@media (min-width: 900px) { ... }
+```
+
+---
+
+## Styling
+
+- Tokens from `docs/brand-guide.md`, not arbitrary values.
+- `className` composition via `clsx` or `cn()` helper. Never string concatenation.
+- No CSS-in-JS at runtime. Tailwind utility classes or CSS Modules only.
+- Dark mode via `dark:` variants, not `data-theme` attributes.
+
+---
+
+## Accessibility
+
+- Every interactive element has a visible focus ring (`focus-visible:ring-2`).
+- Every icon-only button has `aria-label`.
+- Every form field has a `<label>` or `aria-labelledby`.
+- Keyboard navigation works before mouse: tab, enter, escape, arrow keys.
+- Colour is never the only channel for meaning. Pair with icon or text.
+- Target minimum 4.5:1 contrast (AA) for body text, 3:1 for large text.
+
+Doctor's UI Coverage check verifies accessibility tests exist via `vitest-axe` or `@axe-core/playwright`.
+
+---
+
+## Performance
+
+- Lazy load routes: `import { foo } from ...` at the top is fine for components that are always rendered. For heavy features, use dynamic `import()` + `Suspense`.
+- Image optimisation: `next/image` always. No raw `<img>` in production code.
+- No inline event handler closures in list renders — memoise or lift.
+
+---
+
+## Don't
+
+- Don't `useState` for data you can derive.
+- Don't `useEffect` to sync state to props — derive directly.
+- Don't guard JSX with `&&` on numbers (`{count && ...}` renders "0").
+- Don't nest ternaries more than one level deep.
+- Don't use `React.FC` — use plain function components with typed props.
+
+---
+
+## Testing
+
+Each component requires, per kit UI-coverage rules:
+
+- `<name>.stories.tsx` — Storybook (enforced)
+- Visual-regression snapshot on mobile-light, mobile-dark, desktop-light, desktop-dark
+- A11y test (vitest-axe or playwright + @axe-core)
+
+Pages additionally require e2e-video.
+
+---
+
+_Last reviewed: TEMPLATE — edit this file for your project._

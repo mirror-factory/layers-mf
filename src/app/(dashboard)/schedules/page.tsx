@@ -34,7 +34,7 @@ export default async function SchedulesPage() {
       <div className="mb-6 sm:mb-8">
         <h1 className="text-xl sm:text-2xl font-semibold mb-1">Schedules</h1>
         <p className="text-muted-foreground text-sm">
-          Recurring and one-time tasks managed by Granger.
+          Recurring and one-time tasks managed by Dewey.
         </p>
       </div>
       <PageExplainer
@@ -58,7 +58,7 @@ export default async function SchedulesPage() {
           {
             title: "Managing schedules",
             content:
-              "Pause, resume, edit, or delete schedules anytime. You can also ask Granger in chat to create schedules using natural language, e.g. \"every morning check my Linear issues\".",
+              "Pause, resume, edit, or delete schedules anytime. You can also ask Dewey in chat to create schedules using natural language, e.g. \"every morning check my Linear issues\".",
           },
         ]}
       />

@@ -49,7 +49,8 @@ interface CommandEntry {
 const NAVIGATION: CommandEntry[] = [
   { href: "/home", label: "Home", icon: Home, keywords: "dashboard overview greeting", shortcut: "G H" },
   { href: "/chat", label: "Chat", icon: MessageSquare, keywords: "conversation ai assistant ask", shortcut: "G C" },
-  { href: "/context", label: "Context Library", icon: Library, keywords: "documents sources knowledge search", shortcut: "G L" },
+  { href: "/library", label: "Library", icon: Library, keywords: "dewey stacks assets context packs mcp", shortcut: "G L" },
+  { href: "/context", label: "Library Items", icon: Library, keywords: "documents sources knowledge search" },
   { href: "/notifications", label: "Notifications", icon: Inbox, keywords: "notifications alerts schedule mentions", shortcut: "G N" },
   { href: "/approvals", label: "Approvals", icon: CheckSquare, keywords: "review queue pending", shortcut: "G A" },
   { href: "/schedules", label: "Schedules", icon: Clock, keywords: "cron recurring tasks automation" },
@@ -77,7 +78,7 @@ const SETTINGS: CommandEntry[] = [
 
 const ACTIONS: CommandEntry[] = [
   { href: "/chat", label: "New Conversation", icon: PlusCircle, keywords: "start chat create" },
-  { href: "/context", label: "Upload Document", icon: Upload, keywords: "import file meeting pdf" },
+  { href: "/context/upload-meeting", label: "Upload Document", icon: Upload, keywords: "import file meeting pdf" },
   { href: "/integrations", label: "Connect Integration", icon: Plug, keywords: "add service oauth" },
   { href: "/schedules", label: "Create Schedule", icon: Clock, keywords: "automate recurring cron" },
 ];

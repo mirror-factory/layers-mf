@@ -10,11 +10,11 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-displ
 
 export const metadata: Metadata = {
   title: {
-    default: "Granger — Your AI Chief of Staff",
-    template: "%s | Granger",
+    default: "Layers — Your Context Library",
+    template: "%s | Layers",
   },
   description:
-    "Your AI Chief of Staff. Connect every tool into a single context layer with intelligent agents.",
+    "Your Context Library. Connect every tool into a single context layer with intelligent agents.",
   keywords: [
     "AI",
     "chief of staff",
@@ -29,10 +29,10 @@ export const metadata: Metadata = {
     { media: "(prefers-color-scheme: light)", color: "#34d399" },
   ],
   openGraph: {
-    title: "Granger — Your AI Chief of Staff",
+    title: "Layers — Your Context Library",
     description:
-      "Your AI Chief of Staff. Connect every tool into a single context layer with intelligent agents.",
-    siteName: "Granger",
+      "Your Context Library. Connect every tool into a single context layer with intelligent agents.",
+    siteName: "Layers",
     type: "website",
   },
   robots: {
@@ -52,7 +52,7 @@ export default function RootLayout({
         {/* Libraries for inline visual rendering in chat — loaded once, available to all sandboxed iframes */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Granger" />
+        <meta name="apple-mobile-web-app-title" content="Layers" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
       </head>
       <body className={`${inter.className} ${spaceGrotesk.variable} bg-background font-sans antialiased`}>

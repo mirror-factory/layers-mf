@@ -62,7 +62,7 @@ export function CostsExplainer() {
           <div>
             <h4 className="font-medium text-foreground mb-1">Getting Started</h4>
             <p>
-              Data appears here as you use Granger. New installs start at $0 with no
+              Data appears here as you use Layers. New installs start at $0 with no
               charges until you begin sending messages and running tools.
             </p>
           </div>

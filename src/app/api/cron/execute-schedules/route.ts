@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { calculateNextCron } from "@/lib/cron";
-import { ToolLoopAgent, tool, stepCountIs } from "ai";
+import { ToolLoopAgent, stepCountIs } from "ai";
 import { gateway } from "@ai-sdk/gateway";
-import { z } from "zod";
-import { searchContext, searchContextChunks } from "@/lib/db/search";
-import { createTools } from "@/lib/ai/tools";
+import {
+  createScheduleToolsByTier,
+  STEP_LIMITS,
+  type ToolTier,
+} from "@/lib/schedules/tools";
 
 // TODO: When @workflow/ai DurableAgent is GA, replace ToolLoopAgent with DurableAgent
 // for 'full' tier schedules to remove the 60s timeout limit.
@@ -16,123 +18,10 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_SCHEDULE_MODEL = "google/gemini-3-flash";
 
-export type ToolTier = "minimal" | "standard" | "full";
-
-const SYSTEM_PROMPT = `You are Granger, an AI assistant running a scheduled background task.
+const SYSTEM_PROMPT = `You are Dewey, the resident Librarian assistant inside Layers, running a scheduled background task.
 You have access to a knowledge base via search_context. Use it when the user's prompt requires looking up information.
 Be concise and actionable. Summarize findings clearly. If you searched and found nothing relevant, say so.
 Do NOT use markdown headings. Use plain text with bullet points when listing items.`;
-
-/**
- * Build a minimal tool set for scheduled runs.
- * Only search_context (no sandbox, no integrations -- too expensive for background).
- */
-export function createScheduleTools(supabase: ReturnType<typeof createAdminClient>, orgId: string) {
-  return {
-    search_context: tool({
-      description: "Search the organization's knowledge base for documents, meetings, notes, and other context.",
-      inputSchema: z.object({
-        query: z.string().describe("The search query"),
-        limit: z.number().min(1).max(20).optional().describe("Maximum results (default 8)"),
-      }),
-      execute: async ({ query, limit }: { query: string; limit?: number }) => {
-        // Try chunk-based search first for richer context
-        const chunkResults = await searchContextChunks(
-          supabase as Parameters<typeof searchContextChunks>[0],
-          orgId,
-          query,
-          limit ?? 8,
-          undefined,
-          true,
-        );
-
-        if (chunkResults.length > 0) {
-          return {
-            results: chunkResults.map((r) => ({
-              title: r.title,
-              snippet: r.parent_content?.slice(0, 500) ?? r.description_short ?? "",
-              source_type: r.source_type,
-              content_type: r.content_type,
-            })),
-          };
-        }
-
-        // Fall back to item-level search
-        const results = await searchContext(
-          supabase as Parameters<typeof searchContext>[0],
-          orgId,
-          query,
-          limit ?? 8,
-        );
-
-        return {
-          results: results.map((r) => ({
-            title: r.title,
-            snippet: r.description_short ?? r.description_long?.slice(0, 500) ?? "",
-            source_type: r.source_type,
-            content_type: r.content_type,
-          })),
-        };
-      },
-    }),
-  };
-}
-
-/** Step limits per tier */
-const STEP_LIMITS: Record<ToolTier, number> = {
-  minimal: 5,
-  standard: 10,
-  full: 20,
-};
-
-/**
- * Build tool sets based on tier.
- *
- * - minimal: search_context only (current behavior, cheapest)
- * - standard: search + artifact + web tools (mid-range)
- * - full: all 25+ tools from createTools (sandbox, MCP, etc.)
- */
-export function createScheduleToolsByTier(
-  tier: ToolTier,
-  supabase: ReturnType<typeof createAdminClient>,
-  orgId: string,
-  userId: string,
-) {
-  // Minimal: just search (current behavior)
-  if (tier === "minimal") {
-    return createScheduleTools(supabase, orgId);
-  }
-
-  // Full: everything from the main tool factory
-  if (tier === "full") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return createTools(supabase as any, orgId, userId);
-  }
-
-  // Standard: search + artifacts + web (mid-range)
-  const baseTools = createScheduleTools(supabase, orgId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fullTools = createTools(supabase as any, orgId, userId);
-
-  // Cherry-pick standard-tier tools: artifact management + web access + code tools
-  const standardToolNames = [
-    "artifact_list",
-    "artifact_get",
-    "write_code",
-    "edit_code",
-    "web_browse",
-    "web_search",
-  ] as const;
-
-  const standardExtras: Record<string, unknown> = {};
-  for (const name of standardToolNames) {
-    if (name in fullTools) {
-      standardExtras[name] = fullTools[name as keyof typeof fullTools];
-    }
-  }
-
-  return { ...baseTools, ...standardExtras };
-}
 
 /**
  * GET /api/cron/execute-schedules

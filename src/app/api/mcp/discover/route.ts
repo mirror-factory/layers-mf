@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            client_name: appName || "Granger",
+            client_name: appName || "Layers",
             redirect_uris: [callbackUrl || "http://localhost:3000/api/mcp/oauth/callback"],
             grant_types: ["authorization_code", "refresh_token"],
             response_types: ["code"],

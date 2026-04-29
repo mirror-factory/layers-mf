@@ -17,7 +17,7 @@ export default function WelcomePage() {
             <Sparkles className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Welcome to Granger</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome to Layers</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Your AI-powered workspace for context-rich collaboration.
               Let&apos;s get you set up in just a few steps.

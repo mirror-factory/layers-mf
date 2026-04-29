@@ -31,9 +31,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "How Granger Works",
+  title: "How Dewey Works",
   description:
-    "Understand the architecture behind Granger — system prompts, tools, MCP, context management, sandboxes, and more.",
+    "Understand the architecture behind Dewey — system prompts, tools, MCP, context management, sandboxes, and more.",
 };
 
 /* ------------------------------------------------------------------ */
@@ -57,7 +57,7 @@ function SystemPromptDiagram() {
   const layers = [
     {
       label: "Base Instructions",
-      detail: "~2K tokens — Granger's personality, capabilities, tool documentation",
+      detail: "~2K tokens — Dewey's personality, capabilities, tool documentation",
       color: "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300",
       badge: "~2K tokens",
     },
@@ -193,7 +193,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Every message you send to Granger is wrapped in a carefully constructed prompt.
+          Every message you send to Dewey is wrapped in a carefully constructed prompt.
           The model never sees just your message in isolation — it receives a layered context
           stack that determines its personality, knowledge, and capabilities.
         </p>
@@ -233,7 +233,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Tools give Granger the ability to take actions — search your context library,
+          Tools give Dewey the ability to take actions — search your context library,
           fetch documents, run code, send emails, and more. Here&apos;s how they work under the hood.
         </p>
         <div className="grid gap-3">
@@ -260,7 +260,7 @@ const SECTIONS: Section[] = [
               icon: Zap,
               title: "Execution and results",
               detail:
-                "When a tool is called, Granger executes the corresponding API request server-side. The results are added to the conversation for the model's next turn.",
+                "When a tool is called, Dewey executes the corresponding API request server-side. The results are added to the conversation for the model's next turn.",
             },
           ].map((item) => (
             <div key={item.title} className="flex gap-3 rounded-lg border p-3">
@@ -292,7 +292,7 @@ const SECTIONS: Section[] = [
       <div className="space-y-4">
         <p>
           MCP is a standard protocol that lets external services expose tools to AI models.
-          Instead of building custom integrations for every service, Granger connects to
+          Instead of building custom integrations for every service, Dewey connects to
           MCP servers using a single, universal protocol.
         </p>
         <div className="rounded-lg border p-4 space-y-3">
@@ -333,7 +333,7 @@ const SECTIONS: Section[] = [
       <div className="space-y-4">
         <p>
           Without context management, conversations would quickly exhaust the model&apos;s context
-          window and drive up costs. Granger uses AI SDK v6&apos;s <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">pruneMessages</code> on
+          window and drive up costs. Dewey uses AI SDK v6&apos;s <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">pruneMessages</code> on
           every request to keep things lean.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -396,7 +396,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Granger can write and execute code in isolated sandbox environments powered by
+          Dewey can write and execute code in isolated sandbox environments powered by
           Vercel Sandbox VMs. Each sandbox is secure, ephemeral, and fully containerized.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -462,7 +462,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          All AI calls in Granger are routed through the Vercel AI Gateway — a single API
+          All AI calls in Dewey are routed through the Vercel AI Gateway — a single API
           key that provides access to multiple providers. This gives you unified cost tracking,
           model fallbacks, and provider-agnostic code.
         </p>
@@ -500,7 +500,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Everything in Granger is scoped to an organization. When you create an org, you
+          Everything in Dewey is scoped to an organization. When you create an org, you
           become its owner and can invite team members to collaborate.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -544,7 +544,7 @@ const SECTIONS: Section[] = [
       <div className="space-y-4">
         <p>
           Skills are pre-packaged bundles of system prompts, tools, and reference files that
-          give Granger specialized capabilities for specific workflows.
+          give Dewey specialized capabilities for specific workflows.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {[
@@ -578,7 +578,7 @@ const SECTIONS: Section[] = [
     content: (
       <div className="space-y-4">
         <p>
-          Granger connects to external services through three distinct integration layers,
+          Dewey connects to external services through three distinct integration layers,
           each suited for different use cases.
         </p>
         <div className="space-y-3">
@@ -601,7 +601,7 @@ const SECTIONS: Section[] = [
               icon: MessageSquare,
               title: "Chat SDK — Webhook Endpoints",
               detail:
-                "Expose Granger as a bot on Discord, Slack, or custom platforms via webhook endpoint. Full chat experience with slash commands and tool access.",
+                "Expose Dewey as a bot on Discord, Slack, or custom platforms via webhook endpoint. Full chat experience with slash commands and tool access.",
               badge: "Chat",
             },
           ].map((item) => (
@@ -633,10 +633,10 @@ export default function HowItWorksPage() {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <BookOpen className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">How Granger Works</h1>
+          <h1 className="text-2xl font-bold tracking-tight">How Dewey Works</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          A deep dive into the architecture behind Granger — system prompts, tools, MCP,
+          A deep dive into the architecture behind Dewey — system prompts, tools, MCP,
           context management, sandboxes, cost tracking, and more.
         </p>
       </div>
@@ -678,7 +678,7 @@ export default function HowItWorksPage() {
       {/* Footer */}
       <div className="rounded-lg border bg-muted/50 p-5 text-center">
         <p className="text-sm text-muted-foreground">
-          Want to see it in action? Open <strong>Chat</strong> and ask Granger to explain
+          Want to see it in action? Open <strong>Chat</strong> and ask Dewey to explain
           how any of these systems work — it can inspect its own architecture in real time.
         </p>
       </div>

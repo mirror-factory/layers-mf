@@ -36,13 +36,14 @@ type NavItem = { href: string; label: string; icon: React.ComponentType<{ classN
 
 const MAIN_ITEMS: NavItem[] = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/context", label: "Library", icon: Library },
+  { href: "/library", label: "Library", icon: Library },
   { href: "/skills", label: "Skills", icon: Puzzle },
   { href: "/connectors", label: "Connectors", icon: Plug },
   { href: "/schedules", label: "Scheduling", icon: Clock },
 ];
 
 const MORE_ITEMS: NavItem[] = [
+  { href: "/context", label: "Items", icon: Library },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/changelog", label: "Changelog", icon: ScrollText },
@@ -158,7 +159,7 @@ export function SidebarNav({
           <Menu className="h-5 w-5" />
         </button>
         <NeuralMorph size={28} dotCount={8} formation="orbit" />
-        <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
+        <span className="font-display text-lg font-bold tracking-tight text-primary">Layers</span>
       </div>
 
       {/* Backdrop (mobile only) */}
@@ -184,7 +185,7 @@ export function SidebarNav({
           <div className="flex items-center gap-2">
             <NeuralMorph size={28} dotCount={8} formation="orbit" />
             {!isVisuallyCollapsed && (
-              <span className="font-display text-lg font-bold tracking-tight text-primary">Granger</span>
+              <span className="font-display text-lg font-bold tracking-tight text-primary">Layers</span>
             )}
           </div>
           <div className="flex items-center gap-1">

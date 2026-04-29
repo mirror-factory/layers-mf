@@ -1,0 +1,114 @@
+feature: library-layer
+version: 2
+description: >
+  Library Layer makes the existing context, chat, MCP, artifact, and sandbox
+  systems operate around a shared Library domain with Dewey as the system
+  librarian.
+
+unit_tests:
+  - file: src/lib/library/domain.test.ts
+    covers:
+      - context_items rows map to Library Items
+      - MCP ingestion modes remain explicit
+      - Dewey default profile is approval-aware and Library-native
+  - file: src/lib/library/layers-mcp.test.ts
+    covers:
+      - Layers MCP tool registry exposes Library, Dewey, artifact, sandbox, and approval tools
+      - risky write tools are approval-gated
+      - unknown tool calls fail before touching storage
+  - file: src/app/api/mcp/ingestion/route.test.ts
+    covers:
+      - live lookup records an import batch without saving Library Items
+      - save selected creates Library Items only for selected MCP records
+      - sync rule creates a durable MCP sync rule
+      - malformed MCP records are rejected before import
+  - file: src/app/api/library/inbox/[id]/curate/route.test.ts
+    covers:
+      - Inbox items without context records become Library Items
+      - Inbox items with existing context records can be assigned to Stacks
+  - file: src/app/api/library/artifacts/[id]/save-back/route.test.ts
+    covers:
+      - artifact save-back route calls the Library domain service with org/user scope
+
+api_surfaces:
+  - path: /api/library/items
+    methods: [GET, POST]
+  - path: /api/library/items/:id
+    methods: [GET]
+  - path: /api/library/search
+    methods: [POST]
+  - path: /api/library/stacks
+    methods: [GET, POST]
+  - path: /api/library/assets
+    methods: [POST]
+  - path: /api/library/context-packs
+    methods: [GET, POST]
+  - path: /api/library/inbox/:id/curate
+    methods: [POST]
+  - path: /api/library/artifacts/:id/save-back
+    methods: [POST]
+  - path: /api/dewey/profile
+    methods: [GET, PATCH]
+  - path: /api/mcp/ingestion
+    methods: [POST]
+  - path: /api/mcp/layers
+    methods: [GET, POST]
+
+golden_paths:
+  - name: chat-save-to-library
+    status: partially_covered
+    steps:
+      - Dewey identifies useful chat content.
+      - Dewey calls save_to_library.
+      - Library Item is created with chat provenance.
+      - Optional Stacks and tags are attached.
+  - name: mcp-save-selected
+    status: route_covered
+    steps:
+      - User chooses save_selected import mode.
+      - Selected external records become Library Items.
+      - MCP import batch records selected and saved counts.
+  - name: mcp-sync-rule
+    status: route_covered
+    steps:
+      - User defines durable sync rule.
+      - Rule stores MCP server, selector, destination Stack, and cadence.
+      - Future sync worker imports matching records.
+  - name: external-layers-mcp-read
+    status: partially_covered
+    steps:
+      - External client lists tools.
+      - External client calls search_library or get_library_item.
+      - Results are permission-scoped and audited.
+  - name: risky-action-approval
+    status: partially_covered
+    steps:
+      - External client requests create_artifact or run_sandbox.
+      - Layers creates an approval proposal instead of executing directly.
+      - Approved action executor handles the later write.
+  - name: inbox-curate-to-library
+    status: route_covered
+    steps:
+      - User or Dewey chooses an Inbox item.
+      - Route creates a Library Item or assigns the existing context item.
+      - Selected Stacks are attached.
+      - Inbox item status moves to acted/read.
+  - name: artifact-save-back
+    status: route_covered
+    steps:
+      - Artifact or sandbox result is selected for Library persistence.
+      - Route updates or creates the matching Library Item.
+      - Preview asset/provenance/audit data are attached.
+
+remaining_tests:
+  - Dewey retrieval with citations against real search data.
+  - Dewey save-to-library tool execution with Supabase test database.
+  - Fake MCP OAuth lifecycle and reconnect behavior.
+  - Asset upload, generated-image metadata, OCR/caption persistence, and searchability.
+  - Artifact creation/versioning and sandbox save-back against real sandbox provider.
+  - Approval executor for external writes.
+  - RLS tests for cross-user and cross-org isolation.
+  - E2E chat to Library retrieval to artifact to sandbox to Library save.
+
+cost_budget:
+  per_run_usd: 0.05

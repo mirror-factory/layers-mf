@@ -51,7 +51,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     description:
       "Sprint planning, issue management, and task tracking via Linear",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "productivity",
     icon: "clipboard-list",
     systemPrompt:
@@ -72,7 +72,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     description:
       "Compose professional emails with context from meetings and docs",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "communication",
     icon: "mail",
     systemPrompt:
@@ -90,7 +90,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     description:
       "Extract decisions, action items, and key points from meeting transcripts",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "productivity",
     icon: "mic",
     systemPrompt:
@@ -111,7 +111,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     name: "Code Builder",
     description: "Generate, execute, and preview code artifacts and tools",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "development",
     icon: "code",
     systemPrompt:
@@ -130,7 +130,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     description:
       "Generate a comprehensive weekly summary across all sources",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "productivity",
     icon: "bar-chart",
     systemPrompt:
@@ -149,7 +149,7 @@ export const BUILTIN_SKILLS: Omit<Skill, "id">[] = [
     description:
       "Write content matching Mirror Factory brand tone and values",
     version: "1.0.0",
-    author: "Granger",
+    author: "Dewey",
     category: "creative",
     icon: "palette",
     systemPrompt:

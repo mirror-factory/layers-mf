@@ -1,8 +1,36 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { devKitAuthGuard, isDevKitPath } from "@/lib/middleware-dev-kit";
+
+function generateRequestId(): string {
+  return `req_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const incomingRequestId = request.headers.get("x-request-id");
+  const requestId =
+    incomingRequestId && /^[\w-]{1,64}$/.test(incomingRequestId)
+      ? incomingRequestId
+      : generateRequestId();
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-request-id", requestId);
+
+  if (isDevKitPath(pathname)) {
+    const blocked = devKitAuthGuard(request);
+    if (blocked) return blocked;
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    response.headers.set("x-pathname", pathname);
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
 
   // Issue 3: Serve raw markdown when URL ends in .md (e.g. /docs/roadmap.md)
   if (pathname.startsWith("/docs/") && pathname.endsWith(".md")) {
@@ -25,7 +53,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +69,9 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -91,6 +123,7 @@ export async function middleware(request: NextRequest) {
 
   // Forward pathname to server components via header
   supabaseResponse.headers.set("x-pathname", pathname);
+  supabaseResponse.headers.set("x-request-id", requestId);
 
   return supabaseResponse;
 }

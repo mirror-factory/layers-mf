@@ -71,7 +71,7 @@ import {
   createScheduleTools,
   createScheduleToolsByTier,
   type ToolTier,
-} from "./route";
+} from "@/lib/schedules/tools";
 import { createAdminClient } from "@/lib/supabase/server";
 
 function createMockSupabase() {

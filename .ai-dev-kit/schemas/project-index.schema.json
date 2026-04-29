@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Index",
+  "description": "Canonical shape for .ai-dev-kit/registries/index.yaml -- the top-level project graph the /dev-kit/index dashboard renders. Aggregates every other registry, the package.json, per-feature SPEC / DESIGN-READY / TEST-MANIFEST artifacts, and 30-day run rollups into ONE file. Refreshed by scripts/sync-project-index.ts on pre-commit. Treat as read-only; edits are overwritten.",
+  "type": "object",
+  "required": ["kind", "schema_version", "last_synced_on", "project", "features", "registries", "totals_30d"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "project-index"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "last_synced_on": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last sync-project-index.ts run. Doctor warns when stale."
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "stack", "spec_path"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name -- mirrors package.json name."
+        },
+        "stack": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "High-level stack tags derived from package.json deps (e.g. 'next', 'react', 'tailwind', 'vitest')."
+        },
+        "spec_path": {
+          "type": "string",
+          "description": "Relative path to the project-level SPEC (typically features/_SEED-SPEC.md)."
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "description": "One entry per features/<name>/ directory.",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "spec", "design_ready", "test_manifest", "flows", "routes", "components", "api_routes", "vendors", "last_run", "last_run_status"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Directory name under features/."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["drafting", "designing", "building", "shipped"],
+            "description": "Lifecycle state. `drafting`: SPEC.md only. `designing`: DESIGN-READY.md exists but not marked ready. `building`: design ready + TEST-MANIFEST.yaml exists. `shipped`: most recent run ended with status=success."
+          },
+          "spec": {
+            "type": "string",
+            "description": "Relative path to the SPEC.md for this feature."
+          },
+          "design_ready": {
+            "type": "boolean",
+            "description": "True if features/<name>/DESIGN-READY.md exists and is signed off."
+          },
+          "test_manifest": {
+            "type": ["string", "null"],
+            "description": "Relative path to TEST-MANIFEST.yaml, or null when absent."
+          },
+          "flows": {
+            "type": "integer",
+            "description": "Count of flows declared in TEST-MANIFEST.yaml. 0 when no manifest."
+          },
+          "routes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "components": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "api_routes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "vendors": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "last_run": {
+            "type": ["string", "null"],
+            "description": "run_id (ULID) of the most recent run tagged to this feature."
+          },
+          "last_run_status": {
+            "type": ["string", "null"],
+            "description": "status field of the most recent run (success|failed|active|aborted)."
+          }
+        }
+      }
+    },
+    "registries": {
+      "type": "array",
+      "description": "Every .ai-dev-kit/registries/*.yaml file, summarized.",
+      "items": {
+        "type": "object",
+        "required": ["path", "entries", "last_synced_on"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path (e.g. '.ai-dev-kit/registries/components.yaml')."
+          },
+          "entries": {
+            "oneOf": [
+              { "type": "integer" },
+              { "type": "string" }
+            ],
+            "description": "Entry count if countable. Strings are allowed for registries whose shape is a map rather than an entries[] list."
+          },
+          "last_synced_on": {
+            "type": ["string", "null"],
+            "description": "last_synced_on read from the registry itself; null when the registry has never been synced or the field is absent."
+          }
+        }
+      }
+    },
+    "totals_30d": {
+      "type": "object",
+      "required": ["ai_calls", "vendor_calls", "cost_usd", "tests_run", "skill_invocations"],
+      "description": "Activity rollup for the last 30 days. Sourced from .ai-dev-kit/state/runs/history/*.json and .ai-logs/**/*.jsonl.",
+      "properties": {
+        "ai_calls": { "type": "integer" },
+        "vendor_calls": { "type": "integer" },
+        "cost_usd": { "type": "number" },
+        "tests_run": { "type": "integer" },
+        "skill_invocations": { "type": "integer" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

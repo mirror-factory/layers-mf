@@ -31,7 +31,9 @@ export async function PATCH(
   const ALLOWED_FIELDS = new Set([
     "is_active", "name", "oauth_authorize_url", "oauth_token_url",
     "oauth_client_id", "oauth_client_secret", "api_key_encrypted",
-    "error_message", "bearer_token",
+    "error_message", "bearer_token", "oauth_status", "oauth_scopes",
+    "oauth_token_metadata", "health_status", "health_checked_at",
+    "reconnect_after", "tool_snapshot", "failure_count",
   ]);
 
   const updates: Record<string, unknown> = {};

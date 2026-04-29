@@ -1,0 +1,21 @@
+# ai-dev-kit notifications via ntfy.sh
+#
+# The topic is not a secret. It lets long-running gates notify the team when a
+# block is hit or a run finishes.
+
+topic: mirror-factory-layers-mf-library-layer
+server: https://ntfy.sh
+
+channels:
+  blocker:   { priority: 5, tags: [warning, rotating_light] }
+  progress:  { priority: 3, tags: [gear] }
+  summary:   { priority: 2, tags: [checkered_flag] }
+  heartbeat: { priority: 1, tags: [heart] }
+
+auto_events:
+  - done
+  - blocked
+  - eval_regression
+  - cost_overrun
+  - visual_diff
+  - brand_fail

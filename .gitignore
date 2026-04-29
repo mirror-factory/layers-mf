@@ -38,6 +38,7 @@ yarn-error.log*
 *.swp
 *.swo
 .claude/pm-agent.log
+.ai-dev-kit.doctor-ran
 
 # playwright
 playwright-report/

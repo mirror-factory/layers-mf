@@ -1,0 +1,180 @@
+---
+# Mirror Factory Project Spec -- canonical format
+# This file is the source of truth that the Planner agent expands into sprints.
+# Edit fields directly; both humans and agents parse markdown + YAML.
+
+spec_id: {{SPEC_ID}}
+project: {{PROJECT_NAME}}
+status: draft                # draft | approved | shipped | archived
+owner: {{OWNER_EMAIL}}
+version: 0.1
+created_at: {{ISO_DATE}}
+updated_at: {{ISO_DATE}}
+
+# Goals + non-goals drive every sprint negotiation. Equal weight -- the
+# non-goals are what keeps scope honest.
+goals:
+  - {{GOAL_1}}
+  - {{GOAL_2}}
+non_goals:
+  - {{NON_GOAL_1}}
+  - {{NON_GOAL_2}}
+
+# Metrics: one leading (weekly, actionable) + one lagging (monthly, outcome).
+metrics:
+  leading: {{LEADING_METRIC}}
+  lagging: {{LAGGING_METRIC}}
+
+# Dependencies -- external APIs with the specific env keys each requires.
+# The Planner reads this list to check the project can actually be built.
+dependencies:
+  apis: []                   # e.g. [assemblyai, langfuse, stripe]
+  required_secrets: []       # e.g. [ASSEMBLYAI_API_KEY, LANGFUSE_PUBLIC_KEY]
+  internal_services: []
+
+# Milestones -- Shape Up appetite. First one is always "spec approved."
+milestones:
+  - id: m0
+    name: Spec approved
+    due: null
+  - id: m1
+    name: {{MILESTONE_1_NAME}}
+    due: null
+
+# Open questions the Planner should resolve before work begins. Each gets
+# an owner + a date the Planner can hold itself accountable to.
+open_questions: []
+---
+
+# {{PROJECT_NAME}}
+
+## TL;DR
+
+{{ONE_PARAGRAPH_PITCH}}
+
+## Problem & Users
+
+**Who hurts:** {{USER_PERSONA}}
+
+**What hurts:** {{PAIN_POINT}}
+
+**How they solve it today:** {{CURRENT_WORKAROUND}}
+
+**Cost of the current state:** {{COST_OR_TIME_LOST}}
+
+## Goals and Non-Goals
+
+**Goals** (what success looks like in 90 days):
+
+- {{GOAL_1_EXPANDED}}
+- {{GOAL_2_EXPANDED}}
+- {{GOAL_3_EXPANDED}}
+
+**Non-goals** (explicitly OUT of scope for v1):
+
+- {{NON_GOAL_1_EXPANDED}}
+- {{NON_GOAL_2_EXPANDED}}
+- {{NON_GOAL_3_EXPANDED}}
+
+## Success Metrics
+
+| Metric | Kind | Target (90 day) | How we measure |
+|--------|------|-----------------|----------------|
+| {{LEADING_METRIC}} | Leading | {{LEADING_TARGET}} | {{LEADING_HOW}} |
+| {{LAGGING_METRIC}} | Lagging | {{LAGGING_TARGET}} | {{LAGGING_HOW}} |
+
+## User Journeys
+
+### Journey 1: {{JOURNEY_1_NAME}}
+
+{{JOURNEY_1_STEPS}}
+
+### Journey 2: {{JOURNEY_2_NAME}}
+
+{{JOURNEY_2_STEPS}}
+
+## Functional Requirements
+
+Each requirement has a stable ID (`FR-N`) so downstream sprints can reference it. MoSCoW tags: Must / Should / Could / Won't.
+
+- **FR-1** (Must): {{REQUIREMENT_1}}
+- **FR-2** (Must): {{REQUIREMENT_2}}
+- **FR-3** (Should): {{REQUIREMENT_3}}
+- **FR-4** (Could): {{REQUIREMENT_4}}
+
+## Scope & Milestones
+
+**v0** (proof-of-concept, end of week 1):
+- {{V0_SCOPE}}
+
+**v1** (shipped product, end of appetite window):
+- {{V1_SCOPE}}
+
+**v2** (nice-to-have, post-launch):
+- {{V2_SCOPE}}
+
+## Technical Architecture
+
+**Stack:** {{STACK}}
+
+**Data model (core entities):**
+
+- {{ENTITY_1}}: {{ENTITY_1_FIELDS}}
+- {{ENTITY_2}}: {{ENTITY_2_FIELDS}}
+
+**Critical flow (end-to-end):**
+
+```
+{{CRITICAL_FLOW_SKETCH}}
+```
+
+## Dependencies
+
+External APIs and the env keys they require. **Every key must be registered in `.github/SECRETS.md` before live tests can run.**
+
+| Vendor | Env keys | Used by | Where to get |
+|--------|----------|---------|--------------|
+| {{VENDOR_1}} | `{{KEY_1}}` | {{USE_CASE_1}} | {{URL_1}} |
+| {{VENDOR_2}} | `{{KEY_2}}` | {{USE_CASE_2}} | {{URL_2}} |
+
+## Risks, Unknowns & Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|-----------|
+| {{RISK_1}} | {{LIKELIHOOD_1}} | {{IMPACT_1}} | {{MITIGATION_1}} |
+| {{RISK_2}} | {{LIKELIHOOD_2}} | {{IMPACT_2}} | {{MITIGATION_2}} |
+
+## Observability & Testing Strategy
+
+**Logged on every request:** request_id, user_id (when known), route, status, duration, and the structured event.
+
+**Metrics exported:** {{METRICS_LIST}}
+
+**Testing model:**
+
+| Layer | What we run | Mocked or live | When |
+|-------|-------------|----------------|------|
+| Unit | `pnpm test` | Mocked vendors | Pre-commit |
+| Live integration | `pnpm test:live` | Live vendors (gated on secret presence) | CI nightly |
+| API smoke | `pnpm test:api` | Spins up built app | CI on every push |
+| E2E | `pnpm test:e2e` | Playwright against dev server | CI nightly |
+| Observability | `/api/observability/health` | Live | On deploy + doctor |
+
+## Open Questions
+
+Planner / Evaluator: resolve these before moving to the next sprint. Each has an owner and a deadline.
+
+- [ ] **Q1:** {{QUESTION_1}} — owner: {{OWNER}}, due: {{DATE}}
+- [ ] **Q2:** {{QUESTION_2}} — owner: {{OWNER}}, due: {{DATE}}
+
+## Market & Competitive Landscape
+
+_Short appendix. Full market research lives in a separate artifact if needed._
+
+**Adjacent products:** {{ADJACENT_PRODUCTS}}
+
+**Why us:** {{DIFFERENTIATOR}}
+
+---
+
+_This spec was generated by `ai-dev-kit interview` and is maintained under `.ai-dev-kit/spec.md`. Mirror Factory spec format v1._

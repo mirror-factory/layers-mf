@@ -267,7 +267,7 @@ export default function ChatPage() {
             <span className="flex-1 text-sm font-medium text-foreground truncate text-center">
               {activeId
                 ? (conversations.find((c) => c.id === activeId)?.title ?? "New conversation")
-                : "Chat with Granger"}
+                : "Chat with Dewey"}
             </span>
 
             {/* Right: actions dropdown + new chat */}

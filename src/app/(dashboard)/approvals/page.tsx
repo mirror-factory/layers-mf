@@ -8,13 +8,13 @@ export default function ApprovalsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-1">Approval Queue</h1>
         <p className="text-muted-foreground text-sm">
-          Review and approve actions proposed by Granger.
+          Review and approve actions proposed by Dewey.
         </p>
       </div>
       <PageExplainer
         title="How Approvals Work"
         sections={[
-          { title: "Why approvals exist", content: "All write actions (creating Linear issues, drafting emails, editing documents) go through the approval queue. Granger proposes, you decide." },
+          { title: "Why approvals exist", content: "All write actions (creating Linear issues, drafting emails, editing documents) go through the approval queue. Dewey proposes, you decide." },
           { title: "How to approve", content: "Review each proposed action, then approve or reject. Approved actions are executed immediately. Rejected actions are discarded with optional feedback." },
           { title: "Edit proposals", content: "Team members can propose edits to context items. These require majority approval before changes are applied to the original document." },
         ]}

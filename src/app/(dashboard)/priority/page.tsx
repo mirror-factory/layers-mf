@@ -186,7 +186,7 @@ function PriorityDocumentsSection() {
           <BookOpen className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
             No priority documents yet. Add documents that should always be in
-            Granger&apos;s context.
+            Dewey&apos;s context.
           </p>
         </div>
       )}
@@ -500,7 +500,7 @@ function RulesSection() {
       {rules.length === 0 && (
         <div className="text-center py-6">
           <p className="text-sm text-muted-foreground">
-            No rules defined yet. Rules are injected into every Granger conversation.
+            No rules defined yet. Rules are injected into every Dewey conversation.
           </p>
         </div>
       )}
@@ -787,11 +787,11 @@ function PromptPreviewSection() {
       <div className="rounded-lg border bg-card">
         <div className="px-4 py-3 border-b">
           <h4 className="text-sm font-medium">Assembled Prompt (simplified)</h4>
-          <p className="text-xs text-muted-foreground">This is approximately what Granger sees at the start of each conversation.</p>
+          <p className="text-xs text-muted-foreground">This is approximately what Dewey sees at the start of each conversation.</p>
         </div>
         <pre className="p-4 text-xs font-mono text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto bg-muted/30">
 {`[AGENT_INSTRUCTIONS — ${formatTokens(preview.systemPromptTokens)} tokens]
-You are Granger, Mirror Factory's AI chief of staff...
+You are Dewey, Mirror Factory's AI chief of staff...
 (persona, tools, slash commands, guidelines)
 
 ${activeDocs.length > 0 ? activeDocs.map((d, i) => `[PRIORITY DOC #${i + 1}: ${d.filename} — ${formatTokens(estimateTokens(d.content))} tokens]
@@ -832,7 +832,7 @@ export default function PriorityPage() {
           </h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Documents and rules that are always loaded into Granger&apos;s system
+          Documents and rules that are always loaded into Dewey&apos;s system
           prompt. Priority documents provide context, rules define behavior.
         </p>
       </div>
@@ -857,7 +857,7 @@ export default function PriorityPage() {
               <h4 className="font-medium text-foreground mb-1">Priority Documents</h4>
               <p>
                 Priority documents are <span className="text-foreground font-medium">prepended to every system prompt message</span> &mdash;
-                they are the very first thing Granger reads before any conversation. They do <em>not</em> overwrite the base instructions;
+                they are the very first thing Dewey reads before any conversation. They do <em>not</em> overwrite the base instructions;
                 they <span className="text-foreground font-medium">add context on top</span> of them.
               </p>
               <p className="mt-1.5">
@@ -879,7 +879,7 @@ export default function PriorityPage() {
               <h4 className="font-medium text-foreground mb-1">Rules</h4>
               <p>
                 Rules are injected as a <span className="text-foreground font-medium">&quot;User Rules&quot; section at the end</span> of
-                the system prompt. They are hard constraints &mdash; Granger must follow them in every response.
+                the system prompt. They are hard constraints &mdash; Dewey must follow them in every response.
               </p>
               <div className="mt-2 rounded-md bg-muted/50 p-3">
                 <p className="text-xs font-medium text-foreground mb-1">Example rules:</p>

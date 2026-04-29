@@ -78,7 +78,7 @@ export function MCPServerCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serverUrl: server.url,
-          appName: "Granger",
+          appName: "Layers",
           callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
         }),
       });
@@ -163,7 +163,7 @@ export function MCPServerCard({
   const toolCount = server.discovered_tools?.length ?? 0;
 
   const handleDelete = async () => {
-    if (!confirm(`Remove "${server.name}"? Granger will lose access to its ${toolCount} tools.`)) return;
+    if (!confirm(`Remove "${server.name}"? Dewey will lose access to its ${toolCount} tools.`)) return;
     setDeleting(true);
     onDelete(server.id);
   };

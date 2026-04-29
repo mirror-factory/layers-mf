@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "INPUT=$(cat); CMD=$(echo \"$INPUT\" | grep -o '\"command\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | head -1 | sed 's/.*\"command\"[[:space:]]*:[[:space:]]*\"\\(.*\\)\"/\\1/'); if echo \"$CMD\" | grep -qE '^git commit'; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-check.sh; elif echo \"$CMD\" | grep -qE '^git push'; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-push-check.sh; fi",
+            "command": "INPUT=$(cat); CMD=$(echo \"$INPUT\" | grep -o '\"command\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | head -1 | sed 's/.*\"command\"[[:space:]]*:[[:space:]]*\"\\(.*\\)\"/\\1/'); if echo \"$CMD\" | grep -qE '^git commit'; then .claude/hooks/pre-commit-check.sh ; elif echo \"$CMD\" | grep -qE '^git push'; then .claude/hooks/pre-push-check.sh ; fi",
             "statusMessage": "Running pre-commit/push checks..."
           }
         ]
@@ -20,6 +20,24 @@
             "statusMessage": "Checking messages..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/context7-suggest.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/record-skill-use.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -28,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/agent-comms.sh",
+            "command": ".claude/hooks/agent-comms.sh",
             "async": true
           }
         ]
@@ -48,10 +66,65 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-push-pm.sh",
+            "command": ".claude/hooks/post-push-pm.sh",
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/verify-claims.py"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/periodic-reground.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/postuse-format.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/track-edits.py"
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch|mcp__context7.*|mcp__firecrawl.*|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/record-docs-lookup.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 .claude/hooks/session-start-run.py"
+      },
+      {
+        "type": "command",
+        "command": "python3 .claude/hooks/session-startup.py"
+      },
+      {
+        "type": "command",
+        "command": "python3 .claude/hooks/record-kit-event.py session-start --phase start --outcome ok"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 .claude/hooks/verify-before-stop.py"
       }
     ]
   }

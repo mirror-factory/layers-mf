@@ -242,7 +242,10 @@ describe("POST /api/chat/portal", () => {
     });
 
     it("uses portal.model when specified", async () => {
-      setupPortalMock({ ...MOCK_PORTAL, model: "anthropic/claude-sonnet-4.6" });
+      setupPortalMock({
+        ...MOCK_PORTAL,
+        model: "anthropic/claude-sonnet-4.6",
+      } as unknown as typeof MOCK_PORTAL);
       const { gateway } = await import("@/lib/ai/config");
       await POST(
         makeRequest({

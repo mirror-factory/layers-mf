@@ -1489,7 +1489,7 @@ export function ScheduleList({
               <Clock className="h-8 w-8 mx-auto mb-3 opacity-40" />
               <p className="text-sm">No {tab} schedules</p>
               <p className="text-xs mt-1">
-                Create a schedule or ask Granger in chat.
+                Create a schedule or ask Dewey in chat.
               </p>
             </div>
           ) : (

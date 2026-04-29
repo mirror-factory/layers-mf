@@ -129,6 +129,14 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
           snapshot_id: result.sandboxId ?? sandboxName,
         })
         .eq("id", artifactId);
+
+      const { saveArtifactBackToLibrary } = await import("@/lib/library/domain");
+      await saveArtifactBackToLibrary(auth.supabase, {
+        orgId: auth.orgId,
+        userId: auth.user.id,
+        artifactId,
+        reason: "sandbox_run",
+      });
     }
 
     return NextResponse.json({

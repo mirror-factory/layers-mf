@@ -289,7 +289,7 @@ async function waitForServer(
     try {
       const res = await fetch(url, {
         signal: AbortSignal.timeout(timeoutPerRequestMs),
-        headers: { "User-Agent": "Granger-Health-Check" },
+        headers: { "User-Agent": "Layers-Health-Check" },
       });
 
       // 502 means the proxy is up but the upstream server is not ready yet

@@ -1,4 +1,4 @@
-> **⚠️ ARCHIVED** — This document is outdated. See [content-organization.md](../content-organization.md) and [library-hub-and-sharing.md](../library-hub-and-sharing.md) for current information.
+> **⚠️ ARCHIVED** — This document is outdated. See [content-organization.md](../library/content-organization.md) and [library-hub-and-sharing.md](../library/library-hub-and-sharing.md) for current information.
 > Moved to archive on 2026-04-06.
 
 ---

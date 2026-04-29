@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ alerts: 0, message: 'All clear' });
   }
 
-  const fullMessage = `**Granger Alert** \u2014 ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n\n${alerts.join('\n\n')}`;
+  const fullMessage = `**Dewey Alert** \u2014 ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n\n${alerts.join('\n\n')}`;
 
   // Split and send if over Discord's 2000 char limit
   if (fullMessage.length <= 2000) {

@@ -51,7 +51,7 @@ export async function compactHistory(
 
   const { text } = await generateText({
     model: gateway(TASK_MODELS.compaction),
-    prompt: `You are summarizing a conversation between a partner and Granger (an AI chief of staff).
+    prompt: `You are summarizing a conversation between a partner and Dewey (an AI chief of staff).
 Preserve ALL of the following:
 - Key decisions made (with who decided and when)
 - Open action items with owners and deadlines

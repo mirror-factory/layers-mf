@@ -30,6 +30,7 @@
 
 | Document | Status | Description |
 |----------|--------|-------------|
+| [Library Layer Plan](../plans/library-layer.md) | Canonical Plan | Dewey, Library, MCP ingestion, assets, actions, sandboxes, and Layers-as-MCP-server |
 | [Library Hub & Sharing](./library/library-hub-and-sharing.md) | Active | Product vision -- library as the central hub |
 | [Content Organization](./library/content-organization.md) | Active | Collections, tags, smart filters, AI classification (technical) |
 | [Ingestion Pipeline](./library/ingestion-pipeline.md) | RFC | Queue-based ingestion redesign |

@@ -1,10 +1,558 @@
-export PATH="/opt/homebrew/bin:$PATH"
-NODE="/opt/homebrew/bin/node"
+#!/bin/sh
+# AI Dev Kit - Pre-push hook
+# Runs full test and eval suites before pushing.
 
-echo "Pre-push: running typecheck..."
-$NODE node_modules/typescript/bin/tsc --noEmit || echo "Pre-push: typecheck found errors (see above). Proceeding with known pre-existing issues."
+set -e
 
-echo "Pre-push: running tests..."
-$NODE node_modules/vitest/dist/cli.js run || echo "Pre-push: some tests failed (see above). Proceeding with known pre-existing failures."
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-echo "Pre-push: all checks passed."
+# ---------------------------------------------------------------------------
+# kit-audit: log hook start + per-step outcomes to .ai-dev-kit/state/kit-audit.jsonl
+# Never changes gate semantics. If the helper is missing we become a no-op.
+# ---------------------------------------------------------------------------
+HUSKY_HOOK_NAME="pre-push"
+export HUSKY_HOOK_NAME
+# shellcheck disable=SC1091
+[ -f scripts/lib/kit-audit.sh ] && . scripts/lib/kit-audit.sh || true
+if type kit_audit_hook_start >/dev/null 2>&1; then
+  kit_audit_hook_start "pre-push" || true
+  # shellcheck disable=SC2064
+  trap '_rc=$?; if type kit_audit_hook_end >/dev/null 2>&1; then if [ "$_rc" -eq 0 ]; then kit_audit_hook_end "pre-push" "ok"; else kit_audit_hook_end "pre-push" "fail"; fi; fi' EXIT
+fi
+
+_kit_t0() {
+  if type kit_audit_now_ms >/dev/null 2>&1; then kit_audit_now_ms; else date +%s; fi
+}
+_kit_log_step() { # $1 step $2 outcome $3 start_ms
+  if type kit_audit_step >/dev/null 2>&1; then
+    _end=$(_kit_t0)
+    kit_audit_step "$1" "$2" $(( _end - $3 )) || true
+  fi
+}
+
+pass() {
+  printf "${GREEN}[PASS]${NC} %s\n" "$1"
+}
+
+fail() {
+  printf "${RED}[FAIL]${NC} %s\n" "$1"
+}
+
+info() {
+  printf "${CYAN}[INFO]${NC} %s\n" "$1"
+}
+
+warn() {
+  printf "${YELLOW}[WARN]${NC} %s\n" "$1"
+}
+
+# ---------------------------------------------------------------------------
+# 0. Script integrity -- if a gate references a script, the script MUST exist.
+#    Catches deleted/renamed scripts that would silently skip via `[ -f ... ]`.
+# ---------------------------------------------------------------------------
+_check_script() {
+  # $1 = script path, $2 = package that should provide it (optional)
+  if [ -n "$2" ] && grep -q "\"$2\"" package.json 2>/dev/null; then
+    if [ ! -f "$1" ]; then
+      fail "Package $2 is installed but required script $1 is missing"
+      exit 1
+    fi
+  fi
+}
+
+_check_script "scripts/check-brand-compliance.mts" ""
+_check_script "scripts/check-code-review.mts" ""
+_check_script "scripts/check-eval-regression.ts" ""
+_check_script "scripts/check-budget.ts" ""
+_check_script "scripts/check-million.ts" ""
+_check_script "scripts/check-compliance.ts" ""
+_check_script "scripts/check-deprecations.ts" ""
+_check_script "scripts/check-docs-lookup-coverage.ts" ""
+_check_script "scripts/check-expect-coverage.ts" ""
+_check_script "scripts/check-manifest-drift.ts" ""
+_check_script "scripts/check-dependencies.ts" ""
+
+# ---------------------------------------------------------------------------
+# 1. Full test suite
+# ---------------------------------------------------------------------------
+info "Running full test suite..."
+_t=$(_kit_t0)
+if npx vitest run; then
+  _kit_log_step "tests-full" "ok" "$_t"
+  pass "Full test suite passed"
+else
+  _kit_log_step "tests-full" "fail" "$_t"
+  fail "Full test suite failed"
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 1b. Compliance check -- fail-closed. This runs the starter kit's pattern
+# enforcement: telemetry on AI calls, schema drift, tool-description quality,
+# required-test coverage. Warnings are allowed; errors block the push.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-compliance.ts" ]; then
+  info "Running compliance check..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-compliance.ts; then
+    _kit_log_step "compliance" "ok" "$_t"
+    pass "Compliance check passed"
+  else
+    _kit_log_step "compliance" "fail" "$_t"
+    fail "Compliance check failed -- see output above"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b2. Brand compliance (LLM-as-judge) -- changed components vs. brand-guide.
+# FAIL-CLOSED unless BRAND_SKIP=1 (logged as silent regression).
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-brand-compliance.mts" ]; then
+  info "Checking brand compliance (LLM judge)..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-brand-compliance.mts; then
+    _kit_log_step "brand-compliance" "ok" "$_t"
+    pass "Brand compliance OK"
+  else
+    _kit_log_step "brand-compliance" "fail" "$_t"
+    fail "Brand compliance failed -- set BRAND_SKIP=1 only when intentional"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b3. Visual regression across the 6-project viewport/theme matrix.
+# Runs pixel diffs against committed baselines in tests/visual/__screenshots__/.
+# Update baselines intentionally with VISUAL_UPDATE=1.
+# ---------------------------------------------------------------------------
+if [ -d "tests/visual" ] && [ -f "playwright.config.ts" ]; then
+  info "Running visual regression across mobile/tablet/desktop x light/dark..."
+  if [ "${VISUAL_UPDATE:-}" = "1" ]; then
+    warn "VISUAL_UPDATE=1 -- refreshing baselines"
+    _t=$(_kit_t0)
+    npx playwright test tests/visual --update-snapshots
+    _kit_log_step "visual-regression" "warn" "$_t"
+  else
+    _t=$(_kit_t0)
+    if npx playwright test tests/visual; then
+      _kit_log_step "visual-regression" "ok" "$_t"
+      pass "Visual regression passed"
+    else
+      _kit_log_step "visual-regression" "fail" "$_t"
+      fail "Visual regression failed"
+      exit 1
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b4. React Scan -- flag unnecessary re-renders across every route in pages.yaml.
+# Threshold in .ai-dev-kit/requirements.yaml (default max_rerender_score: 10).
+# ---------------------------------------------------------------------------
+if [ -f "scripts/react-scan-check.mjs" ]; then
+  info "Running React Scan..."
+  _t=$(_kit_t0)
+  if node scripts/react-scan-check.mjs; then
+    _kit_log_step "react-scan" "ok" "$_t"
+    pass "React Scan OK"
+  else
+    _kit_log_step "react-scan" "fail" "$_t"
+    fail "React Scan found unnecessary re-renders over threshold"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b5. million.js active-check -- build markers present in .next.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-million.ts" ]; then
+  info "Verifying million.js optimizations are active..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-million.ts; then
+    _kit_log_step "million" "ok" "$_t"
+    pass "million.js active"
+  else
+    _kit_log_step "million" "fail" "$_t"
+    fail "million.js configured but not applying"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b6. Eval regression -- current promptfoo pass-rate vs last-committed baseline.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-eval-regression.ts" ]; then
+  info "Checking eval regression..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-eval-regression.ts; then
+    _kit_log_step "eval-regression" "ok" "$_t"
+    pass "No eval regression"
+  else
+    _kit_log_step "eval-regression" "fail" "$_t"
+    fail "Eval regression detected -- review or set EVAL_BASELINE_UPDATE=1"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b7. Budget -- sum per-run / day / month cost from logs, fail on hard crossing.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-budget.ts" ] && [ -f ".ai-dev-kit/budget.yaml" ]; then
+  info "Checking budget..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-budget.ts; then
+    _kit_log_step "budget" "ok" "$_t"
+    pass "Budget OK"
+  else
+    _kit_log_step "budget" "fail" "$_t"
+    fail "Budget hard limit exceeded"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1b8. Code review (LLM-as-judge) -- general-purpose reviewer over the diff.
+# Fails on any security issue (any severity) or score < 0.7. High-severity
+# perf/clarity warn only. Bypass with REVIEW_SKIP=1 (logged as silent regression).
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-code-review.mts" ]; then
+  info "Running code review..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-code-review.mts; then
+    _kit_log_step "code-review" "ok" "$_t"
+    pass "Code review OK"
+  else
+    _kit_log_step "code-review" "fail" "$_t"
+    fail "Code review blocked -- fix issues above or set REVIEW_SKIP=1 intentionally"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1c. Doctor -- catches config drift (missing hooks, broken settings.json,
+# stale research cache, SDK-vs-CLI mismatch). Fail-closed in strict mode.
+# ---------------------------------------------------------------------------
+if [ -f "node_modules/@mirror-factory/ai-dev-kit/bin/cli.ts" ] || command -v ai-dev-kit >/dev/null 2>&1; then
+  info "Running doctor..."
+  _t=$(_kit_t0)
+  if npx ai-dev-kit doctor --strict; then
+    _kit_log_step "doctor" "ok" "$_t"
+    pass "Doctor clean"
+  else
+    _kit_log_step "doctor" "fail" "$_t"
+    fail "Doctor found issues -- run 'npx ai-dev-kit doctor' for details"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Promptfoo evals (if configured)
+# ---------------------------------------------------------------------------
+if [ -f "promptfooconfig.yaml" ] || [ -f "promptfooconfig.yml" ]; then
+  echo ""
+  echo "[pre-push] Running Promptfoo evaluations..."
+  # Read run_id from state file so eval-results.json can be joined on /dev-kit/runs/[run_id]
+  RUN_ID=$(test -f .ai-dev-kit/state/current-run.json && sed -n 's/.*"run_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .ai-dev-kit/state/current-run.json | head -1 || echo "")
+  EVAL_OUT=".test-results/eval-results${RUN_ID:+-$RUN_ID}.json"
+  npx promptfoo eval --output "$EVAL_OUT" 2>&1
+  PF_EXIT=$?
+  if [ $PF_EXIT -ne 0 ]; then
+    echo "  [warn] Promptfoo eval had failures (review before deploying)"
+  else
+    echo "  [pass] Promptfoo evaluations passed"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Full eval suite -- fail-closed per the kit's "force everything" posture
+# ---------------------------------------------------------------------------
+# The earlier warn-only behavior meant flaky/expensive eval failures were
+# ignored. "Force everything" says the user would rather a push fail than
+# ship an eval regression. To intentionally skip evals on a push, set
+# EVAL_SKIP=1; flakiness-hunting code uses it, not a silent warning.
+if [ "${EVAL_SKIP:-}" = "1" ]; then
+  warn "EVAL_SKIP=1 set -- skipping eval suite"
+  _kit_log_step "eval-suite" "skip" "$(_kit_t0)"
+else
+  info "Running eval suite..."
+  _t=$(_kit_t0)
+  if npx vitest --config vitest.eval.config.ts run; then
+    _kit_log_step "eval-suite" "ok" "$_t"
+    pass "Eval suite passed"
+  else
+    _kit_log_step "eval-suite" "fail" "$_t"
+    fail "Eval suite failed. Set EVAL_SKIP=1 to bypass intentionally (flakiness triage only)."
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Doc drift check - compare AGENTS.md hash with registry hash
+# ---------------------------------------------------------------------------
+info "Checking AGENTS.md for doc drift..."
+if [ -f "AGENTS.md" ] && [ -f ".registry/agents-md-hash" ]; then
+  CURRENT_HASH=$(sha256sum AGENTS.md | awk '{print $1}')
+  REGISTRY_HASH=$(cat .registry/agents-md-hash 2>/dev/null || echo "")
+  if [ "$CURRENT_HASH" != "$REGISTRY_HASH" ]; then
+    warn "AGENTS.md has changed since last registry sync"
+    warn "Run 'npx ai-dev-kit docs sync' to update the registry"
+  else
+    pass "AGENTS.md is in sync with registry"
+  fi
+else
+  warn "AGENTS.md or registry hash not found -- skipping doc drift check"
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Connector tests (if module active) -- fail-closed when configured
+# ---------------------------------------------------------------------------
+# Previously: `npx vitest run --project connectors 2>/dev/null || true` which
+# swallowed real failures along with "project not configured" errors. Doctor's
+# husky compliance check (CRITICAL_KEYWORDS + FAIL_OPEN_PATTERNS) flagged the
+# line because `vitest` is critical and `|| true` is a fail-open pattern. We
+# now detect the connectors project explicitly and fail-close when it runs.
+if ls vitest.config.* >/dev/null 2>&1 && grep -q -E '(["'\'']connectors["'\'']|connectors[[:space:]]*:)' vitest.config.* 2>/dev/null; then
+  info "Running connector tests..."
+  _t=$(_kit_t0)
+  if npx vitest run --project connectors; then
+    _kit_log_step "connector-tests" "ok" "$_t"
+    pass "Connector tests passed"
+  else
+    _kit_log_step "connector-tests" "fail" "$_t"
+    fail "Connector tests failed"
+    exit 1
+  fi
+else
+  info "No connectors project configured -- skipping connector tests"
+  _kit_log_step "connector-tests" "skip" "$(_kit_t0)"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Playwright E2E tests (if configured)
+# ---------------------------------------------------------------------------
+if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]; then
+  echo ""
+  echo "[pre-push] Running Playwright E2E tests..."
+  npx playwright test --reporter=list 2>&1
+  PW_EXIT=$?
+  if [ $PW_EXIT -ne 0 ]; then
+    echo "  [warn] Playwright tests failed (review before deploying)"
+  else
+    echo "  [pass] Playwright tests passed"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 5y. TEST-MANIFEST drift -- committed tests match regenerated output
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-manifest-drift.ts" ]; then
+  info "Checking test manifest drift..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-manifest-drift.ts; then
+    _kit_log_step "manifest-drift" "ok" "$_t"
+    pass "Manifest drift OK"
+  else
+    _kit_log_step "manifest-drift" "fail" "$_t"
+    fail "Committed tests drifted from TEST-MANIFEST.yaml -- see above"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 5y1. Dependency vulnerabilities -- CRITICAL/HIGH block, stale audit blocks
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-dependencies.ts" ]; then
+  info "Checking dependency vulnerabilities..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-dependencies.ts; then
+    _kit_log_step "dependencies" "ok" "$_t"
+    pass "Dependencies OK"
+  else
+    _kit_log_step "dependencies" "fail" "$_t"
+    fail "Dependency check blocked -- see above"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 5z. Context7 docs-lookup coverage -- every flagged library touched on
+#     this branch needs a matching Context7/docs lookup. Closes the
+#     "non-Claude-Code editor bypasses PreToolUse hook" gap.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-docs-lookup-coverage.ts" ]; then
+  info "Checking Context7 docs lookup coverage..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-docs-lookup-coverage.ts; then
+    _kit_log_step "docs-lookup-coverage" "ok" "$_t"
+    pass "Docs lookup coverage OK"
+  else
+    _kit_log_step "docs-lookup-coverage" "fail" "$_t"
+    fail "Docs lookup coverage blocked -- see above"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 6a. Expect AI coverage gate -- fail-closed once pages.yaml has routes +
+#     grace window elapses (7 days). Forces "every user-facing route has
+#     an AI browser test" instead of the soft-conditional old behavior.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-expect-coverage.ts" ]; then
+  info "Checking expect AI coverage..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-expect-coverage.ts; then
+    _kit_log_step "expect-coverage" "ok" "$_t"
+    pass "Expect coverage OK"
+  else
+    _kit_log_step "expect-coverage" "fail" "$_t"
+    fail "Expect coverage gate blocked -- see above"
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Expect AI browser tests (if configured)
+# ---------------------------------------------------------------------------
+if [ -f "expect.config.ts" ] || [ -f "expect.config.js" ] || grep -q '"@anthropic-ai/expect"' package.json 2>/dev/null; then
+  echo ""
+  echo "[pre-push] Running Expect AI browser tests..."
+  npx expect test 2>&1
+  EXPECT_EXIT=$?
+  if [ $EXPECT_EXIT -ne 0 ]; then
+    echo "  [warn] Expect tests failed (review before deploying)"
+  else
+    echo "  [pass] Expect tests passed"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 7. Storybook visual tests (if configured)
+# ---------------------------------------------------------------------------
+if [ -d ".storybook" ]; then
+  echo ""
+  echo "[pre-push] Running Storybook tests..."
+  npx test-storybook 2>/dev/null
+  SB_EXIT=$?
+  if [ $SB_EXIT -ne 0 ]; then
+    echo "  [warn] Storybook tests had issues"
+  else
+    echo "  [pass] Storybook tests passed"
+  fi
+fi
+
+# ── Accessibility tests (vitest-axe) ────────────────────────────────
+if grep -q "vitest-axe\|@axe-core" package.json 2>/dev/null; then
+  echo ""
+  echo "[pre-push] Running accessibility tests..."
+  npx vitest run --grep "accessibility\|a11y\|axe" 2>&1
+  A11Y_EXIT=$?
+  if [ $A11Y_EXIT -ne 0 ]; then
+    echo "  [warn] Accessibility tests failed"
+  else
+    echo "  [pass] Accessibility tests passed"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Self-audit: detect `|| true` on critical commands in THIS file.
+# If someone made a gate advisory to unblock a push, flag it here so it
+# doesn't stay hidden. This is the "who watches the watchmen" check.
+# ---------------------------------------------------------------------------
+info "Self-auditing pre-push for advisory escapes..."
+SELF_AUDIT_FAIL=0
+while IFS= read -r _line; do
+  _lineno=$(echo "$_line" | cut -d: -f1)
+  _content=$(echo "$_line" | cut -d: -f2-)
+  for _cmd in vitest playwright doctor eslint tsc "check-"; do
+    case "$_content" in
+      *"$_cmd"*"|| true"*)
+        warn "pre-push:${_lineno} — critical command made advisory with || true: $(echo "$_content" | sed 's/^[[:space:]]*//')"
+        SELF_AUDIT_FAIL=1
+        ;;
+    esac
+  done
+done <<EOF
+$(grep -n "|| true" .husky/pre-push 2>/dev/null || true)
+EOF
+if [ "$SELF_AUDIT_FAIL" -eq 1 ]; then
+  fail "Self-audit: critical commands are bypassed with || true. Fix the root cause instead."
+  exit 1
+else
+  pass "Self-audit: no critical commands made advisory"
+fi
+
+# ---------------------------------------------------------------------------
+# Visual baseline verification: warn if snapshot files were modified
+# without VISUAL_VERIFIED flag in the commit message.
+# ---------------------------------------------------------------------------
+if git diff --cached --name-only 2>/dev/null | grep -q "spec.ts-snapshots\|__screenshots__"; then
+  if ! git log -1 --format="%B" 2>/dev/null | grep -q "VISUAL_VERIFIED"; then
+    warn "Visual baselines updated without VISUAL_VERIFIED flag"
+    warn "Ensure a human verified the UI looks correct before committing baselines"
+    warn "To mark as verified: include VISUAL_VERIFIED in your commit message"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Enhanced chat integration: verify tool selection, not just "AI responding".
+# If a promptfooconfig.yaml exists, ensure it has eval cases so the eval
+# gate above isn't running against 0 tests and passing vacuously.
+# ---------------------------------------------------------------------------
+for _pf in promptfooconfig.yaml promptfooconfig.yml; do
+  if [ -f "$_pf" ]; then
+    _test_count=$(grep -c "^\s*-\s*vars:" "$_pf" 2>/dev/null || echo "0")
+    if [ "$_test_count" -eq 0 ]; then
+      warn "Eval suite ($_pf) has 0 test cases — evals pass vacuously"
+      warn "Add at least 1 eval case per major tool/intent. See docs/STARTER-KIT-IMPROVEMENTS.md Gap 10."
+    else
+      pass "Eval suite ($_pf) has $_test_count test case(s)"
+    fi
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# Gap 18: README staleness check -- if 10+ files changed in the push and
+# README.md wasn't modified, warn that it may need updating.
+# ---------------------------------------------------------------------------
+_push_files_changed=$(git diff --name-only @{u}..HEAD 2>/dev/null | wc -l | tr -d ' ')
+_readme_changed=$(git diff --name-only @{u}..HEAD 2>/dev/null | grep -c '^README\.md$' || true)
+if [ "$_push_files_changed" -ge 10 ] && [ "$_readme_changed" -eq 0 ]; then
+  warn "README staleness: ${_push_files_changed} files changed in this push but README.md was not updated"
+  warn "Review README.md and update if setup instructions, features, or architecture changed"
+fi
+
+# ---------------------------------------------------------------------------
+# Feature manifest coverage — every complete feature must have tests.
+# ---------------------------------------------------------------------------
+if [ -f "scripts/check-feature-coverage.ts" ] && [ -f "features/manifest.yaml" ]; then
+  info "Checking feature test coverage..."
+  _t=$(_kit_t0)
+  if npx tsx scripts/check-feature-coverage.ts; then
+    _kit_log_step "feature-coverage" "ok" "$_t"
+    pass "Feature test coverage OK"
+  else
+    _kit_log_step "feature-coverage" "fail" "$_t"
+    fail "Feature coverage gaps — complete features missing tests"
+    exit 1
+  fi
+fi
+
+pass "All pre-push checks completed"
+
+# ---------------------------------------------------------------------------
+# Auto-notify on clean push when notify.yaml has 'done' in auto_events.
+# ---------------------------------------------------------------------------
+if [ -f "lib/notify.ts" ] && [ -f ".ai-dev-kit/notify.yaml" ]; then
+  npx tsx -e "
+    import('./lib/notify.ts').then(async m => {
+      if (m.isAutoEventEnabled && m.isAutoEventEnabled('done')) {
+        await m.notify({ kind: 'summary', title: 'Push clean', body: 'Pre-push gates all passed on \$(git rev-parse --abbrev-ref HEAD)' });
+      }
+    }).catch(() => {})
+  " 2>/dev/null || true
+fi

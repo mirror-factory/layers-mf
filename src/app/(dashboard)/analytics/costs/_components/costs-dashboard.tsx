@@ -496,7 +496,7 @@ export function CostsDashboard() {
           <p className="text-sm text-muted-foreground max-w-sm">
             {isAccessError
               ? error
-              : "Costs will appear here as you use Granger. Start a conversation to see token usage, credits, and spend broken down by model."}
+              : "Costs will appear here as you use Layers. Start a conversation to see token usage, credits, and spend broken down by model."}
           </p>
         </div>
       </Card>

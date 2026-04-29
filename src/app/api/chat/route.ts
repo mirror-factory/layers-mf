@@ -3,6 +3,8 @@ import { ToolLoopAgent, createAgentUIStreamResponse, UIMessage, stepCountIs, pru
 import { gateway } from "@ai-sdk/gateway";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createTools } from "@/lib/ai/tools";
+import { getOrCreateDeweyProfile } from "@/lib/library/domain";
+import type { DeweyProfile } from "@/lib/library/types";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { checkCredits, deductCredits, CREDIT_COSTS } from "@/lib/credits";
 import { logUsage } from "@/lib/ai/usage";
@@ -134,7 +136,19 @@ function getVisualInstructions(level: string): string {
   ].join("\n");
 }
 
-const AGENT_INSTRUCTIONS = `You are Granger, Mirror Factory's AI chief of staff. You serve three partners: Alfonso, Kyle, and Bobby.
+const AGENT_INSTRUCTIONS = `You are Dewey, Mirror Factory's resident Librarian assistant inside Layers. Legacy code may still refer to Granger, but the product-facing assistant identity is Dewey.
+
+You help users find and ingest content, curate the Library, retrieve grounded context, package context for handoffs, and propose actions that act on Library content.
+
+## Dewey Operating Model
+- You are a system-owned assistant participant in chat, not a normal human user.
+- Treat the Library as the durable source of company context. Chat, MCP results, artifacts, images, skills, schedules, and sandbox outputs should become Library context only when they have future value.
+- Work in two core verbs: find/ingest content, then act on that content.
+- Prefer Library tools first: search_library, get_library_item, add_library_item, list_library_stacks, create_stack, save_asset, create_context_pack.
+- For MCPs, use Live Lookup for one-off answers, Save Selected when the user chooses records, and Sync Rule for ongoing imports.
+- Do not dump connected MCP data into the Library automatically. Ask or present a selection unless a sync rule already exists.
+- When citing Library context, mention item titles and IDs returned by tools. Be explicit about what the Library does not know.
+- Before risky external writes, propose the action for approval instead of executing it directly.
 
 ## Response Quality Standards
 - Write PRODUCTION-QUALITY code — complete, polished, well-structured. Never generate placeholder stubs or "TODO" comments.
@@ -364,6 +378,28 @@ When ask_user returns { "_skipped": true }, the user chose to skip your question
 - All write actions MUST go through the approval queue — never execute directly
 - If a tool returns "not configured", tell the user to add their API key in Settings → API Keys
 - Use review_compliance when asked to review/check/audit content against rules`;
+
+function formatDeweyProfileForPrompt(profile: DeweyProfile | null) {
+  if (!profile) return "";
+
+  const lines = [
+    "## Dewey Library Profile",
+    `- Name: ${profile.name}`,
+    `- Voice: ${profile.voice}`,
+    `- Tone: ${profile.tone}`,
+    `- Save behavior: ${profile.saveBehavior}`,
+    `- Approval policy: ${profile.approvalPolicy}`,
+    `- Allowed Library tools: ${profile.allowedTools.join(", ") || "none configured"}`,
+    `- Default retrieval scope: ${JSON.stringify(profile.defaultRetrievalScope)}`,
+    `- Memory policy: ${JSON.stringify(profile.memoryPolicy)}`,
+  ];
+
+  if (profile.instructions?.trim()) {
+    lines.push("", "### Per-library instructions", profile.instructions.trim());
+  }
+
+  return `\n\n${lines.join("\n")}\n`;
+}
 
 export async function POST(request: NextRequest) {
   const _t = Date.now();
@@ -636,21 +672,31 @@ export async function POST(request: NextRequest) {
     // LOCAL MODEL: skip rules, skip prompt cache, skip artifact context — go fast
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    fullInstructions = `You are Granger, an AI assistant. Be helpful and concise. Today is ${dateStr}.`;
+    fullInstructions = `You are Dewey, the resident Librarian assistant inside Layers. Be helpful and concise. Today is ${dateStr}.`;
     console.log(`[chat] ${Date.now() - t0}ms | local model — slim prompt ready`);
   } else {
     // CLOUD MODEL: full pipeline — rules, visual instructions, artifact context
-    const [personalRules, orgScopeRules] = await Promise.all([
+    const [personalRules, orgScopeRules, deweyProfileResult] = await Promise.all([
       loadPersonalRules(supabase, orgId),
       loadOrgRules(supabase, orgId),
+      getOrCreateDeweyProfile(supabase, orgId).catch((error) => {
+        console.error("[chat] Dewey profile loading failed:", error);
+        return { profile: null as DeweyProfile | null };
+      }),
     ]);
     const rulesSection = formatRulesForPrompt(personalRules) + formatOrgRulesForPrompt(orgScopeRules);
-    const rulesHash = createHash("md5").update(rulesSection + visualLevel).digest("hex");
+    const deweyProfileSection =
+      "profile" in deweyProfileResult
+        ? formatDeweyProfileForPrompt(deweyProfileResult.profile ?? null)
+        : "";
+    const rulesHash = createHash("md5")
+      .update(rulesSection + visualLevel + deweyProfileSection)
+      .digest("hex");
     const cacheKey = `${orgId}:${rulesHash}`;
 
     let instructions = getCachedSystemPrompt(cacheKey);
     if (!instructions) {
-      instructions = getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + rulesSection;
+      instructions = getVisualInstructions(visualLevel) + AGENT_INSTRUCTIONS + deweyProfileSection + rulesSection;
       setCachedSystemPrompt(cacheKey, instructions);
       console.log("[chat] System prompt cache MISS — assembled and cached");
     } else {

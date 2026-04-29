@@ -1,0 +1,45 @@
+name: dependency audit
+
+on:
+  schedule:
+    - cron: '0 11 * * 1'  # Mondays 11:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/sync-dependencies.ts
+      - name: Commit dependencies.yaml if changed
+        run: |
+          if ! git diff --quiet .ai-dev-kit/registries/dependencies.yaml; then
+            git config user.name "ai-dev-kit[bot]"
+            git config user.email "ai-dev-kit[bot]@users.noreply.github.com"
+            git add .ai-dev-kit/registries/dependencies.yaml
+            git commit -m "chore(deps): refresh dependency audit"
+            git push
+          fi
+      - name: Open issue on new CRITICAL/HIGH
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CRIT=$(grep -E "^\s+critical:" .ai-dev-kit/registries/dependencies.yaml | head -1 | awk '{print $2}')
+          HIGH=$(grep -E "^\s+high:" .ai-dev-kit/registries/dependencies.yaml | head -1 | awk '{print $2}')
+          if [ "${CRIT:-0}" -gt 0 ] || [ "${HIGH:-0}" -gt 0 ]; then
+            gh issue create \
+              --title "[deps] ${CRIT:-0} CRITICAL + ${HIGH:-0} HIGH vulnerabilities" \
+              --body "Weekly dependency audit found new or unpatched CRITICAL/HIGH vulns. See .ai-dev-kit/registries/dependencies.yaml for details." \
+              --label security || true
+          fi

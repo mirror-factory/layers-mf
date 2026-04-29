@@ -36,7 +36,7 @@ export function ShareSignupCTA() {
             Want your own AI Chief of Staff?
           </h2>
           <p className="text-sm text-muted-foreground">
-            Granger connects all your tools into one AI-powered workspace.
+            Layers connects all your tools into one AI-powered workspace.
           </p>
 
           <div className="grid grid-cols-2 gap-3 text-left">

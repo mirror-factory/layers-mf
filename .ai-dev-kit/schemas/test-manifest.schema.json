@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TEST-MANIFEST",
+  "description": "Feature-level test contract. Describes what a feature does as an ordered series of user flows and steps. Generators translate this into Playwright (tests/e2e/<feature>.spec.ts) and Expect (tests/expect/<feature>.expect.ts) test files. The manifest is the source of truth; the generated specs regenerate on every manifest change. Manual edits to generated specs are clobbered -- use escape_hatch to embed verbatim code.",
+  "type": "object",
+  "required": ["feature", "version", "user_flows"],
+  "additionalProperties": false,
+  "properties": {
+    "feature": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Lowercase slug with hyphens. Must match the directory under features/."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Manifest schema revision for this feature. Bump when you change the flow shape in a way old generated tests can't accommodate."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional human summary of what the feature does."
+    },
+    "user_flows": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of named user journeys. Each flow becomes one test() in the generated spec.",
+      "items": {
+        "type": "object",
+        "required": ["name", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+            "description": "Lowercase slug with hyphens. Used as the test title."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional one-sentence summary of what this flow proves."
+          },
+          "preconditions": {
+            "type": "object",
+            "description": "Map of flag name -> boolean. Generators expose these as TODO comments so the author wires up the setup step.",
+            "additionalProperties": { "type": "boolean" }
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional free-form tags (e.g. 'happy-path', 'error-state'). Surfaced in test-contracts.yaml."
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Ordered list of actions the flow performs.",
+            "items": { "$ref": "#/definitions/step" }
+          }
+        }
+      }
+    },
+    "cost_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional per-run cost ceiling the generated test should assert against.",
+      "properties": {
+        "per_run_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum USD the feature run is allowed to spend in one invocation."
+        }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional observability contract. Generators emit assertions against Langfuse run metadata.",
+      "properties": {
+        "required_run_tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Expressions like \"aiCall.label == 'audio-summarize'\" that must appear on the Langfuse run for this flow."
+        }
+      }
+    }
+  },
+  "definitions": {
+    "step": {
+      "type": "object",
+      "required": ["action"],
+      "description": "Single action in a flow. Each action has its own required fields; use the oneOf definitions for exact contracts.",
+      "oneOf": [
+        { "$ref": "#/definitions/step_navigate" },
+        { "$ref": "#/definitions/step_click" },
+        { "$ref": "#/definitions/step_type" },
+        { "$ref": "#/definitions/step_expect_visible" },
+        { "$ref": "#/definitions/step_expect_text" },
+        { "$ref": "#/definitions/step_expect_text_contains" },
+        { "$ref": "#/definitions/step_expect_text_grows" },
+        { "$ref": "#/definitions/step_expect_count_at_least" },
+        { "$ref": "#/definitions/step_feed_audio_fixture" },
+        { "$ref": "#/definitions/step_escape_hatch" }
+      ]
+    },
+    "step_navigate": {
+      "type": "object",
+      "required": ["action", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "navigate" },
+        "to": { "type": "string", "description": "URL path, e.g. '/transcribe' or '/' ." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_click": {
+      "type": "object",
+      "required": ["action", "locator"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "click" },
+        "locator": { "type": "string", "description": "Playwright locator expression, e.g. \"button:has-text('Record')\"." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_type": {
+      "type": "object",
+      "required": ["action", "locator", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "type" },
+        "locator": { "type": "string" },
+        "text": { "type": "string", "description": "Literal text to type into the input." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_expect_visible": {
+      "type": "object",
+      "required": ["action", "locator"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "expect_visible" },
+        "locator": { "type": "string" },
+        "within_seconds": { "type": "number", "minimum": 0, "default": 5, "description": "Timeout in seconds (default 5)." },
+        "description": { "type": "string", "description": "Natural-language description. Used verbatim in the Expect generator." }
+      }
+    },
+    "step_expect_text": {
+      "type": "object",
+      "required": ["action", "locator", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "expect_text" },
+        "locator": { "type": "string" },
+        "text": { "type": "string", "description": "Exact text to match." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_expect_text_contains": {
+      "type": "object",
+      "required": ["action", "locator", "substring"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "expect_text_contains" },
+        "locator": { "type": "string" },
+        "substring": { "type": "string", "description": "Substring the element's text must contain." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_expect_text_grows": {
+      "type": "object",
+      "required": ["action", "locator"],
+      "additionalProperties": false,
+      "description": "Polling assertion: the locator's textContent length increases monotonically over time. Useful for streaming output.",
+      "properties": {
+        "action": { "const": "expect_text_grows" },
+        "locator": { "type": "string" },
+        "min_growth_chars": { "type": "integer", "minimum": 1, "default": 20, "description": "Text must grow by at least this many characters across the polling window." },
+        "within_seconds": { "type": "number", "minimum": 0, "default": 10, "description": "Total polling window in seconds." },
+        "sample_ms": { "type": "integer", "minimum": 50, "default": 500, "description": "Interval between samples." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_expect_count_at_least": {
+      "type": "object",
+      "required": ["action", "locator", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "expect_count_at_least" },
+        "locator": { "type": "string" },
+        "count": { "type": "integer", "minimum": 1 },
+        "description": { "type": "string" }
+      }
+    },
+    "step_feed_audio_fixture": {
+      "type": "object",
+      "required": ["action", "fixture"],
+      "additionalProperties": false,
+      "description": "Pipe a pre-recorded audio file to the page's MediaStream. Generators scaffold a helper stub with a TODO -- browser mic injection needs per-project wiring.",
+      "properties": {
+        "action": { "const": "feed_audio_fixture" },
+        "fixture": { "type": "string", "description": "Path under tests/fixtures/audio/ (e.g. 'coffee-order.wav')." },
+        "description": { "type": "string" }
+      }
+    },
+    "step_escape_hatch": {
+      "type": "object",
+      "required": ["action", "reason", "language", "code"],
+      "additionalProperties": false,
+      "description": "Embed verbatim test code when no structured action fits. Use sparingly -- each escape hatch is counted in the test-contracts registry so drift is visible.",
+      "properties": {
+        "action": { "const": "escape_hatch" },
+        "reason": { "type": "string", "description": "Why the structured actions can't express this. Forces the author to justify." },
+        "language": { "enum": ["playwright", "expect"], "description": "Which generator should emit this code. The other generator emits a skip comment." },
+        "code": { "type": "string", "description": "Verbatim TypeScript. Inserted between the surrounding steps with no escaping." }
+      }
+    }
+  }
+}

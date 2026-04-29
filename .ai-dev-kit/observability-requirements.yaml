@@ -1,0 +1,155 @@
+# Observability Requirements
+#
+# Dynamic registry of wrappers the project requires. Doctor reads this at
+# runtime -- NOT hardcoded in the kit. Projects extend the lists as they
+# add integrations. The registry is the authoritative answer to
+# "what MUST be wrapped?"
+#
+# Each wrapper entry has:
+#   - name         human-readable wrapper name (for doctor output)
+#   - detect       regex patterns that match the call-site syntax
+#   - exclude      (optional) regex patterns to exclude false positives
+#   - wrapper_fn   the wrapper function that must be referenced in the same file
+#   - severity     warn | block  -- block fails `doctor --strict`
+#   - cost         whether the wrapped call contributes to cost tracking
+#
+# When doctor scans lib/ and app/ for each pattern and finds a match NOT
+# inside the wrapper_fn reference, it emits a warning (or failure in strict
+# mode). This is the mechanical enforcement behind "track every cost."
+
+wrappers:
+  - name: withRoute (API route handler wrapper)
+    detect:
+      - 'export\s+(?:async\s+)?(?:function|const)\s+(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b'
+    wrapper_fn: withRoute
+    severity: block
+    cost: true
+    applies_to:
+      - 'app/api/**/route.(ts|tsx|js|mjs)'
+
+  - name: withTelemetry (AI SDK telemetry wrapper)
+    detect:
+      - '\bstreamText\s*\('
+      - '\bgenerateText\s*\('
+      - '\bgenerateObject\s*\('
+      - '\bstreamObject\s*\('
+    wrapper_fn: withTelemetry|aiCall
+    severity: block
+    cost: true
+    applies_to:
+      - 'lib/**/*.(ts|tsx)'
+      - 'app/**/*.(ts|tsx)'
+
+  - name: withExternalCall (non-AI-SDK vendor wrapper)
+    detect:
+      # Generic vendor SDK methods -- add your project's patterns here.
+      - '\bclient\.transcripts\.'
+      - '\bclient\.realtime\.'
+      - '\bstripe\.customers\.'
+      - '\bstripe\.subscriptions\.'
+      - '\bstripe\.checkout\.'
+      - '\bstripe\.webhooks\.'
+      - '\bstripe\.paymentIntents\.'
+      - '\bresend\.emails\.'
+      - '\bdeepgram\.transcription\.'
+      - '\bdeepgram\.listen\.'
+      - '\bfirecrawl\.scrape\('
+      - '\bfirecrawl\.crawl\('
+    exclude:
+      # These are NOT external calls -- common false positives.
+      - 'form\.append\('
+      - 'params\.append\('
+      - 'headers\.append\('
+    wrapper_fn: withExternalCall
+    severity: block
+    cost: true
+    applies_to:
+      - 'lib/**/*.(ts|tsx)'
+      - 'app/**/*.(ts|tsx)'
+
+# UI testing requirements
+#
+# When a file in one of the `applies_to` globs is edited, verify-before-stop.py
+# requires the corresponding verification keys to have a recent timestamp.
+# The Evaluator and Stop hook both consult this.
+
+ui_coverage:
+  - name: Component-level visual + a11y
+    applies_to:
+      - 'components/**/*.(tsx|jsx)'
+    requires:
+      - typecheck
+      - storybook
+      - visual-regression-mobile
+      - visual-regression-desktop
+      - light-mode
+      - dark-mode
+      - a11y
+
+  - name: Page-level e2e + visual
+    applies_to:
+      - 'app/**/page.(tsx|jsx)'
+    requires:
+      - typecheck
+      - e2e-video
+      - visual-regression-mobile
+      - visual-regression-desktop
+      - light-mode
+      - dark-mode
+
+  - name: Layout-level visual
+    applies_to:
+      - 'app/**/layout.(tsx|jsx)'
+    requires:
+      - typecheck
+      - visual-regression-mobile
+      - visual-regression-desktop
+
+# Brand + style guide enforcement
+#
+# When any .tsx file is edited, doctor warns if these docs are missing.
+# The PreToolUse nudge on components also references them.
+
+brand_guide:
+  required_docs:
+    - docs/brand-guide.md
+    - docs/style-guide.md
+  severity: warn
+  rationale: |
+    Component work without a visible style/brand guide produces inconsistent
+    output. The agent should reference these when editing any .tsx file.
+
+# Verification command -> key map
+#
+# verify-claims.py consults this to map Bash commands to verification keys
+# recorded in state.json. When the agent runs the left-hand command, the
+# right-hand key gets a fresh timestamp.
+
+verification_commands:
+  'pnpm test': test
+  'pnpm typecheck': typecheck
+  'npx tsc': typecheck
+  'pnpm test:e2e': e2e
+  'pnpm test:e2e --video': e2e-video
+  'pnpm test:e2e -- --video': e2e-video
+  'pnpm test:visual': visual-regression
+  'pnpm test:visual --project=mobile-light': visual-regression-mobile
+  'pnpm test:visual --project=mobile-dark': visual-regression-mobile-dark
+  'pnpm test:visual --project=desktop-light': visual-regression-desktop
+  'pnpm test:visual --project=desktop-dark': visual-regression-desktop-dark
+  'pnpm test:visual --project=mobile': visual-regression-mobile
+  'pnpm test:visual --project=desktop': visual-regression-desktop
+  'pnpm test:mobile': visual-regression-mobile
+  'pnpm test:light': light-mode
+  'pnpm test:dark': dark-mode
+  'pnpm test:a11y': a11y
+  'pnpm storybook:build': storybook
+  'pnpm test:storybook': storybook
+  'pnpm test:ai': ai-test
+  'pnpm test:api': route-exercise
+  'curl http://localhost': route-exercise
+  'curl localhost:': route-exercise
+  'pnpm build': build
+  'pnpm compliance': compliance
+  'pnpm check:deprecations': deprecations
+  'pnpm check:registry': registry-strings

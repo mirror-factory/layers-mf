@@ -1,0 +1,45 @@
+# requirements.yaml -- per-project enforcement toggles.
+#
+# The kit ships with defensible defaults. Change these only when you have a
+# concrete reason; every toggle that's OFF is a door left open for silent drift.
+#
+# All toggles are strings. Any value other than the exact expected string is
+# treated as OFF. This is intentional: typos should not silently enable a gate.
+
+# ── TDD (test-first discipline) ────────────────────────────────────────
+# When `required`, pre-commit runs scripts/check-tdd.ts which reads
+# .ai-dev-kit/state/tdd-log.jsonl (populated by verify-claims.py when
+# vitest runs) and blocks a source file's first commit unless the sibling
+# test has a `red` entry before a `green` entry.
+#
+# Bypass: TDD_SKIP=1 (logged by audit-rebuild as silent regression).
+tdd: required
+
+# ── React Scan (re-render score per route) ─────────────────────────────
+# When `required`, pre-push runs scripts/react-scan-check.mjs against
+# every route in pages.yaml and fails when re-render scores exceed
+# max_rerender_score. Also fails if react-scan isn't installed when
+# UI files are present.
+#
+# Bypass: REACT_SCAN_SKIP=1.
+react_scan:
+  required: true
+  max_rerender_score: 10
+
+# ── million.js (virtual-DOM-free rendering path) ───────────────────────
+# When `required`, pre-push runs scripts/check-million.ts which verifies
+# next.config imports `million/next` AND compiled markers appear in .next/.
+# Catches "plugin removed after merge" regressions.
+#
+# Bypass: remove `million: required` below to opt out per project.
+million: required
+
+# ── Doctor cross-reference strictness ──────────────────────────────────
+# When `strict`, doctor fails (not warns) when components.yaml has
+# entries not declared in design-system.yaml, or vice versa.
+#
+# This repo still has many legacy kebab-case component filenames while the
+# starter kit cross-reference currently recognizes PascalCase declarations.
+# Keep the audit visible without blocking Library Layer work until the
+# component registry is normalized.
+design_system_cross_ref: warn

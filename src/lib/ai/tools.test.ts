@@ -57,10 +57,27 @@ function createMockSupabase() {
 }
 
 describe("createTools", () => {
-  it("returns search_context and get_document tools", () => {
+  it("returns context and Library tools", () => {
     const tools = createTools(createMockSupabase(), "org-1");
     expect(tools).toHaveProperty("search_context");
     expect(tools).toHaveProperty("get_document");
+    expect(tools).toHaveProperty("search_library");
+    expect(tools).toHaveProperty("get_library_item");
+    expect(tools).toHaveProperty("add_library_item");
+    expect(tools).toHaveProperty("save_to_library");
+    expect(tools).toHaveProperty("list_library_stacks");
+    expect(tools).toHaveProperty("create_stack");
+    expect(tools).toHaveProperty("save_asset");
+    expect(tools).toHaveProperty("create_context_pack");
+  });
+
+  it("create_stack requires a signed-in user", async () => {
+    const tools = createTools(createMockSupabase(), "org-1");
+    const result = await tools.create_stack.execute!(
+      { name: "Research" },
+      { toolCallId: "tc-stack-1", messages: [], abortSignal: new AbortController().signal }
+    );
+    expect(result).toEqual({ error: "A signed-in user is required to create a Stack." });
   });
 
   it("search_context has a description and execute function", () => {

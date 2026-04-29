@@ -190,7 +190,7 @@ export default function MCPSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serverUrl: url.trim(),
-          appName: name.trim() || "Granger",
+          appName: name.trim() || "Layers",
           callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
         }),
       });
@@ -264,7 +264,7 @@ export default function MCPSettingsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 serverUrl: url.trim(),
-                appName: name.trim() || "Granger",
+                appName: name.trim() || "Layers",
                 callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
               }),
             });
@@ -368,7 +368,7 @@ export default function MCPSettingsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 serverUrl: url.trim(),
-                appName: name.trim() || "Granger",
+                appName: name.trim() || "Layers",
                 callbackUrl: `${window.location.origin}/api/mcp/oauth/callback`,
               }),
             });
@@ -800,7 +800,7 @@ export default function MCPSettingsPage() {
           <h1 className="text-xl sm:text-2xl font-semibold">MCP Servers</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Connect external tools to Granger via the Model Context Protocol.
+          Connect external tools to Dewey via the Model Context Protocol.
         </p>
       </div>
 
@@ -823,7 +823,7 @@ export default function MCPSettingsPage() {
             <ul className="space-y-1.5 text-xs">
               <li><strong className="text-foreground">Free &amp; open protocol</strong> — MCP is an open standard with no licensing costs.</li>
               <li><strong className="text-foreground">One-click OAuth</strong> — connect with a single click, no API keys needed.</li>
-              <li><strong className="text-foreground">Tools on demand</strong> — each server gives Granger new tools (listed on the card). Tools are called on-demand, not loaded into memory.</li>
+              <li><strong className="text-foreground">Tools on demand</strong> — each server gives Dewey new tools (listed on the card). Tools are called on-demand, not loaded into memory.</li>
               <li><strong className="text-foreground">Lightweight</strong> — only tool definitions (~50-150 tokens each) are sent per message.</li>
               <li><strong className="text-foreground">Flexible</strong> — connect or disconnect servers anytime via the toggle.</li>
             </ul>
@@ -1164,7 +1164,7 @@ export default function MCPSettingsPage() {
                   <span className="font-medium text-foreground text-xs">OAuth — Auto-configured</span>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Just enter the name and URL above, then click &quot;Save & Connect with OAuth&quot;.
-                    Granger will auto-discover the OAuth server, register, and redirect you to log in.
+                    Dewey will auto-discover the OAuth server, register, and redirect you to log in.
                   </p>
                 </div>
               </div>
@@ -1312,7 +1312,7 @@ export default function MCPSettingsPage() {
 
         {authType === "oauth" && (
           <p className="text-xs text-muted-foreground">
-            Click &quot;Save &amp; Connect with OAuth&quot; — Granger will auto-discover the OAuth server and redirect you to log in.
+            Click &quot;Save &amp; Connect with OAuth&quot; — Dewey will auto-discover the OAuth server and redirect you to log in.
           </p>
         )}
       </div>
@@ -1332,7 +1332,7 @@ export default function MCPSettingsPage() {
             <Plug className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No MCP servers connected yet.</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Add a server above to extend Granger with external tools.
+              Add a server above to extend Dewey with external tools.
             </p>
           </div>
         ) : (

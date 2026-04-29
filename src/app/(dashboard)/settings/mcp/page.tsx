@@ -154,7 +154,7 @@ export default function MCPSettingsPage() {
           <h1 className="text-xl sm:text-2xl font-semibold">MCP Servers</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Connect external tools to Granger via the Model Context Protocol.
+          Connect external tools to Dewey via the Model Context Protocol.
         </p>
       </div>
 
@@ -162,15 +162,15 @@ export default function MCPSettingsPage() {
       <div className="rounded-lg border bg-muted/30 p-4 mb-6 text-sm space-y-3">
         <p className="font-medium">Connect External Tools via MCP</p>
         <p className="text-muted-foreground">
-          MCP (Model Context Protocol) lets you connect Granger to any compatible service.
-          Just provide a URL and optional API key — Granger automatically discovers all available tools.
+          MCP (Model Context Protocol) lets you connect Dewey to any compatible service.
+          Just provide a URL and optional API key — Dewey automatically discovers all available tools.
         </p>
         <div className="text-muted-foreground space-y-1">
           <p className="font-medium text-foreground text-xs uppercase tracking-wide">How it works</p>
           <ol className="list-decimal list-inside space-y-0.5 text-xs">
             <li>Add a server URL (e.g., https://weather-mcp.io/mcp)</li>
             <li>Click &quot;Test Connection&quot; to discover tools</li>
-            <li>Save the server — tools are immediately available to Granger</li>
+            <li>Save the server — tools are immediately available to Dewey</li>
             <li>Use the tools naturally in chat</li>
           </ol>
         </div>
@@ -326,7 +326,7 @@ export default function MCPSettingsPage() {
             <Plug className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No MCP servers connected yet.</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Add a server above to extend Granger with external tools.
+              Add a server above to extend Dewey with external tools.
             </p>
           </div>
         ) : (

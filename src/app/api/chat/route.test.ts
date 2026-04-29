@@ -231,9 +231,7 @@ describe("POST /api/chat", () => {
     expect(createTools).toHaveBeenCalledWith(
       expect.objectContaining({ auth: expect.any(Object), from: expect.any(Function) }),
       "org-42",
-      expect.any(Object), // credentials
-      expect.any(String), // userId
-      undefined, // conversationId (not provided in test request)
+      "u-1",
     );
   });
 

@@ -49,7 +49,7 @@ export function ChatSdkExplainer() {
       <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
         <p className="font-medium text-sm">What does this enable?</p>
         <p className="text-muted-foreground text-sm">
-          Connect Granger to external platforms so your team gets the full AI
+          Connect Dewey to external platforms so your team gets the full AI
           chief-of-staff experience without leaving Discord, Slack, or any
           webhook-compatible tool.
         </p>
@@ -100,7 +100,7 @@ export function ChatSdkExplainer() {
           <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 text-primary px-2.5 py-1.5 font-medium">
             <Bot className="h-3.5 w-3.5" />
-            Granger Agent
+            Dewey Agent
           </span>
           <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 font-medium">

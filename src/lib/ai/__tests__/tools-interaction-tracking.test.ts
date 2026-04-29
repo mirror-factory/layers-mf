@@ -379,6 +379,7 @@ describe("tool interaction tracking", () => {
         {
           files: [{ path: "main.py", content: "print('hello')" }],
           run_command: "python main.py",
+          expose_port: 0,
           template: "python" as const,
         },
         toolCallOptions,
@@ -414,6 +415,7 @@ describe("tool interaction tracking", () => {
         {
           files: [{ path: "main.py", content: "print('hello')" }],
           run_command: "python main.py",
+          expose_port: 0,
           template: "python" as const,
         },
         toolCallOptions,

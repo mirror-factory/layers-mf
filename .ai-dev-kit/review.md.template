@@ -1,0 +1,66 @@
+---
+sprint_ref: sprint-{{N}}
+evaluator: evaluator
+reviewed_at: {{ISO_TIMESTAMP}}
+decision: APPROVED | BLOCKED | NEEDS-PLANNER
+---
+
+# Review: Sprint {{N}}
+
+## Decision
+
+**{{DECISION}}**
+
+One-line rationale: {{DECISION_RATIONALE}}
+
+## Scorecard
+
+| Criterion | Result | Evidence |
+|-----------|--------|----------|
+| AC-1 | PASS / FAIL / INCONCLUSIVE | {{FILE_OR_TEST_OUTPUT}} |
+| AC-2 | PASS / FAIL / INCONCLUSIVE | {{FILE_OR_TEST_OUTPUT}} |
+| AC-3 | PASS / FAIL / INCONCLUSIVE | {{FILE_OR_TEST_OUTPUT}} |
+
+## Verification actually run
+
+The Evaluator ran these commands and confirmed their exit codes, not the Generator's claim:
+
+```
+doctor --strict:        {{EXIT}}
+pnpm typecheck:         {{EXIT}}
+pnpm test:              {{EXIT}}
+pnpm compliance:        {{EXIT}}
+pnpm check:deprecations:{{EXIT}}
+pnpm test:api:          {{EXIT}}
+pnpm test:live:         {{EXIT_OR_SKIP}}
+Playwright MCP:         {{RESULT}}
+/api/observability/health: {{SINK_STATUS}}
+```
+
+## Failures (if any)
+
+For each FAIL / INCONCLUSIVE, root cause + exact fix, not vague feedback:
+
+### {{AC_ID}}
+
+**Root cause:** {{SPECIFIC_DIAGNOSIS}}
+
+**Location:** {{FILE}}:{{LINE}}
+
+**Required change:** {{EXACT_INSTRUCTION}}
+
+## Unresolved risks from the sprint contract
+
+- {{UNRESOLVED_RISK}}
+
+## Observations beyond the contract
+
+Things the Evaluator noticed that weren't on the sprint's criteria list but are worth flagging to Planner for the next contract:
+
+- {{OBSERVATION}}
+
+## Handoff
+
+- If **APPROVED**: Generator updates the spec's milestone status if appropriate; Planner drafts the next sprint.
+- If **BLOCKED**: Generator addresses each FAIL, requests re-review. Stop remains blocked until a clean review exists.
+- If **NEEDS-PLANNER**: the contract itself was flawed (too vague, wrong target). Planner rewrites; Generator does not re-implement yet.

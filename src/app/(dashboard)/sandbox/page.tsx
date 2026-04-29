@@ -28,7 +28,7 @@ const CAPABILITIES = [
     title: "Run Code",
     description:
       "Execute JavaScript, TypeScript, or Python in an isolated Linux VM.",
-    usage: "Use /run or ask Granger to run a script.",
+    usage: "Use /run or ask Dewey to run a script.",
     features: ["npm / pip install", "stdout capture", "File I/O"],
   },
   {
@@ -61,7 +61,7 @@ const STEPS = [
   {
     icon: Terminal,
     step: "1",
-    title: "Ask Granger to build something",
+    title: "Ask Dewey to build something",
     description:
       '"Create a React dashboard" or "/run fetch API data"',
   },

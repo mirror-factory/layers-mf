@@ -43,9 +43,9 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           <NeuralMorph size={80} dotCount={20} formation="bloom" color="#0DE4F2" />
         </div>
 
-        {/* Granger logo */}
+        {/* Layers logo */}
         <p className="text-2xl font-display font-extrabold tracking-tight text-primary opacity-90">
-          Granger
+          Layers
         </p>
         <p className="mt-2 text-sm text-sky-700/70">by Mirror Factory</p>
 

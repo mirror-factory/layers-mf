@@ -1,12 +1,26 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set");
+let stripeClient: Stripe | null = null;
+
+export function getStripeClient(): Stripe {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is not set");
+  }
+
+  stripeClient ??= new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2026-02-25.clover",
+    typescript: true,
+  });
+
+  return stripeClient;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-02-25.clover",
-  typescript: true,
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, property) {
+    const client = getStripeClient();
+    const value = client[property as keyof Stripe];
+    return typeof value === "function" ? value.bind(client) : value;
+  },
 });
 
 /** Subscription plan tiers */

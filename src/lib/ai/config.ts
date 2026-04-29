@@ -25,7 +25,7 @@ export const MODEL_MATRIX = {
 } as const;
 
 // Flat set of all allowed model IDs (for chat route validation)
-export const ALLOWED_MODELS = new Set(
+export const ALLOWED_MODELS = new Set<string>(
   Object.values(MODEL_MATRIX).flatMap(tier => Object.values(tier))
 );
 
@@ -61,8 +61,9 @@ if (process.env.NODE_ENV === "development") {
 let claudeCodeModel: ((tier: "opus" | "sonnet" | "haiku") => ReturnType<typeof gateway>) | null = null;
 try {
   if (process.env.NODE_ENV === "development") {
-    // Dynamic import to avoid build errors in production
-    const { claudeCode } = require("ai-sdk-provider-claude-code");
+    // Keep this out of webpack's static resolver; the provider is optional.
+    const loadOptionalProvider = new Function("name", "return require(name)") as (name: string) => any;
+    const { claudeCode } = loadOptionalProvider("ai-sdk-provider-claude-code");
     claudeCodeModel = (tier: "opus" | "sonnet" | "haiku") =>
       claudeCode(tier, {
         allowedTools: ["Read", "Write", "Bash", "Glob", "Grep"],

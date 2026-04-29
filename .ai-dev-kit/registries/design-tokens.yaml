@@ -1,0 +1,109 @@
+# design-tokens.yaml -- THE brand source of truth.
+#
+# Every approved color, font, spacing, and radius for this project. Edit
+# this file to change the brand; do NOT hardcode colors or fonts into
+# components. The brand enforcement gates check:
+#
+#   * pre-commit / scripts/check-brand-tokens.ts
+#       Scans changed .tsx/.css for hex codes, named colors, font-family
+#       strings, and arbitrary spacing values that aren't declared here.
+#       FAIL-CLOSED. Exempt: docs/, storybook, tests/visual.
+#
+#   * pre-push / scripts/check-brand-compliance.mts
+#       LLM-as-judge pass over changed components vs. brand-guide.md +
+#       style-guide.md + this file. FAIL-CLOSED (BRAND_SKIP=1 to bypass
+#       intentionally; counts as a silent regression in audit-rebuild).
+#
+#   * doctor: warns if design-tokens.yaml is older than docs/brand-guide.md
+#     (tokens have drifted from the brand doc).
+#
+# Tailwind / CSS-in-JS integrations: the kit's tailwind.config reads from
+# this file so the token names in components resolve back to the values
+# here. Hand-edited components that reference unknown tokens fail static
+# typing.
+#
+# Fill this in when you run `ai-dev-kit new-feature brand-studio` or the
+# first UI-touching commit. The empty seed below means zero enforcement
+# until you populate it.
+
+kind: design-tokens
+schema_version: 1
+last_synced_on: null
+
+colors:
+  # brand.primary:    "#1f6feb"
+  # brand.accent:     "#22c55e"
+  # neutral.50:       "#fafafa"
+  # text.primary:     "#0b0c10"
+
+typography:
+  # Font stacks.
+  # font.sans:        "Inter, -apple-system, system-ui, sans-serif"
+  # font.mono:        "JetBrains Mono, ui-monospace, monospace"
+  #
+  # Sizes (raw). Components reference via scale names below, not these
+  # directly, unless the Text primitive needs to bridge.
+  # size.xs:          "0.75rem"
+  # size.sm:          "0.875rem"
+  # size.md:          "1rem"
+  # size.lg:          "1.125rem"
+  # size.xl:          "1.5rem"
+  # size.2xl:         "2rem"
+  #
+  # Semantic scale: the Text primitive's `variant` prop maps to one of these.
+  # Agents should use variant="headline" not size-2xl. Swap the scale without
+  # touching code.
+  # scale.display:    { size: "3rem",    weight: 700, line: 1.1 }
+  # scale.headline:   { size: "2rem",    weight: 600, line: 1.2 }
+  # scale.title:      { size: "1.25rem", weight: 600, line: 1.4 }
+  # scale.body:       { size: "1rem",    weight: 400, line: 1.6 }
+  # scale.caption:    { size: "0.875rem", weight: 400, line: 1.5 }
+  # scale.code:       { size: "0.875rem", weight: 500, line: 1.5, family: mono }
+
+spacing:
+  space.1: "0.25rem"
+  space.2: "0.5rem"
+  space.3: "0.75rem"
+  space.4: "1rem"
+  space.6: "1.5rem"
+  space.8: "2rem"
+  space.12: "3rem"
+  space.16: "4rem"
+
+radius:
+  # radius.sm:        "0.25rem"
+  # radius.md:        "0.5rem"
+  # radius.lg:        "1rem"
+  # radius.full:      "9999px"
+
+shadow:
+  # shadow.sm:        "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+  # shadow.md:        "0 4px 6px -1px rgb(0 0 0 / 0.10)"
+
+breakpoints:
+  # mobile:           "0px"
+  # tablet:           "768px"
+  # desktop:          "1024px"
+  # wide:             "1440px"
+
+motion:
+  # Duration + easing for every transition. Component `states` (hover/focus/
+  # loading) must reference one of these -- raw ms values fail brand-tokens.
+  # motion.instant:   "0ms"        # no animation (reduced-motion override target)
+  # motion.fast:      "120ms"      # micro-interactions (hover, tap)
+  # motion.medium:    "240ms"      # panel transitions
+  # motion.slow:      "480ms"      # page-level transitions
+  # ease.standard:    "cubic-bezier(0.2, 0, 0, 1)"
+  # ease.entrance:    "cubic-bezier(0, 0, 0.2, 1)"
+  # ease.exit:        "cubic-bezier(0.4, 0, 1, 1)"
+
+elevation:
+  # z-index scale. Components declare semantic elevation, not raw numbers.
+  # z.base:           0
+  # z.dropdown:       10
+  # z.sticky:         20
+  # z.fixed:          30
+  # z.overlay:        40
+  # z.modal:          50
+  # z.popover:        60
+  # z.toast:          70

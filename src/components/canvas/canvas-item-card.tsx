@@ -72,7 +72,7 @@ const SOURCE_META: Record<
     border: "border-l-green-600",
   },
   "layers-ai": {
-    label: "Granger AI",
+    label: "Dewey AI",
     icon: Brain,
     color: "text-primary",
     border: "border-l-primary",

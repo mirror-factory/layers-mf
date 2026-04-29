@@ -89,7 +89,7 @@ export function ApprovalQueue() {
 
       <TabsContent value="all" className="space-y-4">
         {items.length === 0 ? (
-          <EmptyState message="No approval items yet. Granger will propose actions here." />
+          <EmptyState message="No approval items yet. Dewey will propose actions here." />
         ) : (
           items.map((item) => (
             <ApprovalCard key={item.id} item={item} onAction={handleAction} />

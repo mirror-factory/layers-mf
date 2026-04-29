@@ -71,7 +71,7 @@ ${entityStr}`;
   const { text, usage } = await generateText({
     model: gateway(TASK_MODELS.synthesis),
     maxOutputTokens: 4000,
-    prompt: `You are Granger, Mirror Factory's AI chief of staff. Analyze the past 30 days of team context and produce a strategic synthesis.
+    prompt: `You are Dewey, Mirror Factory's AI chief of staff. Analyze the past 30 days of team context and produce a strategic synthesis.
 
 ## Context Library (${items.length} items from last 30 days)
 
@@ -101,7 +101,7 @@ Be specific. Cite source items by title and date. Don't hedge — state your ass
       source_type: "synthesis",
       source_id: `synthesis-${new Date().toISOString().split("T")[0]}`,
       content_type: "document",
-      title: `Granger Synthesis — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`,
+      title: `Dewey Synthesis — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`,
       description_short:
         "AI-generated strategic synthesis of the past 30 days of team context.",
       raw_content: text,

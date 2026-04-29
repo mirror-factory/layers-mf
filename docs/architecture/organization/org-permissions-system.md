@@ -3,7 +3,7 @@
 > Status: Proposal
 > Date: 2026-04-05
 > Author: Architecture Team
-> Supersedes: [accounts-orgs-sharing.md](./accounts-orgs-sharing.md) (current state docs)
+> Supersedes: [accounts-orgs-sharing.md](../archive/accounts-orgs-sharing.md) (current state docs)
 
 ---
 
@@ -1041,6 +1041,6 @@ All authorization MUST be enforced at the database level via RLS. Application-le
 
 ## Appendix B: Related Documents
 
-- [accounts-orgs-sharing.md](./accounts-orgs-sharing.md) — Current state documentation
-- [sharing-system.md](./sharing-system.md) — Current sharing implementation
-- [artifact-system-v2.md](./artifact-system-v2.md) — Artifact system roadmap (intersects with sharing)
+- [accounts-orgs-sharing.md](../archive/accounts-orgs-sharing.md) — Current state documentation
+- [sharing-system.md](../archive/sharing-system.md) — Current sharing implementation
+- [artifact-system-v2.md](../artifacts/artifact-system-v2.md) — Artifact system roadmap (intersects with sharing)

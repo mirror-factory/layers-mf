@@ -5,6 +5,15 @@ import { createArtifact, createVersion } from "@/lib/artifacts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { calculateNextCron } from "@/lib/cron";
 import { logArtifactInteraction } from "@/lib/interactions/artifact-tracker";
+import {
+  createContextPack,
+  createLibraryItem,
+  createStack,
+  getLibraryItem,
+  listLibraryItems,
+  listStacks,
+  saveLibraryAsset,
+} from "@/lib/library/domain";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = SupabaseClient<any>;
@@ -23,6 +32,75 @@ const searchContextSchema = z.object({
 
 const getDocumentSchema = z.object({
   id: z.string().describe("The document ID from search_context results"),
+});
+
+const saveToLibrarySchema = z.object({
+  title: z.string().describe("Title for the Library Item"),
+  body: z.string().optional().describe("Durable body or extracted text to save"),
+  summary: z.string().optional().describe("Short summary Dewey can use for retrieval"),
+  itemType: z.string().optional().describe("Type such as note, decision, issue, image, artifact, meeting"),
+  stackIds: z.array(z.string()).optional().describe("Stack IDs to assign this item to"),
+  tags: z.array(z.string()).optional().describe("Tags to attach"),
+  source: z
+    .object({
+      sourceKind: z.string(),
+      provider: z.string().optional(),
+      externalId: z.string().optional(),
+      externalUrl: z.string().optional(),
+      importMode: z.string().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional()
+    .describe("Provenance for chat saves, MCP imports, uploads, generated assets, or artifacts"),
+});
+
+const searchLibrarySchema = z.object({
+  query: z.string().optional().describe("Search query. Leave empty to list recent Library Items."),
+  limit: z.number().min(1).max(20).optional().describe("Maximum results"),
+  itemType: z.string().optional().describe("Filter by Library Item type"),
+  stackId: z.string().optional().describe("Filter to a Stack/collection ID"),
+});
+
+const getLibraryItemSchema = z.object({
+  id: z.string().describe("Library Item ID"),
+});
+
+const createStackSchema = z.object({
+  name: z.string().describe("Stack name"),
+  description: z.string().optional().describe("What belongs in this Stack"),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+});
+
+const saveAssetSchema = z.object({
+  kind: z
+    .enum(["image", "file", "generated_image", "screenshot", "diagram", "whiteboard", "artifact_preview", "external_media"])
+    .optional(),
+  title: z.string().optional(),
+  storageBucket: z.string().optional(),
+  storagePath: z.string().optional(),
+  originalUrl: z.string().optional(),
+  thumbnailPath: z.string().optional(),
+  mimeType: z.string().optional(),
+  sizeBytes: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  sha256: z.string().optional(),
+  altText: z.string().optional(),
+  caption: z.string().optional(),
+  ocrText: z.string().optional(),
+  prompt: z.string().optional(),
+  model: z.string().optional(),
+  license: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const createContextPackSchema = z.object({
+  name: z.string().describe("Name for the context pack"),
+  purpose: z.string().optional().describe("What this pack is for"),
+  itemIds: z.array(z.string()).optional().describe("Library Item IDs to include"),
+  instructions: z.string().optional().describe("Handoff instructions for an external tool or agent"),
+  visibility: z.enum(["private", "org", "external"]).optional(),
 });
 
 /** Generate boilerplate files for project templates so the model only sends custom code */
@@ -192,6 +270,129 @@ export function createTools(supabase: AnySupabase, orgId: string, userId?: strin
           source_created_at: item.source_created_at,
         };
       },
+    }),
+
+    search_library: tool({
+      description:
+        "Search or list Library Items. Use this as Dewey's primary Library retrieval tool and cite returned item IDs/titles in answers.",
+      inputSchema: searchLibrarySchema,
+      execute: async (input: z.infer<typeof searchLibrarySchema>) =>
+        listLibraryItems(supabase, orgId, {
+          query: input.query,
+          limit: input.limit ?? 8,
+          itemType: input.itemType,
+          stackId: input.stackId,
+        }),
+    }),
+
+    get_library_item: tool({
+      description:
+        "Fetch a full Library Item with stacks, tags, assets, sources, and relationships. Use after search_library when details matter.",
+      inputSchema: getLibraryItemSchema,
+      execute: async ({ id }: z.infer<typeof getLibraryItemSchema>) =>
+        getLibraryItem(supabase, orgId, id),
+    }),
+
+    add_library_item: tool({
+      description:
+        "Create a durable Library Item from useful chat content, selected MCP records, uploaded/generated assets, artifacts, or notes.",
+      inputSchema: saveToLibrarySchema,
+      execute: async (input: z.infer<typeof saveToLibrarySchema>) =>
+        createLibraryItem(supabase, {
+          orgId,
+          userId,
+          title: input.title,
+          body: input.body,
+          summary: input.summary,
+          itemType: input.itemType,
+          stackIds: input.stackIds,
+          tags: input.tags,
+          source: input.source
+            ? {
+                ...input.source,
+                importMode: (input.source.importMode as never) ?? "chat_save",
+              }
+            : {
+                sourceKind: "chat",
+                provider: "layers",
+                importMode: "chat_save",
+              },
+        }),
+    }),
+
+    save_to_library: tool({
+      description:
+        "Save useful chat content, MCP-selected records, generated outputs, or durable notes into the Library. Ask before saving sensitive content.",
+      inputSchema: saveToLibrarySchema,
+      execute: async (input: z.infer<typeof saveToLibrarySchema>) => {
+        const result = await createLibraryItem(supabase, {
+          orgId,
+          userId,
+          title: input.title,
+          body: input.body,
+          summary: input.summary,
+          itemType: input.itemType,
+          stackIds: input.stackIds,
+          tags: input.tags,
+          source: input.source
+            ? {
+                ...input.source,
+                importMode: (input.source.importMode as never) ?? "chat_save",
+              }
+            : {
+                sourceKind: "chat",
+                provider: "layers",
+                importMode: "chat_save",
+              },
+        });
+        return result;
+      },
+    }),
+
+    list_library_stacks: tool({
+      description: "List Library Stacks so Dewey can ask where new context should live.",
+      inputSchema: z.object({}),
+      execute: async () => listStacks(supabase, orgId),
+    }),
+
+    create_stack: tool({
+      description: "Create a Library Stack when the user wants a new shelf/category for Library Items.",
+      inputSchema: createStackSchema,
+      execute: async (input: z.infer<typeof createStackSchema>) => {
+        if (!userId) return { error: "A signed-in user is required to create a Stack." };
+        return createStack(supabase, {
+          orgId,
+          userId,
+          name: input.name,
+          description: input.description,
+          icon: input.icon,
+          color: input.color,
+        });
+      },
+    }),
+
+    save_asset: tool({
+      description:
+        "Save metadata for an image, generated image, screenshot, diagram, upload, external media asset, or artifact preview into the Library asset registry.",
+      inputSchema: saveAssetSchema,
+      execute: async (input: z.infer<typeof saveAssetSchema>) =>
+        saveLibraryAsset(supabase, orgId, userId, input),
+    }),
+
+    create_context_pack: tool({
+      description:
+        "Create a context pack for handoff to Claude, ChatGPT-compatible clients, Gemini-compatible surfaces, Claude Code, or customer orchestrators.",
+      inputSchema: createContextPackSchema,
+      execute: async (input: z.infer<typeof createContextPackSchema>) =>
+        createContextPack(supabase, {
+          orgId,
+          userId,
+          name: input.name,
+          purpose: input.purpose,
+          itemIds: input.itemIds,
+          instructions: input.instructions,
+          visibility: input.visibility,
+        }),
     }),
 
     // === Scheduling tool ===
@@ -1423,7 +1624,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
       execute: async ({ url }) => {
         try {
           const res = await fetch(url, {
-            headers: { "User-Agent": "Granger/1.0 (AI Assistant)" },
+            headers: { "User-Agent": "Dewey/1.0 (Layers Assistant)" },
             signal: AbortSignal.timeout(15000),
           });
           if (!res.ok) return { error: `HTTP ${res.status}: ${res.statusText}` };
@@ -1696,7 +1897,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
       execute: async (input) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase as any).from("approval_queue").insert({
-          org_id: orgId, requested_by_agent: "granger",
+          org_id: orgId, requested_by_agent: "dewey",
           action_type: input.action_type, target_service: input.target_service,
           payload: input.payload, reasoning: input.reasoning,
           conflict_reason: input.conflict_check ?? null, status: "pending",
@@ -2022,7 +2223,7 @@ const model3 = gateway("openai/gpt-5.4-mini");`,
     // === Skill creation tool ===
     create_skill: tool({
       description:
-        "Create a new custom skill for Granger. Use the ask_user tool first to gather requirements from the user (skill name, description, category, system prompt, tools), then call this tool to save the skill. The skill will be immediately available via its slash command.",
+        "Create a new custom skill for Dewey and Layers. Use the ask_user tool first to gather requirements from the user (skill name, description, category, system prompt, tools), then call this tool to save the skill. The skill will be immediately available via its slash command.",
       inputSchema: z.object({
         name: z.string().describe("Human-readable skill name, e.g. 'Sales Coach'"),
         slug: z.string().describe("URL-safe identifier, e.g. 'sales-coach'"),

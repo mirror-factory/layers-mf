@@ -1,0 +1,43 @@
+# ai-dev-kit notifications via ntfy.sh
+#
+# This file configures where the harness sends notifications when it needs
+# your attention. ntfy is a simple HTTP-based pub/sub -- you subscribe to
+# a topic on ntfy.sh (or your own server) and the app pings you.
+#
+# How to use:
+#   1. Pick a unique topic name. Anything that isn't publicly guessable:
+#      mirror-factory-<project>-<random-suffix>.
+#   2. Install the ntfy mobile app (ntfy.sh), subscribe to the topic above,
+#      OR open https://ntfy.sh/<your-topic> in a browser tab.
+#   3. Leave this file in your repo; the topic name isn't a secret (the
+#      topic URL alone can't leak repo code), but the topic name is
+#      shared so don't put anything confidential here.
+#
+# For private notifications, run your own ntfy server (docker-compose up)
+# and set `server:` below plus an auth token via environment variable.
+
+topic: {{YOUR_PROJECT_TOPIC}}            # REQUIRED -- see instructions above
+server: https://ntfy.sh                  # change to your own ntfy server for private use
+# auth_token_env: NTFY_AUTH_TOKEN        # uncomment + set env var for private topics
+
+# Per-channel priority + tags. ntfy uses priority to control phone
+# vibration / LED / bypass-do-not-disturb. Tags become emoji on the
+# notification UI.
+channels:
+  blocker:   { priority: 5, tags: [warning, rotating_light] }
+  progress:  { priority: 3, tags: [gear] }
+  summary:   { priority: 2, tags: [checkered_flag] }
+  heartbeat: { priority: 1, tags: [heart] }
+
+# Auto-events: which lifecycle events auto-emit a notify() without explicit
+# calls in code. Scripts that gate on this: pre-push (done | blocked),
+# check-eval-regression, check-budget, playwright visual diff, brand judge.
+#
+# Defaults ship with just `blocked`. For the "loop until done, ping on
+# block or done, silent otherwise" workflow the user asked about, add
+# `done` here.
+#
+# Recommended for interactive Ralph-loop usage:
+#   auto_events: [done, blocked, eval_regression, cost_overrun, visual_diff, brand_fail]
+auto_events:
+  - blocked

@@ -1,0 +1,64 @@
+#!/bin/sh
+# AI Dev Kit - Post-commit hook (informational, never blocks)
+# All commands are non-blocking -- failures are silently ignored.
+#
+# 0.2.18: kit-audit instrumentation. Every step logs start+end so the
+# audit export surfaces whether auto-version fired, the CHANGELOG update
+# ran, and what quick doctor reported. Matches the pre-commit + pre-push
+# instrumentation pattern so the kit-audit log is a full commit-cycle
+# timeline.
+
+[ -f scripts/lib/kit-audit.sh ] && . scripts/lib/kit-audit.sh
+
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+info() {
+  printf "${CYAN}[INFO]${NC} %s\n" "$1"
+}
+
+type kit_audit_hook_start >/dev/null 2>&1 && kit_audit_hook_start "post-commit"
+trap 'type kit_audit_hook_end >/dev/null 2>&1 && kit_audit_hook_end "post-commit" "ok"' EXIT
+
+_kit_now() { type kit_audit_now_ms >/dev/null 2>&1 && kit_audit_now_ms || date +%s000; }
+_kit_step() { type kit_audit_step >/dev/null 2>&1 && kit_audit_step "$1" "$2" "$3"; }
+
+# ---------------------------------------------------------------------------
+# 1. Auto-version bump
+# ---------------------------------------------------------------------------
+info "Running auto-version bump..."
+_t=$(_kit_now)
+if node scripts/auto-version.mjs 2>/dev/null; then
+  _kit_step "auto-version" "ok" $(($(_kit_now)-_t))
+else
+  _kit_step "auto-version" "skip" $(($(_kit_now)-_t))
+fi
+
+# ---------------------------------------------------------------------------
+# 2. CHANGELOG update
+# ---------------------------------------------------------------------------
+info "Updating CHANGELOG..."
+_t=$(_kit_now)
+if node scripts/update-changelog.mjs 2>/dev/null; then
+  _kit_step "changelog-update" "ok" $(($(_kit_now)-_t))
+else
+  _kit_step "changelog-update" "skip" $(($(_kit_now)-_t))
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Quick doctor (continuous enforcement -- catches drift immediately)
+# ---------------------------------------------------------------------------
+# Non-blocking but visible. The idea: run_id + registries + catalog
+# freshness + brand + budget wiring can drift between pre-push runs
+# (e.g. when you rebase, check out a different branch, or cherry-pick).
+# post-commit prints a one-line status so drift gets caught in-loop
+# instead of surfacing only on the eventual push.
+if command -v npx >/dev/null 2>&1; then
+  info "Quick health check..."
+  _t=$(_kit_now)
+  if npx ai-dev-kit doctor 2>/dev/null | tail -5; then
+    _kit_step "quick-doctor" "ok" $(($(_kit_now)-_t))
+  else
+    _kit_step "quick-doctor" "skip" $(($(_kit_now)-_t))
+  fi
+fi

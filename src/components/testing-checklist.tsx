@@ -33,16 +33,16 @@ const CHECKLIST: ChecklistItem[] = [
   {
     id: 'chat-basic',
     category: 'Chat',
-    title: 'Send a message to Granger',
-    description: 'Go to /chat, type "Hello Granger, who are you?"',
-    expectedResult: "Granger responds identifying as Mirror Factory's AI chief of staff. Response references priority docs.",
+    title: 'Send a message to Dewey',
+    description: 'Go to /chat, type "Hello Dewey, who are you?"',
+    expectedResult: "Dewey responds identifying as Mirror Factory's AI chief of staff. Response references priority docs.",
   },
   {
     id: 'chat-search',
     category: 'Chat',
     title: 'Ask about context',
     description: 'Ask "What meetings have we had recently?" or "What\'s in our context library?"',
-    expectedResult: 'Granger calls search_context tool, shows source citations with relevance scores.',
+    expectedResult: 'Dewey calls search_context tool, shows source citations with relevance scores.',
   },
   {
     id: 'chat-model',
@@ -64,8 +64,8 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'approval-propose',
     category: 'Approvals',
     title: 'Trigger an approval',
-    description: 'Ask Granger: "Create a Linear issue for testing the approval system"',
-    expectedResult: 'Granger proposes the action. Shows in /approvals with pending status.',
+    description: 'Ask Dewey: "Create a Linear issue for testing the approval system"',
+    expectedResult: 'Dewey proposes the action. Shows in /approvals with pending status.',
   },
   {
     id: 'approval-approve',
@@ -136,48 +136,48 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'tool-granola',
     category: 'Tools',
     title: 'Query Granola meetings',
-    description: 'Ask Granger: "Show me my recent meetings from Granola"',
-    expectedResult: 'Granger calls query_granola tool. Shows meeting list with titles and dates.',
+    description: 'Ask Dewey: "Show me my recent meetings from Granola"',
+    expectedResult: 'Dewey calls query_granola tool. Shows meeting list with titles and dates.',
     requiresSetup: 'Granola API key must be connected',
   },
   {
     id: 'tool-linear',
     category: 'Tools',
     title: 'List Linear issues',
-    description: 'Ask Granger: "What are my in-progress Linear issues?"',
-    expectedResult: 'Granger calls list_linear_issues tool. Shows issues with status, assignee, priority.',
+    description: 'Ask Dewey: "What are my in-progress Linear issues?"',
+    expectedResult: 'Dewey calls list_linear_issues tool. Shows issues with status, assignee, priority.',
     requiresSetup: 'Linear API key must be connected',
   },
   {
     id: 'tool-notion',
     category: 'Tools',
     title: 'Search Notion pages',
-    description: 'Ask Granger: "What Notion pages do we have?"',
-    expectedResult: 'Granger calls search_notion tool. Shows page titles.',
+    description: 'Ask Dewey: "What Notion pages do we have?"',
+    expectedResult: 'Dewey calls search_notion tool. Shows page titles.',
     requiresSetup: 'Notion token must be connected + pages shared with integration',
   },
   {
     id: 'tool-gmail',
     category: 'Tools',
     title: 'Search Gmail',
-    description: 'Ask Granger: "Search my recent emails about invoices"',
-    expectedResult: 'Granger calls search_gmail tool. Shows email subjects and senders.',
+    description: 'Ask Dewey: "Search my recent emails about invoices"',
+    expectedResult: 'Dewey calls search_gmail tool. Shows email subjects and senders.',
     requiresSetup: 'Google OAuth must be connected',
   },
   {
     id: 'tool-drive',
     category: 'Tools',
     title: 'List Drive files',
-    description: 'Ask Granger: "What files do I have in Google Drive?"',
-    expectedResult: 'Granger calls list_drive_files tool. Shows file names and types.',
+    description: 'Ask Dewey: "What files do I have in Google Drive?"',
+    expectedResult: 'Dewey calls list_drive_files tool. Shows file names and types.',
     requiresSetup: 'Google OAuth must be connected',
   },
   {
     id: 'tool-create-issue',
     category: 'Tools',
     title: 'Create Linear issue (via approval)',
-    description: 'Ask Granger: "Create a Linear issue titled Test Issue in the Company team"',
-    expectedResult: 'Granger proposes the action (approval queue). Does NOT create directly.',
+    description: 'Ask Dewey: "Create a Linear issue titled Test Issue in the Company team"',
+    expectedResult: 'Dewey proposes the action (approval queue). Does NOT create directly.',
     requiresSetup: 'Linear API key must be connected',
   },
 
@@ -186,8 +186,8 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'discord-slash-ask',
     category: 'Discord',
     title: '/ask command',
-    description: 'In Discord, type: /ask question:"What is Granger?"',
-    expectedResult: 'Granger responds in the channel with hourglass then full response.',
+    description: 'In Discord, type: /ask question:"What is Dewey?"',
+    expectedResult: 'Dewey responds in the channel with hourglass then full response.',
     requiresSetup: 'Discord bot must be set up + commands registered',
   },
   {
@@ -209,17 +209,17 @@ const CHECKLIST: ChecklistItem[] = [
   {
     id: 'discord-dm',
     category: 'Discord',
-    title: 'DM Granger',
-    description: 'Send a direct message to @Granger in Discord',
-    expectedResult: 'Granger responds privately. Message saved with channel=discord.',
+    title: 'DM Dewey',
+    description: 'Send a direct message to @Dewey in Discord',
+    expectedResult: 'Dewey responds privately. Message saved with channel=discord.',
     requiresSetup: 'Discord bot must be set up + your Discord ID linked',
   },
   {
     id: 'discord-mention',
     category: 'Discord',
     title: '@mention in channel',
-    description: 'In a Discord channel, type: @Granger what happened today?',
-    expectedResult: 'Granger responds in a thread. All partners can see it.',
+    description: 'In a Discord channel, type: @Dewey what happened today?',
+    expectedResult: 'Dewey responds in a thread. All partners can see it.',
     requiresSetup: 'Discord bot must be set up',
   },
 
@@ -262,15 +262,15 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'priority-loaded',
     category: 'Priority Docs',
     title: 'Priority docs in system prompt',
-    description: 'Ask Granger: "What are Mirror Factory\'s core values?"',
-    expectedResult: 'Granger cites 01-mission.md: quality over speed, transparency, ownership, continuous learning.',
+    description: 'Ask Dewey: "What are Mirror Factory\'s core values?"',
+    expectedResult: 'Dewey cites 01-mission.md: quality over speed, transparency, ownership, continuous learning.',
   },
   {
     id: 'priority-conflict',
     category: 'Priority Docs',
     title: 'Values conflict detection',
-    description: 'Ask Granger: "Skip testing to ship faster"',
-    expectedResult: 'Granger flags conflict with mission doc: "Quality is non-negotiable."',
+    description: 'Ask Dewey: "Skip testing to ship faster"',
+    expectedResult: 'Dewey flags conflict with mission doc: "Quality is non-negotiable."',
   },
 
   // CONTEXT LIBRARY
@@ -332,7 +332,7 @@ const CHECKLIST: ChecklistItem[] = [
   {
     id: 'code-write',
     category: 'Code',
-    title: 'Ask Granger to write code',
+    title: 'Ask Dewey to write code',
     description: 'Ask: "Write a bash script to check server health"',
     expectedResult: 'CodeSandbox renders inline with syntax highlighting, filename, copy/download buttons. Saved to Context Library.',
   },
@@ -412,7 +412,7 @@ const CHECKLIST: ChecklistItem[] = [
     category: 'Schedules',
     title: 'Create schedule via chat',
     description: 'Ask: "Check my Linear issues every morning at 7am"',
-    expectedResult: 'Granger calls schedule_action tool. New schedule appears on /schedules.',
+    expectedResult: 'Dewey calls schedule_action tool. New schedule appears on /schedules.',
   },
 
   // NOTIFICATIONS
@@ -428,7 +428,7 @@ const CHECKLIST: ChecklistItem[] = [
     category: 'Notifications',
     title: 'Receive a desktop notification',
     description: 'Click "Run Now" on a schedule with notifications enabled',
-    expectedResult: 'Desktop notification: "Granger: Linear Status Check". Click → navigates to /context.',
+    expectedResult: 'Desktop notification: "Dewey: Linear Status Check". Click → navigates to /context.',
   },
   {
     id: 'notif-toast',
@@ -444,7 +444,7 @@ const CHECKLIST: ChecklistItem[] = [
     category: 'Sub-Agents',
     title: 'Linear sub-agent',
     description: 'Ask: "Show my urgent tasks and list all teams"',
-    expectedResult: 'Granger delegates to ask_linear_agent. Multiple tool calls (list_issues + list_teams). Results formatted.',
+    expectedResult: 'Dewey delegates to ask_linear_agent. Multiple tool calls (list_issues + list_teams). Results formatted.',
     requiresSetup: 'Requires Linear API key',
   },
   {
@@ -452,7 +452,7 @@ const CHECKLIST: ChecklistItem[] = [
     category: 'Sub-Agents',
     title: 'Gmail sub-agent',
     description: 'Ask: "Search my emails from last week about invoices"',
-    expectedResult: 'Granger delegates to ask_gmail_agent. Shows email subjects, senders, dates.',
+    expectedResult: 'Dewey delegates to ask_gmail_agent. Shows email subjects, senders, dates.',
     requiresSetup: 'Requires Google OAuth',
   },
 
@@ -461,7 +461,7 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'approve-execute',
     category: 'Execution',
     title: 'Approve and execute a Linear issue creation',
-    description: 'Ask Granger to create a Linear issue → click "Approve & Execute"',
+    description: 'Ask Dewey to create a Linear issue → click "Approve & Execute"',
     expectedResult: 'Issue created in Linear. Clickable URL shown: "Created: PROD-XXX — https://linear.app/..."',
     requiresSetup: 'Requires Linear API key',
   },
@@ -469,7 +469,7 @@ const CHECKLIST: ChecklistItem[] = [
     id: 'approve-reject',
     category: 'Execution',
     title: 'Reject a proposed action',
-    description: 'Ask Granger to create something → click "Reject"',
+    description: 'Ask Dewey to create something → click "Reject"',
     expectedResult: 'Status changes to rejected. Action not executed.',
   },
   {
@@ -494,9 +494,9 @@ const CHECKLIST: ChecklistItem[] = [
   {
     id: 'brand-landing',
     category: 'Branding',
-    title: 'Landing page says Granger',
+    title: 'Landing page says Dewey',
     description: 'Visit http://localhost:3000 while logged out',
-    expectedResult: '"Your AI Chief of Staff" headline. "Meet Granger" CTA. No "Layers" text.',
+    expectedResult: '"Your AI Chief of Staff" headline. "Meet Dewey" CTA. No "Layers" text.',
   },
   {
     id: 'brand-dark-mode',
@@ -591,7 +591,7 @@ export function TestingChecklist() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h2 className="text-xl font-bold">Granger Testing Checklist</h2>
+            <h2 className="text-xl font-bold">Dewey Testing Checklist</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {totalChecked}/{totalItems} tests completed
             </p>

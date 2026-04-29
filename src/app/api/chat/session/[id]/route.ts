@@ -27,7 +27,7 @@ function buildSessionInstructions(
   sessionName: string,
   sessionGoal: string
 ): string {
-  return `You are Granger, an AI assistant for knowledge teams. You are working within the session "${sessionName}".
+  return `You are Dewey, the resident Librarian assistant inside Layers. You are working within the session "${sessionName}".
 
 Session goal: ${sessionGoal}
 

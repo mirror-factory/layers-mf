@@ -1,0 +1,51 @@
+kind: project-index
+schema_version: 1
+last_synced_on: "2026-04-29T19:39:11.250Z"
+
+project:
+  name: layers-mf
+  stack: [next-16, ai-sdk-v6, supabase, playwright]
+  spec_path: .ai-dev-kit/spec.md
+
+features:
+  - name: library-layer
+    status: drafting
+    spec: features/library-layer/SPEC.md
+    design_ready: false
+    test_manifest: features/library-layer/TEST-MANIFEST.yaml
+    flows: 7
+    last_run: null
+    last_run_status: null
+
+registries:
+  - path: .ai-dev-kit/registries/components.yaml
+    entries: 176
+    last_synced_on: 2026-04-29T19:39:10.468Z
+  - path: .ai-dev-kit/registries/pages.yaml
+    entries: 164
+    last_synced_on: 2026-04-29T19:39:10.468Z
+  - path: .ai-dev-kit/registries/tools.yaml
+    entries: 3
+    last_synced_on: 2026-04-28T19:46:08.689Z
+  - path: .ai-dev-kit/registries/skills.yaml
+    entries: 5
+    last_synced_on: 2026-04-28T19:46:08.689Z
+  - path: .ai-dev-kit/registries/design-tokens.yaml
+    entries: 0
+    last_synced_on: null
+  - path: .ai-dev-kit/registries/design-system.yaml
+    entries: 12
+    last_synced_on: null
+  - path: .ai-dev-kit/registries/test-contracts.yaml
+    entries: 1
+    last_synced_on: 2026-04-29T19:39:10.890Z
+  - path: .ai-dev-kit/registries/dependencies.yaml
+    entries: 0
+    last_synced_on: null
+
+totals_30d:
+  ai_calls: 0
+  vendor_calls: 0
+  cost_usd: 0
+  tests_run: 0
+  skill_invocations: 0

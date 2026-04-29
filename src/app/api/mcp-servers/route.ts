@@ -32,7 +32,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (adminGet as any)
     .from("mcp_servers")
-    .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, last_connected_at, error_message, created_at, oauth_authorize_url, oauth_token_url, oauth_client_id, oauth_client_secret")
+    .select("id, name, url, transport_type, auth_type, is_active, discovered_tools, tool_snapshot, last_connected_at, error_message, created_at, oauth_authorize_url, oauth_token_url, oauth_client_id, oauth_client_secret, oauth_status, oauth_scopes, health_status, health_checked_at, reconnect_after, failure_count")
     .eq("org_id", member.org_id)
     .order("created_at", { ascending: false });
 
@@ -146,8 +146,13 @@ export async function POST(request: NextRequest) {
       transport_type: transportType ?? "http",
       is_active: !isOAuth, // OAuth servers start inactive until authenticated
       discovered_tools: discoveredTools.map((t) => ({ name: t })),
+      tool_snapshot: discoveredTools.map((t) => ({ name: t })),
       last_connected_at: isOAuth ? null : new Date().toISOString(),
       error_message: isOAuth ? "OAuth authentication required" : null,
+      oauth_status: isOAuth ? "needs_auth" : "not_required",
+      health_status: isOAuth ? "reauth_required" : "healthy",
+      health_checked_at: isOAuth ? null : new Date().toISOString(),
+      failure_count: 0,
       ...(isOAuth ? {
         oauth_authorize_url: oauthAuthorizeUrl || detectedOAuth?.authorizeUrl || null,
         oauth_token_url: oauthTokenUrl || detectedOAuth?.tokenUrl || null,

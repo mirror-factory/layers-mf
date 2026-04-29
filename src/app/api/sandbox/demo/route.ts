@@ -44,7 +44,7 @@ export default defineConfig({
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Granger Sandbox Demo</title>
+  <title>Layers Sandbox Demo</title>
 </head>
 <body>
   <div id="root"></div>
@@ -96,7 +96,7 @@ function App() {
       gap: '1.5rem',
     }}>
       <div style={{ fontSize: '0.75rem', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        Granger Sandbox Demo
+        Layers Sandbox Demo
       </div>
       <h1 style={{ fontSize: '3rem', fontWeight: 700, margin: 0, color }}>
         {count}
@@ -206,7 +206,7 @@ export async function POST() {
       try {
         const res = await fetch(previewUrl, {
           signal: AbortSignal.timeout(5000),
-          headers: { "User-Agent": "Granger-Health-Check" },
+          headers: { "User-Agent": "Layers-Health-Check" },
         });
         if (res.status !== 502) {
           ready = true;
@@ -249,7 +249,7 @@ export async function GET() {
   try {
     const res = await fetch(activeSandbox.previewUrl, {
       signal: AbortSignal.timeout(5000),
-      headers: { "User-Agent": "Granger-Health-Check" },
+      headers: { "User-Agent": "Layers-Health-Check" },
     });
     activeSandbox.status = res.status !== 502 ? "running" : "unhealthy";
   } catch {

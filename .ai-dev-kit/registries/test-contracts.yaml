@@ -1,0 +1,12 @@
+kind: test-contracts
+schema_version: 1
+last_synced_on: "2026-04-29T19:39:10.890Z"
+entries:
+  - feature: library-layer
+    manifest_path: features/library-layer/TEST-MANIFEST.yaml
+    flows: []
+    step_count: 0
+    escape_hatches: 0
+    has_design_ready: false
+    spec_acceptance_count: 0
+    spec_acceptance_covered: 0

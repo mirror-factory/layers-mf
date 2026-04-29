@@ -58,7 +58,7 @@ const STEPS = [
     key: "prompt",
     label: "Prompt",
     question:
-      "Write the system prompt — this is what Granger becomes when this skill activates.",
+      "Write the system prompt — this is what Dewey becomes when this skill activates.",
   },
   {
     key: "slash",
@@ -210,7 +210,7 @@ export function SkillCreator({
               <span className="font-medium text-sm">AI Interview</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Granger asks you questions in chat and builds the skill for you. Best for most users.
+              Dewey asks you questions in chat and builds the skill for you. Best for most users.
             </p>
           </button>
           <button
@@ -238,7 +238,7 @@ export function SkillCreator({
               <span className="font-medium text-sm">Create from Code</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Describe what your tool should do, and Granger will write the code, test it in a sandbox, and save it as a skill. Best for automations and API integrations.
+              Describe what your tool should do, and Dewey will write the code, test it in a sandbox, and save it as a skill. Best for automations and API integrations.
             </p>
           </button>
         </div>
@@ -366,7 +366,7 @@ export function SkillCreator({
               rows={5}
             />
             <p className="text-[10px] text-muted-foreground mt-1.5">
-              Instructions added to Granger&apos;s context when this skill is
+              Instructions added to Dewey&apos;s context when this skill is
               activated. Optional but recommended.
             </p>
           </div>

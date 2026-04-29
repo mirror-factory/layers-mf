@@ -1,0 +1,22 @@
+kind: tools
+schema_version: 1
+last_synced_on: 2026-04-28T19:46:08.689Z
+entries:
+  - name: _types
+    path: lib/ai/tools/_types.ts
+    description: null
+    has_test: false
+    owner: null
+    created_on: "2026-04-28T19:46:08.689Z"
+  - name: _metadata
+    path: src/lib/ai/tools/_metadata.ts
+    description: Search knowledge base for documents, meetings, notes. Call first before answering.
+    has_test: false
+    owner: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: _types
+    path: src/lib/ai/tools/_types.ts
+    description: null
+    has_test: false
+    owner: null
+    created_on: "2026-04-28T19:33:04.890Z"

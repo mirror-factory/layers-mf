@@ -242,7 +242,7 @@ export default function SkillsPage() {
           <h1 className="text-xl sm:text-2xl font-semibold">Skills</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          Extend Granger&apos;s capabilities with specialized skills.
+          Extend Dewey&apos;s capabilities with specialized skills.
         </p>
         {uploadMessage && (
           <p className={cn("text-xs mt-1", uploadMessage.includes("success") ? "text-green-500" : "text-destructive")}>
@@ -279,7 +279,7 @@ export default function SkillsPage() {
               <p>
                 A skill is a bundle of: instructions (system prompt) + tools +
                 configuration. When activated, the skill&apos;s instructions are
-                added to Granger&apos;s context.
+                added to Dewey&apos;s context.
               </p>
             </div>
             <div>
@@ -297,7 +297,7 @@ export default function SkillsPage() {
                   Or say &ldquo;use the [skill name] skill&rdquo;
                 </li>
                 <li>
-                  Granger loads the skill&apos;s specialized instructions for
+                  Dewey loads the skill&apos;s specialized instructions for
                   your conversation
                 </li>
               </ul>
@@ -307,7 +307,7 @@ export default function SkillsPage() {
                 Built-in Skills
               </h4>
               <p>
-                Granger comes with 6 built-in skills: Linear PM, Email Drafter,
+                Dewey comes with 6 built-in skills: Linear PM, Email Drafter,
                 Meeting Summarizer, Code Builder, Weekly Digest, and Brand Voice
                 Writer.
               </p>

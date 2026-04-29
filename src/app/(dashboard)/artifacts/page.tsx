@@ -98,8 +98,8 @@ export default async function ArtifactsPage({ searchParams }: ArtifactsPageProps
       <PageExplainer
         title="How Artifacts Work"
         sections={[
-          { title: "What are artifacts", content: "Code files, documents, sandboxes, and other outputs created by Granger during chat conversations. Each artifact is versioned and stored with full history." },
-          { title: "Creating artifacts", content: "Ask Granger to write code, create documents, or build projects. Artifacts appear in the chat's artifact panel and are saved here automatically." },
+          { title: "What are artifacts", content: "Code files, documents, sandboxes, and other outputs created by Dewey during chat conversations. Each artifact is versioned and stored with full history." },
+          { title: "Creating artifacts", content: "Ask Dewey to write code, create documents, or build projects. Artifacts appear in the chat's artifact panel and are saved here automatically." },
           { title: "Versioning", content: "Every edit creates a new version. You can browse version history and restore previous versions at any time." },
         ]}
       />
@@ -153,7 +153,7 @@ export default async function ArtifactsPage({ searchParams }: ArtifactsPageProps
             <FileCode2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <h3 className="font-medium mb-1">No artifacts yet</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Start a conversation and ask Granger to write code, create documents, or build projects. Artifacts will appear here.
+              Start a conversation and ask Dewey to write code, create documents, or build projects. Artifacts will appear here.
             </p>
             <Link
               href="/chat"
