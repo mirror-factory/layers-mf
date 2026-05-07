@@ -1,5 +1,6 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import importPlugin from "eslint-plugin-import";
 
 export default [
   ...nextCoreWebVitals,
@@ -7,6 +8,46 @@ export default [
   {
     linterOptions: {
       reportUnusedDisableDirectives: "off",
+    },
+  },
+  // Layer-boundary enforcement (Phase B Task 5).
+  // Layers organizes src/ as: types, data, lib, components, app.
+  // Dependency direction must be: types → data → lib → components → app.
+  // A leaf layer must not import from a layer above it.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    plugins: { import: importPlugin },
+    rules: {
+      "import/no-restricted-paths": [
+        "warn",
+        {
+          zones: [
+            {
+              target: "./src/types",
+              from: ["./src/data", "./src/lib", "./src/components", "./src/app"],
+              message:
+                "types/ is the base layer; do not import from data/lib/components/app",
+            },
+            {
+              target: "./src/data",
+              from: ["./src/lib", "./src/components", "./src/app"],
+              message: "data/ may only import from types/",
+            },
+            {
+              target: "./src/lib",
+              from: ["./src/components", "./src/app"],
+              message:
+                "lib/ may only import from types/ and data/; pass UI/route deps via parameters",
+            },
+            {
+              target: "./src/components",
+              from: ["./src/app"],
+              message:
+                "components/ must not import from app/ (routes); compose components from lib + types",
+            },
+          ],
+        },
+      ],
     },
   },
   {
