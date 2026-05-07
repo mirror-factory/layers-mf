@@ -1,6 +1,6 @@
 kind: hooks
 schema_version: 1
-last_synced_on: 2026-04-28T19:46:08.689Z
+last_synced_on: 2026-05-06T20:45:39.096Z
 entries:
   - name: post-commit
     surface: husky
@@ -9,7 +9,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.948Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: pre-commit
     surface: husky
@@ -18,7 +18,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.947Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: pre-push
     surface: husky
@@ -27,7 +27,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.947Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: context7-suggest.py
     surface: claude
@@ -36,7 +36,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: "Write|Edit"
-    last_modified: "2026-04-28T19:31:41.950Z"
+    last_modified: "2026-05-06T20:45:38.405Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: periodic-reground.py
     surface: claude
@@ -45,7 +45,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: "*"
-    last_modified: "2026-04-28T19:31:41.948Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: postuse-format.py
     surface: claude
@@ -54,7 +54,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: "Write|Edit"
-    last_modified: "2026-04-28T19:31:41.949Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: record-docs-lookup.py
     surface: claude
@@ -63,7 +63,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: "WebFetch|mcp__context7.*|mcp__firecrawl.*|WebSearch"
-    last_modified: "2026-04-28T19:31:41.950Z"
+    last_modified: "2026-05-06T20:45:38.405Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: record-kit-event.py
     surface: claude
@@ -72,7 +72,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.963Z"
+    last_modified: "2026-05-06T20:45:38.408Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: record-skill-use.py
     surface: claude
@@ -81,7 +81,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: Skill
-    last_modified: "2026-04-28T19:31:41.950Z"
+    last_modified: "2026-05-06T20:45:38.405Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: session-start-run.py
     surface: claude
@@ -90,7 +90,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.950Z"
+    last_modified: "2026-05-06T20:45:38.405Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: session-startup.py
     surface: claude
@@ -99,7 +99,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.948Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: track-edits.py
     surface: claude
@@ -108,7 +108,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: "Write|Edit"
-    last_modified: "2026-04-28T19:31:41.949Z"
+    last_modified: "2026-05-06T20:45:38.400Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: verify-before-stop.py
     surface: claude
@@ -117,7 +117,7 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: null
-    last_modified: "2026-04-28T19:31:41.950Z"
+    last_modified: "2026-05-06T20:45:38.401Z"
     created_on: "2026-04-28T19:33:04.890Z"
   - name: verify-claims.py
     surface: claude
@@ -126,5 +126,5 @@ entries:
     wired_in_settings: true
     kit_audit_instrumented: true
     tool_filter: Bash
-    last_modified: "2026-04-28T19:31:41.949Z"
+    last_modified: "2026-05-06T20:45:38.401Z"
     created_on: "2026-04-28T19:33:04.890Z"

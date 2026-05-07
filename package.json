@@ -45,7 +45,11 @@
     "gate:full": "pnpm sync && pnpm gate:phase && pnpm build && pnpm score",
     "dev-kit:doctor": "ai-dev-kit doctor",
     "dev-kit:doctor:strict": "ai-dev-kit doctor --strict",
-    "postinstall": "node scripts/doctor-first-run.mjs || true"
+    "postinstall": "node scripts/doctor-first-run.mjs || true",
+    "test:fast": "vitest run --reporter=dot",
+    "test:slow": "playwright test",
+    "test:eval": "node scripts/run-evals.mjs",
+    "test:all": "pnpm test:fast && pnpm test:slow"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.66",

@@ -16,15 +16,15 @@
  * Extend: replace the `/` route with a Storybook URL or a dedicated test
  * page, add interaction states (hover/focus/loading), mock props as needed.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('visual: library-layer-intake-actions', () => {
-  test('matches baseline', async ({ page }, testInfo) => {
+test.describe("visual: library-layer-intake-actions", () => {
+  test("matches baseline", async ({ page }, testInfo) => {
     // TODO: point at a Storybook URL / dedicated test page rendering library-layer-intake-actions.
-    await page.goto('/');
+    await page.goto("/");
     await expect(page).toHaveScreenshot(
       `library-layer-intake-actions-${testInfo.project.name}.png`,
-      { animations: 'disabled', maxDiffPixelRatio: 0.01 },
+      { animations: "disabled", maxDiffPixelRatio: 0.01 },
     );
   });
 });

@@ -1,6 +1,6 @@
 kind: api-routes
 schema_version: 1
-last_synced_on: 2026-04-29T19:39:10.468Z
+last_synced_on: 2026-05-06T20:50:40.205Z
 entries:
   - id: GET /(auth)/auth/callback
     route: /(auth)/auth/callback

@@ -1,6 +1,6 @@
 kind: pages
 schema_version: 1
-last_synced_on: 2026-04-29T19:39:10.468Z
+last_synced_on: 2026-05-06T20:54:24.607Z
 entries:
   - route: /forgot-password
     path: src/app/(auth)/forgot-password/page.tsx

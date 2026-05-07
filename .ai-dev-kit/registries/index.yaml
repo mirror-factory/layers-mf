@@ -1,6 +1,6 @@
 kind: project-index
 schema_version: 1
-last_synced_on: "2026-04-29T19:39:11.250Z"
+last_synced_on: "2026-05-06T20:54:25.714Z"
 
 project:
   name: layers-mf
@@ -20,10 +20,10 @@ features:
 registries:
   - path: .ai-dev-kit/registries/components.yaml
     entries: 176
-    last_synced_on: 2026-04-29T19:39:10.468Z
+    last_synced_on: 2026-05-06T20:45:39.096Z
   - path: .ai-dev-kit/registries/pages.yaml
     entries: 164
-    last_synced_on: 2026-04-29T19:39:10.468Z
+    last_synced_on: 2026-05-06T20:54:24.607Z
   - path: .ai-dev-kit/registries/tools.yaml
     entries: 3
     last_synced_on: 2026-04-28T19:46:08.689Z
@@ -38,7 +38,7 @@ registries:
     last_synced_on: null
   - path: .ai-dev-kit/registries/test-contracts.yaml
     entries: 1
-    last_synced_on: 2026-04-29T19:39:10.890Z
+    last_synced_on: 2026-05-06T20:54:25.209Z
   - path: .ai-dev-kit/registries/dependencies.yaml
     entries: 0
     last_synced_on: null

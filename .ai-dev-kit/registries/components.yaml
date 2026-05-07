@@ -1,6 +1,6 @@
 kind: components
 schema_version: 1
-last_synced_on: 2026-04-29T19:39:10.468Z
+last_synced_on: 2026-05-06T20:45:39.096Z
 entries:
   - name: action-item-row
     path: src/components/actions/action-item-row.tsx
@@ -495,7 +495,7 @@ entries:
   - name: library-layer-intake-actions
     path: src/components/library-layer-intake-actions.tsx
     stories_path: null
-    visual_path: null
+    visual_path: tests/visual/library-layer-intake-actions.spec.ts
     owner: null
     status: stable
     created_on: "2026-04-29T19:39:10.468Z"

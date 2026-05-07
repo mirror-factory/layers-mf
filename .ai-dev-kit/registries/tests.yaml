@@ -1,1242 +1,1249 @@
 kind: tests
 schema_version: 1
-last_synced_on: 2026-04-29T19:39:10.468Z
+last_synced_on: 2026-05-06T20:50:40.205Z
 entries:
   - path: tests/api/route-smoke.test.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.211Z"
+    last_modified: "2026-05-06T20:50:37.984Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:33:04.890Z"
   - path: tests/visual/accordion.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.278Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/action-item-row.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.279Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/add-context-picker.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.280Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/add-item-dialog.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.281Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/admin-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.281Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/agent-swarm.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.282Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/ai-hero-background.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.283Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/alert-dialog.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.284Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/ambient-ai-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.285Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/approval-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.286Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/approval-queue.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.287Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/artifact-detail-view.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.288Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/artifact-version-history.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.288Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/badge.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.289Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/billing-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.290Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/breadcrumb.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.291Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/breadcrumbs.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.292Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/button-group.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.292Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/button.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.294Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-connections.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.295Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-item-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.295Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-list.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.296Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-minimap.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.297Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-toolbar.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.298Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/canvas-workspace.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.299Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.299Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/changelog-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.300Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/chat-interface.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.301Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/chat-participants-modal.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.303Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/chat-sdk-explainer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.303Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/checkbox.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.304Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/code-block.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.305Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/code-sandbox.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.306Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/collapsible.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.306Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/collections-sidebar.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.307Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/command-palette.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.308Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/command.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.309Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/connectors-view.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.310Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/content-health-dashboard.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.311Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/content-viewer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.312Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-annotations.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.313Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-info-panel.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.314Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-library-tabs.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.315Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-library.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.315Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-menu.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.316Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-uploader.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.317Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-version-history.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.318Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/context-window-bar.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.319Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/conversation.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.320Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/create-session-dialog.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.321Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/dialog.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.322Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/dithering-shader.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.323Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/ditto-profile.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.325Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/ditto-suggestions.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.326Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/docs-index-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.327Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/docs-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.328Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/document-editor.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.329Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/drive-picker.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.330Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/dropdown-menu.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.331Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/dwell-tracker.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.332Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/edit-proposal-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.332Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/edit-proposal-queue.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.333Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/entity-chips.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.334Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/entropy.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.336Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/export-dropdown.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.336Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/export-pdf-button.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.337Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/file-tree.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.338Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/gradient-wave.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.339Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/hero-dithering-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.340Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/home-hero.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.341Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/hover-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.342Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/image-loading.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.343Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/inbox-list.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.344Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/input-group.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.345Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/input.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.346Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/interview-ui.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.347Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/json-render-inline.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.347Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/keyboard-shortcuts.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.348Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/label.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.349Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/landing-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.350Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/library-context-menu.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.351Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/library-filters.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.352Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/library-item-detail.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.353Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/library-layer-dashboard.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.353Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-29T19:13:47.282Z"
+  - path: tests/visual/library-layer-intake-actions.spec.ts
+    feature: null
+    last_modified: "2026-05-06T20:50:38.412Z"
+    last_run: null
+    last_duration_ms: null
+    last_outcome: null
+    created_on: "2026-05-06T20:45:39.096Z"
   - path: tests/visual/library-sections.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.354Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/library-shell.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.355Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/marketing-layout.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.356Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/mcp-chat.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.357Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/mcp-connect-cards.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.358Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/mcp-server-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.359Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/mention-picker.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.360Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/message-stats.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.361Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/message.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.362Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/mobile-bottom-nav.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.362Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/neural-dots.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.363Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/neural-morph.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.364Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/notification-bell.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.365Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/notification-provider.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.366Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/notification-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.367Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/notifications-list.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.368Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/onboarding-redirect.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.369Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/onboarding-shell.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.370Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/org-dashboard.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.371Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/org-rules.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.371Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/org-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.373Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/overview-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.374Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/page-explainer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.375Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/partner-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.375Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/permission-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.376Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/pixel-canvas.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.377Z"
+    last_modified: "2026-05-06T20:39:12.654Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/popover.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.378Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-analytics-dashboard.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.379Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-annotation-overlay.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.380Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-chat.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.381Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-experience.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.382Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-onboarding.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.382Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-pdf-viewer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.383Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-rich-content.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.384Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-splash.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.385Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-viewer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.386Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-voice-mode.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.386Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/portal-welcome-modal.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.387Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/profile-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.389Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/progress.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.389Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/prompt-input.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.390Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/push-notification-provider.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.391Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/reasoning.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.396Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/saved-searches.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.397Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/schedule-chat.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.398Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/schedule-list.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.399Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/scroll-area.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.400Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/select.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.400Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/separator.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.401Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/session-insights.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.402Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/session-workspace.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.403Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sessions-list.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.404Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/share-dialog.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.406Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/share-link-button.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.406Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/share-signup-cta.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.407Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sheet.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.408Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/shimmer.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.409Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sidebar-nav.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.410Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skeleton.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.411Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skill-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.412Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skill-creator.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.413Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skill-reference-files.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.414Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skills-chat.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.415Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/skills-editor.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.416Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/slider.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.416Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sonner.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.417Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/source-badge.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.418Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/source-citation.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.419Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/source-trust-settings.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.420Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sources.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.420Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/sphere.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.422Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/spinner.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.422Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/splash-screen.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.423Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/suggestion.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.424Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/switch.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.425Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tabs.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.426Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tag-manager.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.426Z"
+    last_modified: "2026-05-06T20:39:12.655Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/team-management.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.427Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/template-selector.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.429Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/testing-checklist.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.430Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/textarea.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.430Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/theme-provider.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.431Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/theme-toggle.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.432Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tiptap-editor.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.433Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tool-registry-page.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.434Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tool-result-card.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.435Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tool.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.436Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/tooltip.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.437Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/usage-history.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.438Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/visual.sample.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.439Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:33:04.890Z"
   - path: tests/visual/wave-sidebar.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.440Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
     created_on: "2026-04-28T19:36:35.669Z"
   - path: tests/visual/webhook-health.spec.ts
     feature: null
-    last_modified: "2026-04-29T19:39:09.440Z"
+    last_modified: "2026-05-06T20:39:12.656Z"
     last_run: null
     last_duration_ms: null
     last_outcome: null
