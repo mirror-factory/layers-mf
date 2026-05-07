@@ -31,7 +31,7 @@ const mockRows = [
     id: "msg-2",
     role: "assistant",
     content: [{ type: "text", text: "Hi there!" }],
-    model: "anthropic/claude-haiku-4-5-20251001",
+    model: "google/gemini-3.1-flash-lite-preview",
     created_at: "2026-03-08T10:00:05Z",
   },
 ];

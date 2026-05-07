@@ -1,0 +1,5 @@
+# Files exempt from TDD enforcement (no sibling test required)
+# One path per line. Comments allowed.
+
+# Configuration files don't need sibling tests
+project.config.ts

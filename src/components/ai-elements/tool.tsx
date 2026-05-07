@@ -3,7 +3,6 @@
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import type { ComponentProps, ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,14 +10,15 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircleIcon,
-  ChevronDownIcon,
-  CircleIcon,
-  ClockIcon,
-  WrenchIcon,
-  XCircleIcon,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Loader2,
+  AlertCircle,
+  ShieldCheck,
+  XCircle,
 } from "lucide-react";
-import { isValidElement } from "react";
+import { isValidElement, useState, useEffect } from "react";
 
 import { CodeBlock } from "./code-block";
 
@@ -27,7 +27,7 @@ export type ToolProps = ComponentProps<typeof Collapsible>;
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
     data-testid="tool-call"
-    className={cn("group not-prose mb-4 w-full rounded-md border", className)}
+    className={cn("group not-prose w-full", className)}
     {...props}
   />
 );
@@ -46,32 +46,74 @@ export type ToolHeaderProps = {
     }
 );
 
-const statusLabels: Record<ToolPart["state"], string> = {
-  "approval-requested": "Awaiting Approval",
-  "approval-responded": "Responded",
-  "input-available": "Running",
-  "input-streaming": "Pending",
-  "output-available": "Completed",
-  "output-denied": "Denied",
-  "output-error": "Error",
+const statusConfig: Record<ToolPart["state"], { icon: ReactNode; color: string; label: string }> = {
+  "approval-requested": { icon: <ShieldCheck className="h-3 w-3" />, color: "text-amber-400", label: "Approval needed" },
+  "approval-responded": { icon: <CheckCircle2 className="h-3 w-3" />, color: "text-blue-400", label: "Responded" },
+  "input-available": { icon: <Loader2 className="h-3 w-3 animate-spin" />, color: "text-primary", label: "Running" },
+  "input-streaming": { icon: <CircleDot className="h-3 w-3 animate-pulse" />, color: "text-muted-foreground", label: "Pending" },
+  "output-available": { icon: <CheckCircle2 className="h-3 w-3" />, color: "text-primary", label: "Done" },
+  "output-denied": { icon: <XCircle className="h-3 w-3" />, color: "text-amber-400", label: "Denied" },
+  "output-error": { icon: <AlertCircle className="h-3 w-3" />, color: "text-red-400", label: "Error" },
 };
 
-const statusIcons: Record<ToolPart["state"], ReactNode> = {
-  "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,
-  "approval-responded": <CheckCircleIcon className="size-4 text-blue-600" />,
-  "input-available": <ClockIcon className="size-4 animate-pulse" />,
-  "input-streaming": <CircleIcon className="size-4" />,
-  "output-available": <CheckCircleIcon className="size-4 text-green-600" />,
-  "output-denied": <XCircleIcon className="size-4 text-orange-600" />,
-  "output-error": <XCircleIcon className="size-4 text-red-600" />,
+// Friendly tool names
+const toolLabels: Record<string, string> = {
+  search_context: "Searching knowledge base",
+  get_document: "Reading document",
+  ask_linear_agent: "Checking Linear",
+  ask_gmail_agent: "Searching email",
+  ask_notion_agent: "Searching Notion",
+  ask_granola_agent: "Checking meetings",
+  ask_drive_agent: "Searching Drive",
+  list_linear_issues: "Listing issues",
+  create_linear_issue: "Creating issue",
+  query_granola: "Querying meetings",
+  search_gmail: "Searching email",
+  draft_email: "Drafting email",
+  search_notion: "Searching Notion",
+  list_drive_files: "Searching Drive",
+  web_search: "Searching the web",
+  web_browse: "Reading web page",
+  run_code: "Running code",
+  run_project: "Building project",
+  write_code: "Writing code",
+  create_document: "Creating document",
+  edit_document: "Editing document",
+  review_compliance: "Reviewing compliance",
+  schedule_action: "Creating schedule",
+  list_approvals: "Checking approvals",
+  artifact_list: "Listing artifacts",
+  ai_sdk_reference: "Looking up AI SDK docs",
+  artifact_get: "Loading artifact",
+  artifact_delete: "Deleting artifact",
+  artifact_panel: "Artifact panel",
+  artifact_version: "Checking versions",
+  ingest_github_repo: "Importing repo",
 };
 
-export const getStatusBadge = (status: ToolPart["state"]) => (
-  <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
-    {statusIcons[status]}
-    {statusLabels[status]}
-  </Badge>
-);
+export const getStatusBadge = (status: ToolPart["state"]) => {
+  const config = statusConfig[status];
+  return (
+    <span className={cn("inline-flex items-center gap-1", config.color)}>
+      {config.icon}
+    </span>
+  );
+};
+
+// Tools that have long-running build phases
+const buildProgressSteps: Record<string, { threshold: number; label: string }[]> = {
+  run_project: [
+    { threshold: 0, label: "Preparing files..." },
+    { threshold: 5, label: "Installing dependencies..." },
+    { threshold: 20, label: "Compiling project..." },
+    { threshold: 45, label: "Starting dev server..." },
+    { threshold: 75, label: "Waiting for server..." },
+  ],
+  run_code: [
+    { threshold: 0, label: "Setting up environment..." },
+    { threshold: 5, label: "Executing script..." },
+  ],
+};
 
 export const ToolHeader = ({
   className,
@@ -83,21 +125,47 @@ export const ToolHeader = ({
 }: ToolHeaderProps) => {
   const derivedName =
     type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
+  const friendlyName = toolLabels[derivedName] ?? title ?? derivedName;
+  const config = statusConfig[state];
+
+  // Elapsed timer for running build tools
+  const [elapsed, setElapsed] = useState(0);
+  const isRunning = state === "input-available";
+  const steps = buildProgressSteps[derivedName];
+
+  useEffect(() => {
+    if (!isRunning || !steps) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [isRunning, !!steps]);
+
+  const progressLabel = isRunning && steps
+    ? [...steps].reverse().find(s => elapsed >= s.threshold)?.label
+    : null;
 
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center justify-between gap-4 p-3",
-        className
+        "inline-flex items-center gap-1.5 py-0.5 text-xs transition-colors hover:text-foreground",
+        config.color,
+        className,
       )}
       {...props}
     >
-      <div className="flex items-center gap-2">
-        <WrenchIcon className="size-4 text-muted-foreground" />
-        <span className="font-medium text-sm">{title ?? derivedName}</span>
-        {getStatusBadge(state)}
-      </div>
-      <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      {config.icon}
+      <span className="text-muted-foreground">{friendlyName}</span>
+      {progressLabel && (
+        <span className="text-muted-foreground/70 text-[10px]">
+          — {progressLabel} {elapsed}s
+        </span>
+      )}
+      {state === "output-available" && (
+        <span className="text-primary text-[10px]">&#10003;</span>
+      )}
+      {state === "output-error" && (
+        <span className="text-red-400 text-[10px]">failed</span>
+      )}
+      <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/40 transition-transform group-data-[state=open]:rotate-90" />
     </CollapsibleTrigger>
   );
 };
@@ -107,8 +175,9 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 p-4 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-      className
+      "data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-top-1 data-[state=closed]:slide-out-to-top-1",
+      "space-y-3 py-2 pl-5 text-xs text-muted-foreground",
+      className,
     )}
     {...props}
   />
@@ -119,11 +188,11 @@ export type ToolInputProps = ComponentProps<"div"> & {
 };
 
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <div className={cn("space-y-2 overflow-hidden", className)} {...props}>
-    <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-      Parameters
+  <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
+    <h4 className="font-medium text-muted-foreground/60 text-[10px] uppercase tracking-wider">
+      Input
     </h4>
-    <div className="rounded-md bg-muted/50">
+    <div className="rounded-md bg-muted/30 text-[11px]">
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
     </div>
   </div>
@@ -138,37 +207,36 @@ export const ToolOutput = ({
   className,
   output,
   errorText,
+  children,
   ...props
-}: ToolOutputProps) => {
-  if (!(output || errorText)) {
-    return null;
-  }
-
-  let Output = <div>{output as ReactNode}</div>;
-
-  if (typeof output === "object" && !isValidElement(output)) {
-    Output = (
-      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
+}: ToolOutputProps & { children?: ReactNode }) => {
+  if (children && isValidElement(children)) {
+    return (
+      <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
+        <h4 className="font-medium text-muted-foreground/60 text-[10px] uppercase tracking-wider">
+          Result
+        </h4>
+        {children}
+      </div>
     );
-  } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
   }
+
+  const content = errorText ?? output;
+  if (content == null) return null;
+
+  const text =
+    typeof content === "string" ? content : JSON.stringify(content, null, 2);
 
   return (
-    <div className={cn("space-y-2", className)} {...props}>
-      <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+    <div className={cn("space-y-1.5 overflow-hidden", className)} {...props}>
+      <h4 className="font-medium text-muted-foreground/60 text-[10px] uppercase tracking-wider">
         {errorText ? "Error" : "Result"}
       </h4>
-      <div
-        className={cn(
-          "overflow-x-auto rounded-md text-xs [&_table]:w-full",
-          errorText
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted/50 text-foreground"
-        )}
-      >
-        {errorText && <div>{errorText}</div>}
-        {Output}
+      <div className={cn("rounded-md text-[11px]", errorText ? "bg-red-500/10" : "bg-muted/30")}>
+        <CodeBlock
+          code={text}
+          language={errorText ? "log" as never : "json"}
+        />
       </div>
     </div>
   );

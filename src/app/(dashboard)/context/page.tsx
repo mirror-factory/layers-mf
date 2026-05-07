@@ -1,66 +1,60 @@
-export const metadata = { title: "Context Library" };
+export const metadata = { title: "Library Items" };
+export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ContextUploader } from "@/components/context-uploader";
-import { ContextLibrary } from "@/components/context-library";
-import { FileText, Mic } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ContextLibraryTabs } from "@/components/context-library-tabs";
 
 export default async function ContextPage(props: {
-  searchParams?: Promise<{ search?: string }>;
+  searchParams?: Promise<{
+    search?: string;
+    source?: string;
+    folder?: string;
+    type?: string;
+    tags?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   const searchParams = await props.searchParams;
-  const initialSearch = searchParams?.search ?? "";
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: member } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const adminDb = createAdminClient();
+
+  const { data: member } = await adminDb
     .from("org_members")
     .select("org_id")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .single();
 
   const { data: items } = member
-    ? await supabase
+    ? await adminDb
         .from("context_items")
-        .select("id, title, description_short, source_type, content_type, status, ingested_at, user_tags")
+        .select(
+          "id, title, description_short, source_type, content_type, status, ingested_at",
+        )
         .eq("org_id", member.org_id)
         .order("ingested_at", { ascending: false })
-        .limit(200)
+        .limit(500)
     : { data: [] };
 
   return (
-    <div className="flex flex-col p-4 sm:p-8 gap-4 sm:gap-6 min-h-screen">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 data-testid="context-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Context Library</h1>
-          <p className="text-muted-foreground text-sm">
-            All documents, transcripts, and files available to your agents.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/context/upload-meeting">
-              <Mic className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">Upload Meeting</span>
-              <span className="sm:hidden">Meeting</span>
-            </Link>
-          </Button>
-          <ContextUploader />
-        </div>
-      </div>
-
-      {!items || items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
-          <FileText className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm">No context items yet. Upload your first document above.</p>
-        </div>
-      ) : (
-        <div className="rounded-lg border overflow-hidden" style={{ height: "calc(100vh - 240px)" }}>
-          <ContextLibrary items={items} initialSearch={initialSearch} />
-        </div>
-      )}
-    </div>
+    <ContextLibraryTabs
+      items={items ?? []}
+      initialSearch={searchParams?.search ?? ""}
+      initialSource={searchParams?.source ?? ""}
+      initialFolder={searchParams?.folder ?? ""}
+      initialType={searchParams?.type ?? ""}
+      initialTags={searchParams?.tags ?? ""}
+      initialStatus={searchParams?.status ?? ""}
+      initialFrom={searchParams?.from ?? ""}
+      initialTo={searchParams?.to ?? ""}
+    />
   );
 }

@@ -44,7 +44,8 @@ export async function GET() {
 
   if (!member) return new Response("No organization found", { status: 400 });
 
-  const { data: prefs } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prefs } = await (supabase as any)
     .from("notification_preferences")
     .select("*")
     .eq("user_id", user.id)
@@ -60,7 +61,8 @@ export async function GET() {
   }
 
   // Create default preferences
-  const { data: created, error: insertError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: created, error: insertError } = await (supabase as any)
     .from("notification_preferences")
     .insert({ user_id: user.id, org_id: member.org_id })
     .select()
@@ -109,7 +111,8 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Upsert: update if exists, create with defaults + overrides if not
-  const { data: existing } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
     .from("notification_preferences")
     .select("id")
     .eq("user_id", user.id)
@@ -117,7 +120,8 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (existing) {
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from("notification_preferences")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", existing.id);
@@ -126,7 +130,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
   } else {
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from("notification_preferences")
       .insert({ user_id: user.id, org_id: member.org_id, ...updates });
 

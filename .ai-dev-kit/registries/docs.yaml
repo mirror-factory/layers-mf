@@ -1,0 +1,592 @@
+kind: docs
+schema_version: 1
+last_synced_on: 2026-05-06T20:50:40.205Z
+entries:
+  - path: docs/AGENTS.template.md
+    category: root
+    word_count: 175
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.845Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/CLAUDE.template.md
+    category: root
+    word_count: 376
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-03-09T04:31:47.756Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/GRANGER-SPEC.md
+    category: root
+    word_count: 6809
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.859Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/SYSTEM-OVERVIEW.md
+    category: root
+    word_count: 6074
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.869Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/get-event-details.md
+    category: ai-capabilities
+    word_count: 211
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.855Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/index.md
+    category: ai-capabilities
+    word_count: 782
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.876Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/map-navigate.md
+    category: ai-capabilities
+    word_count: 332
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.888Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/rank-events.md
+    category: ai-capabilities
+    word_count: 272
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.900Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/search-events.md
+    category: ai-capabilities
+    word_count: 278
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.909Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-capabilities/search-newsletters.md
+    category: ai-capabilities
+    word_count: 196
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:09.917Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-gateway/01-getting-started.md
+    category: ai-gateway
+    word_count: 274
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:11.030Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-gateway/02-models-and-providers.md
+    category: ai-gateway
+    word_count: 351
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:11.044Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-gateway/03-provider-options.md
+    category: ai-gateway
+    word_count: 419
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:11.056Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/ai-gateway/04-model-fallbacks.md
+    category: ai-gateway
+    word_count: 247
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:11.068Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/README.md
+    category: architecture
+    word_count: 726
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.318Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/archive/accounts-orgs-sharing.md
+    category: architecture
+    word_count: 1115
+    inbound_links: 3
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.547Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/archive/diagrams.md
+    category: architecture
+    word_count: 1061
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:39:12.575Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/archive/knowledge-library-system-v2.md
+    category: architecture
+    word_count: 2033
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.587Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/archive/knowledge-library-system.md
+    category: architecture
+    word_count: 1989
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.617Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/archive/sharing-system.md
+    category: architecture
+    word_count: 550
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.625Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/artifacts/artifact-system-v2.md
+    category: architecture
+    word_count: 2196
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.650Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/artifacts/universal-artifact-system.md
+    category: architecture
+    word_count: 2419
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.680Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/chat/chat-interface-system.md
+    category: architecture
+    word_count: 620
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.693Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/chat/context-engineering.md
+    category: architecture
+    word_count: 4182
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.738Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/chat/cost-observability.md
+    category: architecture
+    word_count: 3549
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.782Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/chat/local-models.md
+    category: architecture
+    word_count: 966
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.797Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/chat/media-types.md
+    category: architecture
+    word_count: 566
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.806Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/execution-plan.md
+    category: architecture
+    word_count: 2896
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.850Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/integrations/connector-persistence.md
+    category: architecture
+    word_count: 543
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.859Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/library/content-organization.md
+    category: architecture
+    word_count: 7646
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.962Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/library/ingestion-pipeline.md
+    category: architecture
+    word_count: 6311
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.082Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/library/library-hub-and-sharing.md
+    category: architecture
+    word_count: 5594
+    inbound_links: 3
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.138Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/notifications/notification-events.md
+    category: architecture
+    word_count: 2224
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.180Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/notifications/scheduling.md
+    category: architecture
+    word_count: 1767
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.204Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/organization/org-permissions-system.md
+    category: architecture
+    word_count: 4908
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.254Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/platform/auto-registry-strategy.md
+    category: architecture
+    word_count: 794
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.266Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/platform/brand-guide.md
+    category: architecture
+    word_count: 964
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.289Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/platform/mobile-app.md
+    category: architecture
+    word_count: 371
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:39:12.577Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/platform/tool-result-cards.md
+    category: architecture
+    word_count: 601
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.306Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/registries/api-reference.md
+    category: architecture
+    word_count: 4207
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.371Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/registries/db-schema-reference.md
+    category: architecture
+    word_count: 7724
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.483Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/registries/tool-registry.md
+    category: architecture
+    word_count: 3258
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.523Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/roadmap.md
+    category: architecture
+    word_count: 2005
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.557Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/session-6-backlog.md
+    category: architecture
+    word_count: 360
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.564Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/sharing/document-portal.md
+    category: architecture
+    word_count: 1615
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.585Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/sharing/portal-bugs.md
+    category: architecture
+    word_count: 671
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.596Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture/sharing/sharing-permissions.md
+    category: architecture
+    word_count: 7709
+    inbound_links: 2
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.670Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/architecture-plan-v2.md
+    category: root
+    word_count: 1738
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:15.526Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/brand-guide.md
+    category: root
+    word_count: 447
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.693Z"
+    created_on: "2026-04-29T19:12:26.017Z"
+  - path: docs/dev-status.md
+    category: root
+    word_count: 2667
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.740Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/generated/README.md
+    category: generated
+    word_count: 64
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.745Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/generated/tools.md
+    category: generated
+    word_count: 936
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.756Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/guides/architecture.md
+    category: guides
+    word_count: 2775
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.881Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/guides/setup.md
+    category: guides
+    word_count: 2099
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.911Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/handoff-2026-04-12.md
+    category: root
+    word_count: 1515
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.934Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/launch-checklist.md
+    category: root
+    word_count: 288
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:16.940Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/linear-sprint-issues.md
+    category: root
+    word_count: 4564
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.006Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/migration-checklist.md
+    category: root
+    word_count: 149
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.010Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/multi-agent-setup.md
+    category: root
+    word_count: 1044
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.020Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/2026-03-12-scale-chunking-api-design.md
+    category: plans
+    word_count: 1611
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.039Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/2026-03-12-scale-implementation-plan.md
+    category: plans
+    word_count: 4305
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.133Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/2026-03-13-comprehensive-improvement-plan.md
+    category: plans
+    word_count: 5575
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.252Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/2026-03-15-p2-p3-execution-plan.md
+    category: plans
+    word_count: 4838
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.338Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/2026-03-17-nango-sync-migration.md
+    category: plans
+    word_count: 1124
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.352Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/granger-todo.md
+    category: plans
+    word_count: 1445
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.373Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/granger-v3-master-plan.md
+    category: plans
+    word_count: 4060
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.438Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/library-layer.md
+    category: plans
+    word_count: 3185
+    inbound_links: 1
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.493Z"
+    created_on: "2026-04-28T19:36:35.669Z"
+  - path: docs/plans/nango-removal-checklist.md
+    category: plans
+    word_count: 838
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.505Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/next-features.md
+    category: plans
+    word_count: 1862
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.540Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/next-session-priorities.md
+    category: plans
+    word_count: 564
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.550Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/session-handoff-2026-03-31-b.md
+    category: plans
+    word_count: 895
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.564Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/session-handoff-2026-03-31.md
+    category: plans
+    word_count: 1017
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.582Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/session-handoff-2026-04-01.md
+    category: plans
+    word_count: 913
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.597Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/plans/unified-artifacts-repo-ingestion.md
+    category: plans
+    word_count: 850
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.608Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/portal-guide.md
+    category: root
+    word_count: 1933
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.632Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/priority/01-mission.md
+    category: priority
+    word_count: 181
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.637Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/priority/02-team.md
+    category: priority
+    word_count: 154
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.642Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/priority/03-priorities.md
+    category: priority
+    word_count: 148
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.649Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/priority/04-clients.md
+    category: priority
+    word_count: 88
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.652Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/priority/05-agent.md
+    category: priority
+    word_count: 290
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.658Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/production-setup.md
+    category: root
+    word_count: 1404
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.678Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/repo-audit-2026-03-26.md
+    category: root
+    word_count: 5972
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:43:16.321Z"
+    created_on: "2026-05-06T20:45:39.096Z"
+  - path: docs/stripe-webhook-setup.md
+    category: root
+    word_count: 171
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:50:17.786Z"
+    created_on: "2026-04-28T19:33:04.890Z"
+  - path: docs/style-guide.md
+    category: root
+    word_count: 348
+    inbound_links: 0
+    outbound_links_broken: 0
+    last_modified: "2026-05-06T20:39:12.579Z"
+    created_on: "2026-04-29T19:12:26.017Z"

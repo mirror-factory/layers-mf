@@ -25,9 +25,6 @@ vi.mock("@/lib/inbox", () => ({
   createInboxItems: mockCreateInbox,
 }));
 
-vi.mock("@/lib/nango/client", () => ({
-  nango: { proxy: vi.fn() },
-}));
 
 vi.mock("@/lib/webhook-dedup", () => ({
   claimWebhookEvent: vi.fn().mockResolvedValue(true),

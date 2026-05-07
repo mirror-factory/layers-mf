@@ -19,6 +19,9 @@ import { ContextVersionHistory } from "@/components/context-version-history";
 import { EntityChips } from "@/components/entity-chips";
 import { ExportDropdown } from "@/components/export-dropdown";
 import { DwellTracker } from "@/components/dwell-tracker";
+import { DocumentEditor } from "@/components/document-editor";
+import { ContentViewer } from "@/components/content-viewer";
+import { ArtifactDetailView } from "@/components/artifact-detail-view";
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   "google-drive": { label: "Google Drive", icon: HardDrive, color: "text-blue-500" },
@@ -57,23 +60,46 @@ export default async function ContextDetailPage({
 
   if (!member) notFound();
 
-  const [{ data: item }, { count: versionCount }] = await Promise.all([
-    supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any;
+  const [{ data: item }, { count: docVersionCount }] = await Promise.all([
+    sb
       .from("context_items")
       .select(
-        "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, user_title, user_notes, user_tags, trust_weight",
+        "id, title, description_short, description_long, source_type, content_type, raw_content, entities, status, ingested_at, processed_at, source_metadata, source_created_at, priority_weight",
       )
       .eq("id", id)
       .eq("org_id", member.org_id)
       .single(),
-    supabase
-      .from("context_item_versions")
+    sb
+      .from("document_versions")
       .select("id", { count: "exact", head: true })
-      .eq("context_item_id", id)
-      .eq("org_id", member.org_id),
+      .eq("context_item_id", id),
   ]);
+  const versionCount = docVersionCount ?? 0;
 
-  if (!item) notFound();
+  // If not found in context_items, try the artifacts table
+  if (!item) {
+    const { data: artifact } = await sb
+      .from("artifacts")
+      .select(
+        "id, title, type, language, framework, content, description_short, description_oneliner, tags, current_version, status, conversation_id, preview_url, created_at, updated_at",
+      )
+      .eq("id", id)
+      .eq("org_id", member.org_id)
+      .single();
+
+    if (!artifact) notFound();
+
+    return (
+      <ArtifactDetailView
+        artifact={{
+          ...artifact,
+          tags: artifact.tags ?? [],
+        }}
+      />
+    );
+  }
 
   const source = SOURCE_META[item.source_type] ?? {
     label: item.source_type,
@@ -127,17 +153,17 @@ export default async function ContextDetailPage({
         </div>
         <div className="flex items-center gap-2">
           <h1 data-testid="context-detail-title" className="text-2xl font-semibold">
-            {item.user_title ?? item.title}
+            {item.title}
           </h1>
-          {(versionCount ?? 0) > 0 && (
+          {versionCount > 0 && (
             <Badge variant="outline" className="text-xs">
               {versionCount} {versionCount === 1 ? "version" : "versions"}
             </Badge>
           )}
           <ExportDropdown itemIds={[item.id]} />
         </div>
-        {item.user_title && (
-          <p className="text-sm text-muted-foreground">Original: {item.title}</p>
+        {item.source_created_at && (
+          <p className="text-xs text-muted-foreground">Source created: {new Date(item.source_created_at).toLocaleDateString()}</p>
         )}
         {item.description_short && (
           <p className="text-muted-foreground">{item.description_short}</p>
@@ -174,27 +200,31 @@ export default async function ContextDetailPage({
         </Card>
       )}
 
-      {/* Raw content */}
+      {/* Content viewer — type-aware rendering */}
       {item.raw_content && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Content</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-              {item.raw_content}
-            </div>
-          </CardContent>
-        </Card>
+        item.content_type === "document" && item.source_type !== "layers-ai" ? (
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium">Content</h2>
+            <DocumentEditor content={item.raw_content} itemId={item.id} />
+          </div>
+        ) : (
+          <ContentViewer
+            content={item.raw_content}
+            contentType={item.content_type}
+            sourceType={item.source_type}
+            title={item.title}
+            itemId={item.id}
+          />
+        )
       )}
 
       {/* User Annotations */}
       <ContextAnnotations
         itemId={item.id}
-        userTitle={item.user_title ?? null}
-        userNotes={item.user_notes ?? null}
-        userTags={item.user_tags ?? []}
-        trustWeight={item.trust_weight ?? 1.0}
+        userTitle={null}
+        userNotes={null}
+        userTags={[]}
+        trustWeight={item.priority_weight ?? 1.0}
         aiTitle={item.title}
       />
 

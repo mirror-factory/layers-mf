@@ -32,11 +32,13 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next/dev/dev/types/**/*.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "nango-integrations",
+    "lib/**/*.ts",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts"
   ]
 }

@@ -36,7 +36,8 @@ export async function GET() {
   if (!member) return new Response("No organization found", { status: 400 });
 
   // Get distinct source_type + trust_weight for this org
-  const { data: rows, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rows, error } = await (supabase as any)
     .from("context_items")
     .select("source_type, trust_weight")
     .eq("org_id", member.org_id)
@@ -88,7 +89,8 @@ export async function PATCH(request: NextRequest) {
 
   const { provider, weight } = parsed.data;
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("context_items")
     .update({ trust_weight: weight })
     .eq("org_id", member.org_id)

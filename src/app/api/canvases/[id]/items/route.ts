@@ -44,7 +44,8 @@ async function getOrgAndCanvas(supabase: Awaited<ReturnType<typeof createClient>
   if (!member) return { error: "No org" as const };
 
   // Verify canvas belongs to org
-  const { data: canvas } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvas } = await (supabase as any)
     .from("canvases")
     .select("id")
     .eq("id", canvasId)
@@ -76,7 +77,8 @@ export async function POST(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { data: item, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: item, error } = await (supabase as any)
     .from("canvas_items")
     .insert({
       canvas_id: result.canvasId,
@@ -129,7 +131,8 @@ export async function PATCH(
   if (updates.content !== undefined) updateData.content = updates.content;
   if (updates.style !== undefined) updateData.style = updates.style;
 
-  const { data: item, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: item, error } = await (supabase as any)
     .from("canvas_items")
     .update(updateData)
     .eq("id", itemId)
@@ -164,7 +167,8 @@ export async function DELETE(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("canvas_items")
     .delete()
     .eq("id", parsed.data.itemId)

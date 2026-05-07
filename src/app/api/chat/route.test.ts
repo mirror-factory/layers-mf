@@ -27,22 +27,41 @@ vi.mock("@/lib/ai/tools", () => ({
   }),
 }));
 
-vi.mock("ai", () => {
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>();
   class MockToolLoopAgent {
     constructor() {
       // no-op
     }
   }
   return {
+    ...actual,
     ToolLoopAgent: MockToolLoopAgent,
     createAgentUIStreamResponse: vi.fn().mockReturnValue(new Response("stream", { status: 200 })),
     stepCountIs: vi.fn().mockReturnValue(() => false),
-    UIMessage: vi.fn(),
   };
 });
 
 vi.mock("@ai-sdk/gateway", () => ({
   gateway: vi.fn().mockReturnValue("mock-model"),
+  createGateway: vi.fn().mockReturnValue(vi.fn().mockReturnValue("mock-model")),
+}));
+
+vi.mock("@/lib/ai/config", () => ({
+  gateway: vi.fn().mockReturnValue("mock-model"),
+  getPartnerGateway: vi.fn().mockResolvedValue(vi.fn().mockReturnValue("mock-model")),
+  extractionModel: "mock-extraction",
+  embeddingModel: "mock-embedding",
+  ALLOWED_MODELS: new Set([
+    "openai/gpt-4o", "openai/gpt-4o-mini",
+    "anthropic/claude-sonnet-4.5", "google/gemini-3.1-flash-lite-preview",
+  ]),
+  MODEL_MATRIX: {},
+  TASK_MODELS: { fast: "google/gemini-3.1-flash-lite-preview", extraction: "google/gemini-3.1-flash-lite-preview", embedding: "openai/text-embedding-3-small" },
+}));
+
+vi.mock("@/lib/ai/compaction-middleware", () => ({
+  createCompactionMiddleware: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
@@ -78,17 +97,31 @@ const interactionsMock = {
   }),
 };
 
-/** Setup mockFrom to handle both org_members and user_interactions */
+/** Create a deeply chainable supabase query mock */
+function createChainMock(resolvedValue: unknown = { data: [], error: null }) {
+  const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+  const handler = (): typeof chain => chain;
+  chain.select = vi.fn(handler);
+  chain.eq = vi.fn(handler);
+  chain.or = vi.fn(handler);
+  chain.in = vi.fn(handler);
+  chain.order = vi.fn(handler);
+  chain.limit = vi.fn(handler);
+  chain.single = vi.fn().mockResolvedValue(resolvedValue);
+  chain.then = vi.fn((cb: (v: unknown) => unknown) => Promise.resolve(cb(resolvedValue)));
+  return chain;
+}
+
+/** Setup mockFrom to handle org_members, user_interactions, credentials, etc. */
 function mockFromWithOrg(orgId = "org-1") {
   mockFrom.mockImplementation((table: string) => {
     if (table === "user_interactions") return interactionsMock;
-    // Default: org_members or chat_messages
+    if (table === "org_members") {
+      return createChainMock({ data: { org_id: orgId }, error: null });
+    }
+    // Default: return chainable mock that resolves to empty data
     return {
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { org_id: orgId } }),
-        }),
-      }),
+      ...createChainMock({ data: [], error: null }),
       insert: vi.fn().mockResolvedValue({ error: null }),
     };
   });
@@ -151,7 +184,7 @@ describe("POST /api/chat", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(gateway).toHaveBeenCalledWith("anthropic/claude-haiku-4-5-20251001");
+    expect(gateway).toHaveBeenCalledWith("google/gemini-3.1-flash-lite-preview");
   });
 
   it("uses the requested model when it is in the allowlist", async () => {
@@ -197,7 +230,8 @@ describe("POST /api/chat", () => {
 
     expect(createTools).toHaveBeenCalledWith(
       expect.objectContaining({ auth: expect.any(Object), from: expect.any(Function) }),
-      "org-42"
+      "org-42",
+      "u-1",
     );
   });
 
@@ -338,6 +372,24 @@ describe("POST /api/chat", () => {
     const res = await POST(makeRequest({ model: "openai/gpt-4o" }));
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("Invalid messages");
+  });
+
+  it("applies compaction middleware via wrapLanguageModel for cloud models", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "u-1" } }, error: null });
+    mockFromWithOrg();
+
+    const { createCompactionMiddleware } = await import("@/lib/ai/compaction-middleware");
+
+    await POST(
+      makeRequest({
+        model: "openai/gpt-4o",
+        messages: [{ role: "user", parts: [{ type: "text", text: "test" }] }],
+      })
+    );
+
+    expect(createCompactionMiddleware).toHaveBeenCalledWith(
+      expect.any(Number), // context window size
+    );
   });
 
   it("accepts valid assistant role in messages", async () => {

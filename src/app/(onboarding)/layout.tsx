@@ -19,7 +19,7 @@ export default function OnboardingLayout({
   }, [router, pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4 overflow-y-auto">
       {children}
     </div>
   );

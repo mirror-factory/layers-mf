@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Monitor, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
@@ -38,6 +38,10 @@ export function NotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [soundOn, setSoundOn] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("notification-sound") !== "off";
+  });
 
   const fetchPrefs = useCallback(async () => {
     setLoading(true);
@@ -126,6 +130,96 @@ export function NotificationSettings() {
           {error}
         </div>
       )}
+
+      <Card className="p-4 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <Monitor className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div>
+              <Label className="text-sm font-medium">
+                Desktop Notifications
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Get browser push notifications when scheduled tasks complete,
+                approvals arrive, or new inbox items appear.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (!('Notification' in window)) return;
+                if (Notification.permission === 'granted') {
+                  new Notification('Layers: Test notification', {
+                    body: 'Desktop notifications are working.',
+                    icon: '/favicon.ico',
+                  });
+                } else if (Notification.permission !== 'denied') {
+                  const result = await Notification.requestPermission();
+                  if (result === 'granted') {
+                    new Notification('Layers: Notifications enabled', {
+                      body: 'You will receive desktop alerts for important events.',
+                      icon: '/favicon.ico',
+                    });
+                  }
+                }
+              }}
+            >
+              {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                ? 'Test'
+                : 'Enable'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-4 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <Volume2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <div>
+              <Label className="text-sm font-medium">
+                Notification Sound
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Play a ping sound when new notifications arrive.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.frequency.value = 800;
+                  osc.type = "sine";
+                  gain.gain.value = 0.15;
+                  osc.start();
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                  osc.stop(ctx.currentTime + 0.3);
+                } catch { /* audio not available */ }
+              }}
+            >
+              Test
+            </Button>
+            <Switch
+              checked={soundOn}
+              onCheckedChange={(v) => {
+                setSoundOn(v);
+                localStorage.setItem("notification-sound", v ? "on" : "off");
+              }}
+            />
+          </div>
+        </div>
+      </Card>
 
       <Card className="p-4 space-y-5">
         <div className="flex items-center justify-between">
@@ -244,6 +338,53 @@ export function NotificationSettings() {
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
           {saved ? "Saved" : "Save changes"}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            try {
+              // Create a real test notification in the DB
+              await fetch("/api/notifications", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "system_alert",
+                  title: "Test notification",
+                  body: "This is a test notification from settings. If you see this in the bell and as a desktop alert, notifications are working.",
+                  link: "/settings/notifications",
+                }),
+              });
+              // Also fire a desktop notification immediately
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Layers: Test notification", {
+                  body: "In-app + desktop notifications are working.",
+                  icon: "/favicon.ico",
+                });
+              }
+              // Also play the ping sound
+              if (soundOn) {
+                try {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.frequency.value = 800;
+                  osc.type = "sine";
+                  gain.gain.value = 0.15;
+                  osc.start();
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                  osc.stop(ctx.currentTime + 0.3);
+                } catch { /* audio not available */ }
+              }
+            } catch {
+              // silent
+            }
+          }}
+        >
+          Send Test Notification
         </Button>
       </div>
     </div>

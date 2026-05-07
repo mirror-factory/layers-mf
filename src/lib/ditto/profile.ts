@@ -40,7 +40,8 @@ export async function generateDittoProfile(
   const supabase = createAdminClient();
 
   // Fetch last 200 interactions
-  const { data: interactions } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: interactions } = await (supabase as any)
     .from("user_interactions")
     .select(
       "interaction_type, resource_type, query, source_type, content_type, metadata, created_at"
@@ -131,7 +132,7 @@ Based on these patterns, determine:
     orgId,
     userId,
     operation: "ditto_profile_generation",
-    model: "anthropic/claude-haiku-4-5-20251001",
+    model: "google/gemini-3.1-flash-lite-preview",
     inputTokens: result.usage?.inputTokens,
     outputTokens: result.usage?.outputTokens,
   });

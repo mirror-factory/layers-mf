@@ -1,0 +1,41 @@
+/**
+ * Live-vendor integration test pattern.
+ *
+ * Copy this file to `tests/integration/live-<vendor>.test.ts` for each
+ * external vendor the project calls, and replace the stubbed bits with
+ * real calls. The `.example` suffix keeps this template out of the
+ * default test run so an unconfigured install doesn't fail.
+ *
+ * Pattern rationale (closes the AssemblyAI `speech_model -> speech_models`
+ * class of failure):
+ *   - Unit tests mock the client and pass forever, even after the vendor
+ *     deprecates a field. Mocks can't see what the server rejects.
+ *   - This test makes a REAL request with a REAL minimal payload against
+ *     the REAL vendor endpoint.
+ *   - Gated on the env key via `skipIf` so the suite passes cleanly when
+ *     the key isn't set locally. CI runs it when the GitHub Actions
+ *     secret is registered -- failures there surface vendor breakage
+ *     within hours of vendor pushing a change.
+ *
+ * Replace these placeholders:
+ *   VENDOR_LABEL, VENDOR_ENV_KEY, VENDOR_SDK_IMPORT, VENDOR_SMOKE_CALL
+ */
+import { describe, it, expect } from 'vitest';
+// import { VendorClient } from 'vendor-sdk';
+
+const VENDOR_ENV_KEY = 'VENDOR_API_KEY';      // e.g. ASSEMBLYAI_API_KEY
+const HAS_KEY = Boolean(process.env[VENDOR_ENV_KEY]);
+
+describe.skipIf(!HAS_KEY)('Vendor live integration', () => {
+  // const client = new VendorClient({ apiKey: process.env[VENDOR_ENV_KEY]! });
+
+  it('accepts the current request schema', async () => {
+    // Minimal smoke call -- smallest request the vendor's free tier / quota
+    // accepts. If the vendor renames a field, this fails immediately with
+    // the real server error message.
+    //
+    // const response = await client.someOperation({ ...minimalValidPayload });
+    // expect(response).toBeDefined();
+    expect(true).toBe(true);  // <-- delete this once you fill in the real call
+  }, 30_000);
+});

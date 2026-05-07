@@ -1,0 +1,167 @@
+# Brand Guide
+
+_Template. Fill this in per project. Doctor surfaces a warning when this file is missing from a project with `.tsx` files._
+
+## Why this file exists
+
+Component work without a visible brand reference produces inconsistent output. This is the canonical source of truth for your project's visual identity — colors, typography, voice, spacing scales, icon system, imagery rules. Every `.tsx` edit session should reference this file before writing.
+
+The kit's `.claude/skills/*/SKILL.md` files that touch UI assume this file exists. Keeping it accurate directly affects the quality of Claude Code's work.
+
+---
+
+## Brand
+
+**Product name:** _e.g. Hustle Together_
+
+**Tagline:** _one sentence. What you do in plain words._
+
+**Audience:** _who this is for; what they already know; what tone they expect._
+
+**Voice:**
+
+- Use: _e.g. concise, confident, plain English, no hype_
+- Avoid: _e.g. marketing jargon, emoji in headings, passive voice_
+
+**Feelings the product should evoke:** _3-5 words, e.g. fast, trustworthy, focused, uncluttered._
+
+---
+
+## Color
+
+_Use true-color ANSI-style hex. Always declare both light and dark values._
+
+| Token | Light | Dark | Usage |
+|-------|-------|------|-------|
+| `--bg` | `#0a0a0a` | `#0a0a0a` | page background |
+| `--fg` | `#e0e0e0` | `#e0e0e0` | primary text |
+| `--accent` | `#3dffc0` | `#3dffc0` | primary accent, links, CTAs |
+| `--muted` | `#888` | `#888` | secondary text |
+| `--border` | `rgba(255,255,255,.06)` | `rgba(255,255,255,.06)` | subtle borders |
+
+Rules:
+
+- Never pick a color outside this palette without updating this file first.
+- Contrast: every foreground/background pairing must meet WCAG AA (4.5:1 for body text, 3:1 for large text).
+- No gradients over white cards — documented AI-slop signature.
+
+---
+
+## Typography
+
+**Primary (sans):** _e.g. Inter — body text, UI chrome_
+**Mono:** _e.g. JetBrains Mono — code blocks, CLI output, keyboard-ish elements_
+**Display (optional):** _e.g. Press Start 2P — pixel-font headlines, sparingly_
+
+Scale (rem):
+
+```
+xs:   0.75    captions, badges
+sm:   0.875   meta text
+base: 1.0     body
+lg:   1.125   intro
+xl:   1.25    minor headings
+2xl:  1.5     section headings
+3xl:  2.0     page title
+4xl:  3.0     hero (use sparingly)
+```
+
+Rules:
+
+- Never ship > 3 font families in one view.
+- Line height: 1.6 for body, 1.2 for headings.
+- Never center-align body text.
+
+---
+
+## Spacing
+
+Use a 4px base scale: `0, 4, 8, 12, 16, 24, 32, 48, 64, 96`. No in-between values. Tailwind's default utility scale maps to this.
+
+---
+
+## Responsive Breakpoints
+
+| Name      | Min Width | Usage                     |
+| --------- | --------- | ------------------------- |
+| `mobile`  | 0px       | Mobile-first base styles  |
+| `sm`      | 640px     | Small screens             |
+| `md`      | 768px     | Tablet                    |
+| `lg`      | 1024px    | Desktop                   |
+| `xl`      | 1280px    | Wide desktop              |
+
+All components use mobile-first approach. Base styles target mobile, then use `@media (min-width: 768px)` etc for larger viewports.
+
+---
+
+## Motion Tokens
+
+| Token      | Value  | Usage                           |
+| ---------- | ------ | ------------------------------- |
+| `micro`    | 100ms  | Hover, focus ring               |
+| `fast`     | 150ms  | Button press, toggle            |
+| `normal`   | 250ms  | Panel transitions, card hover   |
+| `slow`     | 400ms  | Page transitions, modal         |
+
+Default easing: `cubic-bezier(0.16, 1, 0.3, 1)` (expo-out).
+
+---
+
+## Layout
+
+- Max content width: **1100px**. Never full-viewport for body content.
+- Grid: 12-column responsive with 24px gutter.
+- Always support both light and dark mode (`prefers-color-scheme`).
+
+---
+
+## Dark and Light Mode
+
+Both modes must work. Components use `var(--` CSS variables for theme-responsive colors.
+
+- System preference detection on first visit
+- User toggle with localStorage persistence
+
+---
+
+## Component Patterns
+
+### Buttons
+
+- Primary: accent background, white text
+- Secondary: transparent, accent text + border
+- Ghost: transparent, text only
+
+### Cards
+
+- Rounded corners, surface background, subtle border
+- Hover: shadow or glow
+
+### Modals
+
+- Centered, backdrop overlay
+- Slow transition for enter/exit
+
+---
+
+## Imagery
+
+- Style: _e.g. diagrammatic, mint-accent line art, no stock photos_
+- Avoid: _e.g. purple gradients on white cards, AI-generated hero images_
+
+---
+
+## Icons
+
+- Library: _e.g. lucide-react at 20px default_
+- Never mix icon libraries in one view.
+
+---
+
+## Components
+
+For component-specific rules, see `docs/style-guide.md`.
+
+---
+
+_Last reviewed: TEMPLATE — edit this file for your project._

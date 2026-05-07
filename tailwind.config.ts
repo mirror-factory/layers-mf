@@ -16,6 +16,9 @@ const config: Config = {
   		}
   	},
   	extend: {
+  		fontFamily: {
+  			display: ['var(--font-display)', 'Inter', 'sans-serif'],
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
@@ -80,7 +83,7 @@ const config: Config = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 };
 
 export default config;

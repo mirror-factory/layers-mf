@@ -16,6 +16,7 @@ export function resetOnboarding(): void {
 export const ONBOARDING_STEPS = [
   { id: "welcome", title: "Welcome", path: "/onboarding" },
   { id: "connect-tools", title: "Connect Tools", path: "/onboarding/connect-tools" },
+  { id: "choose-template", title: "Choose Template", path: "/onboarding/choose-template" },
   { id: "first-session", title: "Create Session", path: "/onboarding/first-session" },
   { id: "complete", title: "Tour Complete", path: "/onboarding/complete" },
 ] as const;

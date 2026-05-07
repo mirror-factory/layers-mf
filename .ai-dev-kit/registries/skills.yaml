@@ -1,0 +1,39 @@
+kind: skills
+schema_version: 1
+last_synced_on: 2026-04-28T19:46:08.689Z
+entries:
+  - name: compliance-fix
+    path: .claude/skills/compliance-fix/SKILL.md
+    description: Run compliance checks and fix enforcement failures before commits or pushes.
+    invocation_count: 0
+    last_invoked_at: null
+    last_run_id: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: context7-first
+    path: .claude/skills/context7-first/SKILL.md
+    description: Prefer current documentation before changing fast-moving libraries and platform APIs.
+    invocation_count: 0
+    last_invoked_at: null
+    last_run_id: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: observability-debug
+    path: .claude/skills/observability-debug/SKILL.md
+    description: Diagnose errors, performance issues, and unexpected AI behavior using observability.
+    invocation_count: 0
+    last_invoked_at: null
+    last_run_id: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: visual-qa
+    path: .claude/skills/visual-qa/SKILL.md
+    description: Verify UI changes across layout, styling, responsiveness, and browser behavior.
+    invocation_count: 0
+    last_invoked_at: null
+    last_run_id: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - name: wire-telemetry
+    path: .claude/skills/wire-telemetry/SKILL.md
+    description: Ensure AI SDK calls and tools are wrapped with telemetry and logged for observability.
+    invocation_count: 0
+    last_invoked_at: null
+    last_run_id: null
+    created_on: "2026-04-28T19:33:04.890Z"

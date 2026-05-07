@@ -2,6 +2,7 @@ export const metadata = { title: "Team Settings" };
 
 import { createClient } from "@/lib/supabase/server";
 import { TeamManagement } from "@/components/team-management";
+import { OrgExplainer } from "./_components/org-explainer";
 
 export default async function TeamSettingsPage() {
   const supabase = await createClient();
@@ -25,6 +26,7 @@ export default async function TeamSettingsPage() {
           Manage your organization members and invitations.
         </p>
       </div>
+      <OrgExplainer />
       <TeamManagement isOwner={member.role === "owner"} currentUserId={user.id} />
     </div>
   );

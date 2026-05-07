@@ -69,7 +69,7 @@ type OrgMember = {
 };
 
 const MODELS = [
-  { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku" },
+  { id: "google/gemini-3.1-flash-lite-preview", label: "Claude Haiku" },
   { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet" },
   { id: "anthropic/claude-opus-4.6", label: "Claude Opus" },
   { id: "openai/gpt-4o-mini", label: "GPT-4o mini" },
@@ -152,7 +152,7 @@ export function SessionWorkspace({
   linkedItems: ContextItem[];
   availableItems: ContextItem[];
 }) {
-  const [model, setModel] = useState<string>("anthropic/claude-haiku-4-5-20251001");
+  const [model, setModel] = useState<string>("google/gemini-3.1-flash-lite-preview");
   const [input, setInput] = useState("");
   const [linked, setLinked] = useState<ContextItem[]>(initialLinked);
   const [available, setAvailable] = useState<ContextItem[]>(initialAvailable);

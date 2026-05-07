@@ -248,7 +248,7 @@ describe.skipIf(!hasGatewayKey)("Extraction Eval (PROD-133)", () => {
     const avgRecall =
       results.reduce((sum, r) => sum + r.actionItemRecall, 0) / results.length;
 
-    console.log(`\n📊 Action Item Recall: ${(avgRecall * 100).toFixed(1)}% (baseline: ${BASELINE_ACTION_ITEM_RECALL * 100}%, min: ${MIN_ACTION_ITEM_RECALL * 100}%)`);
+    console.log(`\n[RESULTS] Action Item Recall: ${(avgRecall * 100).toFixed(1)}% (baseline: ${BASELINE_ACTION_ITEM_RECALL * 100}%, min: ${MIN_ACTION_ITEM_RECALL * 100}%)`);
 
     for (const r of results) {
       console.log(
@@ -268,7 +268,7 @@ describe.skipIf(!hasGatewayKey)("Extraction Eval (PROD-133)", () => {
     const avgRecall =
       results.reduce((sum, r) => sum + r.decisionRecall, 0) / results.length;
 
-    console.log(`\n📊 Decision Recall: ${(avgRecall * 100).toFixed(1)}% (baseline: ${BASELINE_DECISION_RECALL * 100}%, min: ${MIN_DECISION_RECALL * 100}%)`);
+    console.log(`\n[RESULTS] Decision Recall: ${(avgRecall * 100).toFixed(1)}% (baseline: ${BASELINE_DECISION_RECALL * 100}%, min: ${MIN_DECISION_RECALL * 100}%)`);
 
     for (const r of results) {
       console.log(

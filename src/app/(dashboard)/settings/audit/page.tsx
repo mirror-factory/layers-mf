@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageExplainer } from "@/components/page-explainer";
 
 interface AuditEntry {
   id: string;
@@ -47,6 +48,14 @@ export default function AuditPage() {
           Track actions across your organization.
         </p>
       </div>
+      <PageExplainer
+        title="How Audit Log Works"
+        sections={[
+          { title: "Activity History", content: "Every significant action -- creating, updating, or deleting resources -- is recorded with a timestamp." },
+          { title: "Who Did What", content: "Each entry shows the user, action type, and affected resource so you can trace any change." },
+          { title: "Retention", content: "Audit logs are retained for your plan's retention period. Export them if you need long-term archival." },
+        ]}
+      />
 
       {loading && entries.length === 0 ? (
         <div className="flex items-center justify-center py-16">

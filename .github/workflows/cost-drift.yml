@@ -1,0 +1,32 @@
+name: Cost drift
+
+# Re-validates every priced registry entry against the vendor's pricing page
+# weekly. A >2% drift fires a blocker notification and opens an issue.
+#
+# Manual trigger: actions -> Cost drift -> Run workflow.
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"   # Mondays 12:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/check-cost-drift.mts
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          NTFY_AUTH_TOKEN: ${{ secrets.NTFY_AUTH_TOKEN }}

@@ -152,12 +152,12 @@ async function handleMessageCreate(msg: DiscordMessageData): Promise<void> {
 
   // Multi-tenant: match by guild_id stored in sync_config.provider_workspace_id
   const guildId = msg.guild_id;
-  let integration: { org_id: string; nango_connection_id: string; sync_config: unknown } | null = null;
+  let integration: { org_id: string; sync_config: unknown } | null = null;
 
   if (guildId) {
     const { data } = await supabase
       .from("integrations")
-      .select("org_id, nango_connection_id, sync_config")
+      .select("org_id, sync_config")
       .eq("provider", "discord")
       .eq("status", "active")
       .eq("sync_config->>provider_workspace_id", guildId)
@@ -168,7 +168,7 @@ async function handleMessageCreate(msg: DiscordMessageData): Promise<void> {
     if (!integration) {
       const { data: fallback } = await supabase
         .from("integrations")
-        .select("org_id, nango_connection_id, sync_config")
+        .select("org_id, sync_config")
         .eq("provider", "discord")
         .eq("status", "active")
         .is("sync_config", null)
@@ -187,7 +187,7 @@ async function handleMessageCreate(msg: DiscordMessageData): Promise<void> {
     // No guild_id (DM context) — fall back to single match
     const { data } = await supabase
       .from("integrations")
-      .select("org_id, nango_connection_id, sync_config")
+      .select("org_id, sync_config")
       .eq("provider", "discord")
       .eq("status", "active")
       .limit(1)
@@ -286,12 +286,12 @@ async function handleThreadCreate(thread: DiscordThreadData): Promise<void> {
 
   // Multi-tenant: match by guild_id stored in sync_config.provider_workspace_id
   const guildId = thread.guild_id;
-  let integration: { org_id: string; nango_connection_id: string } | null = null;
+  let integration: { org_id: string } | null = null;
 
   if (guildId) {
     const { data } = await supabase
       .from("integrations")
-      .select("org_id, nango_connection_id")
+      .select("org_id")
       .eq("provider", "discord")
       .eq("status", "active")
       .eq("sync_config->>provider_workspace_id", guildId)
@@ -301,7 +301,7 @@ async function handleThreadCreate(thread: DiscordThreadData): Promise<void> {
     if (!integration) {
       const { data: fallback } = await supabase
         .from("integrations")
-        .select("org_id, nango_connection_id")
+        .select("org_id")
         .eq("provider", "discord")
         .eq("status", "active")
         .is("sync_config", null)
@@ -319,7 +319,7 @@ async function handleThreadCreate(thread: DiscordThreadData): Promise<void> {
   } else {
     const { data } = await supabase
       .from("integrations")
-      .select("org_id, nango_connection_id")
+      .select("org_id")
       .eq("provider", "discord")
       .eq("status", "active")
       .limit(1)

@@ -1,0 +1,160 @@
+# design-system.yaml -- THE design system for this project.
+#
+# Brand tokens (.ai-dev-kit/registries/design-tokens.yaml) are the PRIMITIVES
+# (colors, typography, spacing, radius, shadow, motion, z-index).
+#
+# This file is the SYSTEM built on top of those primitives: component
+# definitions with variants, states, composition rules, accessibility
+# requirements. The implementation agent uses this as the contract when
+# writing .tsx. Pre-push judges implemented components against it.
+#
+# Populated by @design-agent during `ai-dev-kit design <feature>`. Hand-
+# edited freely afterwards. Every component declared here corresponds to
+# a real file in components/** with matching variants/states.
+#
+# Consumed by:
+#   - @design-agent (reads on refine; writes on initial design)
+#   - scripts/check-brand-compliance.mts (judges components vs this spec)
+#   - /dev-kit/design-system (renders the full system visually)
+#   - sync-registries.ts (cross-references components.yaml against primitives)
+#
+# Structure:
+#   - primitives: atomic components (Button, Input, Badge, Text, Icon)
+#   - molecules:  compositions of primitives (FormField, SearchBar, Dialog.Trigger)
+#   - organisms:  larger compositions (Navbar, Form, Dialog, Card)
+#   - templates:  page-level layouts (DashboardTemplate, AuthTemplate)
+#   - patterns:   interaction recipes (loading states, empty states, error states)
+#
+# Every component entry declares:
+#   - purpose:   one-sentence what it's for
+#   - variants:  list of visual variants (primary / secondary / ghost / destructive)
+#   - states:    interactive states (default / hover / focus / active / disabled / loading)
+#   - props:     key props with type hints
+#   - a11y:      keyboard + screen-reader requirements
+#   - tokens:    which design-tokens it must use (for enforcement)
+#   - composition: which other components can nest inside
+
+kind: design-system
+schema_version: 1
+last_synced_on: null
+
+# ─── Primitives ────────────────────────────────────────────────────────
+primitives:
+  Button:
+    purpose: "Trigger an action. Never for navigation (use Link instead)."
+    variants: [primary, secondary, ghost, destructive]
+    states: [default, hover, focus, active, disabled, loading]
+    props:
+      variant: "'primary' | 'secondary' | 'ghost' | 'destructive'"
+      size: "'sm' | 'md' | 'lg'"
+      disabled: "boolean"
+      loading: "boolean"
+      icon: "ReactNode (optional; left position)"
+      children: "ReactNode"
+    a11y:
+      - "Must render as <button>; Link-styled buttons are a separate primitive"
+      - "Focus ring visible; never outline:none without a replacement"
+      - "aria-busy when loading"
+      - "Disabled state is not focusable"
+    tokens:
+      bg: [brand.primary, surface.muted]
+      text: [text.onPrimary, text.primary]
+      radius: [radius.md]
+      shadow: [shadow.sm]
+      motion: [motion.fast]
+    composition: "May contain Icon, Text"
+
+  Input:
+    purpose: "Single-line text entry."
+    variants: [default, filled]
+    states: [default, hover, focus, disabled, error]
+    props:
+      type: "'text' | 'email' | 'password' | 'number' | 'search'"
+      value: "string"
+      onChange: "(event) => void"
+      placeholder: "string"
+      disabled: "boolean"
+      "aria-invalid": "boolean"
+    a11y:
+      - "Must have an associated <label> (use FormField molecule)"
+      - "aria-invalid when error state"
+      - "aria-describedby links to error message if present"
+    tokens:
+      bg: [surface.default]
+      border: [border.default, border.focus, border.error]
+      radius: [radius.md]
+
+  Text:
+    purpose: "Typographic primitive. All copy goes through this (no raw <p>/<span>)."
+    variants: [display, headline, title, body, caption, code]
+    states: []
+    props:
+      as: "'h1' | 'h2' | 'h3' | 'p' | 'span' | 'small'"
+      variant: "'display' | 'headline' | 'title' | 'body' | 'caption' | 'code'"
+      color: "'primary' | 'muted' | 'inverse' | 'success' | 'warn' | 'error'"
+      children: "ReactNode"
+    tokens:
+      font: [font.sans, font.mono]
+      size: [size.xs, size.sm, size.md, size.lg, size.xl, size.2xl]
+
+  Icon:
+    purpose: "SVG icon wrapper with consistent sizing + aria semantics."
+    variants: []
+    states: []
+    props:
+      name: "string (lucide icon name)"
+      size: "'sm' | 'md' | 'lg'"
+      "aria-label": "string (required if standalone)"
+
+  Badge:
+    purpose: "Status / count indicator. Non-interactive."
+    variants: [neutral, info, success, warn, error]
+    states: [default]
+
+# ─── Molecules ─────────────────────────────────────────────────────────
+molecules:
+  FormField:
+    purpose: "Input + Label + Error + Helper composition."
+    composes: [Text, Input]
+    required_slots: [label, input]
+    optional_slots: [helper, error]
+    a11y:
+      - "label `for` matches input `id`"
+      - "error announces via role=alert"
+
+  SearchBar:
+    purpose: "Search input with clear button + optional submit."
+    composes: [Input, Icon, Button]
+
+# ─── Organisms ─────────────────────────────────────────────────────────
+organisms:
+  Navbar:
+    purpose: "Top-level navigation. One per page."
+    composes: [Text, Button, Icon]
+    responsive:
+      mobile: "hamburger menu; links hidden until open"
+      tablet: "condensed labels, icons visible"
+      desktop: "full labels, right-aligned user menu"
+
+  Dialog:
+    purpose: "Modal overlay for focused tasks or confirmations."
+    composes: [Button, Text, Icon]
+    a11y:
+      - "Traps focus while open"
+      - "Esc closes"
+      - "aria-modal=true, role=dialog"
+
+# ─── Templates ─────────────────────────────────────────────────────────
+templates:
+  DashboardTemplate:
+    purpose: "Sidebar + top bar + main content. Used by /dev-kit/* pages."
+    slots: [sidebar, topbar, main, footer?]
+
+# ─── Patterns ──────────────────────────────────────────────────────────
+patterns:
+  loading:
+    description: "Show Skeleton placeholders matching the shape of the final content. Never a spinner alone unless waiting <200ms is the exception."
+  empty:
+    description: "Explain why it's empty + offer the next action. Never a bare 'No items'."
+  error:
+    description: "Say what broke, what to try, and whether data is lost. Log with request_id visible."

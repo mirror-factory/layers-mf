@@ -41,7 +41,8 @@ export async function GET(
     return new Response("No organization found", { status: 400 });
   }
 
-  const { data: canvas, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvas, error } = await (supabase as any)
     .from("canvases")
     .select("id, name, description, viewport, settings, created_by, created_at, updated_at")
     .eq("id", id)
@@ -52,12 +53,14 @@ export async function GET(
     return NextResponse.json({ error: "Canvas not found" }, { status: 404 });
   }
 
-  const { data: items } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: items } = await (supabase as any)
     .from("canvas_items")
     .select("id, context_item_id, x, y, width, height, color, style, item_type, content, created_at, updated_at")
     .eq("canvas_id", id);
 
-  const { data: connections } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: connections } = await (supabase as any)
     .from("canvas_connections")
     .select("id, from_item_id, to_item_id, label, style, created_at")
     .eq("canvas_id", id);
@@ -103,7 +106,8 @@ export async function PATCH(
     );
   }
 
-  const { data: canvas, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvas, error } = await (supabase as any)
     .from("canvases")
     .update({
       ...parsed.data,
@@ -148,7 +152,8 @@ export async function DELETE(
     return new Response("No organization found", { status: 400 });
   }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("canvases")
     .delete()
     .eq("id", id)

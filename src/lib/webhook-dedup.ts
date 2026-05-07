@@ -15,7 +15,8 @@ export async function claimWebhookEvent(
 ): Promise<boolean> {
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("webhook_events")
     .insert({
       provider,
@@ -53,7 +54,8 @@ export async function completeWebhookEvent(
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("webhook_events")
     .update({
       status,
@@ -79,7 +81,8 @@ export async function cleanupOldEvents(): Promise<number> {
   const supabase = createAdminClient();
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("webhook_events")
     .delete()
     .lt("created_at", cutoff)

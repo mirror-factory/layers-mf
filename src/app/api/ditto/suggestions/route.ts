@@ -30,7 +30,8 @@ export async function GET() {
   const orgId = member.org_id;
 
   // 1. Fetch user's Ditto profile
-  const { data: profile } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase as any)
     .from("ditto_profiles")
     .select(
       "interests, preferred_sources, priority_topics, confidence"

@@ -1,0 +1,32 @@
+# budget.yaml -- cost limits for runs and the project.
+#
+# Enforced by `scripts/check-budget.ts` (runs in pre-push) and by the
+# cost-overrun auto-notify in lib/notify.ts. When a limit is crossed:
+#
+#   * soft    -- notify({kind: 'progress', ...}) and keep going
+#   * hard    -- notify({kind: 'blocker', ...}) and exit 1 from pre-push
+#
+# "Run" is one feature build (identified by run_id). "Day" is UTC.
+#
+# Reading: aggregates /dev-kit logs for the window. costMode=subscription
+# and costMode=local are not counted toward billable spend -- only
+# costMode=billable + non-LLM vendor_api costs count against the budget.
+
+per_run:
+  soft_usd: 5.00
+  hard_usd: 20.00
+
+per_day:
+  soft_usd: 25.00
+  hard_usd: 100.00
+
+per_month:
+  soft_usd: 200.00
+  hard_usd: 1000.00
+
+# Alert when individual model calls are unusually expensive -- catches the
+# "agent streamed a 400k-token prompt by accident" class of failure.
+per_call_alert_usd: 0.50
+
+# When no budget file is present, enforcement is OFF. Delete this file to
+# disable cost enforcement entirely.

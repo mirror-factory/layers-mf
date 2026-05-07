@@ -24,30 +24,41 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Consu
 ### Tier 0 — Always Active
 
 |pm-linear|~/.claude/skills/pm-linear
-|  desc: PM workflow for Linear — session protocol, context-rich comments, changelog, doc registry
-|  use when: starting sessions, ending sessions, pushing code, updating Linear, onboarding devs
+| desc: PM workflow for Linear — session protocol, context-rich comments, changelog, doc registry
+| use when: starting sessions, ending sessions, pushing code, updating Linear, onboarding devs
 
 ### Tier 1 — Core
 
 |shadcn-ui|~/.claude/skills/shadcn-ui
-|  desc: shadcn/ui component patterns, installation, forms with React Hook Form + Zod
-|  use when: adding UI components, building forms, customizing themes
+| desc: shadcn/ui component patterns, installation, forms with React Hook Form + Zod
+| use when: adding UI components, building forms, customizing themes
 
 ### Tier 2 — Architecture
 
 |vercel-react-best-practices|~/.claude/skills/vercel-react-best-practices
-|  desc: React/Next.js performance patterns from Vercel Engineering
-|  use when: writing components, data fetching, bundle optimization
+| desc: React/Next.js performance patterns from Vercel Engineering
+| use when: writing components, data fetching, bundle optimization
 
 |nextjs-supabase-auth|~/.claude/skills/nextjs-supabase-auth
-|  desc: Supabase Auth with Next.js App Router, middleware, protected routes
-|  use when: adding authentication
+| desc: Supabase Auth with Next.js App Router, middleware, protected routes
+| use when: adding authentication
 
 ### Tier 3 — AI Features
 
 |claude-developer-platform|~/.claude/skills/claude-developer-platform
-|  desc: Claude API + Anthropic SDK patterns
-|  use when: adding AI features via Anthropic SDK
+| desc: Claude API + Anthropic SDK patterns
+| use when: adding AI features via Anthropic SDK
+
+## Changelog
+
+After every `git push`, update the changelog:
+
+1. Add new entries to `src/data/changelog.ts` for all features, fixes, and docs changes
+2. Group changes by type (feat/fix/docs/refactor)
+3. Write clear, user-facing descriptions (not commit messages)
+4. Update the version number if shipping a significant batch
+
+The changelog page is at `/changelog`. The overview page at `/overview` also shows current status.
 
 ## Architecture
 
@@ -62,6 +73,56 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning. Consu
 - `src/app/layout.tsx` — root layout, add providers here
 - `src/app/globals.css` — CSS variables and Tailwind base styles
 - `src/lib/utils.ts` — shared utilities
+
+## Component Registry
+
+Key components for LLM lookup (88 total across 4 dirs):
+
+| Name             | Location                                   | Description                                       | Tags               |
+| ---------------- | ------------------------------------------ | ------------------------------------------------- | ------------------ |
+| ChatInterface    | src/components/chat-interface.tsx          | Full agentic chat with tools, context, artifacts  | chat, ai           |
+| TiptapEditor     | src/components/tiptap-editor.tsx           | Rich text editor with AI assist                   | editor, ai         |
+| MCPServerCard    | src/components/mcp-server-card.tsx         | MCP connection card with PKCE OAuth               | mcp, oauth         |
+| MCPChat          | src/components/mcp-chat.tsx                | Mini chat for MCP discovery on connectors page    | mcp, chat          |
+| MCPConnectCards  | src/components/mcp-connect-cards.tsx       | Inline OAuth + bearer token cards                 | mcp, oauth         |
+| ConnectorsView   | src/components/connectors-view.tsx         | MCP server management (connect/disconnect/remove) | mcp, connectors    |
+| ContextLibrary   | src/components/context-library.tsx         | Browse/manage context items                       | context, library   |
+| SidebarNav       | src/components/sidebar-nav.tsx             | Main sidebar navigation                           | navigation, layout |
+| InterviewUI      | src/components/interview-ui.tsx            | ask_user tool interview form                      | interview, form    |
+| SkillsEditor     | src/components/skills-editor.tsx           | Manage skills with editor                         | skills, editor     |
+| ContextWindowBar | src/components/chat/context-window-bar.tsx | Token counter + context visualization             | chat, tokens       |
+| Message          | src/components/ai-elements/message.tsx     | UIMessage renderer with Markdown                  | ai-elements        |
+| Tool             | src/components/ai-elements/tool.tsx        | Tool call display with status                     | ai-elements        |
+
+**shadcn/ui** (24 in `src/components/ui/`): Button, Card, Input, Badge, Select, Dialog, Tabs, DropdownMenu, Command, Tooltip, etc.
+
+## API Registry
+
+Key routes (Nango integration routes removed in v0.6.0):
+
+| Path                    | Method                | Description                                      | Auth     |
+| ----------------------- | --------------------- | ------------------------------------------------ | -------- |
+| /api/chat               | POST                  | Agentic chat with ToolLoopAgent                  | Supabase |
+| /api/chat/mcp           | POST                  | Lightweight MCP-only chat for connectors page    | Supabase |
+| /api/chat/history       | GET                   | Fetch chat messages                              | Supabase |
+| /api/chat/context-stats | GET                   | Token counts for system/rules/tools              | Supabase |
+| /api/context/search     | POST                  | Hybrid search (vector + BM25)                    | Supabase |
+| /api/context/[id]       | GET/PATCH/DELETE      | CRUD context item                                | Supabase |
+| /api/analytics/costs    | GET                   | AI costs by model/user/date                      | Supabase |
+| /api/mcp-servers        | GET/POST              | List/add MCP servers                             | Supabase |
+| /api/mcp-servers/[id]   | PATCH/DELETE          | Update/remove MCP server                         | Supabase |
+| /api/mcp/discover       | POST                  | Discover MCP OAuth from server URL               | Supabase |
+| /api/mcp/registry       | GET                   | Search curated + official + Smithery registries  | Supabase |
+| /api/mcp/oauth/callback | GET                   | OAuth callback, stores tokens, redirects to chat | Public   |
+| /api/skills             | GET/POST              | List/create skills                               | Supabase |
+| /api/schedules          | GET/POST              | List/create schedules                            | Supabase |
+| /api/approval           | GET/POST              | List/create approvals                            | Supabase |
+| /api/priority-docs      | GET/POST/PATCH/DELETE | Priority doc management                          | Supabase |
+| /api/rules              | GET/POST/PATCH/DELETE | Rules management                                 | Supabase |
+| /api/sandbox/restart    | POST                  | Restart sandbox                                  | Supabase |
+
+**Cron**: /api/cron/{digest,ingest,synthesis,execute-schedules,linear-check,credit-reset}
+**Webhooks**: /api/webhooks/{stripe,linear,nango,google-drive,discord}
 
 ## Vercel AI SDK Docs
 

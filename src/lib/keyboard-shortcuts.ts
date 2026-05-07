@@ -65,11 +65,12 @@ export function useKeyboardShortcuts({ onToggleShortcutsPanel }: ShortcutOptions
       if (pendingKey.current === "g") {
         clearPending();
         const routes: Record<string, string> = {
-          h: "/",
-          c: "/context",
-          s: "/sessions",
-          i: "/inbox",
-          a: "/analytics",
+          h: "/home",
+          c: "/chat",
+          l: "/context",
+          n: "/notifications",
+          a: "/approvals",
+          s: "/settings",
         };
         const route = routes[e.key];
         if (route) {

@@ -27,7 +27,8 @@ async function getOrgAndCanvas(supabase: Awaited<ReturnType<typeof createClient>
 
   if (!member) return { error: "No org" as const };
 
-  const { data: canvas } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: canvas } = await (supabase as any)
     .from("canvases")
     .select("id")
     .eq("id", canvasId)
@@ -59,7 +60,8 @@ export async function POST(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { data: connection, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: connection, error } = await (supabase as any)
     .from("canvas_connections")
     .insert({
       canvas_id: result.canvasId,
@@ -97,7 +99,8 @@ export async function DELETE(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("canvas_connections")
     .delete()
     .eq("id", parsed.data.connectionId)

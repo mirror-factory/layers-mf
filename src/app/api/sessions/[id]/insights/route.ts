@@ -33,7 +33,8 @@ export async function GET(
   }
 
   // Verify session belongs to org
-  const { data: session } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: session } = await (supabase as any)
     .from("sessions")
     .select("id")
     .eq("id", id)
@@ -46,7 +47,8 @@ export async function GET(
 
   // Filter by status (default: active)
   const statusFilter = request.nextUrl.searchParams.get("status");
-  let query = supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
     .from("session_insights")
     .select("id, insight_type, title, description, severity, source_item_ids, related_item_ids, status, dismissed_by, dismissed_at, created_at, metadata")
     .eq("session_id", id)
@@ -110,7 +112,8 @@ export async function PATCH(
     updateData.dismissed_at = null;
   }
 
-  const { data: insight, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: insight, error } = await (supabase as any)
     .from("session_insights")
     .update(updateData)
     .eq("id", insightId)

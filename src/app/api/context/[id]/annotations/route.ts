@@ -26,7 +26,8 @@ export async function GET(
     return new Response("No organization found", { status: 400 });
   }
 
-  const { data: item, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: item, error } = await (supabase as any)
     .from("context_items")
     .select("user_title, user_notes, user_tags, trust_weight")
     .eq("id", id)
@@ -141,7 +142,8 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const { data: updated, error: updateError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: updated, error: updateError } = await (supabase as any)
     .from("context_items")
     .update(update)
     .eq("id", id)

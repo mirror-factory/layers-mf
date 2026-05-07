@@ -14,7 +14,7 @@ import type { Json } from "@/lib/database.types";
 export const maxDuration = 60;
 
 const ALLOWED_MODELS = new Set([
-  "anthropic/claude-haiku-4-5-20251001",
+  "google/gemini-3.1-flash-lite-preview",
   "anthropic/claude-sonnet-4.5",
   "anthropic/claude-opus-4.6",
   "openai/gpt-4o-mini",
@@ -27,7 +27,7 @@ function buildSessionInstructions(
   sessionName: string,
   sessionGoal: string
 ): string {
-  return `You are Layers, an AI assistant for knowledge teams. You are working within the session "${sessionName}".
+  return `You are Dewey, the resident Librarian assistant inside Layers. You are working within the session "${sessionName}".
 
 Session goal: ${sessionGoal}
 
@@ -113,7 +113,7 @@ export async function POST(
 
   const modelId = ALLOWED_MODELS.has(body.model as string)
     ? (body.model as string)
-    : "anthropic/claude-haiku-4-5-20251001";
+    : "google/gemini-3.1-flash-lite-preview";
 
   const firstUserMsg = uiMessages.find((m) => m.role === "user");
   const query =

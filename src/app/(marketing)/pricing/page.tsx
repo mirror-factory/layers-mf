@@ -12,7 +12,7 @@ const PLANS = [
     price: "$0",
     period: "/month",
     description: "For individuals exploring Layers",
-    cta: "Get Started Free",
+    cta: "Open Layers",
     href: "/signup",
     highlighted: false,
   },
@@ -221,7 +221,7 @@ export default function PricingPage() {
             href="/signup"
             className="mt-8 inline-flex h-11 items-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Get Started Free
+            Open Layers
           </Link>
         </div>
       </section>

@@ -17,7 +17,8 @@ export async function DELETE(
   }
 
   // Only the owner can delete their saved search
-  const { data: search } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: search } = await (supabase as any)
     .from("saved_searches")
     .select("id, user_id")
     .eq("id", id)
@@ -31,7 +32,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("saved_searches")
     .delete()
     .eq("id", id);

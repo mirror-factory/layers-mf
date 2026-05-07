@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,20 +30,70 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Listen for Capacitor app URL events (OAuth redirect back via custom scheme)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let cleanup: (() => void) | undefined;
+
+    import("@capacitor/app").then(({ App }) => {
+      const listener = App.addListener("appUrlOpen", async ({ url }) => {
+        // Handle granger:// or https://layers.hustletogether.com/auth/callback
+        if (url.includes("auth/callback") || url.includes("code=")) {
+          // Close the in-app browser
+          import("@capacitor/browser").then(({ Browser }) => Browser.close());
+
+          // Extract code from URL
+          const urlObj = new URL(url.replace("granger://", "https://layers.hustletogether.com/"));
+          const code = urlObj.searchParams.get("code");
+          if (code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (!error) {
+              router.push("/");
+              router.refresh();
+            } else {
+              setError(error.message);
+              setGoogleLoading(false);
+            }
+          }
+        }
+      });
+
+      cleanup = () => { listener.then(l => l.remove()); };
+    });
+
+    return () => { cleanup?.(); };
+  }, [supabase, router]);
+
   async function handleGoogleLogin() {
     setGoogleLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const siteUrl = "https://layers.hustletogether.com";
+    const isNative = Capacitor.isNativePlatform();
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback`,
+        redirectTo: isNative ? "granger://auth/callback" : `${siteUrl}/auth/callback`,
+        skipBrowserRedirect: isNative,
+        queryParams: isNative ? { prompt: "select_account" } : undefined,
       },
     });
 
     if (error) {
       setError(error.message);
       setGoogleLoading(false);
+      return;
+    }
+
+    if (isNative && data?.url) {
+      // Open in-app browser (SFSafariViewController) — returns to app via URL scheme
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url: data.url, presentationStyle: "popover" });
+    } else if (data?.url) {
+      // Web: standard redirect
+      window.location.href = data.url;
     }
   }
 

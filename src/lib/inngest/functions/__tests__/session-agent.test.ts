@@ -252,7 +252,7 @@ async function invokeHandler(step: ReturnType<typeof makeStep>) {
     return data ?? [];
   });
 
-  if (sessions.length === 0) return { processed: 0 };
+  if ((sessions as any[]).length === 0) return { processed: 0 };
 
   let insightsCreated = 0;
 
@@ -303,5 +303,5 @@ async function invokeHandler(step: ReturnType<typeof makeStep>) {
     });
   }
 
-  return { sessionsChecked: sessions.length, insightsCreated };
+  return { sessionsChecked: (sessions as any[]).length, insightsCreated };
 }

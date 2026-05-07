@@ -8,7 +8,7 @@ export default function MarketingLayout({
   return (
     <div className="min-h-screen flex flex-col">
       {/* Marketing header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-top">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <svg
@@ -57,7 +57,7 @@ export default function MarketingLayout({
               href="/signup"
               className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Get Started
+              Open Layers
             </Link>
           </div>
         </div>

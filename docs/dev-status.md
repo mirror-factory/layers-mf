@@ -248,6 +248,77 @@ Last updated: 2026-03-22
 
 ---
 
+## Granger Sprint Progress (Started 2026-03-30)
+
+Full spec: `docs/GRANGER-SPEC.md`
+
+### Sprint 1: Foundation — **COMPLETE**
+- [x] 9-model matrix (3 providers × 3 tiers), TASK_MODELS, per-partner gateway stub
+- [x] Priority document system (5 docs + loader + wired into chat routes)
+- [x] Database migrations (priority_documents, credentials, approval_queue, partner_settings + column additions)
+- [x] Direct API clients: Granola (grn_ keys) + Linear (@linear/sdk)
+- [x] Approval system (propose_action tool + queue API + UI + /approvals page)
+
+### Sprint 2: APIs + Conversation Loop — **COMPLETE**
+- [x] Direct API clients: Discord (REST v10), Notion (@notionhq/client), Gmail + Drive (googleapis OAuth)
+- [x] Google OAuth callback route with shared token storage
+- [x] Conversation history compaction (Haiku-based, incremental, fire-and-forget)
+- [x] 13 agent tools total (6 read + 4 write + 3 existing)
+- [x] Test mock fixes for createGateway, priority-docs, compact
+
+### Sprint 3: Discord Bot + Proactive Intelligence — **COMPLETE**
+- [x] Discord HTTP interactions endpoint (Ed25519 verification, deferred responses)
+- [x] Slash commands: /ask, /status, /tasks, /digest
+- [x] Command registration script + API endpoint
+- [x] Morning digest cron (7 AM weekdays, personalized per partner, #granger-digest)
+- [x] Overdue detection + alerts cron (every 2h, #granger-alerts)
+- [x] Granola polling cron (every 15min, auto-ingest transcripts)
+- [x] Discord approval reactions (✅/❌) + DM conversations
+- [x] Discord user → Supabase user mapping via partner_settings
+
+### Sprint 4: Polish + Extraction Pipeline — **COMPLETE**
+- [x] Expand extraction schema (emotional_signals, tacit_observations, confidence_score, source_quote)
+- [x] Nightly synthesis cron (2 AM, Opus 4.6, 4K token cap, compound knowledge loop)
+- [x] Pattern detection (topics in 3+ items without resolution, unresolved-first sorting)
+- [x] Partner settings page (/settings/api-keys) — Discord ID, Gateway key, API keys, Google OAuth
+- [x] Settings API routes (partner + credentials)
+- [x] Nango removal checklist documented (docs/plans/nango-removal-checklist.md)
+- [ ] Pre-meeting prep via Google Calendar (deferred to post-launch)
+- [ ] Remove Nango code + @nangohq dependencies (follow checklist)
+- [ ] Deploy to production Vercel + Supabase
+- [ ] Onboard Kyle and Bobby
+
+### Sprint 5: Notebook Features — **COMPLETE** (2026-03-30 evening)
+- [x] TipTap rich text editor for context library documents
+- [x] Document versioning (version history, restore previous versions)
+- [x] Majority-approval editing (edit proposals, 2/3 vote, auto-apply)
+- [x] Chat sharing (share conversations with team members)
+- [x] Chat export (Markdown + JSON download)
+- [x] Code sandbox tool (write_code + CodeSandbox component with syntax highlighting)
+- [x] Permission system (per-service read/write toggles at /settings/permissions)
+- [x] Scaffolding templates (3 org templates: Startup, Agency, Solo)
+- [x] Chat SDK Discord bot (replaces custom implementation)
+- [x] Desktop notifications (browser native + sonner toast fallback)
+- [x] Linear status check cron (every 3 min with Run Now button)
+- [x] Scheduled actions system (/schedules page, schedule via chat)
+- [x] Full "Layers" → "Granger" rebrand (20+ files)
+- [x] Dark mode fixes (inbox, approvals, suggestions)
+- [x] Context library fix (admin client, user_tags column removal)
+- [x] Demo mode (credit bypass, inline upload processing)
+
+### Post-Sprint: Production Deployment Checklist
+- [ ] Set env vars: DISCORD_BOT_TOKEN, DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID, DISCORD_GUILD_ID
+- [ ] Set env vars: DISCORD_DIGEST_CHANNEL_ID, DISCORD_ALERTS_CHANNEL_ID
+- [ ] Set env vars: GRANOLA_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+- [ ] Register Discord commands: `tsx scripts/register-discord-commands.ts`
+- [ ] Set Discord interactions URL in Developer Portal
+- [ ] Create #granger-digest and #granger-alerts Discord channels
+- [ ] Each partner: link Discord ID + add API keys at /settings/api-keys
+- [ ] Run `pnpm db:reset` on production Supabase to apply new migrations
+- [ ] Verify crons firing in Vercel dashboard
+
+---
+
 ## Codebase Metrics (as of 2026-03-22)
 
 | Metric | Value |

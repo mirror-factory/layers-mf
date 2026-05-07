@@ -1,7 +1,7 @@
-export const metadata = { title: "Inbox" };
+export const metadata = { title: "Notifications" };
 
 import { createClient } from "@/lib/supabase/server";
-import { InboxList } from "@/components/inbox-list";
+import { NotificationsList } from "@/components/notifications-list";
 
 export default async function InboxPage() {
   const supabase = await createClient();
@@ -9,23 +9,29 @@ export default async function InboxPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: items } = await supabase
-    .from("inbox_items")
-    .select("id, type, title, body, priority, status, source_url, source_type, created_at")
+  // Show notifications from last 30 days (same table as notification bell)
+  const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: notifications } = await (supabase as any)
+    .from("notifications")
+    .select("id, type, title, body, link, is_read, created_at, metadata")
     .eq("user_id", user.id)
-    .neq("status", "dismissed")
+    .gte("created_at", cutoffDate)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
   return (
     <div className="p-4 sm:p-8 max-w-3xl">
       <div className="mb-6 sm:mb-8">
-        <h1 data-testid="inbox-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">Inbox</h1>
+        <h1 data-testid="inbox-page-heading" className="text-xl sm:text-2xl font-semibold mb-1">
+          Notifications
+        </h1>
         <p className="text-muted-foreground text-sm">
-          Action items, decisions, and mentions surfaced by your agents.
+          Recent notifications from your schedules, agents, and team activity.
         </p>
       </div>
-      <InboxList initialItems={items ?? []} />
+      <NotificationsList initialNotifications={notifications ?? []} />
     </div>
   );
 }

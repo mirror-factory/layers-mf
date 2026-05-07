@@ -6,15 +6,19 @@
     },
     {
       "path": "/api/cron/digest",
-      "schedule": "0 7 * * *"
+      "schedule": "0 7 * * 1-5"
     },
     {
       "path": "/api/cron/credit-reset",
       "schedule": "0 0 1 * *"
     },
     {
-      "path": "/api/cron/drive-watch-renewal",
-      "schedule": "0 */20 * * *"
+      "path": "/api/cron/synthesis",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/execute-schedules",
+      "schedule": "0 6 * * *"
     }
   ],
   "functions": {
@@ -25,9 +29,6 @@
       "maxDuration": 60
     },
     "src/app/api/ingest/upload/route.ts": {
-      "maxDuration": 30
-    },
-    "src/app/api/integrations/*/sync/route.ts": {
       "maxDuration": 30
     },
     "src/app/api/webhooks/*/route.ts": {
@@ -42,8 +43,11 @@
     "src/app/api/cron/credit-reset/route.ts": {
       "maxDuration": 300
     },
-    "src/app/api/cron/drive-watch-renewal/route.ts": {
-      "maxDuration": 300
+    "src/app/api/cron/synthesis/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/execute-schedules/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [

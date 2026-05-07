@@ -86,7 +86,8 @@ export async function checkCredits(
 ): Promise<{ sufficient: boolean; balance: number }> {
   const adminDb = createAdminClient();
 
-  const { data, error } = await adminDb
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (adminDb as any)
     .from("organizations")
     .select("credit_balance")
     .eq("id", orgId)
@@ -116,7 +117,8 @@ export async function deductCredits(
 
   // Atomic deduction via RPC — the function checks balance >= amount
   // and returns the new balance in a single UPDATE statement.
-  const { data: newBalance, error } = await adminDb.rpc("deduct_credits", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: newBalance, error } = await (adminDb as any).rpc("deduct_credits", {
     p_org_id: orgId,
     p_amount: amount,
   });
@@ -124,13 +126,52 @@ export async function deductCredits(
   if (error) {
     // RPC raises exception if insufficient credits or org not found
     // Fetch current balance for the error message
-    const { data: org } = await adminDb
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: org } = await (adminDb as any)
       .from("organizations")
       .select("credit_balance")
       .eq("id", orgId)
       .single();
 
     throw new InsufficientCreditsError(org?.credit_balance ?? 0, amount);
+  }
+
+  // Fire-and-forget: notify org owner if credits are low
+  if (typeof newBalance === "number" && newBalance < 100 && newBalance > 0) {
+    (async () => {
+      try {
+        const { notify } = await import("@/lib/notifications/notify");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: owner } = await (adminDb as any)
+          .from("org_members")
+          .select("user_id")
+          .eq("org_id", orgId)
+          .eq("role", "owner")
+          .single();
+        if (owner) {
+          // Deduplicate: only notify once per threshold band
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: recent } = await (adminDb as any)
+            .from("notifications")
+            .select("id")
+            .eq("user_id", owner.user_id)
+            .eq("type", "credit_low")
+            .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .limit(1);
+          if (!recent || recent.length === 0) {
+            await notify({
+              userId: owner.user_id,
+              orgId,
+              type: "credit_low",
+              title: "Credits running low",
+              body: `Your organization has ${newBalance} credits remaining. Top up to avoid service interruption.`,
+              link: "/settings/billing",
+              metadata: { remaining: newBalance },
+            });
+          }
+        }
+      } catch { /* silent */ }
+    })();
   }
 
   return newBalance;

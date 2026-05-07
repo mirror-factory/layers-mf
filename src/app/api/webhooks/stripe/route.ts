@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       if (session.mode === "subscription" && orgId) {
         // Subscription checkout — store customer ID
         const customerId = session.customer as string;
-        await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
           .from("organizations")
           .update({ stripe_customer_id: customerId })
           .eq("id", orgId);
@@ -65,7 +66,8 @@ export async function POST(req: NextRequest) {
         // One-time credit purchase
         const credits = parseInt(session.metadata?.credits ?? "0", 10);
         if (orgId && credits > 0) {
-          await supabase.rpc("add_credits", {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).rpc("add_credits", {
             p_org_id: orgId,
             p_amount: credits,
           });
@@ -88,7 +90,8 @@ export async function POST(req: NextRequest) {
       const orgId = subscription.metadata?.org_id;
 
       if (orgId) {
-        await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
           .from("organizations")
           .update({ stripe_customer_id: subscription.customer as string })
           .eq("id", orgId);

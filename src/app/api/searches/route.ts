@@ -23,13 +23,15 @@ export async function GET() {
   }
 
   // Fetch user's own searches + shared searches from the org
-  const { data: ownSearches, error: ownError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: ownSearches, error: ownError } = await (supabase as any)
     .from("saved_searches")
     .select("id, name, query, filters, is_shared, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const { data: sharedSearches, error: sharedError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: sharedSearches, error: sharedError } = await (supabase as any)
     .from("saved_searches")
     .select("id, name, query, filters, is_shared, created_at")
     .eq("org_id", member.org_id)
@@ -78,7 +80,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("saved_searches")
     .insert({
       org_id: member.org_id,

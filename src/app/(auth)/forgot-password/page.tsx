@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://layers.hustletogether.com"}/auth/callback?next=/reset-password`,
     });
 
     if (error) {

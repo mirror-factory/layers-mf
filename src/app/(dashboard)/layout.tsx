@@ -2,13 +2,15 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { Breadcrumbs } from "@/components/breadcrumbs";
+
 import { CommandPalette } from "@/components/command-palette";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
+import { NotificationProvider } from "@/components/notification-provider";
+import { PushNotificationProvider } from "@/components/push-notification-provider";
 
 // Pages within the dashboard route group that should be publicly accessible
-const PUBLIC_DASHBOARD_PATHS = ["/features"];
+const PUBLIC_DASHBOARD_PATHS = ["/features", "/docs"];
 
 export default async function DashboardLayout({
   children,
@@ -52,20 +54,18 @@ export default async function DashboardLayout({
       : "Your org";
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex h-[100dvh] flex-col md:flex-row overflow-hidden">
       <OnboardingRedirect />
       <SidebarNav email={user!.email ?? ""} orgName={orgName} />
-      <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-background focus:text-foreground focus:border">
-          Skip to main content
-        </a>
-        <div className="border-b bg-card px-4 py-2 sm:px-6">
-          <Breadcrumbs />
+      <main id="main-content" className="flex-1 flex flex-col overflow-hidden" tabIndex={-1}>
+        <div className="flex-1 overflow-auto">
+          {children}
         </div>
-        {children}
       </main>
       <CommandPalette />
       <KeyboardShortcuts />
+      <NotificationProvider />
+      <PushNotificationProvider />
     </div>
   );
 }

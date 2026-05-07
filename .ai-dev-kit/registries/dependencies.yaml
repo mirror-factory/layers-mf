@@ -1,0 +1,25 @@
+# dependencies.yaml -- every declared dependency in package.json (runtime, dev,
+# peer) with its current vulnerability list, vendor-registry cross-reference,
+# and the paths that import it.
+#
+# Schema:   .ai-dev-kit/schemas/dependencies.schema.json
+# Writer:   scripts/sync-dependencies.ts (runs pnpm/npm audit --json)
+# Gate:     scripts/check-dependencies.ts (pre-push; fails on CRITICAL / HIGH
+#           or when last_audited_on is older than 14 days)
+# Consumer: /dev-kit/dependencies dashboard
+#
+# Do NOT hand-edit. Every field is overwritten by sync-dependencies.ts. The
+# weekly GitHub Action in .github/workflows/dependency-audit.yml refreshes
+# this file on `main` and opens an issue when new CRITICAL / HIGH vulns land.
+
+kind: dependencies
+schema_version: 1
+last_audited_on: null
+entries: []
+summary:
+  runtime: 0
+  dev: 0
+  critical: 0
+  high: 0
+  medium: 0
+  low: 0

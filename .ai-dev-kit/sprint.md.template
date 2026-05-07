@@ -1,0 +1,73 @@
+---
+sprint_id: sprint-{{N}}
+spec_ref: .ai-dev-kit/spec.md
+status: draft              # draft | in-progress | in-review | approved | blocked
+started_at: {{ISO_TIMESTAMP}}
+evaluator_decision: pending
+---
+
+# Sprint {{N}}: {{SPRINT_NAME}}
+
+## Scope
+
+**In scope** (by spec FR-ID):
+
+- FR-{{X}}: {{REQUIREMENT}}
+
+**Deliberately out of scope** (to keep the sprint bounded):
+
+- {{OUT_OF_SCOPE_ITEM}}
+
+## Acceptance Criteria
+
+Each row is a hard threshold. The Evaluator will test each one and assign PASS / FAIL / INCONCLUSIVE.
+
+| # | Criterion | Must/Should | How the Evaluator verifies |
+|---|-----------|-------------|---------------------------|
+| AC-1 | {{CRITERION}} | Must | {{VERIFICATION_METHOD}} |
+| AC-2 | {{CRITERION}} | Must | {{VERIFICATION_METHOD}} |
+| AC-3 | {{CRITERION}} | Should | {{VERIFICATION_METHOD}} |
+
+## Evaluator's Test Plan
+
+Specific commands + checks the Evaluator will run:
+
+```bash
+# Baseline
+npx ai-dev-kit doctor --strict
+pnpm typecheck
+pnpm test
+pnpm compliance
+pnpm check:deprecations
+
+# Sprint-specific
+{{SPRINT_SPECIFIC_TESTS}}
+
+# Runtime reality check (if routes were touched)
+pnpm test:api
+curl -s http://localhost:3000/api/observability/health | jq .warnings
+```
+
+## Risks & Unknowns
+
+- {{RISK}} -- {{MITIGATION}}
+
+## Open Questions (block the Generator from starting)
+
+- [ ] {{OPEN_QUESTION}}
+
+## Hard Blockers
+
+If any of these are present, the Generator MUST surface them to the user before writing code:
+
+- [ ] Missing API key: {{KEY_NAME}}
+- [ ] Missing dependency declared in spec: {{DEPENDENCY}}
+- [ ] Unresolved spec TBD: {{SPEC_REF}}
+
+## Notes
+
+{{GENERATOR_NOTES}}
+
+---
+
+_Planner drafted. Generator to fill in notes as work progresses. Evaluator writes `.ai-dev-kit/sprint-{{N}}-review.md` on Stop._

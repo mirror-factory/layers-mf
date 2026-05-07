@@ -1,0 +1,2164 @@
+kind: api-routes
+schema_version: 1
+last_synced_on: 2026-05-06T20:50:40.205Z
+entries:
+  - id: GET /(auth)/auth/callback
+    route: /(auth)/auth/callback
+    method: GET
+    path: src/app/(auth)/auth/callback/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/actions
+    route: /api/actions
+    method: GET
+    path: src/app/api/actions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/actions
+    route: /api/actions
+    method: PATCH
+    path: src/app/api/actions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/admin/config
+    route: /api/admin/config
+    method: GET
+    path: src/app/api/admin/config/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/admin/config
+    route: /api/admin/config
+    method: PATCH
+    path: src/app/api/admin/config/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/admin/stats
+    route: /api/admin/stats
+    method: GET
+    path: src/app/api/admin/stats/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/agents/run
+    route: /api/agents/run
+    method: POST
+    path: src/app/api/agents/run/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/agents/templates
+    route: /api/agents/templates
+    method: GET
+    path: src/app/api/agents/templates/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/analytics/content-health
+    route: /api/analytics/content-health
+    method: GET
+    path: src/app/api/analytics/content-health/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/analytics/costs
+    route: /api/analytics/costs
+    method: GET
+    path: src/app/api/analytics/costs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/analytics/sandbox-costs
+    route: /api/analytics/sandbox-costs
+    method: GET
+    path: src/app/api/analytics/sandbox-costs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/analytics/usage
+    route: /api/analytics/usage
+    method: GET
+    path: src/app/api/analytics/usage/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/analytics/webhook-health
+    route: /api/analytics/webhook-health
+    method: GET
+    path: src/app/api/analytics/webhook-health/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/approval/[id]"
+    route: "/api/approval/[id]"
+    method: POST
+    path: "src/app/api/approval/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/approval
+    route: /api/approval
+    method: GET
+    path: src/app/api/approval/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/artifacts/[id]"
+    route: "/api/artifacts/[id]"
+    method: GET
+    path: "src/app/api/artifacts/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/artifacts/[id]"
+    route: "/api/artifacts/[id]"
+    method: DELETE
+    path: "src/app/api/artifacts/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/artifacts/[id]"
+    route: "/api/artifacts/[id]"
+    method: PATCH
+    path: "src/app/api/artifacts/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/artifacts/[id]/versions/[versionNumber]"
+    route: "/api/artifacts/[id]/versions/[versionNumber]"
+    method: GET
+    path: "src/app/api/artifacts/[id]/versions/[versionNumber]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/artifacts/[id]/versions/[versionNumber]"
+    route: "/api/artifacts/[id]/versions/[versionNumber]"
+    method: DELETE
+    path: "src/app/api/artifacts/[id]/versions/[versionNumber]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/artifacts/[id]/versions"
+    route: "/api/artifacts/[id]/versions"
+    method: GET
+    path: "src/app/api/artifacts/[id]/versions/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/artifacts/[id]/versions"
+    route: "/api/artifacts/[id]/versions"
+    method: POST
+    path: "src/app/api/artifacts/[id]/versions/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/artifacts
+    route: /api/artifacts
+    method: GET
+    path: src/app/api/artifacts/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/audit
+    route: /api/audit
+    method: GET
+    path: src/app/api/audit/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/billing/checkout
+    route: /api/billing/checkout
+    method: POST
+    path: src/app/api/billing/checkout/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/billing/credits
+    route: /api/billing/credits
+    method: GET
+    path: src/app/api/billing/credits/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/billing/subscription
+    route: /api/billing/subscription
+    method: GET
+    path: src/app/api/billing/subscription/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/billing/subscription
+    route: /api/billing/subscription
+    method: POST
+    path: src/app/api/billing/subscription/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/billing/subscription
+    route: /api/billing/subscription
+    method: DELETE
+    path: src/app/api/billing/subscription/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/billing/usage
+    route: /api/billing/usage
+    method: GET
+    path: src/app/api/billing/usage/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/canvases/[id]/connections"
+    route: "/api/canvases/[id]/connections"
+    method: POST
+    path: "src/app/api/canvases/[id]/connections/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/canvases/[id]/connections"
+    route: "/api/canvases/[id]/connections"
+    method: DELETE
+    path: "src/app/api/canvases/[id]/connections/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/canvases/[id]/items"
+    route: "/api/canvases/[id]/items"
+    method: POST
+    path: "src/app/api/canvases/[id]/items/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/canvases/[id]/items"
+    route: "/api/canvases/[id]/items"
+    method: DELETE
+    path: "src/app/api/canvases/[id]/items/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/canvases/[id]/items"
+    route: "/api/canvases/[id]/items"
+    method: PATCH
+    path: "src/app/api/canvases/[id]/items/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/canvases/[id]"
+    route: "/api/canvases/[id]"
+    method: GET
+    path: "src/app/api/canvases/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/canvases/[id]"
+    route: "/api/canvases/[id]"
+    method: DELETE
+    path: "src/app/api/canvases/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/canvases/[id]"
+    route: "/api/canvases/[id]"
+    method: PATCH
+    path: "src/app/api/canvases/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/canvases
+    route: /api/canvases
+    method: GET
+    path: src/app/api/canvases/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/canvases
+    route: /api/canvases
+    method: POST
+    path: src/app/api/canvases/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/branch
+    route: /api/chat/branch
+    method: POST
+    path: src/app/api/chat/branch/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/chat/context-stats
+    route: /api/chat/context-stats
+    method: GET
+    path: src/app/api/chat/context-stats/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/feedback
+    route: /api/chat/feedback
+    method: POST
+    path: src/app/api/chat/feedback/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/chat/history
+    route: /api/chat/history
+    method: GET
+    path: src/app/api/chat/history/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/mcp
+    route: /api/chat/mcp
+    method: POST
+    path: src/app/api/chat/mcp/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/portal
+    route: /api/chat/portal
+    method: POST
+    path: src/app/api/chat/portal/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat
+    route: /api/chat
+    method: POST
+    path: src/app/api/chat/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/schedules
+    route: /api/chat/schedules
+    method: POST
+    path: src/app/api/chat/schedules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/chat/session/[id]"
+    route: "/api/chat/session/[id]"
+    method: POST
+    path: "src/app/api/chat/session/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/chat/share
+    route: /api/chat/share
+    method: GET
+    path: src/app/api/chat/share/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/share
+    route: /api/chat/share
+    method: POST
+    path: src/app/api/chat/share/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/share-link
+    route: /api/chat/share-link
+    method: POST
+    path: src/app/api/chat/share-link/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/chat/share-link
+    route: /api/chat/share-link
+    method: DELETE
+    path: src/app/api/chat/share-link/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat/skills
+    route: /api/chat/skills
+    method: POST
+    path: src/app/api/chat/skills/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/chat/stats
+    route: /api/chat/stats
+    method: GET
+    path: src/app/api/chat/stats/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/chat-sdk/webhook
+    route: /api/chat-sdk/webhook
+    method: POST
+    path: src/app/api/chat-sdk/webhook/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/collections/[id]/items"
+    route: "/api/collections/[id]/items"
+    method: POST
+    path: "src/app/api/collections/[id]/items/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/collections/[id]/items"
+    route: "/api/collections/[id]/items"
+    method: DELETE
+    path: "src/app/api/collections/[id]/items/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/collections/[id]"
+    route: "/api/collections/[id]"
+    method: GET
+    path: "src/app/api/collections/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/collections/[id]"
+    route: "/api/collections/[id]"
+    method: DELETE
+    path: "src/app/api/collections/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/collections/[id]"
+    route: "/api/collections/[id]"
+    method: PATCH
+    path: "src/app/api/collections/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/collections
+    route: /api/collections
+    method: GET
+    path: src/app/api/collections/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/collections
+    route: /api/collections
+    method: POST
+    path: src/app/api/collections/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]/annotations"
+    route: "/api/context/[id]/annotations"
+    method: GET
+    path: "src/app/api/context/[id]/annotations/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/context/[id]/annotations"
+    route: "/api/context/[id]/annotations"
+    method: PATCH
+    path: "src/app/api/context/[id]/annotations/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/context/[id]/archive"
+    route: "/api/context/[id]/archive"
+    method: POST
+    path: "src/app/api/context/[id]/archive/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/context/[id]/archive"
+    route: "/api/context/[id]/archive"
+    method: DELETE
+    path: "src/app/api/context/[id]/archive/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]/doc-versions"
+    route: "/api/context/[id]/doc-versions"
+    method: GET
+    path: "src/app/api/context/[id]/doc-versions/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/context/[id]/pin"
+    route: "/api/context/[id]/pin"
+    method: POST
+    path: "src/app/api/context/[id]/pin/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/context/[id]/pin"
+    route: "/api/context/[id]/pin"
+    method: DELETE
+    path: "src/app/api/context/[id]/pin/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/context/[id]/propose-edit"
+    route: "/api/context/[id]/propose-edit"
+    method: POST
+    path: "src/app/api/context/[id]/propose-edit/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]"
+    route: "/api/context/[id]"
+    method: GET
+    path: "src/app/api/context/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/context/[id]"
+    route: "/api/context/[id]"
+    method: DELETE
+    path: "src/app/api/context/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/context/[id]"
+    route: "/api/context/[id]"
+    method: PATCH
+    path: "src/app/api/context/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]/tags"
+    route: "/api/context/[id]/tags"
+    method: GET
+    path: "src/app/api/context/[id]/tags/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/context/[id]/tags"
+    route: "/api/context/[id]/tags"
+    method: POST
+    path: "src/app/api/context/[id]/tags/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/context/[id]/tags"
+    route: "/api/context/[id]/tags"
+    method: DELETE
+    path: "src/app/api/context/[id]/tags/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]/versions/[versionNumber]"
+    route: "/api/context/[id]/versions/[versionNumber]"
+    method: GET
+    path: "src/app/api/context/[id]/versions/[versionNumber]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/context/[id]/versions"
+    route: "/api/context/[id]/versions"
+    method: GET
+    path: "src/app/api/context/[id]/versions/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/context/bulk
+    route: /api/context/bulk
+    method: DELETE
+    path: src/app/api/context/bulk/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/context/classify
+    route: /api/context/classify
+    method: POST
+    path: src/app/api/context/classify/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/context/export
+    route: /api/context/export
+    method: GET
+    path: src/app/api/context/export/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/context/export
+    route: /api/context/export
+    method: POST
+    path: src/app/api/context/export/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/context/process
+    route: /api/context/process
+    method: POST
+    path: src/app/api/context/process/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/context/search
+    route: /api/context/search
+    method: POST
+    path: src/app/api/context/search/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/conversations/[id]"
+    route: "/api/conversations/[id]"
+    method: GET
+    path: "src/app/api/conversations/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/conversations/[id]"
+    route: "/api/conversations/[id]"
+    method: DELETE
+    path: "src/app/api/conversations/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/conversations
+    route: /api/conversations
+    method: GET
+    path: src/app/api/conversations/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/conversations
+    route: /api/conversations
+    method: POST
+    path: src/app/api/conversations/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/classify
+    route: /api/cron/classify
+    method: GET
+    path: src/app/api/cron/classify/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/cron/classify
+    route: /api/cron/classify
+    method: POST
+    path: src/app/api/cron/classify/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/credit-reset
+    route: /api/cron/credit-reset
+    method: GET
+    path: src/app/api/cron/credit-reset/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/digest
+    route: /api/cron/digest
+    method: GET
+    path: src/app/api/cron/digest/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/discord-alerts
+    route: /api/cron/discord-alerts
+    method: GET
+    path: src/app/api/cron/discord-alerts/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/cron/discord-alerts
+    route: /api/cron/discord-alerts
+    method: POST
+    path: src/app/api/cron/discord-alerts/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/execute-schedules
+    route: /api/cron/execute-schedules
+    method: GET
+    path: src/app/api/cron/execute-schedules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/cron/synthesis
+    route: /api/cron/synthesis
+    method: GET
+    path: src/app/api/cron/synthesis/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/cron/synthesis
+    route: /api/cron/synthesis
+    method: POST
+    path: src/app/api/cron/synthesis/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/dev-kit/config/[name]"
+    route: "/api/dev-kit/config/[name]"
+    method: POST
+    path: "src/app/api/dev-kit/config/[name]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/connectors
+    route: /api/dev-kit/connectors
+    method: GET
+    path: src/app/api/dev-kit/connectors/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/cost
+    route: /api/dev-kit/cost
+    method: GET
+    path: src/app/api/dev-kit/cost/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/coverage
+    route: /api/dev-kit/coverage
+    method: GET
+    path: src/app/api/dev-kit/coverage/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/dependencies
+    route: /api/dev-kit/dependencies
+    method: GET
+    path: src/app/api/dev-kit/dependencies/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/deployments
+    route: /api/dev-kit/deployments
+    method: GET
+    path: src/app/api/dev-kit/deployments/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/design-system
+    route: /api/dev-kit/design-system
+    method: GET
+    path: src/app/api/dev-kit/design-system/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/dev-kit/evals/[id]"
+    route: "/api/dev-kit/evals/[id]"
+    method: GET
+    path: "src/app/api/dev-kit/evals/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/evals
+    route: /api/dev-kit/evals
+    method: GET
+    path: src/app/api/dev-kit/evals/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/dev-kit/features/[name]"
+    route: "/api/dev-kit/features/[name]"
+    method: GET
+    path: "src/app/api/dev-kit/features/[name]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/features
+    route: /api/dev-kit/features
+    method: GET
+    path: src/app/api/dev-kit/features/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/index
+    route: /api/dev-kit/index
+    method: GET
+    path: src/app/api/dev-kit/index/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/logs/unified
+    route: /api/dev-kit/logs/unified
+    method: GET
+    path: src/app/api/dev-kit/logs/unified/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/overview
+    route: /api/dev-kit/overview
+    method: GET
+    path: src/app/api/dev-kit/overview/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/registries
+    route: /api/dev-kit/registries
+    method: GET
+    path: src/app/api/dev-kit/registries/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/regressions
+    route: /api/dev-kit/regressions
+    method: GET
+    path: src/app/api/dev-kit/regressions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/dev-kit/runs/[run_id]"
+    route: "/api/dev-kit/runs/[run_id]"
+    method: GET
+    path: "src/app/api/dev-kit/runs/[run_id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/runs
+    route: /api/dev-kit/runs
+    method: GET
+    path: src/app/api/dev-kit/runs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/dev-kit/sessions/[id]"
+    route: "/api/dev-kit/sessions/[id]"
+    method: GET
+    path: "src/app/api/dev-kit/sessions/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/sessions
+    route: /api/dev-kit/sessions
+    method: GET
+    path: src/app/api/dev-kit/sessions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/status
+    route: /api/dev-kit/status
+    method: GET
+    path: src/app/api/dev-kit/status/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dev-kit/tools
+    route: /api/dev-kit/tools
+    method: GET
+    path: src/app/api/dev-kit/tools/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/dewey/profile
+    route: /api/dewey/profile
+    method: GET
+    path: src/app/api/dewey/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: PATCH /api/dewey/profile
+    route: /api/dewey/profile
+    method: PATCH
+    path: src/app/api/dewey/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/discord/interactions
+    route: /api/discord/interactions
+    method: GET
+    path: src/app/api/discord/interactions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/discord/interactions
+    route: /api/discord/interactions
+    method: POST
+    path: src/app/api/discord/interactions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/discord/register
+    route: /api/discord/register
+    method: POST
+    path: src/app/api/discord/register/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/ditto/profile/generate
+    route: /api/ditto/profile/generate
+    method: POST
+    path: src/app/api/ditto/profile/generate/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/ditto/profile
+    route: /api/ditto/profile
+    method: GET
+    path: src/app/api/ditto/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/ditto/profile
+    route: /api/ditto/profile
+    method: PATCH
+    path: src/app/api/ditto/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/ditto/suggestions
+    route: /api/ditto/suggestions
+    method: GET
+    path: src/app/api/ditto/suggestions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/docs/[...slug]"
+    route: "/api/docs/[...slug]"
+    method: GET
+    path: "src/app/api/docs/[...slug]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/documents/[id]"
+    route: "/api/documents/[id]"
+    method: PATCH
+    path: "src/app/api/documents/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/documents/inline-edit
+    route: /api/documents/inline-edit
+    method: POST
+    path: src/app/api/documents/inline-edit/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/edit-proposals/[id]/vote"
+    route: "/api/edit-proposals/[id]/vote"
+    method: POST
+    path: "src/app/api/edit-proposals/[id]/vote/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/edit-proposals
+    route: /api/edit-proposals
+    method: GET
+    path: src/app/api/edit-proposals/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/generate
+    route: /api/generate
+    method: POST
+    path: src/app/api/generate/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/health
+    route: /api/health
+    method: GET
+    path: src/app/api/health/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/inbox/digest-preview
+    route: /api/inbox/digest-preview
+    method: GET
+    path: src/app/api/inbox/digest-preview/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/inbox/generate
+    route: /api/inbox/generate
+    method: GET
+    path: src/app/api/inbox/generate/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/inbox/generate
+    route: /api/inbox/generate
+    method: POST
+    path: src/app/api/inbox/generate/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/ingest/upload
+    route: /api/ingest/upload
+    method: POST
+    path: src/app/api/ingest/upload/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/interactions
+    route: /api/interactions
+    method: GET
+    path: src/app/api/interactions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/interactions
+    route: /api/interactions
+    method: POST
+    path: src/app/api/interactions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/library/artifacts/[id]/save-back"
+    route: "/api/library/artifacts/[id]/save-back"
+    method: POST
+    path: "src/app/api/library/artifacts/[id]/save-back/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/library/assets
+    route: /api/library/assets
+    method: POST
+    path: src/app/api/library/assets/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/library/context-packs
+    route: /api/library/context-packs
+    method: GET
+    path: src/app/api/library/context-packs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/library/context-packs
+    route: /api/library/context-packs
+    method: POST
+    path: src/app/api/library/context-packs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: "POST /api/library/inbox/[id]/curate"
+    route: "/api/library/inbox/[id]/curate"
+    method: POST
+    path: "src/app/api/library/inbox/[id]/curate/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: "GET /api/library/items/[id]"
+    route: "/api/library/items/[id]"
+    method: GET
+    path: "src/app/api/library/items/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/library/items
+    route: /api/library/items
+    method: GET
+    path: src/app/api/library/items/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/library/items
+    route: /api/library/items
+    method: POST
+    path: src/app/api/library/items/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/library/search
+    route: /api/library/search
+    method: POST
+    path: src/app/api/library/search/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/library/stacks
+    route: /api/library/stacks
+    method: GET
+    path: src/app/api/library/stacks/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/library/stacks
+    route: /api/library/stacks
+    method: POST
+    path: src/app/api/library/stacks/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/link-preview
+    route: /api/link-preview
+    method: GET
+    path: src/app/api/link-preview/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/mcp/discover
+    route: /api/mcp/discover
+    method: POST
+    path: src/app/api/mcp/discover/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/mcp/ingestion
+    route: /api/mcp/ingestion
+    method: POST
+    path: src/app/api/mcp/ingestion/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/mcp/layers
+    route: /api/mcp/layers
+    method: GET
+    path: src/app/api/mcp/layers/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: POST /api/mcp/layers
+    route: /api/mcp/layers
+    method: POST
+    path: src/app/api/mcp/layers/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:12:26.017Z"
+  - id: GET /api/mcp/oauth/callback
+    route: /api/mcp/oauth/callback
+    method: GET
+    path: src/app/api/mcp/oauth/callback/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/mcp/registry
+    route: /api/mcp/registry
+    method: GET
+    path: src/app/api/mcp/registry/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/mcp-servers/[id]/health"
+    route: "/api/mcp-servers/[id]/health"
+    method: POST
+    path: "src/app/api/mcp-servers/[id]/health/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-29T19:39:10.468Z"
+  - id: "DELETE /api/mcp-servers/[id]"
+    route: "/api/mcp-servers/[id]"
+    method: DELETE
+    path: "src/app/api/mcp-servers/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/mcp-servers/[id]"
+    route: "/api/mcp-servers/[id]"
+    method: PATCH
+    path: "src/app/api/mcp-servers/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/mcp-servers
+    route: /api/mcp-servers
+    method: GET
+    path: src/app/api/mcp-servers/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/mcp-servers
+    route: /api/mcp-servers
+    method: POST
+    path: src/app/api/mcp-servers/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/mcp-servers/test
+    route: /api/mcp-servers/test
+    method: POST
+    path: src/app/api/mcp-servers/test/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/notifications/[id]"
+    route: "/api/notifications/[id]"
+    method: DELETE
+    path: "src/app/api/notifications/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/notifications/[id]"
+    route: "/api/notifications/[id]"
+    method: PATCH
+    path: "src/app/api/notifications/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/notifications/clear-old
+    route: /api/notifications/clear-old
+    method: DELETE
+    path: src/app/api/notifications/clear-old/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/notifications/poll
+    route: /api/notifications/poll
+    method: GET
+    path: src/app/api/notifications/poll/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/notifications/read-all
+    route: /api/notifications/read-all
+    method: POST
+    path: src/app/api/notifications/read-all/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/notifications/register
+    route: /api/notifications/register
+    method: POST
+    path: src/app/api/notifications/register/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/notifications
+    route: /api/notifications
+    method: GET
+    path: src/app/api/notifications/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/notifications
+    route: /api/notifications
+    method: POST
+    path: src/app/api/notifications/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/observability/health
+    route: /api/observability/health
+    method: GET
+    path: src/app/api/observability/health/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/org/stats
+    route: /api/org/stats
+    method: GET
+    path: src/app/api/org/stats/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/portals/[id]"
+    route: "/api/portals/[id]"
+    method: GET
+    path: "src/app/api/portals/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/portals/[id]"
+    route: "/api/portals/[id]"
+    method: DELETE
+    path: "src/app/api/portals/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/portals/[id]"
+    route: "/api/portals/[id]"
+    method: PATCH
+    path: "src/app/api/portals/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/portals/analytics
+    route: /api/portals/analytics
+    method: GET
+    path: src/app/api/portals/analytics/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/portals/analytics
+    route: /api/portals/analytics
+    method: POST
+    path: src/app/api/portals/analytics/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/portals/public/[token]"
+    route: "/api/portals/public/[token]"
+    method: GET
+    path: "src/app/api/portals/public/[token]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/portals
+    route: /api/portals
+    method: GET
+    path: src/app/api/portals/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/portals
+    route: /api/portals
+    method: POST
+    path: src/app/api/portals/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/portals/upload
+    route: /api/portals/upload
+    method: POST
+    path: src/app/api/portals/upload/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/priority-docs
+    route: /api/priority-docs
+    method: GET
+    path: src/app/api/priority-docs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/priority-docs
+    route: /api/priority-docs
+    method: POST
+    path: src/app/api/priority-docs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/priority-docs
+    route: /api/priority-docs
+    method: DELETE
+    path: src/app/api/priority-docs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/priority-docs
+    route: /api/priority-docs
+    method: PATCH
+    path: src/app/api/priority-docs/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/push/send
+    route: /api/push/send
+    method: POST
+    path: src/app/api/push/send/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/rules
+    route: /api/rules
+    method: GET
+    path: src/app/api/rules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/rules
+    route: /api/rules
+    method: POST
+    path: src/app/api/rules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/rules
+    route: /api/rules
+    method: DELETE
+    path: src/app/api/rules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/rules
+    route: /api/rules
+    method: PATCH
+    path: src/app/api/rules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/sandbox/[artifactId]"
+    route: "/api/sandbox/[artifactId]"
+    method: GET
+    path: "src/app/api/sandbox/[artifactId]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/sandbox/[artifactId]"
+    route: "/api/sandbox/[artifactId]"
+    method: POST
+    path: "src/app/api/sandbox/[artifactId]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/sandbox/[artifactId]"
+    route: "/api/sandbox/[artifactId]"
+    method: DELETE
+    path: "src/app/api/sandbox/[artifactId]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/sandbox/demo
+    route: /api/sandbox/demo
+    method: GET
+    path: src/app/api/sandbox/demo/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/sandbox/demo
+    route: /api/sandbox/demo
+    method: POST
+    path: src/app/api/sandbox/demo/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/sandbox/demo
+    route: /api/sandbox/demo
+    method: DELETE
+    path: src/app/api/sandbox/demo/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/sandbox/restart
+    route: /api/sandbox/restart
+    method: POST
+    path: src/app/api/sandbox/restart/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/sandbox/status
+    route: /api/sandbox/status
+    method: GET
+    path: src/app/api/sandbox/status/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/scaffolding/apply
+    route: /api/scaffolding/apply
+    method: POST
+    path: src/app/api/scaffolding/apply/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/schedules/[id]"
+    route: "/api/schedules/[id]"
+    method: DELETE
+    path: "src/app/api/schedules/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/schedules/[id]"
+    route: "/api/schedules/[id]"
+    method: PATCH
+    path: "src/app/api/schedules/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/schedules/execute
+    route: /api/schedules/execute
+    method: POST
+    path: src/app/api/schedules/execute/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/schedules
+    route: /api/schedules
+    method: GET
+    path: src/app/api/schedules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/schedules
+    route: /api/schedules
+    method: POST
+    path: src/app/api/schedules/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/searches/[id]"
+    route: "/api/searches/[id]"
+    method: DELETE
+    path: "src/app/api/searches/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/searches
+    route: /api/searches
+    method: GET
+    path: src/app/api/searches/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/searches
+    route: /api/searches
+    method: POST
+    path: src/app/api/searches/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/sessions/[id]/context"
+    route: "/api/sessions/[id]/context"
+    method: POST
+    path: "src/app/api/sessions/[id]/context/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/sessions/[id]/context"
+    route: "/api/sessions/[id]/context"
+    method: DELETE
+    path: "src/app/api/sessions/[id]/context/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/sessions/[id]/insights"
+    route: "/api/sessions/[id]/insights"
+    method: GET
+    path: "src/app/api/sessions/[id]/insights/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/sessions/[id]/insights"
+    route: "/api/sessions/[id]/insights"
+    method: PATCH
+    path: "src/app/api/sessions/[id]/insights/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/sessions/[id]/members"
+    route: "/api/sessions/[id]/members"
+    method: GET
+    path: "src/app/api/sessions/[id]/members/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/sessions/[id]/members"
+    route: "/api/sessions/[id]/members"
+    method: POST
+    path: "src/app/api/sessions/[id]/members/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/sessions/[id]"
+    route: "/api/sessions/[id]"
+    method: GET
+    path: "src/app/api/sessions/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/sessions/[id]"
+    route: "/api/sessions/[id]"
+    method: PATCH
+    path: "src/app/api/sessions/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/sessions
+    route: /api/sessions
+    method: GET
+    path: src/app/api/sessions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/sessions
+    route: /api/sessions
+    method: POST
+    path: src/app/api/sessions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/settings/api-keys
+    route: /api/settings/api-keys
+    method: GET
+    path: src/app/api/settings/api-keys/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/settings/api-keys
+    route: /api/settings/api-keys
+    method: POST
+    path: src/app/api/settings/api-keys/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/settings/api-keys
+    route: /api/settings/api-keys
+    method: DELETE
+    path: src/app/api/settings/api-keys/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/settings/credentials
+    route: /api/settings/credentials
+    method: POST
+    path: src/app/api/settings/credentials/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/settings/notifications
+    route: /api/settings/notifications
+    method: GET
+    path: src/app/api/settings/notifications/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/settings/notifications
+    route: /api/settings/notifications
+    method: PATCH
+    path: src/app/api/settings/notifications/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/settings/org
+    route: /api/settings/org
+    method: GET
+    path: src/app/api/settings/org/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/settings/org
+    route: /api/settings/org
+    method: DELETE
+    path: src/app/api/settings/org/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/settings/org
+    route: /api/settings/org
+    method: PATCH
+    path: src/app/api/settings/org/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/settings/partner
+    route: /api/settings/partner
+    method: POST
+    path: src/app/api/settings/partner/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/settings/permissions
+    route: /api/settings/permissions
+    method: GET
+    path: src/app/api/settings/permissions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/settings/permissions
+    route: /api/settings/permissions
+    method: POST
+    path: src/app/api/settings/permissions/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/settings/source-weights
+    route: /api/settings/source-weights
+    method: GET
+    path: src/app/api/settings/source-weights/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/settings/source-weights
+    route: /api/settings/source-weights
+    method: PATCH
+    path: src/app/api/settings/source-weights/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "GET /api/share-link/[token]"
+    route: "/api/share-link/[token]"
+    method: GET
+    path: "src/app/api/share-link/[token]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/share-link
+    route: /api/share-link
+    method: POST
+    path: src/app/api/share-link/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/share-link
+    route: /api/share-link
+    method: DELETE
+    path: src/app/api/share-link/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/sharing/[id]"
+    route: "/api/sharing/[id]"
+    method: DELETE
+    path: "src/app/api/sharing/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/sharing/[id]"
+    route: "/api/sharing/[id]"
+    method: PATCH
+    path: "src/app/api/sharing/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/sharing
+    route: /api/sharing
+    method: GET
+    path: src/app/api/sharing/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/sharing
+    route: /api/sharing
+    method: POST
+    path: src/app/api/sharing/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/sharing
+    route: /api/sharing
+    method: DELETE
+    path: src/app/api/sharing/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/skills/[id]"
+    route: "/api/skills/[id]"
+    method: DELETE
+    path: "src/app/api/skills/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/skills/[id]"
+    route: "/api/skills/[id]"
+    method: PATCH
+    path: "src/app/api/skills/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/skills
+    route: /api/skills
+    method: GET
+    path: src/app/api/skills/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/skills
+    route: /api/skills
+    method: POST
+    path: src/app/api/skills/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/skills/search
+    route: /api/skills/search
+    method: GET
+    path: src/app/api/skills/search/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/skills/seed
+    route: /api/skills/seed
+    method: POST
+    path: src/app/api/skills/seed/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/skills/upload
+    route: /api/skills/upload
+    method: POST
+    path: src/app/api/skills/upload/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "POST /api/tags/[id]"
+    route: "/api/tags/[id]"
+    method: POST
+    path: "src/app/api/tags/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/tags/[id]"
+    route: "/api/tags/[id]"
+    method: DELETE
+    path: "src/app/api/tags/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "PATCH /api/tags/[id]"
+    route: "/api/tags/[id]"
+    method: PATCH
+    path: "src/app/api/tags/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/tags
+    route: /api/tags
+    method: GET
+    path: src/app/api/tags/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/tags
+    route: /api/tags
+    method: POST
+    path: src/app/api/tags/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: "DELETE /api/team/invite/[id]"
+    route: "/api/team/invite/[id]"
+    method: DELETE
+    path: "src/app/api/team/invite/[id]/route.ts"
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/team/invite
+    route: /api/team/invite
+    method: GET
+    path: src/app/api/team/invite/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/team/invite
+    route: /api/team/invite
+    method: POST
+    path: src/app/api/team/invite/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/team/members
+    route: /api/team/members
+    method: GET
+    path: src/app/api/team/members/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: DELETE /api/team/members
+    route: /api/team/members
+    method: DELETE
+    path: src/app/api/team/members/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/team/members
+    route: /api/team/members
+    method: PATCH
+    path: src/app/api/team/members/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/team/profile
+    route: /api/team/profile
+    method: GET
+    path: src/app/api/team/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: PATCH /api/team/profile
+    route: /api/team/profile
+    method: PATCH
+    path: src/app/api/team/profile/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /api/tools/registry
+    route: /api/tools/registry
+    method: GET
+    path: src/app/api/tools/registry/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/tts
+    route: /api/tts
+    method: POST
+    path: src/app/api/tts/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/webhooks/discord
+    route: /api/webhooks/discord
+    method: POST
+    path: src/app/api/webhooks/discord/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/webhooks/ingest
+    route: /api/webhooks/ingest
+    method: POST
+    path: src/app/api/webhooks/ingest/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/webhooks/linear
+    route: /api/webhooks/linear
+    method: POST
+    path: src/app/api/webhooks/linear/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: POST /api/webhooks/stripe
+    route: /api/webhooks/stripe
+    method: POST
+    path: src/app/api/webhooks/stripe/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"
+  - id: GET /sprint-progress
+    route: /sprint-progress
+    method: GET
+    path: src/app/sprint-progress/route.ts
+    owner: null
+    auth: public
+    description: null
+    created_on: "2026-04-28T19:33:04.890Z"

@@ -1,5 +1,3 @@
-import { nango } from "@/lib/nango/client";
-
 // ── Discord Types ────────────────────────────────────────────────────────────
 
 export interface DiscordGuild {
@@ -37,86 +35,6 @@ export interface DiscordMessage {
     author: { username: string };
     content: string;
   } | null;
-}
-
-// Text-based channel types we care about
-const TEXT_CHANNEL_TYPES = new Set([0, 5, 11, 12, 15]); // text, announcement, public thread, private thread, forum
-
-// ── Fetch Functions ──────────────────────────────────────────────────────────
-
-/**
- * Fetch guilds (servers) the bot has access to.
- */
-export async function fetchDiscordGuilds(
-  connectionId: string,
-  provider: string
-): Promise<DiscordGuild[]> {
-  try {
-    const res = await nango.proxy<DiscordGuild[]>({
-      method: "GET",
-      providerConfigKey: provider,
-      connectionId,
-      endpoint: "/users/@me/guilds",
-    });
-    return res.data ?? [];
-  } catch (err) {
-    console.error("[discord] guilds fetch failed:", err);
-    return [];
-  }
-}
-
-/**
- * Fetch text channels for a guild.
- */
-export async function fetchDiscordChannels(
-  connectionId: string,
-  provider: string,
-  guildId: string
-): Promise<DiscordChannel[]> {
-  try {
-    const res = await nango.proxy<DiscordChannel[]>({
-      method: "GET",
-      providerConfigKey: provider,
-      connectionId,
-      endpoint: `/guilds/${guildId}/channels`,
-    });
-    return (res.data ?? []).filter((ch) => TEXT_CHANNEL_TYPES.has(ch.type));
-  } catch (err) {
-    console.error(`[discord] channels fetch failed for guild ${guildId}:`, err);
-    return [];
-  }
-}
-
-/**
- * Fetch recent messages from a channel.
- * Optionally pass `after` to only get messages after a specific ID (incremental sync).
- */
-export async function fetchDiscordMessages(
-  connectionId: string,
-  provider: string,
-  channelId: string,
-  options?: { limit?: number; after?: string }
-): Promise<DiscordMessage[]> {
-  const params: Record<string, string> = {
-    limit: String(options?.limit ?? 100),
-  };
-  if (options?.after) {
-    params.after = options.after;
-  }
-
-  try {
-    const res = await nango.proxy<DiscordMessage[]>({
-      method: "GET",
-      providerConfigKey: provider,
-      connectionId,
-      endpoint: `/channels/${channelId}/messages`,
-      params,
-    });
-    return res.data ?? [];
-  } catch (err) {
-    console.error(`[discord] messages fetch failed for channel ${channelId}:`, err);
-    return [];
-  }
 }
 
 // ── Content Builders ─────────────────────────────────────────────────────────

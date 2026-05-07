@@ -1,0 +1,120 @@
+# TEST-MANIFEST.yaml -- feature-level test contract.
+#
+# The manifest is the single source of truth for what a feature does.
+# `ai-dev-kit manifest generate <feature>` reads this file and emits two
+# generated specs:
+#
+#   tests/expect/<feature>.expect.ts   -- natural-language @anthropic-ai/expect
+#   tests/e2e/<feature>.spec.ts        -- structured @playwright/test
+#
+# Manual edits to the generated specs are clobbered on regen. Reach for an
+# escape_hatch step when a structured action cannot express the intent, and
+# state a reason in the manifest itself.
+#
+# Ground rules:
+#   * feature name MUST match the directory: features/<feature>/TEST-MANIFEST.yaml
+#   * every user_flow MUST map to at least one acceptance checkbox in SPEC.md
+#     (loose substring match; see scripts/check-test-manifest-coverage.ts)
+#   * escape_hatch MUST carry a reason -- drift is tracked in the
+#     test-contracts registry, so future-you will see the accumulated debt.
+
+feature: audio-transcribe
+version: 1
+description: >
+  User taps record, speaks, taps stop, receives a streamed summary of what
+  they said. Failure modes: mic denied, network hiccup, empty audio.
+
+user_flows:
+  - name: record-and-summarize
+    description: >
+      Happy path. User loads /transcribe, records 5s of audio from a fixture,
+      stops, and sees the summary stream in within 10 seconds.
+    preconditions:
+      user_is_authenticated: true
+    tags:
+      - happy-path
+    steps:
+      - action: navigate
+        to: /transcribe
+
+      - action: expect_visible
+        locator: "button:has-text('Record')"
+        within_seconds: 5
+        description: the record button is visible and clickable on initial load
+
+      - action: click
+        locator: "button:has-text('Record')"
+
+      - action: feed_audio_fixture
+        fixture: coffee-order.wav
+        description: >
+          Pipes a 5s WAV of "one cappuccino please, oat milk" through the
+          MediaStream shim. Generator scaffolds a helper stub with a TODO --
+          browser mic injection wiring is per-project.
+
+      - action: expect_visible
+        locator: "[data-testid='recording-indicator']"
+        within_seconds: 2
+
+      - action: click
+        locator: "button:has-text('Stop')"
+
+      - action: expect_visible
+        locator: "[data-testid='summary']"
+        within_seconds: 10
+        description: the summary region appears after stop is pressed
+
+      - action: expect_text_grows
+        locator: "[data-testid='summary']"
+        min_growth_chars: 40
+        within_seconds: 10
+        sample_ms: 500
+        description: the summary streams -- text length grows as tokens arrive
+
+      - action: expect_text_contains
+        locator: "[data-testid='summary']"
+        substring: cappuccino
+        description: the summary mentions the drink from the fixture
+
+  - name: error-no-mic
+    description: >
+      Mic permission denied. The page surfaces an actionable error and
+      recovery hint, does not crash, and does not send a Langfuse run.
+    tags:
+      - error-state
+    steps:
+      - action: navigate
+        to: /transcribe
+
+      - action: escape_hatch
+        reason: >
+          Playwright needs to deny mic permission at the browser context
+          level before the page loads. No structured action for that yet --
+          add one when we see a second feature need it.
+        language: playwright
+        code: |
+          await context.grantPermissions([]);
+
+      - action: click
+        locator: "button:has-text('Record')"
+
+      - action: expect_visible
+        locator: "[role='alert']"
+        within_seconds: 3
+        description: a visible alert explains the mic is blocked
+
+      - action: expect_text_contains
+        locator: "[role='alert']"
+        substring: microphone
+
+# Optional: per-run cost ceiling. Generators emit an assertion against the
+# Langfuse run cost; the flow fails if spend exceeds this.
+cost_budget:
+  per_run_usd: 0.05
+
+# Optional: required Langfuse run tags. The generator emits assertions that
+# poll the Langfuse API for the run and check every tag is present.
+observability:
+  required_run_tags:
+    - "aiCall.label == 'audio-summarize'"
+    - "aiCall.costMode == 'subscription'"

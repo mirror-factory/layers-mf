@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/mcp.json",
+  "_comment": "MCP servers auto-loaded by Claude Code when it opens this project. Claude Code reads .mcp.json at SessionStart. Projects can add more by running `claude mcp add <name> -- <cmd>`. Kit ships three by default -- see docs/concepts/onboarding-flow.md.",
+  "mcpServers": {
+    "context7": {
+      "_comment": "Upstash Context7 -- fetches current docs for fast-moving libraries. Required by context7-suggest.py PreToolUse hook which blocks edits to flagged-library files without a recent docs lookup.",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {}
+    },
+    "firecrawl": {
+      "_comment": "Firecrawl -- scrape/crawl pages for @spec-enricher and research-bootstrap. Requires FIRECRAWL_API_KEY in env (run ai-dev-kit connect to set it).",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      }
+    },
+    "playwright": {
+      "_comment": "Playwright MCP -- browser verification for the Evaluator subagent when agent-browser isn't installed. Headless Chrome; no env keys required.",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-playwright"],
+      "env": {}
+    }
+  }
+}

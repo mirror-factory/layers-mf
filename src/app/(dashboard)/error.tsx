@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { AlertCircle, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, RotateCcw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,17 +36,28 @@ export default function DashboardError({
             An unexpected error occurred. Please try again.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
+          {error.message && (
+            <p className="text-center text-sm text-muted-foreground">
+              {error.message}
+            </p>
+          )}
           {error.digest && (
             <p className="text-center text-xs text-muted-foreground">
               Error ID: {error.digest}
             </p>
           )}
         </CardContent>
-        <CardFooter className="justify-center">
+        <CardFooter className="justify-center gap-3">
           <Button onClick={reset}>
             <RotateCcw className="mr-2 h-4 w-4" />
             Try again
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/home">
+              <Home className="mr-2 h-4 w-4" />
+              Go home
+            </Link>
           </Button>
         </CardFooter>
       </Card>

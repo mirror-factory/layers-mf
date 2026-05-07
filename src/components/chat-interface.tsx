@@ -1,13 +1,37 @@
 "use client";
 
+import React from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, UIMessage } from "ai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { DefaultChatTransport, UIMessage, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, Bot, User,
-  FileText, Mic, GitBranch, MessageSquare, HardDrive, Upload, Hash, Github,
-  LayoutGrid, ThumbsUp, ThumbsDown, X,
+  Send, Loader2, Square,
+  FileText, Mic, MicOff, GitBranch, MessageSquare, MessageSquareText, HardDrive, Upload, Hash, Github,
+  LayoutGrid, ThumbsUp, ThumbsDown,
+  MoreHorizontal, Copy, Download, FileJson, Share2, Check, X,
+  PanelRightClose, PanelRightOpen, FileCode2, ExternalLink, Globe,
+  Paperclip, Image as ImageIcon, FileType, Zap, BarChart3, Clock, Settings2, Save,
+  RefreshCw, AlertCircle, AlertTriangle, Play, Plug, ClipboardList, Mail, StickyNote,
+  Headphones, FolderOpen, CalendarClock, CheckCircle2, Puzzle, Wrench,
+  BookOpen, Search, HelpCircle, ArrowDownToLine, ChevronLeft, Users,
 } from "lucide-react";
+import { InterviewUI } from "@/components/interview-ui";
+import { CodeSandbox } from "@/components/code-sandbox";
+import { CodeBlock } from "@/components/ai-elements/code-block";
+import { TiptapEditor } from "@/components/tiptap-editor";
+import { FileTree, buildFileTree, findFileNode } from "@/components/file-tree";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/agents/templates";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,16 +51,152 @@ import {
   type ToolPart,
 } from "@/components/ai-elements/tool";
 import { SourceCitation, type CitationSource } from "@/components/chat/source-citation";
+import { ContextWindowBar } from "@/components/chat/context-window-bar";
+import { MessageStats } from "@/components/chat/message-stats";
+import { ArtifactVersionHistory } from "@/components/artifact-version-history";
+import { Entropy } from "@/components/ui/entropy";
+import { ShareLinkButton } from "@/components/share-link-button";
+import { NeuralMorph } from "@/components/ui/neural-morph";
+import { MCPOAuthCard, MCPBearerCard } from "@/components/mcp-connect-cards";
+import { PortalVoiceMode } from "@/components/portal-voice-mode";
+import { getActiveFormation, getDoneFormation, getOldFormation, parseEmotion } from "@/lib/avatar-state";
+import { startLiveActivity, updateLiveActivity, endLiveActivity } from "@/lib/notifications/live-activity";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import { Suggestions, Suggestion } from "@/components/ai-elements/suggestion";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import { MentionPicker } from "@/components/mention-picker";
+import { ChatParticipantsModal } from "@/components/chat-participants-modal";
+import { AmbientAICard, type AmbientAISuggestion } from "@/components/ambient-ai-card";
 
-const MODELS = [
-  { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku" },
-  { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet" },
-  { id: "anthropic/claude-opus-4.6", label: "Claude Opus" },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o mini" },
-  { id: "openai/gpt-4o", label: "GPT-4o" },
-  { id: "google/gemini-flash", label: "Gemini Flash" },
-  { id: "google/gemini-pro", label: "Gemini Pro" },
+// ---------------------------------------------------------------------------
+// ChatVariant — typed config for visual/behavioral variants of ChatInterface
+// ---------------------------------------------------------------------------
+
+interface ChatVariant {
+  /** Visual style */
+  style: "default" | "portal";
+  /** Input area gradient colors */
+  gradientFrom: string;
+  gradientTo: string;
+  /** Text colors */
+  headingColor: string;
+  bodyColor: string;
+  mutedColor: string;
+  /** Input styling */
+  inputBorder: string;
+  inputBg: string;
+  /** Suggestion pills */
+  suggestions: { text: string; accent: boolean }[];
+  /** Whether voice mode is available */
+  voiceEnabled: boolean;
+  /** Tool list for info display */
+  tools: string[];
+}
+
+export type { ChatVariant };
+export { PORTAL_VARIANT, DEFAULT_VARIANT };
+
+const PORTAL_VARIANT: ChatVariant = {
+  style: "portal",
+  gradientFrom: "from-transparent",
+  gradientTo: "to-slate-50 dark:to-[#1a1f2e]",
+  headingColor: "text-slate-700 dark:text-white",
+  bodyColor: "text-slate-600 dark:text-white/70",
+  mutedColor: "text-slate-500 dark:text-white/40",
+  inputBorder: "border-slate-300 dark:border-white/10",
+  inputBg: "bg-white dark:bg-white/5",
+  suggestions: [
+    { text: "Summarize this document", accent: true },
+    { text: "Walk me through the key points", accent: false },
+    { text: "Visualize the timeline as a chart", accent: true },
+  ],
+  voiceEnabled: true,
+  tools: [],
+};
+
+const DEFAULT_VARIANT: ChatVariant = {
+  style: "default",
+  gradientFrom: "from-transparent",
+  gradientTo: "to-background",
+  headingColor: "text-foreground",
+  bodyColor: "text-muted-foreground",
+  mutedColor: "text-muted-foreground/60",
+  inputBorder: "border-border/50",
+  inputBg: "bg-card/60",
+  suggestions: [],
+  voiceEnabled: false,
+  tools: [],
+};
+
+// ---------------------------------------------------------------------------
+
+const CLOUD_MODELS = [
+  // Flagship
+  { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6", tier: "flagship" },
+  { id: "openai/gpt-5.4", label: "GPT-5.4", tier: "flagship" },
+  { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", tier: "flagship" },
+  // Balanced
+  { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "balanced" },
+  { id: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini", tier: "balanced" },
+  { id: "google/gemini-3-flash", label: "Gemini 3 Flash", tier: "balanced" },
+  // Fast
+  { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", tier: "fast" },
+  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "fast" },
+  { id: "google/gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite", tier: "fast" },
 ] as const;
+
+const STATIC_LOCAL_MODELS = [
+  { id: "ollama/qwen3:8b", label: "Qwen 3 8B", tier: "local" },
+  { id: "ollama/gemma4:26b", label: "Gemma 4 26B", tier: "local" },
+  { id: "ollama/qwen3.5:27b", label: "Qwen 3.5 27B", tier: "local" },
+  { id: "ollama/llama3.2-vision:11b", label: "Llama 3.2 Vision 11B", tier: "local" },
+];
+
+// Detect which local models are actually loaded in Ollama
+function useLocalModels() {
+  const [isLocal, setIsLocal] = useState(false);
+  const [availableModels, setAvailableModels] = useState<typeof STATIC_LOCAL_MODELS>([]);
+
+  useEffect(() => {
+    const local = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    setIsLocal(local);
+    if (!local) return;
+
+    // Query Ollama for available models
+    fetch("http://localhost:11434/api/tags")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.models) return;
+        const ollamaNames = new Set((data.models as { name: string }[]).map(m => m.name));
+        // Filter static list to only show models that are actually pulled
+        const available = STATIC_LOCAL_MODELS.filter(m => {
+          const ollamaId = m.id.replace("ollama/", "");
+          return ollamaNames.has(ollamaId);
+        });
+        // Also add any Ollama models not in our static list
+        for (const m of data.models as { name: string; size: number }[]) {
+          const id = `ollama/${m.name}`;
+          if (!STATIC_LOCAL_MODELS.some(s => s.id === id)) {
+            available.push({
+              id,
+              label: `${m.name} (${(m.size / 1e9).toFixed(0)}GB)`,
+              tier: "local",
+            });
+          }
+        }
+        setAvailableModels(available);
+      })
+      .catch(() => {
+        // Ollama not running — show static list
+        setAvailableModels(STATIC_LOCAL_MODELS);
+      });
+  }, []);
+  return { isLocal, availableModels };
+}
 
 const CONTENT_ICON: Record<string, React.ElementType> = {
   meeting_transcript: Mic,
@@ -65,6 +225,26 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
   upload: Upload,
 };
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_FILE_TYPES = [
+  "image/jpeg", "image/png", "image/gif", "image/webp",
+  "application/pdf",
+  "text/plain", "text/markdown", "text/csv",
+];
+const ACCEPTED_EXTENSIONS = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.csv";
+
+interface PendingFile {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+}
+
+function getFileIcon(type: string) {
+  if (type.startsWith("image/")) return ImageIcon;
+  if (type === "application/pdf") return FileType;
+  return FileText;
+}
+
 function getTextContent(parts: { type: string; text?: string }[]): string {
   return parts
     .filter((p) => p.type === "text")
@@ -84,6 +264,45 @@ function getSearchSources(toolParts: ToolPart[]): CitationSource[] {
   return (searchTool.output as CitationSource[]) ?? [];
 }
 
+/** Error boundary for ToolCallCard — prevents circular JSON crashes from taking down the whole chat */
+class ToolCallErrorBoundary extends React.Component<
+  { children: React.ReactNode; toolName: string },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode; toolName: string }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message.slice(0, 100) };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          <div className="flex items-center gap-2 text-amber-500">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span className="font-medium">{this.props.toolName}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Tool completed but output could not be displayed. ({this.state.error})
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function SafeToolCallCard(props: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
+  const toolName = props.part.type.replace("tool-", "");
+  return (
+    <ToolCallErrorBoundary toolName={toolName}>
+      <ToolCallCard {...props} />
+    </ToolCallErrorBoundary>
+  );
+}
+
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(100, Math.round(score * 2000));
   return (
@@ -96,42 +315,1060 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function ToolCallCard({ part }: { part: ToolPart }) {
+function InlineApproval({ approvalId, reasoning, actionType, targetService, conflictReason, onExecuted }: {
+  approvalId: string;
+  reasoning?: string;
+  actionType?: string;
+  targetService?: string;
+  conflictReason?: string;
+  onExecuted?: (result: string) => void;
+}) {
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "executing">("pending");
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleAction = useCallback(async (action: "approve" | "reject") => {
+    setStatus(action === "approve" ? "executing" : "rejected");
+    try {
+      const res = await fetch(`/api/approval/${approvalId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (action === "approve") {
+        setStatus("approved");
+        let resultMsg = "Approved";
+        if (data.execution?.success) {
+          const exec = data.execution;
+          if (exec.issue) {
+            resultMsg = `Approved and executed: Created Linear issue ${exec.issue.identifier} — ${exec.issue.url}`;
+          } else if (exec.draft) {
+            resultMsg = `Approved and executed: Email draft saved to Gmail`;
+          } else {
+            resultMsg = `Approved and executed successfully`;
+          }
+        } else if (data.execution?.error) {
+          resultMsg = `Approved but execution failed: ${data.execution.error}`;
+        } else if (data.execution?.reason) {
+          resultMsg = `Approved (not auto-executed: ${data.execution.reason})`;
+        }
+        setResult(resultMsg);
+        // Notify the conversation so Dewey knows what happened
+        onExecuted?.(resultMsg);
+      } else {
+        setResult("Rejected");
+      }
+    } catch {
+      setResult("Error processing action");
+      setStatus("pending");
+    }
+  }, [approvalId]);
+
+  return (
+    <div className="rounded-lg border bg-card p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+          Approval Required
+        </span>
+        {actionType && <span className="text-xs text-muted-foreground">{actionType}</span>}
+        {targetService && <span className="text-xs text-muted-foreground">→ {targetService}</span>}
+      </div>
+      {reasoning && <p className="text-sm text-foreground">{reasoning}</p>}
+      {conflictReason && (
+        <div className="text-xs px-2 py-1 rounded bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300">
+          Priority doc conflict: {conflictReason}
+        </div>
+      )}
+      {status === "pending" && (
+        <div className="flex gap-2 pt-1">
+          <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction("approve")}>
+            Approve & Execute
+          </Button>
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950" onClick={() => handleAction("reject")}>
+            Reject
+          </Button>
+        </div>
+      )}
+      {status === "executing" && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Executing...
+        </div>
+      )}
+      {result && (
+        <div className={cn("text-xs p-2 rounded", status === "approved" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : status === "rejected" ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-muted text-muted-foreground")}>
+          {result.includes("open_gmail") ? (
+            <span>
+              {result.replace("open_gmail", "")}{" "}
+              <a href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:opacity-80">
+                Open in Gmail →
+              </a>
+            </span>
+          ) : result.includes("https://") ? (
+            <>
+              {result.split(/(https:\/\/\S+)/g).map((part, i) =>
+                part.startsWith("https://") ? (
+                  <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline font-medium hover:opacity-80">
+                    {part}
+                  </a>
+                ) : (
+                  <span key={i}>{part}</span>
+                )
+              )}
+            </>
+          ) : result}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ActiveArtifact {
+  filename: string;
+  language: string;
+  code: string;
+  description?: string;
+  contextId?: string;
+  previewUrl?: string;
+  /** Multi-file support for run_project results */
+  files?: { path: string; content: string }[];
+  /** "document" artifacts render in TipTap editor instead of code viewer */
+  type?: "code" | "document";
+  /** Sandbox snapshot ID for restart capability */
+  snapshotId?: string;
+  /** Run command used to start the sandbox */
+  runCommand?: string;
+  /** Port that was exposed for preview */
+  exposePort?: number;
+  /** Artifact system ID */
+  artifactId?: string;
+  /** Current version number */
+  currentVersion?: number;
+}
+
+/** Extract URLs from text (markdown links, bare URLs, and footnote references) */
+function extractUrls(text: string): { url: string; title: string }[] {
+  const seen = new Set<string>();
+  const results: { url: string; title: string }[] = [];
+
+  // Match markdown links: [title](url)
+  const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let match;
+  while ((match = mdRegex.exec(text)) !== null) {
+    if (!seen.has(match[2])) {
+      seen.add(match[2]);
+      results.push({ url: match[2], title: match[1] });
+    }
+  }
+
+  // Match bare URLs not already captured (negative lookbehind excludes markdown link URLs)
+  const bareRegex = /(?<!\()https?:\/\/[^\s)\]>]+/g;
+  while ((match = bareRegex.exec(text)) !== null) {
+    if (!seen.has(match[0])) {
+      seen.add(match[0]);
+      results.push({ url: match[0], title: getHostname(match[0]) });
+    }
+  }
+
+  return results;
+}
+
+/** Get a display hostname from a URL */
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** Inline TipTap editor for document artifacts in the artifact panel */
+function DocumentArtifactEditor({
+  content,
+  documentId,
+  artifactId,
+  onVersionCreated,
+}: {
+  content: string;
+  documentId?: string;
+  artifactId?: string;
+  onVersionCreated?: (newVersion: number) => void;
+}) {
+  const [editorContent, setEditorContent] = useState(content);
+
+  // Sync when content changes externally (e.g. new artifact selected)
+  useEffect(() => {
+    setEditorContent(content);
+  }, [content]);
+
+  const handleAutoSave = useCallback(async (html: string) => {
+    if (!artifactId) return;
+    try {
+      // 1. Update artifact content
+      await fetch(`/api/artifacts/${artifactId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: html }),
+      });
+      // 2. Create a new version
+      const res = await fetch(`/api/artifacts/${artifactId}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: html, change_type: "manual_edit", change_summary: "Auto-saved edit" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.new_version) onVersionCreated?.(data.new_version);
+      }
+    } catch {
+      // silent — auto-save should not interrupt the user
+    }
+  }, [artifactId, onVersionCreated]);
+
+  return (
+    <TiptapEditor
+      content={editorContent}
+      onChange={setEditorContent}
+      editable={true}
+      documentId={documentId}
+      onAutoSave={handleAutoSave}
+      placeholder="Document content..."
+      className="min-h-full"
+    />
+  );
+}
+
+/**
+ * Rich message response that detects inline visual blocks in text:
+ * - ```html ... ``` → renders as real HTML/SVG inline (diagrams, charts, animations)
+ * - ```jsonui ... ``` → renders as json-render components
+ * Works with ANY model. HTML blocks render progressively as they stream in.
+ */
+function RichMessageResponse({ text }: { text: string }) {
+  // Match ```html and ```svg blocks
+  const blockRegex = /```(?:html|svg)\s*\n([\s\S]*?)(?:\n```|$)/g;
+  const parts: { type: "text" | "html"; content: string }[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = blockRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: "html", content: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  // No html blocks — render normally
+  if (parts.length <= 1 && parts[0]?.type === "text") {
+    return <MessageResponse>{text}</MessageResponse>;
+  }
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.type === "text" && part.content.trim()) {
+          return <MessageResponse key={i}>{part.content}</MessageResponse>;
+        }
+        if (part.type === "html") {
+          return <InlineHtmlBlock key={i} html={part.content} />;
+        }
+        return null;
+      })}
+    </>
+  );
+}
+
+/** CDN libraries for inline HTML rendering */
+const INLINE_LIBS = [
+  "https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js",
+  "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
+  "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/roughjs@4/bundled/rough.js",
+  "https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js",
+  "https://cdn.jsdelivr.net/npm/canvas-confetti@1/dist/confetti.browser.js",
+  "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
+  "https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js",
+  "https://cdn.jsdelivr.net/npm/three@0.170/build/three.min.js",
+];
+
+/**
+ * Inline HTML block — renders directly in DOM with dangerouslySetInnerHTML.
+ * Scripts execute via dynamic script elements for Chart.js/GSAP support.
+ * No iframe = no height issues.
+ */
+function InlineHtmlBlock({ html }: { html: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const libsLoaded = useRef(false);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+
+    // Load CDN libs once (appended to document head)
+    if (!libsLoaded.current) {
+      libsLoaded.current = true;
+      for (const url of INLINE_LIBS) {
+        if (!document.querySelector(`script[src="${url}"]`)) {
+          const s = document.createElement("script");
+          s.src = url;
+          s.async = true;
+          document.head.appendChild(s);
+        }
+      }
+    }
+
+    // Strip gradients from inline styles
+    const cleaned = html
+      .replace(/background\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "")
+      .replace(/background-image\s*:\s*(?:linear-gradient|radial-gradient)\([^)]+\)\s*;?/gi, "");
+
+    // Separate scripts from HTML
+    const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
+    const scripts: string[] = [];
+    let match;
+    while ((match = scriptRegex.exec(cleaned)) !== null) {
+      if (match[1].trim()) scripts.push(match[1]);
+    }
+    const htmlOnly = cleaned.replace(scriptRegex, "");
+
+    // Set HTML
+    container.innerHTML = htmlOnly;
+
+    // Post-process iframes: allow YouTube/Vimeo embeds with sandboxing
+    const iframes = container.querySelectorAll("iframe");
+    for (const iframe of iframes) {
+      const src = iframe.getAttribute("src") || "";
+      if (src.includes("youtube.com") || src.includes("youtu.be") || src.includes("vimeo.com")) {
+        iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
+        iframe.style.width = "100%";
+        iframe.style.aspectRatio = "16/9";
+        iframe.style.borderRadius = "8px";
+      }
+    }
+
+    // Execute scripts after a delay (let CDN libs load)
+    const timer = setTimeout(() => {
+      for (const code of scripts) {
+        try {
+          // Set Chart.js dark defaults before each script
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ChartJS = (window as any).Chart;
+          if (typeof ChartJS !== "undefined") {
+            ChartJS.defaults.color = "#9ca3af";
+            ChartJS.defaults.borderColor = "rgba(255,255,255,0.06)";
+            ChartJS.defaults.responsive = true;
+            ChartJS.defaults.maintainAspectRatio = false;
+            ChartJS.defaults.plugins = ChartJS.defaults.plugins || {};
+            ChartJS.defaults.plugins.legend = ChartJS.defaults.plugins.legend || {};
+            ChartJS.defaults.plugins.legend.labels = ChartJS.defaults.plugins.legend.labels || {};
+            ChartJS.defaults.plugins.legend.labels.usePointStyle = true;
+            ChartJS.defaults.plugins.legend.labels.pointStyleWidth = 8;
+            ChartJS.defaults.font = ChartJS.defaults.font || {};
+            ChartJS.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+          }
+          // Initialize Mermaid if available
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mermaidLib = (window as any).mermaid;
+          if (typeof mermaidLib !== "undefined") {
+            mermaidLib.initialize({ theme: "dark", startOnLoad: true });
+            mermaidLib.run();
+          }
+          const fn = new Function(code);
+          fn();
+        } catch (err) {
+          console.warn("[inline-html] Script error:", err);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [html]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="my-2 inline-html-render"
+      style={{ minHeight: "50px" }}
+    />
+  );
+}
+
+// MCPOAuthCard and MCPBearerCard are imported from @/components/mcp-connect-cards
+
+function ToolCallCard({ part, onApprovalExecuted, onOpenArtifact }: { part: ToolPart; onApprovalExecuted?: (result: string) => void; onOpenArtifact?: (artifact: ActiveArtifact) => void }) {
   const isDone = part.state === "output-available" || part.state === "output-error";
   const output = isDone && "output" in part ? part.output : undefined;
   const errorText = "errorText" in part ? part.errorText : undefined;
   const isDynamic = part.type === "dynamic-tool";
 
+  // Client-side infrastructure tools — hide entirely (no card needed)
+  const HIDDEN_TOOLS = new Set(["tool-artifact_panel", "tool-express_tool_result"]);
+  if (HIDDEN_TOOLS.has(part.type) && isDone) return null;
+
+  // express tool: render dot art inline — completely invisible as a tool call
+  if (part.type === "tool-express") {
+    if (!isDone) return null; // Hide while generating
+    if (isDone && output && typeof output === "object" && (output as Record<string, unknown>).type === "dot-expression") {
+      const expr = output as { points: { x: number; y: number }[]; size: number; concept: string };
+      if (expr.points.length === 0) return null;
+      return (
+        <div className="my-2 flex justify-center">
+          <NeuralMorph
+            size={expr.size}
+            dotCount={expr.points.length}
+            customPoints={expr.points}
+          />
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // connect_mcp_server tool: render inline OAuth/bearer connect cards
+  if (part.type === "tool-connect_mcp_server") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Setting up MCP server...</span>
+        </div>
+      );
+    }
+    const result = output as { status?: string; name?: string; auth?: string; serverId?: string; message?: string; action?: { type: string; serverId: string; name: string; url: string; auth: string } } | undefined;
+    if (!result) return null;
+
+    if (result.status === "already_connected") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm my-1">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span>{result.name} is already connected</span>
+        </div>
+      );
+    }
+
+    if (result.action?.auth === "oauth") {
+      return <MCPOAuthCard name={result.name ?? "MCP Server"} serverId={result.action.serverId} url={result.action.url} />;
+    }
+
+    if (result.action?.auth === "bearer") {
+      return <MCPBearerCard name={result.name ?? "MCP Server"} serverId={result.action.serverId} />;
+    }
+
+    // No-auth server — auto-connected
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm my-1">
+        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+        <span>{result.name} connected — tools available next message</span>
+      </div>
+    );
+  }
+
+  // search_mcp_servers tool: compact loading state
+  if (part.type === "tool-search_mcp_servers") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Search className="h-3.5 w-3.5 animate-pulse" />
+          <span>Searching MCP registries...</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // disconnect_mcp_server tool: show result
+  if (part.type === "tool-disconnect_mcp_server") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Disconnecting...</span>
+        </div>
+      );
+    }
+    const result = output as { status?: string; name?: string; message?: string } | undefined;
+    if (result?.status === "disconnected") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm my-1">
+          <X className="h-4 w-4 text-amber-500 shrink-0" />
+          <span>{result.name} disconnected</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // list_mcp_servers tool: hide (AI formats in text)
+  if (part.type === "tool-list_mcp_servers") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Checking connected tools...</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // review_compliance tool: render checklist inline
+  if (part.type === "tool-review_compliance") {
+    if (!isDone) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Reviewing against rules and guidelines...</span>
+        </div>
+      );
+    }
+    // Fall through to the compliance review renderer below
+  }
+
+  // ask_user tool: show compact summary once answered, hide while pending (InterviewUI handles it)
+  if (part.type === "tool-ask_user") {
+    if (part.state === "input-available") return null; // InterviewUI renders above prompt
+    if (part.state === "output-available" && "output" in part) {
+      try {
+        const answers = typeof part.output === "string" ? JSON.parse(part.output) : part.output;
+        if (answers?._skipped) {
+          return (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+              <MessageSquareText className="h-3.5 w-3.5" />
+              <span>Question skipped</span>
+            </div>
+          );
+        }
+        const input = "input" in part ? (part.input as { title?: string }) : {};
+        return (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs space-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <MessageSquareText className="h-3.5 w-3.5" />
+              <span className="font-medium">{input?.title ?? "User Response"}</span>
+            </div>
+            {Object.entries(answers as Record<string, unknown>).map(([key, val]) => (
+              <div key={key} className="flex gap-2">
+                <span className="text-muted-foreground">{key}:</span>
+                <span className="font-medium">{Array.isArray(val) ? val.join(", ") : String(val)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      } catch {
+        // Fall through to default rendering
+      }
+    }
+  }
+
+  // Check if this is an approval proposal
+  const isApproval = isDone && output && typeof output === "object" && "approval_id" in (output as Record<string, unknown>);
+  const approvalOutput = isApproval ? output as Record<string, unknown> : null;
+
+  // Inline visuals are handled via ```html blocks in RichMessageResponse
+
+  // Check if this is a compliance review result
+  const isComplianceReview = isDone && output && typeof output === "object"
+    && (output as Record<string, unknown>).type === "compliance-review";
+  if (isComplianceReview) {
+    const review = output as {
+      content_label: string;
+      checks: { id: string; source: string; rule: string; status: string; explanation: string }[];
+      summary: { total: number; passed: number; failed: number; warnings: number; score: number };
+      error?: string;
+    };
+    if (review.error) {
+      return (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          <AlertTriangle className="inline h-4 w-4 text-amber-500" /> {review.error}
+        </div>
+      );
+    }
+    const scoreColor = review.summary.score >= 80 ? "text-green-500" : review.summary.score >= 50 ? "text-amber-500" : "text-red-500";
+    return (
+      <div className="my-3 space-y-3 max-w-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Compliance Review: {review.content_label}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-green-500 inline-flex items-center gap-0.5"><Check className="h-3 w-3" /> {review.summary.passed}</span>
+            <span className="text-red-500 inline-flex items-center gap-0.5"><X className="h-3 w-3" /> {review.summary.failed}</span>
+            {review.summary.warnings > 0 && <span className="text-amber-500 inline-flex items-center gap-0.5"><AlertTriangle className="h-3 w-3" /> {review.summary.warnings}</span>}
+            <span className={`font-bold ${scoreColor}`}>{review.summary.score}%</span>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="h-2 bg-muted rounded-full overflow-hidden flex">
+          {review.summary.passed > 0 && (
+            <div className="bg-green-500 h-full" style={{ width: `${(review.summary.passed / review.summary.total) * 100}%` }} />
+          )}
+          {review.summary.warnings > 0 && (
+            <div className="bg-amber-500 h-full" style={{ width: `${(review.summary.warnings / review.summary.total) * 100}%` }} />
+          )}
+          {review.summary.failed > 0 && (
+            <div className="bg-red-500 h-full" style={{ width: `${(review.summary.failed / review.summary.total) * 100}%` }} />
+          )}
+        </div>
+        {/* Checklist */}
+        <div className="space-y-1.5">
+          {review.checks.map((check, i) => (
+            <div key={check.id ?? i} className="flex items-start gap-2 text-xs">
+              <span className="shrink-0 mt-0.5">
+                {check.status === "pass" ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : check.status === "fail" ? (
+                  <X className="h-3.5 w-3.5 text-red-500" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-muted-foreground">[{check.source}]</span>
+                  <span className={check.status === "fail" ? "text-red-400" : ""}>{check.rule}</span>
+                </div>
+                <p className="text-muted-foreground mt-0.5">{check.explanation}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Check if this is an artifact_get result — auto-open artifact panel
+  if (part.type === "tool-artifact_get" && isDone && output && typeof output === "object") {
+    const artOut = output as Record<string, unknown>;
+    if (artOut.error) {
+      // Fall through to default rendering for errors
+    } else if (artOut.artifactId && artOut.code !== undefined) {
+      const artType = artOut.type as string | undefined;
+      const isDoc = artType === "document";
+      const artFiles = Array.isArray(artOut.files)
+        ? (artOut.files as { path: string; content: string }[])
+        : undefined;
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: String(artOut.filename ?? "Untitled"),
+            language: String(artOut.language ?? "text"),
+            code: String(artOut.code ?? ""),
+            type: isDoc ? "document" : "code",
+            artifactId: String(artOut.artifactId),
+            currentVersion: typeof artOut.currentVersion === "number" ? artOut.currentVersion : undefined,
+            description: typeof artOut.description === "string" ? artOut.description : undefined,
+            files: artFiles,
+            previewUrl: typeof artOut.previewUrl === "string" ? artOut.previewUrl : undefined,
+            snapshotId: typeof artOut.snapshotId === "string" ? artOut.snapshotId : undefined,
+            runCommand: typeof artOut.runCommand === "string" ? artOut.runCommand : undefined,
+            exposePort: typeof artOut.exposePort === "number" ? artOut.exposePort : undefined,
+          })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className={cn("flex h-8 w-8 items-center justify-center rounded-md shrink-0", isDoc ? "bg-blue-500/10 text-blue-500" : "bg-primary/10 text-primary")}>
+            {isDoc ? <FileText className="h-4 w-4" /> : <FileCode2 className="h-4 w-4" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{String(artOut.filename ?? "Untitled")}</p>
+            <p className="text-xs text-muted-foreground">
+              {isDoc ? "Document" : String(artOut.language ?? "code")}
+              {artFiles && artFiles.length > 1 ? ` — ${artFiles.length} files` : ""}
+              {" — Click to open"}
+            </p>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
+      );
+    }
+  }
+
+  // Check if this is a sandbox execution result (has exitCode + stdout)
+  const isSandboxResult = isDone && output && typeof output === "object"
+    && "exitCode" in (output as Record<string, unknown>)
+    && "stdout" in (output as Record<string, unknown>);
+
+  if (isSandboxResult) {
+    const sbox = output as Record<string, unknown>;
+    const sFilename = String(sbox.filename ?? "script");
+    const sLanguage = String(sbox.language ?? "javascript");
+    const sCode = typeof sbox.code === "string" ? sbox.code : "";
+    const sStdout = typeof sbox.stdout === "string" ? sbox.stdout : "";
+    const sStderr = typeof sbox.stderr === "string" ? sbox.stderr : "";
+    const sExitCode = typeof sbox.exitCode === "number" ? sbox.exitCode : 1;
+    const sPreviewUrl = typeof sbox.previewUrl === "string" ? sbox.previewUrl : null;
+    const hasOutput = sStdout.trim().length > 0 || sStderr.trim().length > 0;
+
+    // Extract multi-file project files if available
+    const sFiles = Array.isArray(sbox.files)
+      ? (sbox.files as { path: string; content: string }[])
+      : undefined;
+    const sFileCount = typeof sbox.fileCount === "number" ? sbox.fileCount : undefined;
+
+    const sSnapshotId = typeof sbox.snapshotId === "string" ? sbox.snapshotId : undefined;
+    const sRunCommand = typeof sbox.runCommand === "string" ? sbox.runCommand : undefined;
+    const sExposePort = typeof sbox.exposePort === "number" ? sbox.exposePort : undefined;
+    const sArtifactId = typeof sbox.artifactId === "string" ? sbox.artifactId : undefined;
+
+    // If we have a previewUrl AND code AND it succeeded, show artifact card
+    if (sPreviewUrl && sCode && sExitCode === 0) {
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: sFilename,
+            language: sLanguage,
+            code: sCode,
+            previewUrl: sPreviewUrl,
+            description: sExitCode === 0 ? undefined : `Exit code: ${sExitCode}`,
+            files: sFiles,
+            snapshotId: sSnapshotId,
+            runCommand: sRunCommand,
+            exposePort: sExposePort,
+            artifactId: sArtifactId,
+          })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <FileCode2 className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{sFilename}</p>
+            <p className="text-xs text-muted-foreground">
+              {sFileCount && sFileCount > 1 ? `${sFileCount} files` : sLanguage} — Click to open
+            </p>
+            {sSnapshotId && <p className="text-[10px] text-green-600 mt-0.5">Snapshot saved — can restart anytime</p>}
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
+      );
+    }
+
+    // Multi-file project → show as artifact card so user can browse all files
+    if (sFiles && sFiles.length > 1) {
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: sFilename,
+            language: sLanguage,
+            code: sCode,
+            description: sExitCode === 0 ? `${sFiles.length} files` : `Exit code: ${sExitCode}`,
+            files: sFiles,
+            previewUrl: sPreviewUrl ?? undefined,
+            artifactId: sArtifactId,
+          })}
+          className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <FileCode2 className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{sFilename}</p>
+            <p className="text-xs text-muted-foreground">{sFiles.length} files — Click to open</p>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+        </button>
+      );
+    }
+
+    // No previewUrl — show collapsible code + terminal output
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Collapsible code — show filename header, expand to see code */}
+        {sCode && (
+          <details className="group">
+            <summary className="flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer hover:bg-muted">
+              <Play className="h-3 w-3 text-muted-foreground" />
+              <span className="font-mono">{sFilename}</span>
+              <span className="text-muted-foreground">({sLanguage})</span>
+              <span className={cn("ml-auto", sExitCode === 0 ? "text-green-600" : "text-red-600")}>
+                {sExitCode === 0 ? <span className="inline-flex items-center gap-0.5"><Check className="h-3 w-3" /> Success</span> : <span className="inline-flex items-center gap-0.5"><X className="h-3 w-3" /> Exit {sExitCode}</span>}
+              </span>
+            </summary>
+            <div className="border-t">
+              <CodeSandbox filename={sFilename} language={sLanguage} code={sCode} />
+            </div>
+          </details>
+        )}
+        {/* Terminal output — only show if there's actual output */}
+        {hasOutput && (
+        <div className={cn("bg-zinc-950 text-green-400 p-3 font-mono text-xs max-h-48 overflow-y-auto", sCode ? "border-t" : "")}>
+          {sStdout && (
+            <pre className="whitespace-pre-wrap">{sStdout}</pre>
+          )}
+          {sStderr && (
+            <pre className="whitespace-pre-wrap text-red-400">{sStderr}</pre>
+          )}
+        </div>
+        )}
+      </div>
+    );
+  }
+
+  // Check if this is a web search result from web_search
+  const isWebSearch = isDone && output && typeof output === "object"
+    && "result" in (output as Record<string, unknown>)
+    && "source" in (output as Record<string, unknown>)
+    && "query" in (output as Record<string, unknown>);
+
+  if (isWebSearch) {
+    const ws = output as Record<string, unknown>;
+    const wsError = typeof ws.error === "string" ? ws.error : null;
+    const wsResult = String(ws.result ?? "");
+    // Use Perplexity's provider citations if available, fall back to URL extraction
+    const providerCitations = Array.isArray(ws.citations)
+      ? (ws.citations as { index: number; url: string }[])
+          .filter(c => c.url && typeof c.url === "string" && c.url.startsWith("http"))
+          .map(c => ({ title: getHostname(c.url), url: c.url }))
+      : [];
+    // Fallback 1: extract URLs from response text
+    const textUrls = providerCitations.length === 0 ? extractUrls(wsResult) : [];
+    // Fallback 2: parse footnote references [1] and match to any numbered sources in text
+    const footnoteUrls: { title: string; url: string }[] = [];
+    if (providerCitations.length === 0 && textUrls.length === 0) {
+      // Look for markdown-style source links: [Title](url) or Source: url patterns
+      const sourceRegex = /(?:Source|Reference|Via|From):\s*(https?:\/\/[^\s)]+)/gi;
+      let srcMatch;
+      while ((srcMatch = sourceRegex.exec(wsResult)) !== null) {
+        footnoteUrls.push({ title: getHostname(srcMatch[1]), url: srcMatch[1] });
+      }
+    }
+    const citations = providerCitations.length > 0 ? providerCitations
+      : textUrls.length > 0 ? textUrls
+      : footnoteUrls;
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+          <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium truncate">Search: {String(ws.query)}</span>
+          <span className="ml-auto text-[10px] text-muted-foreground">{String(ws.source)}</span>
+        </div>
+        {wsError ? (
+          <div className="p-3 text-sm text-red-600">{wsError}</div>
+        ) : (
+          <div className="p-3 text-sm prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+            <MessageResponse>{wsResult}</MessageResponse>
+          </div>
+        )}
+        {citations.length > 0 ? (
+          <div className="px-3 py-2 bg-muted/30 border-t space-y-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
+            <div className="flex flex-wrap gap-1.5">
+              {citations.map((c, i) => (
+                <a
+                  key={i}
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs hover:bg-accent transition-colors relative"
+                  title={c.url}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(c.url)}&sz=32`}
+                    alt=""
+                    className="h-4 w-4 rounded-sm shrink-0"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <span className="font-medium text-primary">[{i + 1}]</span>
+                  <span className="text-muted-foreground truncate max-w-[180px]">{c.title}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : !wsError && (
+          <div className="px-3 py-2 bg-muted/30 border-t">
+            <p className="text-[10px] text-muted-foreground">Search powered by Perplexity — results may include information from multiple sources</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Check if this is a document artifact from create_document or edit_document
+  const isDocArtifact = isDone && output && typeof output === "object" && "type" in (output as Record<string, unknown>) && (output as Record<string, unknown>).type === "document";
+  const docOutput = isDocArtifact ? output as Record<string, unknown> : null;
+
+  if (docOutput) {
+    const docTitle = (docOutput.title as string) ?? "Document";
+    const docContent = (docOutput.content as string) ?? "";
+    const docDescription = docOutput.description as string | undefined;
+    const docId = docOutput.documentId as string | undefined;
+    return (
+      <button
+        onClick={() => onOpenArtifact?.({
+          filename: `${docTitle}.html`,
+          language: "html",
+          code: docContent,
+          description: docDescription ?? (docOutput.editDescription as string | undefined) ?? docOutput.message as string | undefined,
+          contextId: docId,
+          type: "document",
+        })}
+        className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/10 text-blue-500 shrink-0">
+          <FileText className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{docTitle}</p>
+          <p className="text-xs text-muted-foreground">
+            Document — Click to open editor
+          </p>
+        </div>
+        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+      </button>
+    );
+  }
+
+  // Any tool that returns { html } — render as sandboxed iframe (e.g. render_chart)
+  if (isDone && output && typeof output === "object" && "html" in (output as Record<string, unknown>)) {
+    const htmlOut = output as { html: string; width?: number; height?: number };
+    if (typeof htmlOut.html === "string" && htmlOut.html.length > 0) {
+      return (
+        <iframe
+          srcDoc={htmlOut.html}
+          sandbox="allow-scripts"
+          className="rounded-lg border border-white/10 my-2 w-full max-w-full bg-[rgba(20,20,30,0.5)]"
+          style={{ height: htmlOut.height || 260, aspectRatio: htmlOut.width && htmlOut.height ? `${htmlOut.width} / ${htmlOut.height}` : undefined }}
+        />
+      );
+    }
+  }
+
+  // Check if this is a code artifact from write_code
+  // Code artifact = has code + language but NOT exitCode (sandbox results have exitCode)
+  const isCodeArtifact = isDone && output && typeof output === "object" && "code" in (output as Record<string, unknown>) && "language" in (output as Record<string, unknown>) && !("exitCode" in (output as Record<string, unknown>));
+  const codeOutput = isCodeArtifact ? output as Record<string, unknown> : null;
+
+  // Render code artifact — compact notification for edits, full card for new artifacts
+  if (codeOutput) {
+    const artFilename = codeOutput.filename as string;
+    const artLanguage = codeOutput.language as string;
+    const artCode = codeOutput.code as string;
+    const artDescription = codeOutput.message as string | undefined;
+    const artContextId = codeOutput.context_id as string | undefined;
+    const artArtifactId = codeOutput.artifactId as string | undefined;
+    const artFiles = Array.isArray(codeOutput.files)
+      ? (codeOutput.files as { path: string; content: string }[])
+      : undefined;
+    const isEdit = !!codeOutput.editDescription;
+    const editFilePath = codeOutput.filePath as string | undefined;
+    const editDesc = codeOutput.editDescription as string | undefined;
+
+    // Edits: compact inline notification (not a full card)
+    if (isEdit) {
+      return (
+        <button
+          onClick={() => onOpenArtifact?.({
+            filename: artFilename,
+            language: artLanguage,
+            code: artCode,
+            artifactId: artArtifactId,
+            files: artFiles,
+            currentVersion: typeof codeOutput.currentVersion === "number" ? codeOutput.currentVersion : undefined,
+            previewUrl: typeof codeOutput.previewUrl === "string" ? codeOutput.previewUrl : undefined,
+            snapshotId: typeof codeOutput.snapshotId === "string" ? codeOutput.snapshotId : undefined,
+            runCommand: typeof codeOutput.runCommand === "string" ? codeOutput.runCommand : undefined,
+            exposePort: typeof codeOutput.exposePort === "number" ? codeOutput.exposePort : undefined,
+          })}
+          className="flex items-center gap-2 w-fit rounded-md border bg-card/50 px-3 py-1.5 text-left hover:bg-accent/50 transition-colors text-xs text-muted-foreground"
+        >
+          <FileCode2 className="h-3 w-3 text-primary shrink-0" />
+          <span className="font-medium text-foreground">{artFilename}</span>
+          <span>Edited{editFilePath ? ` — ${editFilePath}` : ""}{editDesc ? `. ${editDesc}` : ""}. New version saved.</span>
+        </button>
+      );
+    }
+
+    // New artifacts: full card
+    return (
+      <button
+        onClick={() => onOpenArtifact?.({
+          filename: artFilename,
+          language: artLanguage,
+          code: artCode,
+          description: artDescription,
+          contextId: artContextId,
+          artifactId: artArtifactId,
+          files: artFiles,
+        })}
+        className="flex items-center gap-3 w-full max-w-sm rounded-lg border bg-card px-4 py-3 text-left hover:bg-accent/50 transition-colors group/artifact"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+          <FileCode2 className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{artFilename}</p>
+          <p className="text-xs text-muted-foreground">
+            {artLanguage}{artFiles && artFiles.length > 1 ? ` — ${artFiles.length} files` : ""}{artDescription ? ` — ${artDescription}` : " — Click to open"}
+          </p>
+        </div>
+        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/artifact:opacity-100 transition-opacity shrink-0" />
+      </button>
+    );
+  }
+
   return (
-    <Tool defaultOpen={isDone}>
-      {isDynamic ? (
-        <ToolHeader
-          type="dynamic-tool"
-          state={part.state}
-          toolName={"toolName" in part ? (part.toolName as string) : ""}
-        />
-      ) : (
-        <ToolHeader
-          type={part.type as `tool-${string}`}
-          state={part.state}
-        />
-      )}
-      <ToolContent>
-        {"input" in part && <ToolInput input={part.input} />}
-        {isDone && (
-          <ToolOutput
-            output={
-              output !== undefined ? (
-                <pre className="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                  {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
-                </pre>
-              ) : null
-            }
-            errorText={errorText}
+    <>
+      <Tool defaultOpen={isDone}>
+        {isDynamic ? (
+          <ToolHeader
+            type="dynamic-tool"
+            state={part.state}
+            toolName={"toolName" in part ? (part.toolName as string) : ""}
+          />
+        ) : (
+          <ToolHeader
+            type={part.type as `tool-${string}`}
+            state={part.state}
           />
         )}
-      </ToolContent>
-    </Tool>
+        <ToolContent>
+          {"input" in part && (() => {
+            try {
+              const inputStr = JSON.stringify(part.input, null, 2);
+              return (
+                <div className="text-xs text-muted-foreground">
+                  <pre className="whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{inputStr}</pre>
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()}
+          {isDone && !isApproval && (() => {
+            if (errorText) {
+              return <div className="text-xs text-destructive mt-1">{errorText}</div>;
+            }
+            if (output === undefined) return null;
+            let outputStr: string;
+            try {
+              outputStr = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+            } catch {
+              outputStr = "[Output contains non-serializable data]";
+            }
+            return (
+              <div className="text-xs text-muted-foreground mt-1">
+                <pre className="whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{outputStr}</pre>
+              </div>
+            );
+          })()}
+        </ToolContent>
+      </Tool>
+      {isApproval && approvalOutput && (
+        <InlineApproval
+          approvalId={approvalOutput.approval_id as string}
+          reasoning={approvalOutput.message as string | undefined}
+          actionType={"input" in part ? (part.input as Record<string, unknown>)?.action_type as string : undefined}
+          targetService={"input" in part ? (part.input as Record<string, unknown>)?.target_service as string : undefined}
+          conflictReason={approvalOutput.conflict as string | undefined}
+          onExecuted={onApprovalExecuted}
+        />
+      )}
+    </>
   );
 }
 
@@ -206,37 +1443,37 @@ function MessageFeedback({
   }, [submitFeedback]);
 
   return (
-    <div className="flex items-center gap-1 mt-1">
-      <div className={cn("flex items-center gap-0.5", !selected && "md:opacity-0 md:group-hover:opacity-100 transition-opacity")}>
+    <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
           onClick={handleThumbsUp}
           disabled={!!selected}
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
+            "p-1 rounded transition-colors",
             selected === "positive"
-              ? "text-green-600 dark:text-green-400"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-primary"
+              : "text-primary/60 hover:text-primary"
           )}
           aria-label="Thumbs up"
           data-testid="feedback-thumbs-up"
         >
-          <ThumbsUp className={cn("h-3.5 w-3.5", selected === "positive" && "fill-current")} />
+          <ThumbsUp className={cn("h-3 w-3", selected === "positive" && "fill-current")} />
         </button>
         <button
           type="button"
           onClick={handleThumbsDown}
           disabled={!!selected}
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
+            "p-1 rounded transition-colors",
             selected === "negative"
-              ? "text-red-600 dark:text-red-400"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-red-400"
+              : "text-red-400/60 hover:text-red-400"
           )}
           aria-label="Thumbs down"
           data-testid="feedback-thumbs-down"
         >
-          <ThumbsDown className={cn("h-3.5 w-3.5", selected === "negative" && "fill-current")} />
+          <ThumbsDown className={cn("h-3 w-3", selected === "negative" && "fill-current")} />
         </button>
       </div>
 
@@ -271,54 +1508,1148 @@ function MessageFeedback({
   );
 }
 
+// --- Export & Share helpers ---
+
+function formatMessagesAsMarkdown(
+  messages: UIMessage[],
+  conversationId?: string | null,
+): string {
+  const title = conversationId ? `Conversation ${conversationId}` : "Conversation";
+  const date = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const lines: string[] = [`# ${title}`, `Date: ${date}`, ""];
+
+  for (const m of messages) {
+    const parts = m.parts as { type: string; text?: string }[];
+    const text = getTextContent(parts);
+    const toolParts = getToolParts(parts);
+
+    const roleName = m.role === "user" ? "User" : "Dewey";
+    lines.push(`## ${roleName}`);
+
+    if (text) {
+      lines.push("", text, "");
+    }
+
+    for (const tp of toolParts) {
+      const toolName = tp.type.replace("tool-", "");
+      lines.push(`### Tool: ${toolName}`);
+      if ("input" in tp && tp.input) {
+        lines.push("", "**Input:**", "```json", (() => { try { return JSON.stringify(tp.input, null, 2); } catch { return "[Complex input]"; } })(), "```", "");
+      }
+      if (tp.state === "output-available" && "output" in tp && tp.output) {
+        const out = typeof tp.output === "string" ? tp.output : (() => { try { return JSON.stringify(tp.output, null, 2); } catch { return "[Complex output]"; } })();
+        lines.push("**Output:**", "```json", out, "```", "");
+      }
+    }
+
+    lines.push("---", "");
+  }
+
+  return lines.join("\n");
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+type TeamMember = { userId: string; email: string; role: string };
+
+function SharePanel({
+  conversationId,
+  onClose,
+}: {
+  conversationId: string;
+  onClose: () => void;
+}) {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [sharedWith, setSharedWith] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [publicLink, setPublicLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [membersRes, sharedRes] = await Promise.all([
+          fetch("/api/team/members"),
+          fetch(`/api/chat/share?conversation_id=${conversationId}`),
+        ]);
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          setMembers(data);
+        }
+        if (sharedRes.ok) {
+          const data = await sharedRes.json();
+          setSharedWith(new Set(data.sharedWith ?? []));
+        }
+      } catch {
+        // fail silently
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [conversationId]);
+
+  const toggleMember = (userId: string) => {
+    setSharedWith((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+    setSaved(false);
+  };
+
+  const handleShare = async () => {
+    if (sharedWith.size === 0) return;
+    setSaving(true);
+    try {
+      await fetch("/api/chat/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          userIds: Array.from(sharedWith),
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => onClose(), 1200);
+    } catch {
+      // fail silently
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border bg-card shadow-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium">Share conversation</p>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Public share link */}
+      <div className="border rounded-md p-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground">Public link (read-only, no chat)</p>
+        <Button
+          size="sm"
+          variant={publicLink ? "outline" : "default"}
+          className="w-full text-xs h-7"
+          onClick={async () => {
+            if (publicLink) {
+              await navigator.clipboard.writeText(window.location.origin + publicLink);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+              return;
+            }
+            try {
+              const res = await fetch("/api/chat/share-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ conversationId }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setPublicLink(data.shareUrl);
+                await navigator.clipboard.writeText(window.location.origin + data.shareUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }
+            } catch { /* silent */ }
+          }}
+        >
+          {linkCopied ? (
+            <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Copied!</span>
+          ) : publicLink ? (
+            <span className="flex items-center gap-1"><Copy className="h-3 w-3" /> Copy link</span>
+          ) : (
+            <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> Create share link</span>
+          )}
+        </Button>
+      </div>
+
+      <DropdownMenuSeparator />
+      {loading ? (
+        <div className="flex items-center justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : members.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">No team members found.</p>
+      ) : (
+        <div className="space-y-1 max-h-48 overflow-y-auto">
+          {members.map((m) => (
+            <button
+              key={m.userId}
+              onClick={() => toggleMember(m.userId)}
+              className={cn(
+                "flex items-center gap-2 w-full rounded px-2 py-1.5 text-xs transition-colors",
+                sharedWith.has(m.userId)
+                  ? "bg-primary/10 text-foreground"
+                  : "hover:bg-accent text-muted-foreground"
+              )}
+            >
+              <div
+                className={cn(
+                  "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0",
+                  sharedWith.has(m.userId) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                )}
+              >
+                {sharedWith.has(m.userId) && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+              </div>
+              <span className="truncate">{m.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <Button
+        size="sm"
+        className="w-full text-xs h-7"
+        disabled={sharedWith.size === 0 || saving}
+        onClick={handleShare}
+      >
+        {saved ? (
+          <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Shared</span>
+        ) : saving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          `Share with ${sharedWith.size} member${sharedWith.size !== 1 ? "s" : ""}`
+        )}
+      </Button>
+    </div>
+  );
+}
+
+export interface ChatActions {
+  copyDebugJSON: () => void;
+  exportMarkdown: () => void;
+  exportJSON: () => void;
+  openShare: () => void;
+  hasMessages: boolean;
+}
+
 interface ChatInterfaceProps {
   conversationId?: string | null;
   initialTemplateId?: string | null;
+  initialPrompt?: string | null;
+  onConversationUpdated?: () => void;
+  actionsRef?: React.MutableRefObject<ChatActions | null>;
+  /** Override the API endpoint (default: /api/chat) */
+  apiEndpoint?: string;
+  /** Extra headers to send with every request */
+  extraHeaders?: Record<string, string>;
+  /** Visual/behavioral variant config — overrides portalMode when provided */
+  variant?: ChatVariant;
+  /** Hide features not needed in embedded/portal mode */
+  portalMode?: boolean;
+  /** Portal branding — document title for empty state */
+  portalTitle?: string;
+  /** Portal branding — client name */
+  portalClientName?: string;
+  /** Portal branding — brand color for send button and accents */
+  portalBrandColor?: string;
+  /** Portal branding — logo URL for empty state */
+  portalLogoUrl?: string;
+  /** Callback fired when a tool completes with output (used by portal to react to tool results) */
+  onToolOutput?: (toolName: string, output: unknown) => void;
+  /** Callback fired with the latest assistant text response (used by voice mode for TTS) */
+  onAssistantText?: (text: string) => void;
+  /** Compact mode — reduced spacing, no empty state, minimal chrome (for embedded drawers) */
+  compactMode?: boolean;
+  /** Hide the context window bar (token counter) */
+  hideContextBar?: boolean;
+  /** Additional CSS classes for the outermost container */
+  containerClassName?: string;
+  /** Callback to toggle voice mode (portal only) */
+  onVoiceToggle?: () => void;
+  /** Whether voice mode is currently active (portal only) */
+  voiceActive?: boolean;
+  /** Latest AI response text (used to speak via TTS when voice mode is active) */
+  lastAIResponse?: string;
 }
 
-export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfaceProps) {
-  const [model, setModel] = useState<string>("anthropic/claude-haiku-4-5-20251001");
-  const [input, setInput] = useState("");
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
+export function ChatInterface({ conversationId, initialTemplateId, initialPrompt, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, variant, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceProps) {
+  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => {
+    setInitialMessages(undefined);
+    setHistoryLoaded(false);
+
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversation_id", conversationId);
+    const url = `/api/chat/history${params.toString() ? `?${params}` : ""}`;
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((msgs: UIMessage[]) => {
+        setInitialMessages(msgs.length > 0 ? msgs : []);
+        setHistoryLoaded(true);
+      })
+      .catch(() => {
+        setInitialMessages([]);
+        setHistoryLoaded(true);
+      });
+  }, [conversationId]);
+
+  if (!historyLoaded) {
+    return (
+      <div className="flex h-full overflow-hidden flex-col md:flex-row">
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex-1 overflow-y-auto p-6">
+            <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
+              <p className="text-xs">Loading conversation...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ChatInterfaceInner
+      conversationId={conversationId}
+      onConversationUpdated={onConversationUpdated}
+      initialTemplateId={initialTemplateId}
+      initialPrompt={initialPrompt}
+      initialMessages={initialMessages}
+      actionsRef={actionsRef}
+      apiEndpoint={apiEndpoint}
+      extraHeaders={extraHeaders}
+      variant={variant}
+      portalMode={portalMode}
+      portalTitle={portalTitle}
+      portalClientName={portalClientName}
+      portalBrandColor={portalBrandColor}
+      portalLogoUrl={portalLogoUrl}
+      onToolOutput={onToolOutput}
+      onAssistantText={onAssistantText}
+      compactMode={compactMode}
+      hideContextBar={hideContextBar}
+      containerClassName={containerClassName}
+      onVoiceToggle={onVoiceToggle}
+      voiceActive={voiceActive}
+      lastAIResponse={lastAIResponse}
+    />
+  );
+}
+
+interface ChatInterfaceInnerProps {
+  conversationId?: string | null;
+  initialTemplateId?: string | null;
+  initialPrompt?: string | null;
+  initialMessages?: UIMessage[];
+  onConversationUpdated?: () => void;
+  actionsRef?: React.MutableRefObject<ChatActions | null>;
+  apiEndpoint?: string;
+  extraHeaders?: Record<string, string>;
+  variant?: ChatVariant;
+  portalMode?: boolean;
+  portalTitle?: string;
+  portalClientName?: string;
+  portalBrandColor?: string;
+  portalLogoUrl?: string;
+  onToolOutput?: (toolName: string, output: unknown) => void;
+  onAssistantText?: (text: string) => void;
+  compactMode?: boolean;
+  hideContextBar?: boolean;
+  containerClassName?: string;
+  onVoiceToggle?: () => void;
+  voiceActive?: boolean;
+  lastAIResponse?: string;
+}
+
+function ChatInterfaceInner({ conversationId, initialTemplateId, initialPrompt, initialMessages, onConversationUpdated, actionsRef, apiEndpoint, extraHeaders, variant, portalMode, portalTitle, portalClientName, portalBrandColor, portalLogoUrl, onToolOutput, onAssistantText, compactMode, hideContextBar, containerClassName, onVoiceToggle, voiceActive, lastAIResponse }: ChatInterfaceInnerProps) {
+  // Compute the active variant from either the explicit `variant` prop or the legacy `portalMode` boolean
+  const v = variant ?? (portalMode ? PORTAL_VARIANT : DEFAULT_VARIANT);
+  const isPortal = v.style === "portal";
+
+  const { isLocal, availableModels: localModels } = useLocalModels();
+  const MODELS = isLocal ? [...CLOUD_MODELS, ...localModels] : CLOUD_MODELS;
+  const [model, setModelState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("granger-model") || "google/gemini-3.1-flash-lite-preview";
+    }
+    return "google/gemini-3.1-flash-lite-preview";
+  });
+  const setModel = useCallback((m: string) => {
+    setModelState(m);
+    localStorage.setItem("granger-model", m);
+  }, []);
+  const [showContextBar, setShowContextBar] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [visualLevel, setVisualLevel] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("granger-visual-level") ?? "medium";
+    return "medium";
+  });
+  const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus prompt on mount and when switching conversations
+  useEffect(() => {
+    // Small delay to ensure DOM is ready after conversation switch
+    const timer = setTimeout(() => textareaRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [conversationId]);
+
+  // Refs for dynamic values (read by transport headers, updated by state)
+  const activeArtifactRef = useRef<{ id: string | null; filePath: string | null }>({ id: null, filePath: null });
+  const modelRef = useRef(model);
+  const extraHeadersRef = useRef(extraHeaders);
+  extraHeadersRef.current = extraHeaders;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
+  const [ambientSuggestion, setAmbientSuggestion] = useState<AmbientAISuggestion | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(
     initialTemplateId ? AGENT_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null : null,
   );
 
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (conversationId) params.set("conversation_id", conversationId);
-    const url = `/api/chat/history${params.toString() ? `?${params}` : ""}`;
-    setInitialMessages(undefined);
-    setHistoryLoaded(false);
-    fetch(url)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((msgs: UIMessage[]) => {
-        if (msgs.length > 0) setInitialMessages(msgs);
-        setHistoryLoaded(true);
-      })
-      .catch(() => setHistoryLoaded(true));
-  }, [conversationId]);
+  // Memoize transport so useChat doesn't reset when dynamic values (model, headers) change.
+  // All dynamic values are read via refs inside the headers/body functions.
+  const visualLevelRef = useRef(visualLevel);
+  visualLevelRef.current = visualLevel;
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
 
-  const { messages, sendMessage, status, error } = useChat({
-    messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: { model, conversationId },
-    }),
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: apiEndpoint || "/api/chat",
+        body: () => ({ model: modelRef.current, conversationId: conversationIdRef.current, visualLevel: visualLevelRef.current }),
+        headers: () => ({
+          "x-model": modelRef.current,
+          "x-artifact-id": activeArtifactRef.current.id ?? "",
+          "x-artifact-file": activeArtifactRef.current.filePath ?? "",
+          ...extraHeadersRef.current,
+        }),
+      }),
+    [apiEndpoint],
+  );
+
+  const { messages, sendMessage, addToolOutput, status, error, stop } = useChat({
+    messages: initialMessages && initialMessages.length > 0 ? initialMessages : undefined,
+    transport,
+    // Auto-continue after client-side tool results (ask_user, artifact_panel)
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onFinish: () => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      endLiveActivity();
+      // Record which model was used for this response
+      const assistantCount = messages.filter(m => m.role === "assistant").length;
+      messageModelRef.current.set(assistantCount - 1, modelRef.current);
+      // Re-fetch conversation list after a short delay to pick up auto-generated titles
+      if (onConversationUpdated) {
+        setTimeout(onConversationUpdated, 2000);
+      }
     },
   });
 
   const isLoading = status === "streaming" || status === "submitted";
+  const lastSentPromptRef = useRef<string>("");
+  const liveActivityStartedRef = useRef(false);
+  const [messageQueue, setMessageQueue] = useState<string[]>([]);
+
+  // Start/end Dynamic Island Live Activity based on streaming state
+  useEffect(() => {
+    if (isLoading && !liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = true;
+      startLiveActivity(conversationId ?? "new", model);
+    } else if (!isLoading && liveActivityStartedRef.current) {
+      liveActivityStartedRef.current = false;
+    }
+  }, [isLoading, conversationId, model]);
+
+  // Auto-send the next queued message when the AI finishes responding
+  useEffect(() => {
+    if (status === "ready" && messageQueue.length > 0) {
+      const [next, ...rest] = messageQueue;
+      setMessageQueue(rest);
+      sendMessage({ text: next });
+    }
+  }, [status, messageQueue, sendMessage]);
+
+  // Fetch per-message agent run stats for cost breakdown
+  interface AgentRunStats {
+    id: string;
+    model: string;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    cache_read_tokens: number;
+    cache_write_tokens: number;
+    duration_ms: number;
+    tool_calls: { tool: string; count: number }[];
+    gateway_cost_usd: string;
+    step_details: {
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheWriteTokens: number;
+      costUsd: number;
+      durationMs: number;
+      toolCalls: string[];
+    }[];
+    created_at: string;
+  }
+  const [agentRuns, setAgentRuns] = useState<AgentRunStats[]>([]);
+  // Track which model was used for each assistant message (by index)
+  // so the label doesn't change when user switches models
+  const messageModelRef = useRef<Map<number, string>>(new Map());
+  const agentRunsFetchedRef = useRef<string | null>(null);
+
+  // Fetch stats when conversation finishes a response
+  useEffect(() => {
+    if (!conversationId || isLoading) return;
+    // Only re-fetch after each response completes (when status transitions to ready)
+    const key = `${conversationId}-${messages.length}`;
+    if (agentRunsFetchedRef.current === key) return;
+    agentRunsFetchedRef.current = key;
+
+    fetch(`/api/chat/stats?conversation_id=${conversationId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.runs) setAgentRuns(data.runs);
+      })
+      .catch(() => {});
+  }, [conversationId, isLoading, messages.length]);
+
+  // Detect pending ask_user tool calls that need user interaction
+  const pendingInterview = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== "assistant") continue;
+      const parts = m.parts as { type: string; state?: string; toolCallId?: string; input?: Record<string, unknown> }[];
+      for (const part of parts) {
+        if (part.type === "tool-ask_user" && part.state === "input-available" && part.input) {
+          return {
+            toolCallId: part.toolCallId!,
+            title: (part.input.title as string) ?? "Question",
+            description: part.input.description as string | undefined,
+            questions: (part.input.questions as { id: string; label: string; type: "choice" | "text" | "multiselect"; options?: string[]; placeholder?: string; required?: boolean }[]) ?? [],
+          };
+        }
+      }
+    }
+    return null;
+  })();
+
+  const handleInterviewSubmit = useCallback((toolCallId: string, answers: Record<string, string | string[]>) => {
+    // Don't await — avoid deadlocks
+    addToolOutput({
+      tool: "ask_user",
+      toolCallId,
+      output: JSON.stringify(answers),
+    });
+  }, [addToolOutput]);
+
+  const handleInterviewDismiss = useCallback((toolCallId: string) => {
+    addToolOutput({
+      tool: "ask_user",
+      toolCallId,
+      output: JSON.stringify({ _skipped: true }),
+    });
+  }, [addToolOutput]);
+
+  // Auto-send initial prompt (from URL, bubble menu, voice mode, etc.)
+  useEffect(() => {
+    if (initialPrompt && initialPrompt !== lastSentPromptRef.current) {
+      lastSentPromptRef.current = initialPrompt;
+      sendMessage({ text: initialPrompt });
+    }
+  }, [initialPrompt, sendMessage]);
+
+  const addFiles = useCallback((fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    const valid: PendingFile[] = [];
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+      if (!ACCEPTED_FILE_TYPES.includes(file.type) && !file.name.match(/\.(md|txt|csv)$/i)) {
+        alert(`${file.name}: unsupported file type`);
+        continue;
+      }
+      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+      valid.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, file, previewUrl });
+    }
+    setPendingFiles(prev => [...prev, ...valid]);
+  }, []);
+
+  const removeFile = useCallback((id: string) => {
+    setPendingFiles(prev => {
+      const removed = prev.find(f => f.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter(f => f.id !== id);
+    });
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  }, [addFiles]);
+
+  // Convert pending files to a DataTransfer-backed FileList for sendMessage
+  const buildFileList = useCallback((): FileList | undefined => {
+    if (pendingFiles.length === 0) return undefined;
+    const dt = new DataTransfer();
+    for (const pf of pendingFiles) dt.items.add(pf.file);
+    return dt.files;
+  }, [pendingFiles]);
+
+  const [shareOpen, setShareOpen] = useState(false);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const prevSourceCountRef = useRef(0);
+  const [activeArtifact, setActiveArtifact] = useState<ActiveArtifact | null>(null);
+  const [artifactViewMode, setArtifactViewMode] = useState<"code" | "preview">("code");
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+
+  // Pick the best default file to show (App > main > index, prefer .jsx/.tsx/.js)
+  const pickDefaultFile = (files?: { path: string }[]) => {
+    if (!files || files.length === 0) return null;
+    const priorities = ["App.jsx", "App.tsx", "App.js", "App.ts", "main.jsx", "main.tsx", "main.js", "index.jsx", "index.tsx", "index.js", "index.html"];
+    for (const name of priorities) {
+      const match = files.find(f => f.path.endsWith(name));
+      if (match) return match.path;
+    }
+    // Fall back to first source file (not config/json)
+    const src = files.find(f => /\.(jsx?|tsx?|html|css|py)$/.test(f.path));
+    return src?.path ?? files[0].path;
+  };
+  const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
+  const [sandboxRestarting, setSandboxRestarting] = useState(false);
+  const [sandboxStopped, setSandboxStopped] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewRetryCount, setPreviewRetryCount] = useState(0);
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const [codeSaving, setCodeSaving] = useState(false);
+  const [previewElapsed, setPreviewElapsed] = useState(0);
+  const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Sync dynamic state to refs (transport headers read from refs, not state)
+  useEffect(() => { modelRef.current = model; }, [model]);
+  useEffect(() => {
+    activeArtifactRef.current = {
+      id: activeArtifact?.artifactId ?? null,
+      filePath: selectedFilePath,
+    };
+  }, [activeArtifact?.artifactId, selectedFilePath]);
+
+  // Reset preview error state when artifact or view mode changes
+  useEffect(() => {
+    setPreviewError(null);
+    setPreviewRetryCount(0);
+    setPreviewElapsed(0);
+  }, [activeArtifact?.previewUrl, artifactViewMode]);
+
+  // Timer for sandbox preview loading elapsed time
+  useEffect(() => {
+    if (activeArtifact?.previewUrl && !previewError) {
+      setPreviewElapsed(0);
+      previewTimerRef.current = setInterval(() => setPreviewElapsed(s => s + 1), 1000);
+      return () => { if (previewTimerRef.current) clearInterval(previewTimerRef.current); };
+    }
+    if (previewTimerRef.current) clearInterval(previewTimerRef.current);
+  }, [activeArtifact?.previewUrl, previewError]);
+
+  // Auto-open/close artifact panel when tools complete
+  const lastAutoOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    for (const part of lastMsg.parts ?? []) {
+      if (!("type" in part) || !("state" in part)) continue;
+      const partType = (part as { type: string }).type;
+      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
+      if (partId === lastAutoOpenedRef.current) continue;
+
+      // Handle artifact_panel tool (client-side: open/close panel)
+      if (partType === "tool-artifact_panel" && (part as { state: string }).state === "input-available") {
+        const input = (part as { input?: Record<string, unknown> }).input;
+        lastAutoOpenedRef.current = partId;
+        if (input?.action === "close") {
+          setActiveArtifact(null);
+          addToolOutput({
+            tool: "artifact_panel" as never,
+            toolCallId: partId,
+            output: JSON.stringify({ success: true, action: "close" }),
+          });
+        } else if (input?.action === "open" && input?.artifactId) {
+          // Fetch artifact data and open the panel
+          fetch(`/api/artifacts/${input.artifactId}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data) {
+                // Map file_path → path for consistency with ActiveArtifact
+                const rawFiles = Array.isArray(data.files) ? data.files : [];
+                const files = rawFiles.length > 0
+                  ? rawFiles.map((f: { file_path?: string; path?: string; content: string }) => ({ path: f.file_path ?? f.path ?? "", content: f.content }))
+                  : undefined;
+                setActiveArtifact({
+                  filename: String(data.filename ?? data.title ?? "Untitled"),
+                  language: String(data.language ?? "text"),
+                  code: String(data.content ?? data.code ?? ""),
+                  type: data.type === "document" ? "document" : "code",
+                  artifactId: String(input.artifactId),
+                  currentVersion: typeof data.current_version === "number" ? data.current_version : undefined,
+                  files,
+                  previewUrl: typeof data.preview_url === "string" ? data.preview_url : undefined,
+                });
+                setArtifactViewMode(data.type === "document" ? "code" : data.preview_url ? "preview" : "code");
+                setSelectedFilePath(pickDefaultFile(files));
+              }
+              addToolOutput({
+                tool: "artifact_panel" as never,
+                toolCallId: partId,
+                output: JSON.stringify({ success: true, action: "open", artifactId: input.artifactId }),
+              });
+            })
+            .catch(() => {
+              addToolOutput({
+                tool: "artifact_panel" as never,
+                toolCallId: partId,
+                output: JSON.stringify({ success: false, error: "Failed to fetch artifact" }),
+              });
+            });
+        } else {
+          addToolOutput({
+            tool: "artifact_panel" as never,
+            toolCallId: partId,
+            output: JSON.stringify({ success: true, action: input?.action ?? "open" }),
+          });
+        }
+        break;
+      }
+
+      if ((part as { state: string }).state !== "output-available") continue;
+      const output = (part as { output: unknown }).output;
+      if (!output || typeof output !== "object") continue;
+      const out = output as Record<string, unknown>;
+
+      // Auto-open for write_code / edit_code results (has code + language, no exitCode)
+      if (out.code && out.language && !("exitCode" in out)) {
+        lastAutoOpenedRef.current = partId;
+        const hasPreview = typeof out.previewUrl === "string";
+        setActiveArtifact({
+          filename: String(out.filename ?? "Untitled"),
+          language: String(out.language ?? "text"),
+          code: String(out.code ?? ""),
+          artifactId: typeof out.artifactId === "string" ? out.artifactId : undefined,
+          files: Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined,
+          type: out.type === "document" ? "document" : "code",
+          currentVersion: typeof out.currentVersion === "number" ? out.currentVersion : undefined,
+          // Include sandbox metadata so Live/Restart buttons work after edits
+          previewUrl: hasPreview ? String(out.previewUrl) : undefined,
+          snapshotId: typeof out.snapshotId === "string" ? out.snapshotId : undefined,
+          runCommand: typeof out.runCommand === "string" ? out.runCommand : undefined,
+          exposePort: typeof out.exposePort === "number" ? out.exposePort : undefined,
+        });
+        // Show Live preview for sandbox edits, Code for new/non-sandbox artifacts
+        setArtifactViewMode(hasPreview && out.editDescription ? "preview" : "code");
+        setSelectedFilePath(typeof out.filePath === "string" ? out.filePath : pickDefaultFile(Array.isArray(out.files) ? out.files as { path: string }[] : undefined));
+        break;
+      }
+      // Auto-open for sandbox results with previewUrl (even if health check timed out)
+      if (out.previewUrl && out.files) {
+        lastAutoOpenedRef.current = partId;
+        const files = Array.isArray(out.files) ? out.files as { path: string; content: string }[] : undefined;
+        setActiveArtifact({
+          filename: String(out.filename ?? "App"),
+          language: String(out.language ?? "typescript"),
+          code: files?.[0]?.content ?? String(out.stdout ?? ""),
+          artifactId: typeof out.artifactId === "string" ? out.artifactId : undefined,
+          previewUrl: String(out.previewUrl),
+          snapshotId: typeof out.snapshotId === "string" ? out.snapshotId : undefined,
+          files,
+        });
+        setArtifactViewMode("preview");
+        setSelectedFilePath(pickDefaultFile(files));
+        break;
+      }
+    }
+  }, [messages]);
+
+  // Notify parent of tool outputs (used by portal-viewer for annotations, navigation, etc.)
+  const toolOutputSeenRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!onToolOutput || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    for (const part of lastMsg.parts ?? []) {
+      if (!("type" in part) || !("state" in part)) continue;
+      if ((part as { state: string }).state !== "output-available") continue;
+      const partType = (part as { type: string }).type;
+      const partId = (part as { toolCallId?: string }).toolCallId ?? "";
+      if (toolOutputSeenRef.current.has(partId)) continue;
+      const output = (part as { output: unknown }).output;
+      if (!output || typeof output !== "object") continue;
+      toolOutputSeenRef.current.add(partId);
+      // Extract tool name from part type (format: "tool-<name>")
+      const toolName = partType.startsWith("tool-") ? partType.slice(5) : partType;
+      onToolOutput(toolName, output as Record<string, unknown>);
+    }
+  }, [messages, onToolOutput]);
+
+  // Notify parent of latest assistant text (used by voice mode for TTS)
+  const lastAssistantTextRef = useRef<string>("");
+  useEffect(() => {
+    if (!onAssistantText || messages.length === 0 || isLoading) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return;
+    const parts = (lastMsg.parts ?? []) as { type: string; text?: string }[];
+    const textPart = parts.find(p => p.type === "text" && p.text);
+    if (textPart?.text && textPart.text !== lastAssistantTextRef.current) {
+      lastAssistantTextRef.current = textPart.text;
+      onAssistantText(textPart.text);
+    }
+  }, [messages, isLoading, onAssistantText]);
+
+  // Load context panel preference from localStorage
+  // Context panel hidden by default — user can open via button
+  // (removed auto-restore from localStorage)
+
+  const getDebugJSON = useCallback(() => ({
+    conversationId,
+    model,
+    status,
+    messageCount: messages.length,
+    messages: messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      parts: m.parts,
+    })),
+  }), [messages, conversationId, model, status]);
+
+  const copyDebugJSON = useCallback(() => {
+    navigator.clipboard.writeText(JSON.stringify(getDebugJSON(), null, 2));
+  }, [getDebugJSON]);
+
+  const exportMarkdown = useCallback(() => {
+    const md = formatMessagesAsMarkdown(messages, conversationId);
+    const filename = conversationId
+      ? `conversation-${conversationId.slice(0, 8)}.md`
+      : `conversation-${Date.now()}.md`;
+    downloadFile(md, filename, "text/markdown");
+  }, [messages, conversationId]);
+
+  const exportJSON = useCallback(() => {
+    const json = JSON.stringify(getDebugJSON(), null, 2);
+    const filename = conversationId
+      ? `conversation-${conversationId.slice(0, 8)}.json`
+      : `conversation-${Date.now()}.json`;
+    downloadFile(json, filename, "application/json");
+  }, [getDebugJSON, conversationId]);
+
+  // Expose actions to parent via ref
+  useEffect(() => {
+    if (actionsRef) {
+      actionsRef.current = {
+        copyDebugJSON,
+        exportMarkdown,
+        exportJSON,
+        openShare: () => setShareOpen(true),
+        hasMessages: messages.length > 0,
+      };
+    }
+  }, [actionsRef, copyDebugJSON, exportMarkdown, exportJSON, messages.length]);
+
+  // Dynamic skill slash commands fetched from API
+  const [skillMenuItems, setSkillMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string }[]>([]);
+  // Dynamic MCP server slash commands
+  const [mcpMenuItems, setMcpMenuItems] = useState<{ cmd: string; label: string; description: string; icon: string; toolNames: string[] }[]>([]);
+
+  const refreshSkillMenuItems = useCallback(() => {
+    fetch("/api/skills")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.skills) return;
+        const items = (data.skills as { slug: string; name: string; description: string; icon: string; slash_command: string | null; is_active: boolean }[])
+          .filter((s) => s.is_active && s.slash_command)
+          .map((s) => ({
+            cmd: s.slash_command!,
+            label: s.name,
+            description: s.description,
+            icon: s.icon,
+          }));
+        setSkillMenuItems(items);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Re-fetch skills when create_skill tool completes
+  const createSkillSeenRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      const parts = m.parts as { type: string; state?: string; toolCallId?: string }[];
+      for (const part of parts) {
+        if (
+          (part.type === "tool-create_skill" || part.type === "tool-create_tool_from_code") &&
+          part.state === "output-available" &&
+          part.toolCallId &&
+          !createSkillSeenRef.current.has(part.toolCallId)
+        ) {
+          createSkillSeenRef.current.add(part.toolCallId);
+          refreshSkillMenuItems();
+        }
+      }
+    }
+  }, [messages, refreshSkillMenuItems]);
+
+  useEffect(() => {
+    // Fetch skills on mount
+    refreshSkillMenuItems();
+
+    // Fetch active MCP servers to generate auto-commands
+    fetch("/api/mcp-servers")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.servers) return;
+        const items = (data.servers as { name: string; is_active: boolean; discovered_tools: { name: string }[] | null }[])
+          .filter((s) => s.is_active)
+          .map((s) => {
+            const slug = s.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+            const toolNames = (s.discovered_tools ?? []).map((t) => t.name);
+            return {
+              cmd: `/${slug}`,
+              label: s.name,
+              description: toolNames.length > 0
+                ? `${toolNames.length} MCP tools: ${toolNames.slice(0, 3).join(", ")}${toolNames.length > 3 ? "..." : ""}`
+                : "MCP server",
+              icon: "plug",
+              toolNames,
+            };
+          });
+        setMcpMenuItems(items);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Map icon string keys to Lucide components for slash command menu
+  const SLASH_ICON_MAP: Record<string, React.ReactNode> = {
+    "zap": <Zap className="h-4 w-4" />,
+    "clipboard-list": <ClipboardList className="h-4 w-4" />,
+    "mail": <Mail className="h-4 w-4" />,
+    "sticky-note": <StickyNote className="h-4 w-4" />,
+    "headphones": <Headphones className="h-4 w-4" />,
+    "folder-open": <FolderOpen className="h-4 w-4" />,
+    "github": <Github className="h-4 w-4" />,
+    "calendar-clock": <CalendarClock className="h-4 w-4" />,
+    "check-circle": <CheckCircle2 className="h-4 w-4" />,
+    "bar-chart": <BarChart3 className="h-4 w-4" />,
+    "play": <Play className="h-4 w-4" />,
+    "puzzle": <Puzzle className="h-4 w-4" />,
+    "wrench": <Wrench className="h-4 w-4" />,
+    "arrow-down-to-line": <ArrowDownToLine className="h-4 w-4" />,
+    "globe": <Globe className="h-4 w-4" />,
+    "search": <Search className="h-4 w-4" />,
+    "help-circle": <HelpCircle className="h-4 w-4" />,
+    "plug": <Plug className="h-4 w-4" />,
+  };
+
+  // Slash command definitions with metadata for the autocomplete menu
+  const SLASH_MENU_ITEMS = [
+    { cmd: "/linear", label: "Linear", description: "Query issues, create tasks", icon: "zap" },
+    { cmd: "/tasks", label: "Tasks", description: "Show in-progress tasks", icon: "clipboard-list" },
+    { cmd: "/gmail", label: "Gmail", description: "Search and draft emails", icon: "mail" },
+    { cmd: "/notion", label: "Notion", description: "Search pages and databases", icon: "sticky-note" },
+    { cmd: "/granola", label: "Granola", description: "Meeting transcripts", icon: "headphones" },
+    { cmd: "/drive", label: "Drive", description: "Search Google Drive files", icon: "folder-open" },
+    { cmd: "/github", label: "GitHub", description: "Repos, PRs, issues, commits", icon: "github" },
+    { cmd: "/schedule", label: "Schedule", description: "View scheduled actions", icon: "calendar-clock" },
+    { cmd: "/approve", label: "Approve", description: "Pending approvals", icon: "check-circle" },
+    { cmd: "/status", label: "Status", description: "Full status summary", icon: "bar-chart" },
+    { cmd: "/run", label: "Run Code", description: "Execute code in sandbox", icon: "play" },
+    { cmd: "/skills", label: "Skills", description: "Browse and manage skills", icon: "puzzle" },
+    { cmd: "/skill create", label: "Create Skill", description: "Create a new custom skill via interview", icon: "wrench" },
+    { cmd: "/review", label: "Review", description: "Check content against rules & guidelines", icon: "clipboard-list" },
+    { cmd: "/ingest", label: "Ingest Repo", description: "Import GitHub repo to context", icon: "arrow-down-to-line" },
+    { cmd: "/web", label: "Browse URL", description: "Fetch and read a web page", icon: "globe" },
+    { cmd: "/search", label: "Search", description: "Search the web", icon: "search" },
+    { cmd: "/help", label: "Help", description: "List all commands", icon: "help-circle" },
+    // Dynamic skill commands appended from API
+    ...skillMenuItems.filter((si) => ![ "/linear", "/tasks", "/gmail", "/notion", "/granola", "/drive", "/schedule", "/approve", "/status", "/run", "/search", "/skills", "/help", "/email" ].includes(si.cmd)),
+    // Dynamic MCP server commands
+    ...mcpMenuItems.filter((mi) => ![ "/linear", "/gmail", "/notion", "/granola", "/drive", "/github" ].includes(mi.cmd)),
+  ];
+
+  // Slash command mappings — expand to explicit tool instructions for the AI
+  const SLASH_COMMANDS: Record<string, (args: string) => string> = {
+    "/linear": (args) => args ? `Use the ask_linear_agent tool to find issues matching: ${args}` : "Use the ask_linear_agent tool to show all my current issues",
+    "/tasks": (args) => args ? `Use the ask_linear_agent tool to find: ${args}` : "Use the ask_linear_agent tool to show my in-progress tasks",
+    "/gmail": (args) => args ? `Use the ask_gmail_agent tool to search emails: ${args}` : "Use the ask_gmail_agent tool to show my recent emails from the last 3 days",
+    "/email": (args) => args ? `Use the ask_gmail_agent tool to search: ${args}` : "Use the ask_gmail_agent tool to show my recent emails",
+    "/notion": (args) => args ? `Use the ask_notion_agent tool to find: ${args}` : "Use the ask_notion_agent tool to list my pages",
+    "/granola": (args) => args
+      ? `Search my Granola meetings about: ${args}. Prefer MCP tools (query_granola_meetings, list_meetings, get_meeting_transcript) if available, otherwise fall back to ask_granola_agent.`
+      : "Show my recent Granola meetings. Prefer MCP tools (list_meetings, get_meetings) if available, otherwise fall back to ask_granola_agent.",
+    "/drive": (args) => args ? `Use the ask_drive_agent tool to search for: ${args}` : "Use the ask_drive_agent tool to show my recent files",
+    "/github": (args) => args
+      ? `Use GitHub MCP tools to: ${args}. Available tools include: list_issues, search_code, list_pull_requests, list_commits, get_file_contents, create_pull_request, search_repositories.`
+      : "Use GitHub MCP tools to show my recent GitHub activity. Try list_issues or list_pull_requests to see what's open.",
+    "/ingest": (args) => args
+      ? `Use the ingest_github_repo tool to import the repository "${args}" into the context library. Clone it, read the key files (README, src/, lib/, package.json, etc.), skip node_modules/.git/binaries, and save as context items.`
+      : "Use the ingest_github_repo tool. Ask me which GitHub repository to import (e.g., owner/repo).",
+    "/approve": () => "Use the list_approvals tool to show all pending items in the approval queue",
+    "/status": () => "Give me a full status update: check pending approvals, overdue tasks, and recent context items",
+    "/schedule": () => "Show me all scheduled actions and their status",
+    "/run": (args) => args ? `Use run_code to execute: ${args}` : "Use run_code to execute code in a sandbox. Ask me what to run.",
+    "/skills": (args) => args
+      ? `Search for skills matching "${args}". Check the /skills page to browse and install skills from the skills.sh registry.`
+      : "Show me available skills. I have 6 built-in skills and 24+ marketplace skills available at /skills.",
+    "/skill": (args) => {
+      if (args.toLowerCase().startsWith("create")) {
+        const extra = args.slice(6).trim();
+        return extra
+          ? `I want to create a new custom skill${extra ? `: ${extra}` : ""}. Use the ask_user tool to interview me about the skill details (name, description, category, what tools it needs, and a system prompt), then use create_skill to save it.`
+          : "I want to create a new custom skill. Use the ask_user tool to interview me about the skill details (name, description, category, what tools it needs, and a system prompt), then use create_skill to save it.";
+      }
+      return args
+        ? `Search for skills matching "${args}". Check the /skills page.`
+        : "Show me available skills at /skills.";
+    },
+    "/review": (args) => args
+      ? `Use the review_compliance tool to check the following content against all our org rules and priority documents: ${args}`
+      : "Use the review_compliance tool. What content would you like me to review against our rules and guidelines? You can paste text, a URL, or reference a document.",
+    "/web": (args) => args ? `Use the web_browse tool to fetch and read this URL: ${args}` : "Use the web_browse tool. What URL would you like me to read?",
+    "/search": (args) => args ? `Use the web_search tool to search the web for: ${args}` : "Use the web_search tool. What would you like me to search for?",
+    "/help": () => "List all available slash commands: /linear, /tasks, /gmail, /notion, /granola, /drive, /approve, /status, /schedule, /run, /search, /skills, /skill create, /pm, /email, /meeting, /code, /weekly, /brand",
+    // Dynamic skill slash commands → activate_skill tool
+    ...Object.fromEntries(
+      skillMenuItems.map((si) => [
+        si.cmd,
+        (args: string) => {
+          const slug = si.cmd.replace(/^\//, "");
+          return args
+            ? `Use the activate_skill tool with skill_slug "${slug}". Then help me with: ${args}`
+            : `Use the activate_skill tool with skill_slug "${slug}"`;
+        },
+      ])
+    ),
+    // Dynamic MCP server slash commands → use MCP tools
+    ...Object.fromEntries(
+      mcpMenuItems.map((mi) => [
+        mi.cmd,
+        (args: string) => {
+          const toolList = mi.toolNames.length > 0
+            ? `Available MCP tools from ${mi.label}: ${mi.toolNames.join(", ")}.`
+            : `Use ${mi.label} MCP tools.`;
+          return args
+            ? `${toolList} Help me with: ${args}`
+            : `${toolList} What can this server do?`;
+        },
+      ])
+    ),
+  };
+
+  // Filter menu items based on what the user has typed
+  const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
+  const slashMenuFiltered = slashMenuVisible
+    ? SLASH_MENU_ITEMS.filter(item => item.cmd.startsWith(input.toLowerCase()))
+    : [];
+  const [slashMenuIndex, setSlashMenuIndex] = useState(0);
+
+  // Reset menu index when filter changes
+  useEffect(() => { setSlashMenuIndex(0); }, [input]);
+
+  const selectSlashCommand = useCallback((cmd: string) => {
+    setInput(cmd + " ");
+  }, []);
 
   function handleSend() {
-    const text = input.trim();
-    if (!text || isLoading) return;
+    let text = input.trim();
+    if (!text && pendingFiles.length === 0) return;
+
+    // Default text when sending files without a message
+    if (!text && pendingFiles.length > 0) {
+      text = "Please analyze the attached file(s).";
+    }
+
+    // Parse slash commands — transform /command into AI-directed prompts
+    const slashMatch = text.match(/^(\/\w+)\s*(.*)?$/);
+    if (slashMatch) {
+      const [, cmd, args] = slashMatch;
+      const handler = SLASH_COMMANDS[cmd.toLowerCase()];
+      if (handler) {
+        const expanded = handler(args?.trim() ?? "");
+        console.log(`[Dewey] Slash command ${cmd} → "${expanded}"`);
+        text = expanded;
+      }
+    }
+
+    // Queue the message if the AI is still responding (no file support in queue)
+    if (isLoading) {
+      setMessageQueue((prev) => [...prev, text]);
+      setInput("");
+      return;
+    }
+
+    const files = buildFileList();
     setInput("");
-    sendMessage({ text });
+    // Clean up object URLs before clearing
+    for (const pf of pendingFiles) {
+      if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl);
+    }
+    setPendingFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    sendMessage({ text, files });
+    // Reset textarea height to single line after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -335,48 +2666,150 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
     return [];
   })();
 
-  return (
-    <div className="flex h-full overflow-hidden flex-col md:flex-row">
-      {/* Left: chat thread */}
-      <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {!historyLoaded && (
-            <div role="status" aria-label="Loading conversation" className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-40" />
-              <p className="text-xs">Loading conversation…</p>
-            </div>
-          )}
+  // Auto-open context panel when new search results arrive
+  useEffect(() => {
+    if (latestSources.length > 0 && prevSourceCountRef.current === 0) {
+      setContextPanelOpen(true);
+      localStorage.setItem("chat-context-panel", "true");
+    }
+    prevSourceCountRef.current = latestSources.length;
+  }, [latestSources.length]);
 
-          {historyLoaded && messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <Bot className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm font-medium text-foreground">Ask anything about your team&apos;s knowledge</p>
-              <p className="text-xs mt-1">Layers searches your documents, meetings, and notes to answer.</p>
-              <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-md">
-                {[
-                  "Summarize last week\u2019s meetings",
-                  "What decisions were made about the roadmap?",
-                  "Find documents about onboarding",
-                ].map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => sendMessage({ text: prompt })}
-                    className="rounded-full border bg-background px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+  const toggleContextPanel = () => {
+    setContextPanelOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("chat-context-panel", String(next));
+      return next;
+    });
+  };
+
+  return (
+    <div className={cn("flex h-full overflow-hidden flex-col md:flex-row", containerClassName)}>
+      {/* Left: chat thread */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        {/* Chat actions — hidden entirely, per-message actions handle copy/branch/feedback */}
+        {messages.length > 0 && false && (
+          <div className="hidden md:flex justify-end px-4 py-1 border-b relative">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors flex items-center gap-1"
+                  aria-label="Chat actions"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Actions</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={copyDebugJSON}>
+                  <Copy className="h-3.5 w-3.5 mr-2" />
+                  Copy JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportMarkdown}>
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Export Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportJSON}>
+                  <FileJson className="h-3.5 w-3.5 mr-2" />
+                  Export JSON file
+                </DropdownMenuItem>
+                {conversationId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                      <Share2 className="h-3.5 w-3.5 mr-2" />
+                      Share...
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        {/* Share panel — rendered as overlay when triggered from header */}
+        {shareOpen && conversationId && (
+          <div className="relative z-20 border-b">
+            <SharePanel
+              conversationId={conversationId!}
+              onClose={() => setShareOpen(false)}
+            />
+          </div>
+        )}
+        <Conversation className={cn("flex-1 min-h-0", compactMode ? "p-3" : "p-4 sm:p-6")}>
+          <ConversationContent className={cn("max-w-4xl mx-auto w-full", compactMode ? "gap-3 p-0" : isPortal ? "gap-3 p-0" : "gap-6 p-0")}>
+          {messages.length === 0 && (
+            <div className={cn("flex flex-col items-center justify-center text-center", isPortal ? v.mutedColor : "text-muted-foreground", compactMode ? "py-4" : "h-full")}>
+              {!compactMode && (isPortal ? (
+                <div className="mb-4 flex flex-col items-center gap-2">
+                  {portalLogoUrl ? (
+                    <img src={portalLogoUrl} alt="" className="h-8 w-auto opacity-80" />
+                  ) : (
+                    <span
+                      className="inline-block h-3 w-3 rounded-full"
+                      style={{ backgroundColor: portalBrandColor || "#34d399" }}
+                    />
+                  )}
+                  {portalClientName && (
+                    <p className={cn("text-[11px]", isPortal ? v.mutedColor : "text-muted-foreground/60")}>
+                      Prepared by <span className={cn(isPortal ? v.bodyColor : "text-foreground/70")}>Mirror Factory</span> for{" "}
+                      <span className={cn(isPortal ? v.bodyColor : "text-foreground/70")}>{portalClientName}</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mb-3 opacity-60">
+                  <NeuralMorph size={48} dotCount={14} formation="bloom" />
+                </div>
+              ))}
+              <p className={cn("font-medium", isPortal ? v.headingColor : "text-foreground", compactMode ? "text-xs" : "text-sm")}>
+                {isPortal && portalTitle
+                  ? `Ask about ${portalTitle}`
+                  : "Ask anything about your team\u2019s knowledge"}
+              </p>
+              {!compactMode && !isPortal && (
+                <p className="text-xs mt-1">
+                  {"Dewey searches your documents, meetings, and notes to answer."}
+                </p>
+              )}
+              <div className={cn("flex flex-wrap justify-center max-w-lg", compactMode ? "mt-3" : "mt-5")}>
+                <Suggestions className="justify-center flex-wrap gap-2">
+                  {(v.suggestions.length > 0 ? v.suggestions : [
+                    { text: "Chart my overdue Linear tasks by priority", accent: true },
+                    { text: "Research competitor pricing and write a brief", accent: false },
+                    { text: "Summarize my last Granola meeting into action items", accent: false },
+                    { text: "Build a dashboard app from our recent metrics", accent: true },
+                    { text: "Look up our brand guidelines and create a landing page", accent: false },
+                    { text: "Show my week ahead — tasks, meetings, deadlines", accent: true },
+                  ]).map(({ text: prompt, accent }) => (
+                    <Suggestion
+                      key={prompt}
+                      suggestion={prompt}
+                      onClick={(s) => sendMessage({ text: s })}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "whitespace-normal text-left h-auto py-1.5",
+                        isPortal && accent && "border-sky-200 dark:border-white/10 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-white/10",
+                        isPortal && !accent && "bg-white dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10",
+                        !isPortal && accent && "border-primary/30 text-primary hover:bg-primary/10",
+                      )}
+                      style={isPortal && accent ? { borderColor: `${portalBrandColor || "#0DE4F2"}40`, color: portalBrandColor || "#0DE4F2" } : undefined}
+                    />
+                  ))}
+                </Suggestions>
               </div>
             </div>
           )}
 
-          {messages.map((m) => {
+          {messages.map((m, idx) => {
             const parts = m.parts as { type: string; text?: string }[];
             const text = getTextContent(parts);
             const toolParts = m.role === "assistant" ? getToolParts(parts) : [];
             const sources = getSearchSources(toolParts);
 
-            if (!text && toolParts.length === 0 && m.role !== "user") return null;
+            const fileParts = (parts as { type: string }[]).filter(p => p.type === "file");
+            if (!text && toolParts.length === 0 && fileParts.length === 0 && m.role !== "user") return null;
 
             const isLastAssistant =
               m.role === "assistant" &&
@@ -384,40 +2817,134 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
             const isStreaming = isLastAssistant && isLoading;
 
             return (
-              <div key={m.id} data-testid={m.role === "user" ? "user-message" : "assistant-message"} className={cn("flex gap-3 group", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
-                <div
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {m.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </div>
+              <div key={m.id} className={cn("flex group", isPortal ? "gap-2" : "gap-2 sm:gap-3", m.role === "user" ? "max-w-3xl ml-auto flex-row-reverse" : "max-w-4xl")}>
+                {m.role === "user" ? (
+                  <div className="hidden sm:block shrink-0 rounded-full overflow-hidden" style={{ width: isPortal ? 24 : 32, height: isPortal ? 24 : 32 }}>
+                    {isPortal ? (
+                      <span
+                        className="inline-flex h-full w-full items-center justify-center rounded-full"
+                        style={{ backgroundColor: `${portalBrandColor || "#0DE4F2"}20` }}
+                      >
+                        <span
+                          className="inline-block h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: portalBrandColor || "#0DE4F2" }}
+                        />
+                      </span>
+                    ) : (
+                      <NeuralMorph size={32} dotCount={8} formation="orbit" color="#ffffff" />
+                    )}
+                  </div>
+                ) : isPortal ? (
+                  <>
+                    {/* Portal mode: brand-colored animated avatar — compact */}
+                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 24, height: 24 }}>
+                      <NeuralMorph
+                        size={24}
+                        dotCount={isStreaming ? 10 : 8}
+                        formation={isStreaming ? "active" : "orbit"}
+                        color={portalBrandColor || "#0DE4F2"}
+                      />
+                    </div>
+                    <div className="sm:hidden shrink-0 mt-0.5">
+                      <NeuralMorph
+                        size={20}
+                        dotCount={8}
+                        formation={isStreaming ? "active" : "orbit"}
+                        color={portalBrandColor || "#0DE4F2"}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Desktop: full NeuralMorph avatar */}
+                    <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                      {isLastAssistant ? (() => {
+                        const msgToolNames = toolParts.map(p => {
+                          const type = (p as { type: string }).type;
+                          return type.startsWith("tool-") ? type.slice(5) : type === "dynamic-tool" && "toolName" in p ? String(p.toolName) : "";
+                        }).filter(Boolean);
 
-                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                        // Update Dynamic Island with current tool (fire-and-forget)
+                        if (isStreaming && msgToolNames.length > 0) {
+                          updateLiveActivity("generating", msgToolNames[msgToolNames.length - 1], 0.5);
+                        }
+
+                        // Check for emotion in text
+                        const { formation: emotionFormation } = text ? parseEmotion(text) : { formation: null };
+
+                        const formation = emotionFormation
+                          ? emotionFormation
+                          : isStreaming
+                          ? getActiveFormation(msgToolNames)
+                          : getDoneFormation(msgToolNames);
+
+                        return <NeuralMorph size={40} dotCount={isStreaming ? 16 : 14} formation={formation} />;
+                      })() : (
+                        /* Older messages: small orbit avatar to save CPU */
+                        <NeuralMorph size={36} dotCount={8} formation="orbit" />
+                      )}
+                    </div>
+                    {/* Mobile: small NeuralMorph instead of plain dot */}
+                    <div className="sm:hidden shrink-0 mt-0.5">
+                      {isLastAssistant && isStreaming ? (
+                        <NeuralMorph size={20} dotCount={8} formation="active" />
+                      ) : (
+                        <NeuralMorph size={20} dotCount={6} formation="orbit" />
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <Message from={m.role} className="min-w-0 flex-1">
                   {/* Tool call cards */}
                   {toolParts.length > 0 && (
                     <div className="space-y-2">
                       {toolParts.map((part, i) => (
-                        <div key={i} data-testid="tool-call">
-                          <ToolCallCard part={part} />
-                        </div>
+                        <SafeToolCallCard key={i} part={part} onApprovalExecuted={(result) => sendMessage({ text: `[Approval result: ${result}]. Acknowledge this and tell me the final outcome.` })} onOpenArtifact={(artifact) => { setActiveArtifact(artifact); setArtifactViewMode("code"); setSelectedFilePath(pickDefaultFile(artifact.files)); }} />
                       ))}
                     </div>
                   )}
 
-                  {/* Text response */}
+                  {/* File attachments in messages */}
+                  {(() => {
+                    const fileParts = (parts as { type: string; mediaType?: string; url?: string; filename?: string }[])
+                      .filter(p => p.type === "file");
+                    if (fileParts.length === 0) return null;
+                    return (
+                      <div className={cn("flex flex-wrap gap-2 mb-1", m.role === "user" && "justify-end")}>
+                        {fileParts.map((fp, fi) => (
+                          fp.mediaType?.startsWith("image/") ? (
+                            <img
+                              key={fi}
+                              src={fp.url}
+                              alt={fp.filename ?? "attachment"}
+                              className="max-h-40 rounded-lg border object-cover"
+                            />
+                          ) : (
+                            <div key={fi} className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
+                              <FileType className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate max-w-[120px]">{fp.filename ?? "file"}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Text response — with inline json-render detection */}
                   {text && (
-                    <div
+                    <MessageContent
                       className={cn(
-                        "rounded-xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                        m.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
+                        isPortal &&
+                          "group-[.is-user]:bg-sky-100 dark:group-[.is-user]:bg-white/5 group-[.is-user]:text-gray-900 dark:group-[.is-user]:text-white group-[.is-user]:border group-[.is-user]:border-sky-200 dark:group-[.is-user]:border-white/10 group-[.is-assistant]:text-gray-900 dark:group-[.is-assistant]:text-white"
                       )}
                     >
-                      {text}
-                    </div>
+                      {m.role === "user" ? (
+                        text
+                      ) : (
+                        <RichMessageResponse text={text.replace(/\[(?:emotion|mood|feeling):\w+(?::\d+)?\]/g, "")} />
+                      )}
+                    </MessageContent>
                   )}
 
                   {/* Source citations */}
@@ -425,178 +2952,1419 @@ export function ChatInterface({ conversationId, initialTemplateId }: ChatInterfa
                     <SourceCitation sources={sources} />
                   )}
 
-                  {/* Feedback buttons — assistant messages only, not while streaming */}
-                  {m.role === "assistant" && !isStreaming && text && (
-                    <MessageFeedback
-                      messageId={m.id}
-                      conversationId={conversationId}
-                    />
+                  {/* Actions row — copy, branch (both roles), feedback + cost (assistant only) */}
+                  {!isStreaming && text && (
+                    <div className={cn("flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity", m.role === "user" && "justify-end")}>
+                      <button onClick={() => navigator.clipboard.writeText(text)} className="p-1 rounded hover:bg-muted transition-colors" title="Copy"><Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" /></button>
+                      {conversationId && (
+                        <button onClick={async () => { try { const res = await fetch("/api/chat/branch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, messageIndex: idx }) }); if (res.ok) { const { conversationId: newId } = await res.json(); window.location.href = `/chat?id=${newId}`; } } catch {} }} className="p-1 rounded hover:bg-muted transition-colors" title="Branch"><GitBranch className="h-3 w-3 text-primary/60 hover:text-primary" /></button>
+                      )}
+                      {m.role === "assistant" && (
+                        <>
+                          <MessageFeedback messageId={m.id} conversationId={conversationId} />
+                          {(() => {
+                            // Match agent run by index: count assistant messages up to this one
+                            const assistantIndex = messages.slice(0, idx + 1).filter((msg) => msg.role === "assistant").length - 1;
+                            const run = agentRuns[assistantIndex];
+                            const statsData = run ? {
+                              model: run.model,
+                              inputTokens: run.total_input_tokens,
+                              outputTokens: run.total_output_tokens,
+                              cacheReadTokens: run.cache_read_tokens ?? 0,
+                              cacheWriteTokens: run.cache_write_tokens ?? 0,
+                              costUsd: parseFloat(run.gateway_cost_usd ?? "0"),
+                              durationMs: run.duration_ms ?? 0,
+                              toolCalls: (run.tool_calls ?? []).flatMap((tc: { tool: string; count: number }) => Array(tc.count).fill(tc.tool)),
+                              stepDetails: run.step_details,
+                            } : null;
+                            return (
+                              <MessageStats
+                                model={run?.model ?? messageModelRef.current.get(assistantIndex) ?? model}
+                                text={text}
+                                stats={statsData}
+                                className="ml-1"
+                              />
+                            );
+                          })()}
+                        </>
+                      )}
+                    </div>
                   )}
-                </div>
+                </Message>
               </div>
             );
           })}
 
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-              <div className="rounded-xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">Researching…</div>
+          {/* Only show thinking indicator when loading AND the last assistant message has no content yet */}
+          {isLoading && (() => {
+            // Show thinking indicator until the NEW assistant response starts streaming
+            // Key: check if the very last message is an assistant message with content
+            // If the last message is still "user" (just sent), show thinking
+            const lastMsg = messages.at(-1);
+            if (!lastMsg || lastMsg.role === "user") return true; // Waiting for assistant to start
+            // Last message is assistant — check if it has content yet
+            const hasText = !!getTextContent(lastMsg.parts as { type: string; text?: string }[]);
+            const hasTools = getToolParts(lastMsg.parts as { type: string }[]).length > 0;
+            return !hasText && !hasTools; // Hide thinking once content streams in
+          })() && (
+            <div className={cn("flex max-w-4xl", isPortal ? "gap-2" : "gap-3")}>
+              {isPortal ? (
+                <>
+                  <div className="hidden sm:flex shrink-0 items-center justify-center rounded-full" style={{ width: 24, height: 24, backgroundColor: `${portalBrandColor || "#34d399"}15` }}>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                  </div>
+                  <div className="sm:hidden shrink-0 mt-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: portalBrandColor || "#34d399" }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="hidden sm:block rounded-full overflow-hidden shrink-0" style={{ width: 36, height: 36 }}>
+                    <NeuralMorph size={40} dotCount={16} formation="active" />
+                  </div>
+                  <div className="sm:hidden shrink-0 mt-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  </div>
+                </>
+              )}
+              {isPortal ? (
+                <Shimmer className="text-xs pt-1" duration={1.5}>Thinking...</Shimmer>
+              ) : (
+                <span className="text-xs pt-3 text-muted-foreground">Thinking...</span>
+              )}
             </div>
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-destructive text-center">
-              {error.message ?? "Something went wrong."}
-            </p>
+            <div role="alert" className="flex flex-col items-center gap-2 py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 max-w-md">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-sm text-destructive">
+                  {error.message?.includes("fetch") || error.message?.includes("network")
+                    ? "Connection lost. Check your internet and try again."
+                    : error.message?.includes("429") || error.message?.includes("rate")
+                      ? "Rate limit reached. Please wait a moment."
+                      : error.message?.includes("401") || error.message?.includes("auth")
+                        ? "Session expired. Please refresh the page."
+                        : error.message ?? "Something went wrong."}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => {
+                  // Find the last user message and resend it
+                  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+                  if (lastUserMsg) {
+                    const text = getTextContent(lastUserMsg.parts as { type: string; text?: string }[]);
+                    if (text) sendMessage({ text });
+                  }
+                }}
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {ambientSuggestion && (
+            <div className="px-4 pb-2">
+              <AmbientAICard
+                suggestion={ambientSuggestion}
+                onAccept={(id) => {
+                  // Insert the suggestion's body as context
+                  setAmbientSuggestion(null);
+                }}
+                onDismiss={(id) => {
+                  setAmbientSuggestion(null);
+                }}
+                onModify={(id, prompt) => {
+                  // Send the modified prompt
+                  sendMessage({ text: prompt });
+                  setAmbientSuggestion(null);
+                }}
+              />
+            </div>
           )}
 
           <div ref={bottomRef} />
-        </div>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
-        <div className="border-t p-3 sm:p-4">
-          {/* Agent template pills */}
-          <div className="flex flex-wrap items-center gap-1.5 max-w-3xl mx-auto mb-2">
-            <button
-              onClick={() => setActiveTemplate(null)}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-                !activeTemplate
-                  ? "bg-primary text-primary-foreground"
-                  : "border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              General
-            </button>
-            {AGENT_TEMPLATES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTemplate(activeTemplate?.id === t.id ? null : t)}
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  activeTemplate?.id === t.id
-                    ? "bg-primary text-primary-foreground"
-                    : "border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Suggested queries for active template */}
-          {activeTemplate && (
-            <div className="flex flex-wrap items-center gap-1.5 max-w-3xl mx-auto mb-2">
-              <span className="text-[10px] text-muted-foreground mr-1">Try:</span>
-              {activeTemplate.suggestedQueries.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => {
-                    setInput("");
-                    sendMessage({ text: q });
-                    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-                  }}
-                  className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
+        <div
+          className={cn("shrink-0 sticky bottom-0 z-10 relative", compactMode ? "px-3 pt-3 pb-2" : isPortal ? "px-3 sm:px-4 pt-3" : "px-4 sm:px-8 pt-6", isPortal && !compactMode ? "pb-2" : !compactMode ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "", isPortal && cn("bg-gradient-to-b", v.gradientFrom, "via-slate-50/90", v.gradientTo, "dark:via-[#1a1f2e]/85 dark:to-[#1a1f2e]"))}
+          style={{
+            background: isPortal
+              ? undefined
+              : `linear-gradient(to bottom, transparent, hsl(var(--background) / 0.85) 35%, hsl(var(--background)) 65%)`,
+          }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag-drop overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg m-1">
+              <div className="flex flex-col items-center gap-2 text-primary">
+                <Upload className="h-8 w-8" />
+                <span className="text-sm font-medium">Drop files here</span>
+                <span className="text-xs text-muted-foreground">Images, PDFs, text files (max 10MB)</span>
+              </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-2 max-w-3xl mx-auto sm:flex-row sm:gap-3">
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-full sm:w-36 shrink-0 text-xs h-9" data-testid="model-selector" aria-label="Select AI model">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2 sm:gap-3 flex-1">
-              <textarea
-                data-testid="chat-input"
-                aria-label="Chat message input"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your documents, meetings, or team…"
-                rows={1}
-                className="flex-1 resize-none rounded-lg border bg-background px-3 sm:px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
+          {/* Voice mode UI — replaces the input area when active (portal only) */}
+          {v.voiceEnabled && voiceActive && (
+            <div className="flex flex-col items-center justify-center py-6 px-4 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <PortalVoiceMode
+                inline
+                active={voiceActive}
+                onActiveChange={(a) => {
+                  if (!a) onVoiceToggle?.();
+                }}
+                onTranscript={(text) => {
+                  if (text.trim()) sendMessage({ text: text.trim() });
+                }}
+                lastAIResponse={lastAIResponse}
+                recentMessages={messages.slice(-4).map((m) => ({
+                  role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+                  text: getTextContent(m.parts as { type: string; text?: string }[]),
+                })).filter((m) => m.text)}
+                brandColor={portalBrandColor || "#0DE4F2"}
+                isDark={typeof document !== "undefined" && document.documentElement.classList.contains("dark")}
+              />
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "max-w-3xl mx-auto rounded-2xl border backdrop-blur-md shadow-xl transition-all duration-500",
+              isPortal ? cn(v.inputBorder, v.inputBg, "shadow-sm p-2") : "border-border/50 bg-card/60 p-3",
+              isPortal && voiceActive && "opacity-0 h-0 p-0 border-0 overflow-hidden pointer-events-none shadow-none transition-all duration-500"
+            )}
+          >
+            {/* Interview UI — renders as overlay above the input area */}
+            {pendingInterview && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
+                <InterviewUI
+                  interview={pendingInterview}
+                  onSubmit={handleInterviewSubmit}
+                  onDismiss={handleInterviewDismiss}
+                />
+              </div>
+            )}
+
+            {/* Slash command autocomplete menu — positioned above input (hidden in portal mode) */}
+            {!isPortal && slashMenuFiltered.length > 0 && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 z-20 px-3 sm:px-4">
+                <div className="max-w-5xl mx-auto">
+                  <div className="border rounded-lg bg-background shadow-lg max-h-[calc(8*2.5rem)] overflow-y-auto">
+                    {slashMenuFiltered.map((item, i) => (
+                      <button
+                        key={item.cmd}
+                        type="button"
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors",
+                          i === slashMenuIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                        )}
+                        onMouseEnter={() => setSlashMenuIndex(i)}
+                        onClick={() => selectSlashCommand(item.cmd)}
+                      >
+                        <span className="w-6 flex items-center justify-center text-muted-foreground">{SLASH_ICON_MAP[item.icon] ?? <Plug className="h-4 w-4" />}</span>
+                        <span className="font-mono text-xs font-medium text-primary">{item.cmd}</span>
+                        <span className="text-xs text-muted-foreground">{item.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+              {/* Pending file previews */}
+              {pendingFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {pendingFiles.map(pf => {
+                    const Icon = getFileIcon(pf.file.type);
+                    return (
+                      <div key={pf.id} className="group/file relative flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs">
+                        {pf.previewUrl ? (
+                          <img src={pf.previewUrl} alt={pf.file.name} className="h-6 w-6 rounded object-cover" />
+                        ) : (
+                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="truncate max-w-[100px] text-muted-foreground">{pf.file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(pf.id)}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label={`Remove ${pf.file.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_EXTENSIONS}
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) addFiles(e.target.files);
+                  e.target.value = "";
                 }}
               />
-              <Button type="button" size="icon" onClick={handleSend} disabled={isLoading || !input.trim()} data-testid="chat-submit" aria-label="Send message">
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+
+              <div className="relative flex items-end gap-2">
+                <textarea
+                  ref={textareaRef}
+                  data-testid="chat-input"
+                  aria-label="Chat message input"
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto-expand textarea
+                    const el = e.target;
+                    el.style.height = "auto";
+                    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                    // Detect @ mention
+                    const val = e.target.value;
+                    const cursorPos = e.target.selectionStart;
+                    const textBeforeCursor = val.slice(0, cursorPos);
+                    const atIndex = textBeforeCursor.lastIndexOf("@");
+                    if (atIndex >= 0 && (atIndex === 0 || textBeforeCursor[atIndex - 1] === " " || textBeforeCursor[atIndex - 1] === "\n")) {
+                      const query = textBeforeCursor.slice(atIndex + 1);
+                      if (!query.includes(" ") && query.length < 30) {
+                        setMentionOpen(true);
+                        setMentionQuery(query);
+                      } else {
+                        setMentionOpen(false);
+                      }
+                    } else {
+                      setMentionOpen(false);
+                    }
+                  }}
+                  placeholder={isPortal ? "Ask about this document…" : "Ask anything… (type / for commands)"}
+                  rows={1}
+                  className={cn(
+                    "flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] md:text-sm focus:outline-none placeholder:truncate",
+                    isPortal ? "text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground"
+                  )}
+                  style={{ maxHeight: "200px", overflowY: "auto" }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && mentionOpen) {
+                      e.preventDefault();
+                      setMentionOpen(false);
+                      return;
+                    }
+                    // Slash menu navigation
+                    if (slashMenuFiltered.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setSlashMenuIndex(i => (i + 1) % slashMenuFiltered.length);
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setSlashMenuIndex(i => (i - 1 + slashMenuFiltered.length) % slashMenuFiltered.length);
+                        return;
+                      }
+                      if (e.key === "Tab" || (e.key === "Enter" && !input.includes(" "))) {
+                        e.preventDefault();
+                        selectSlashCommand(slashMenuFiltered[slashMenuIndex].cmd);
+                        return;
+                      }
+                      if (e.key === "Escape") {
+                        setInput("");
+                        return;
+                      }
+                    }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <MentionPicker
+                  open={mentionOpen}
+                  onClose={() => setMentionOpen(false)}
+                  onSelectUser={(user) => {
+                    const atIdx = input.lastIndexOf("@");
+                    if (atIdx >= 0) {
+                      setInput(input.slice(0, atIdx) + `@${user.name} `);
+                    }
+                    setMentionOpen(false);
+                    textareaRef.current?.focus();
+                  }}
+                  onSelectItem={(item) => {
+                    const atIdx = input.lastIndexOf("@");
+                    if (atIdx >= 0) {
+                      setInput(input.slice(0, atIdx) + `@[${item.title}] `);
+                    }
+                    setMentionOpen(false);
+                    textareaRef.current?.focus();
+                  }}
+                  query={mentionQuery}
+                  orgId={conversationId ?? ""}
+                />
+
+                {/* Right-side icon buttons */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {/* Mobile-only three-dot menu — combines chat actions + attach/chart/settings (hidden in portal mode) */}
+                  <div className={cn("md:hidden", isPortal && "hidden")}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="More options">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Paperclip className="h-3.5 w-3.5 mr-2" />
+                          Attach files
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setShowContextBar(prev => !prev)}>
+                          <BarChart3 className="h-3.5 w-3.5 mr-2" />
+                          Context window
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {/* Model selector inline */}
+                        <div className="px-2 py-1.5 space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
+                          <Select value={model} onValueChange={setModel}>
+                            <SelectTrigger className="w-full text-xs h-8" aria-label="Select AI model">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MODELS.map((m) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">
+                                  <span className="flex items-center gap-1.5">
+                                    {m.tier === "local" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />}
+                                    {m.label}
+                                    {m.tier === "local" && <span className="text-[9px] text-emerald-400 font-medium ml-1">LOCAL</span>}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DropdownMenuSeparator />
+                        {/* Visual level */}
+                        <div className="px-2 py-1.5 space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
+                          <div className="flex items-center border rounded-md overflow-hidden">
+                            {(["off", "low", "med", "high"] as const).map((lvl) => {
+                              const value = lvl === "med" ? "medium" : lvl;
+                              const isActive = visualLevel === value;
+                              return (
+                                <button
+                                  key={lvl}
+                                  onClick={() => {
+                                    setVisualLevel(value);
+                                    localStorage.setItem("granger-visual-level", value);
+                                  }}
+                                  className={cn(
+                                    "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                                    isActive
+                                      ? "bg-primary/15 text-primary"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title={`Visual mode: ${value}`}
+                                >
+                                  {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {messages.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={copyDebugJSON}>
+                              <Copy className="h-3.5 w-3.5 mr-2" />
+                              Copy JSON
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportMarkdown}>
+                              <Download className="h-3.5 w-3.5 mr-2" />
+                              Export Markdown
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportJSON}>
+                              <FileJson className="h-3.5 w-3.5 mr-2" />
+                              Export JSON file
+                            </DropdownMenuItem>
+                            {conversationId && (
+                              <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                                <Share2 className="h-3.5 w-3.5 mr-2" />
+                                Share...
+                              </DropdownMenuItem>
+                            )}
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Desktop-only buttons — hidden on mobile and in portal mode */}
+                  <div className={cn("hidden md:flex items-center gap-0.5", isPortal && "!hidden")}>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Attach files"
+                      title="Attach files"
+                      className="h-8 w-8"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setShowContextBar(prev => !prev)}
+                      aria-label="Toggle context window"
+                      title="Context window"
+                      className="h-8 w-8"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </Button>
+
+                    <button
+                      onClick={() => setParticipantsOpen(true)}
+                      className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                      title="Participants"
+                    >
+                      <Users className="h-4 w-4" />
+                    </button>
+
+                    {/* Settings dropdown — model selector + visual level */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Chat settings" title="Chat settings">
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 p-3 space-y-3">
+                        {/* Model selector */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Model</label>
+                          <Select value={model} onValueChange={setModel}>
+                            <SelectTrigger className="w-full text-xs h-8" data-testid="model-selector" aria-label="Select AI model">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MODELS.map((m) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">
+                                  <span className="flex items-center gap-1.5">
+                                    {m.tier === "local" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />}
+                                    {m.label}
+                                    {m.tier === "local" && <span className="text-[9px] text-emerald-400 font-medium ml-1">LOCAL</span>}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DropdownMenuSeparator />
+                        {/* Visual level */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Visual Level</label>
+                          <div className="flex items-center border rounded-md overflow-hidden">
+                            {(["off", "low", "med", "high"] as const).map((lvl) => {
+                              const value = lvl === "med" ? "medium" : lvl;
+                              const isActive = visualLevel === value;
+                              return (
+                                <button
+                                  key={lvl}
+                                  onClick={() => {
+                                    setVisualLevel(value);
+                                    localStorage.setItem("granger-visual-level", value);
+                                  }}
+                                  className={cn(
+                                    "flex-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                                    isActive
+                                      ? "bg-primary/15 text-primary"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                  title={`Visual mode: ${value}`}
+                                >
+                                  {lvl === "off" ? "Off" : lvl === "low" ? "Low" : lvl === "med" ? "Med" : "Max"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {/* Context window stats preview */}
+                        {messages.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Context</label>
+                              <p className="text-[10px] text-muted-foreground">{messages.length} messages in conversation</p>
+                            </div>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
+                {/* Voice toggle — portal only */}
+                {v.voiceEnabled && onVoiceToggle && (
+                  <button
+                    type="button"
+                    onClick={onVoiceToggle}
+                    className={cn(
+                      "p-2 rounded-xl transition-colors",
+                      voiceActive
+                        ? "text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    style={voiceActive ? { backgroundColor: portalBrandColor || "#0DE4F2" } : undefined}
+                    title={voiceActive ? "Stop voice" : "Voice mode"}
+                  >
+                    {voiceActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                  </button>
+                )}
+
+                {/* Send / Stop button — single toggle */}
+                <button
+                  type="button"
+                  onClick={isLoading ? stop : handleSend}
+                  disabled={!isLoading && !input.trim() && pendingFiles.length === 0}
+                  data-testid={isLoading ? "chat-stop" : "chat-submit"}
+                  aria-label={isLoading ? "Stop generation" : "Send message"}
+                  className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground p-2.5 shrink-0 transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none"
+                  style={isPortal && portalBrandColor ? { backgroundColor: portalBrandColor } : undefined}
+                >
+                  {isLoading ? (
+                    <Square className="h-4 w-4 fill-current" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">Enter to send · Shift+Enter for new line</p>
+          {/* Queued messages indicator */}
+          {messageQueue.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{messageQueue.length} message{messageQueue.length > 1 ? "s" : ""} queued</span>
+              <button
+                type="button"
+                onClick={() => setMessageQueue([])}
+                className="ml-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            </div>
+          )}
+          {/* Context window bar — pops up above prompt area */}
+          {showContextBar && !hideContextBar && !compactMode && messages.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 px-4 z-10">
+              <div className="max-w-5xl mx-auto">
+                <ContextWindowBar messages={messages} modelId={model} conversationId={conversationId} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right: context panel (hidden on mobile) */}
-      <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
-        <div className="px-4 py-3 border-b flex items-center gap-2">
-          <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
-          {latestSources.length > 0 && (
-            <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
-          )}
-        </div>
+      {/* Right panel — Artifact viewer with file tree (mini IDE) — hidden in portal mode */}
+      {/* Mobile: full-screen overlay; Desktop: side panel */}
+      {!isPortal && activeArtifact ? (
+        <aside className="fixed inset-0 z-50 flex flex-col bg-background md:static md:z-auto md:flex-row md:w-[50%] md:min-w-[400px] md:shrink-0 md:border-l md:bg-card">
+          {(() => {
+            // Build file tree from multi-file project or single file
+            const artifactFiles = activeArtifact.files?.length
+              ? activeArtifact.files
+              : [{ path: activeArtifact.filename, content: activeArtifact.code }];
+            const tree = buildFileTree(artifactFiles);
+            const currentPath = selectedFilePath ?? artifactFiles[0]?.path ?? null;
+            const currentNode = currentPath ? findFileNode(tree, currentPath) : null;
+            const displayCode = currentNode?.content ?? activeArtifact.code;
+            const displayLang = currentNode?.language ?? activeArtifact.language;
+            const displayName = currentNode?.name ?? activeArtifact.filename;
 
-        <div className="flex-1 overflow-y-auto">
-          {latestSources.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
-              <FileText className="h-6 w-6 mb-2 opacity-30" />
-              <p className="text-xs">Send a message to see which documents were retrieved.</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {latestSources.map((s, i) => {
-                const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
-                const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
-                return (
-                  <div key={s.id} className="px-4 py-3 space-y-1.5">
-                    <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
-                        {s.description_short && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                            {s.description_short}
-                          </p>
+            return (
+              <>
+                {/* Mobile: simplified toolbar with back, filename, and actions dropdown */}
+                <div className="md:hidden flex flex-col border-b shrink-0">
+                  {/* Row 1: Back, filename, actions menu, close */}
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <button
+                      onClick={() => setActiveArtifact(null)}
+                      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px] shrink-0"
+                      aria-label="Back to chat"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Back</span>
+                    </button>
+                    <span className="flex-1 text-sm font-medium truncate text-center">{displayName}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center justify-center rounded-md min-h-[44px] min-w-[44px] p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="More actions">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {activeArtifact.type !== "document" && activeArtifact.artifactId && (
+                          <DropdownMenuItem
+                            disabled={codeSaving}
+                            onClick={async () => {
+                              if (!activeArtifact.artifactId) return;
+                              if (displayCode === activeArtifact.code) return;
+                              setCodeSaving(true);
+                              try {
+                                await fetch(`/api/artifacts/${activeArtifact.artifactId}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ content: displayCode }),
+                                });
+                                const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ content: displayCode, change_type: "manual_edit", change_summary: "Manual save" }),
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.new_version) {
+                                    setActiveArtifact((prev) => prev ? { ...prev, code: displayCode, currentVersion: data.new_version } : prev);
+                                  }
+                                }
+                              } catch {} finally { setCodeSaving(false); }
+                            }}
+                          >
+                            <Save className="h-4 w-4 mr-2" /> Save
+                          </DropdownMenuItem>
                         )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <SrcIcon className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">
-                        {SOURCE_LABEL[s.source_type] ?? s.source_type}
-                      </span>
-                      <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
-                      <span className="text-[10px] text-muted-foreground">
-                        {s.content_type.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <ScoreBar score={s.rrf_score} />
+                        {activeArtifact.previewUrl && (
+                          <DropdownMenuItem asChild>
+                            <a href={activeArtifact.previewUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-2" /> Open in new tab
+                            </a>
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.previewUrl && (
+                          <DropdownMenuItem
+                            disabled={sandboxRestarting}
+                            onClick={async () => {
+                              setSandboxRestarting(true);
+                              setSandboxStopped(false);
+                              setArtifactViewMode("preview");
+                              setPreviewError(null);
+                              setPreviewRetryCount(0);
+                              try {
+                                const endpoint = activeArtifact.artifactId
+                                  ? `/api/sandbox/${activeArtifact.artifactId}`
+                                  : "/api/sandbox/restart";
+                                const body = activeArtifact.artifactId
+                                  ? {}
+                                  : { snapshotId: activeArtifact.snapshotId ?? undefined, runCommand: activeArtifact.runCommand ?? "npm start", exposePort: activeArtifact.exposePort ?? 5173, files: activeArtifact.files };
+                                const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.previewUrl) setActiveArtifact((prev) => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                }
+                              } catch {} finally { setSandboxRestarting(false); }
+                            }}
+                          >
+                            <Zap className="h-4 w-4 mr-2" /> {sandboxRestarting ? "Restarting..." : "Restart sandbox"}
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.previewUrl && !sandboxStopped && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (activeArtifact.artifactId) {
+                                try { await fetch(`/api/sandbox/${activeArtifact.artifactId}`, { method: "DELETE" }); } catch {}
+                              }
+                              setSandboxStopped(true);
+                            }}
+                          >
+                            <Square className="h-4 w-4 mr-2" /> Stop sandbox
+                          </DropdownMenuItem>
+                        )}
+                        {activeArtifact.artifactId && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setShowVersionHistory(v => !v)}>
+                              <Clock className="h-4 w-4 mr-2" /> Version history
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                );
-              })}
-            </div>
+                  {/* Row 2: Code/Preview tabs (non-document only) */}
+                  {activeArtifact.type !== "document" && (
+                    <div className="flex items-center gap-1 px-3 py-1.5 border-t">
+                      <div className="flex rounded-md border bg-background overflow-hidden">
+                        <button
+                          onClick={() => setArtifactViewMode("code")}
+                          className={cn("px-3 py-1.5 text-xs min-h-[36px]", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          Code
+                        </button>
+                        <button
+                          onClick={() => setArtifactViewMode("preview")}
+                          className={cn("px-3 py-1.5 text-xs border-l min-h-[36px]", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                        >
+                          {activeArtifact.previewUrl ? "Live" : "Preview"}
+                        </button>
+                      </div>
+                      {activeArtifact.previewUrl && (
+                        <span className="inline-flex items-center gap-1 ml-auto">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", sandboxStopped ? "bg-muted-foreground" : "bg-green-500")} />
+                          <span className="text-[10px] text-muted-foreground">{sandboxStopped ? "Stopped" : "Running"}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Mobile file selector -- horizontal scroll */}
+                {artifactFiles.length > 1 && (
+                  <div className="md:hidden flex items-center gap-1 px-3 py-1.5 border-b overflow-x-auto">
+                    {artifactFiles.map((f) => (
+                      <button
+                        key={f.path}
+                        onClick={() => setSelectedFilePath(f.path)}
+                        className={cn(
+                          "text-[10px] px-2 py-1 rounded whitespace-nowrap shrink-0",
+                          (selectedFilePath ?? artifactFiles[0]?.path) === f.path
+                            ? "bg-primary/15 text-primary"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {f.path.split("/").pop()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* File tree sidebar — collapsible (desktop only) */}
+                {fileTreeCollapsed ? (
+                  <div className="hidden md:flex shrink-0 border-r flex-col bg-muted/20">
+                    <button
+                      onClick={() => setFileTreeCollapsed(false)}
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                      aria-label="Expand file tree"
+                      title="Show files"
+                    >
+                      <PanelRightOpen className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hidden md:flex w-44 shrink-0 border-r flex-col bg-muted/20">
+                    <div className="px-3 py-2 border-b flex items-center justify-between">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Files</p>
+                      <button
+                        onClick={() => setFileTreeCollapsed(true)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Collapse file tree"
+                        title="Hide files"
+                      >
+                        <PanelRightClose className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <FileTree
+                        files={tree}
+                        selectedPath={currentPath}
+                        onSelectFile={(path) => { setSelectedFilePath(path); setArtifactViewMode("code"); }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Code/Preview area — or TipTap editor for documents */}
+                <div className="flex-1 flex flex-col min-w-0">
+                  {/* Header bar — desktop only (mobile uses simplified toolbar above) */}
+                  <div className="hidden md:flex items-center justify-between px-4 py-2 border-b">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {activeArtifact.type === "document" ? (
+                        <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                      ) : (
+                        <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="text-sm font-medium truncate">{displayName}</span>
+                      {activeArtifact.currentVersion != null && (
+                        <span className="text-[9px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                          v{activeArtifact.currentVersion}
+                        </span>
+                      )}
+                      {activeArtifact.type !== "document" && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">{displayLang}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {activeArtifact.type !== "document" && (
+                        <div className="flex rounded-md border bg-background overflow-hidden mr-1">
+                          <button
+                            onClick={() => setArtifactViewMode("code")}
+                            className={cn("px-2.5 py-1 text-xs", artifactViewMode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                          >
+                            Code
+                          </button>
+                          <button
+                            onClick={() => setArtifactViewMode("preview")}
+                            className={cn("px-2.5 py-1 text-xs border-l", artifactViewMode === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                          >
+                            {activeArtifact.previewUrl ? "Live" : "Preview"}
+                          </button>
+                        </div>
+                      )}
+                      {activeArtifact.type !== "document" && activeArtifact.artifactId && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-2 mr-1"
+                          disabled={codeSaving}
+                          onClick={async () => {
+                            if (!activeArtifact.artifactId) return;
+                            // Check if code actually changed
+                            if (displayCode === activeArtifact.code) {
+                              // No changes — briefly flash the button to indicate
+                              const btn = document.querySelector("[data-save-btn]") as HTMLElement;
+                              if (btn) { btn.textContent = "No changes"; setTimeout(() => { btn.textContent = ""; }, 1500); }
+                              return;
+                            }
+                            setCodeSaving(true);
+                            try {
+                              await fetch(`/api/artifacts/${activeArtifact.artifactId}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ content: displayCode }),
+                              });
+                              const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ content: displayCode, change_type: "manual_edit", change_summary: "Manual save" }),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data.new_version) {
+                                  setActiveArtifact((prev) => prev ? { ...prev, code: displayCode, currentVersion: data.new_version } : prev);
+                                }
+                              }
+                            } catch {
+                              // silent
+                            } finally {
+                              setCodeSaving(false);
+                            }
+                          }}
+                        >
+                          {codeSaving ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <><Save className="h-3.5 w-3.5 mr-1" /> Save</>
+                          )}
+                        </Button>
+                      )}
+                      {activeArtifact.previewUrl && (
+                        <a
+                          href={activeArtifact.previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary hover:underline flex items-center gap-1 mr-1"
+                        >
+                          Open in new tab <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
+                      {activeArtifact.previewUrl && (
+                        <span className="inline-flex items-center gap-1 mr-1">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", sandboxStopped ? "bg-muted-foreground" : "bg-green-500")} />
+                          <span className="text-[10px] text-muted-foreground">{sandboxStopped ? "Stopped" : "Running"}</span>
+                        </span>
+                      )}
+                      {activeArtifact.previewUrl && (
+                        <button
+                          disabled={sandboxRestarting}
+                          onClick={async () => {
+                            setSandboxRestarting(true);
+                            setSandboxStopped(false);
+                            setArtifactViewMode("preview");
+                            setPreviewError(null);
+                            setPreviewRetryCount(0);
+                            try {
+                              const endpoint = activeArtifact.artifactId
+                                ? `/api/sandbox/${activeArtifact.artifactId}`
+                                : "/api/sandbox/restart";
+                              const body = activeArtifact.artifactId
+                                ? {}
+                                : {
+                                    snapshotId: activeArtifact.snapshotId ?? undefined,
+                                    runCommand: activeArtifact.runCommand ?? "npm start",
+                                    exposePort: activeArtifact.exposePort ?? 5173,
+                                    files: activeArtifact.files,
+                                  };
+                              const res = await fetch(endpoint, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(body),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data.previewUrl) {
+                                  setActiveArtifact((prev) => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                }
+                              }
+                            } catch {
+                              // silent
+                            } finally {
+                              setSandboxRestarting(false);
+                            }
+                          }}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors mr-1",
+                            sandboxRestarting
+                              ? "border-primary bg-primary/10 text-primary animate-pulse"
+                              : "border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900"
+                          )}
+                        >
+                          {sandboxRestarting ? (
+                            <><Loader2 className="h-2.5 w-2.5 animate-spin" /> Restarting...</>
+                          ) : (
+                            <><Zap className="h-2.5 w-2.5" /> Restart</>
+                          )}
+                        </button>
+                      )}
+                      {activeArtifact.previewUrl && !sandboxStopped && (
+                        <button
+                          disabled={sandboxRestarting}
+                          onClick={async () => {
+                            if (activeArtifact.artifactId) {
+                              try {
+                                await fetch(`/api/sandbox/${activeArtifact.artifactId}`, { method: "DELETE" });
+                              } catch { /* best effort */ }
+                            }
+                            setSandboxStopped(true);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900 px-2 py-0.5 text-[10px] transition-colors"
+                          title="Stop sandbox"
+                        >
+                          <Square className="h-2.5 w-2.5 fill-current" /> Stop
+                        </button>
+                      )}
+                      {activeArtifact.artifactId && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={cn("h-7 w-7", showVersionHistory && "bg-primary/10 text-primary")}
+                          onClick={() => setShowVersionHistory(v => !v)}
+                          aria-label="Version history"
+                          title="Version history"
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {activeArtifact.artifactId && (
+                        <ShareLinkButton
+                          resourceType="artifact"
+                          resourceId={activeArtifact.artifactId}
+                          resourceTitle={activeArtifact.filename}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                        />
+                      )}
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setActiveArtifact(null)} aria-label="Close artifact panel">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {activeArtifact.description && (
+                    <div className="hidden md:block px-4 py-1.5 border-b bg-muted/10">
+                      <p className="text-xs text-muted-foreground">{activeArtifact.description}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-1 overflow-hidden relative">
+                    {/* Version history — full-screen overlay on mobile, sidebar on desktop */}
+                    {showVersionHistory && activeArtifact.artifactId && (() => {
+                      const versionHistoryProps = {
+                        artifactId: activeArtifact.artifactId!,
+                        currentVersion: activeArtifact.currentVersion ?? 1,
+                        onRestore: async (newVersion: number) => {
+                          try {
+                            const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}`);
+                            if (res.ok) {
+                              const data = await res.json();
+                              setActiveArtifact((prev) => prev ? {
+                                ...prev,
+                                code: data.content ?? prev.code,
+                                currentVersion: data.current_version ?? newVersion,
+                                files: data.files?.length > 0
+                                  ? data.files.map((f: { file_path: string; content: string }) => ({ path: f.file_path, content: f.content }))
+                                  : prev.files,
+                              } : prev);
+                            }
+                          } catch { /* silent */ }
+                        },
+                        onSelect: async (versionNumber: number) => {
+                          try {
+                            const res = await fetch(`/api/artifacts/${activeArtifact.artifactId}/versions/${versionNumber}`);
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            if (!data.content) return;
+                            const versionFiles = data.files && Array.isArray(data.files)
+                              ? data.files.map((f: { file_path?: string; path?: string; content: string }) => ({
+                                  path: f.path ?? f.file_path ?? "",
+                                  content: f.content,
+                                }))
+                              : undefined;
+                            setActiveArtifact((prev) => {
+                              if (!prev) return prev;
+                              return { ...prev, code: data.content, files: versionFiles ?? prev.files };
+                            });
+                            if (activeArtifact.previewUrl && versionFiles) {
+                              setPreviewError(null);
+                              setPreviewRetryCount(0);
+                              setSandboxRestarting(true);
+                              try {
+                                const endpoint = activeArtifact.artifactId
+                                  ? `/api/sandbox/${activeArtifact.artifactId}`
+                                  : "/api/sandbox/restart";
+                                const body = activeArtifact.artifactId
+                                  ? {}
+                                  : { snapshotId: activeArtifact.snapshotId, runCommand: activeArtifact.runCommand ?? "npm run dev", exposePort: activeArtifact.exposePort ?? 5173, files: versionFiles };
+                                const restartRes = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                                if (restartRes.ok) {
+                                  const restartData = await restartRes.json();
+                                  if (restartData.previewUrl) setActiveArtifact((prev) => prev ? { ...prev, previewUrl: restartData.previewUrl } : prev);
+                                }
+                              } catch { /* silent */ }
+                              setSandboxRestarting(false);
+                              setArtifactViewMode("preview");
+                            }
+                          } catch { /* silent */ }
+                        },
+                      };
+                      return (
+                        <>
+                          {/* Mobile: full-screen overlay */}
+                          <div className="md:hidden fixed inset-0 z-[60] bg-background flex flex-col">
+                            <div className="flex items-center justify-between px-3 py-2 border-b safe-area-top">
+                              <span className="text-sm font-medium">Version History</span>
+                              <button
+                                onClick={() => setShowVersionHistory(false)}
+                                className="inline-flex items-center justify-center rounded-md min-h-[44px] min-w-[44px] p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                aria-label="Close version history"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2">
+                              <ArtifactVersionHistory {...versionHistoryProps} />
+                            </div>
+                          </div>
+                          {/* Desktop: sidebar */}
+                          <div className="hidden md:block w-56 shrink-0 border-r overflow-y-auto p-2 bg-muted/10">
+                            <ArtifactVersionHistory {...versionHistoryProps} />
+                          </div>
+                        </>
+                      );
+                    })()}
+                    <div className="flex-1 overflow-auto w-full min-w-0">
+                    {activeArtifact.type === "document" ? (
+                      <DocumentArtifactEditor
+                        content={displayCode}
+                        documentId={activeArtifact.contextId}
+                        artifactId={activeArtifact.artifactId}
+                        onVersionCreated={(v) => setActiveArtifact((prev) => prev ? { ...prev, currentVersion: v } : prev)}
+                      />
+                    ) : (
+                      <>
+                        {artifactViewMode === "code" && (
+                          <div className="w-full min-w-0">
+                            <CodeBlock code={displayCode} language={displayLang as import("shiki").BundledLanguage} showLineNumbers>
+                              <div />
+                            </CodeBlock>
+                          </div>
+                        )}
+                        {artifactViewMode === "preview" && (
+                          activeArtifact.previewUrl && sandboxStopped ? (
+                            <div className="relative w-full h-full flex flex-col items-center justify-center bg-background">
+                              <Square className="h-10 w-10 text-muted-foreground/30 mb-4" />
+                              <p className="text-base font-semibold text-foreground">Sandbox stopped</p>
+                              <p className="text-sm text-muted-foreground mt-1">Click &quot;Start&quot; to resume the preview</p>
+                              <button
+                                onClick={() => {
+                                  setSandboxStopped(false);
+                                  setSandboxRestarting(true);
+                                  setPreviewError(null);
+                                  setPreviewRetryCount(0);
+                                  const endpoint = activeArtifact.artifactId
+                                    ? `/api/sandbox/${activeArtifact.artifactId}`
+                                    : "/api/sandbox/restart";
+                                  const body = activeArtifact.artifactId
+                                    ? {}
+                                    : {
+                                        snapshotId: activeArtifact.snapshotId ?? undefined,
+                                        runCommand: activeArtifact.runCommand ?? "npm start",
+                                        exposePort: activeArtifact.exposePort ?? 5173,
+                                        files: activeArtifact.files,
+                                      };
+                                  fetch(endpoint, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify(body),
+                                  })
+                                    .then(res => res.ok ? res.json() : null)
+                                    .then(data => {
+                                      if (data?.previewUrl) {
+                                        setActiveArtifact(prev => prev ? { ...prev, previewUrl: data.previewUrl } : prev);
+                                      }
+                                    })
+                                    .catch(() => {})
+                                    .finally(() => setSandboxRestarting(false));
+                                }}
+                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                              >
+                                <Zap className="h-4 w-4" />
+                                Start sandbox
+                              </button>
+                            </div>
+                          ) : activeArtifact.previewUrl ? (
+                            <div className="relative w-full h-full">
+                              {/* Loading overlay — shows during restart or initial load */}
+                              {sandboxRestarting && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-20">
+                                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                                  <p className="text-base font-semibold text-foreground">Restarting sandbox...</p>
+                                  <p className="text-sm text-muted-foreground mt-1">Installing packages and building your app</p>
+                                  <p className="text-xs text-muted-foreground mt-3">This may take 15-30 seconds</p>
+                                </div>
+                              )}
+                              {/* Error overlay with retry */}
+                              {previewError && !sandboxRestarting && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background z-20">
+                                  <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+                                  <p className="text-base font-semibold text-foreground">Preview failed to load</p>
+                                  <p className="text-sm text-muted-foreground mt-1 max-w-xs text-center">{previewError}</p>
+                                  <button
+                                    onClick={() => {
+                                      setPreviewError(null);
+                                      setPreviewRetryCount(c => c + 1);
+                                    }}
+                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Retry
+                                  </button>
+                                  {previewRetryCount > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-2">Retry attempt {previewRetryCount}</p>
+                                  )}
+                                </div>
+                              )}
+                              {/* Loading overlay with elapsed timer */}
+                              {!previewError && (
+                                <div id="preview-loader" className="absolute inset-0 flex flex-col items-center justify-center bg-background z-10 transition-opacity duration-300">
+                                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                                  <p className="text-sm font-medium text-foreground">
+                                    {previewElapsed < 15 ? "Loading preview..." : previewElapsed < 60 ? "Building project..." : "Still working..."}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {previewElapsed < 10
+                                      ? "Waiting for sandbox to respond"
+                                      : previewElapsed < 30
+                                        ? `Installing dependencies... (${previewElapsed}s)`
+                                        : previewElapsed < 90
+                                          ? `Compiling and starting server... (${previewElapsed}s)`
+                                          : `This is taking longer than usual (${previewElapsed}s)`}
+                                  </p>
+                                  {previewElapsed >= 90 && (
+                                    <button
+                                      onClick={() => setPreviewError("Preview timed out. The sandbox may need to be restarted.")}
+                                      className="mt-3 text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+                                    >
+                                      Cancel and retry
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <iframe
+                                ref={previewIframeRef}
+                                key={`preview-${previewRetryCount}-v${activeArtifact.currentVersion ?? 0}`}
+                                src={activeArtifact.previewUrl + `${activeArtifact.previewUrl.includes("?") ? "&" : "?"}v=${activeArtifact.currentVersion ?? 0}&r=${previewRetryCount}`}
+                                className="w-full h-full bg-white"
+                                title={`Preview of ${activeArtifact.filename}`}
+                                onLoad={(e) => {
+                                  const iframe = e.target as HTMLIFrameElement;
+                                  const loader = iframe.parentElement?.querySelector("#preview-loader");
+
+                                  // Check if the iframe loaded an error page (502, blank, etc.)
+                                  // We can detect this by checking if the iframe has a very small content size
+                                  try {
+                                    // Cross-origin iframes will throw on contentDocument access
+                                    // But we can use a fetch probe to check the actual status
+                                    const url = iframe.src;
+                                    fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) })
+                                      .then(res => {
+                                        if (res.status === 502 || res.status === 503) {
+                                          // Server not ready — auto-retry after a delay (up to 3 auto-retries)
+                                          if (previewRetryCount < 3) {
+                                            setTimeout(() => {
+                                              setPreviewRetryCount(c => c + 1);
+                                            }, 3000);
+                                          } else {
+                                            setPreviewError(`Server returned ${res.status}. The sandbox may still be starting up.`);
+                                          }
+                                          return;
+                                        }
+                                        // Success — hide loader and stop timer
+                                        if (previewTimerRef.current) clearInterval(previewTimerRef.current);
+                                        if (loader) {
+                                          (loader as HTMLElement).style.opacity = "0";
+                                          setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                        }
+                                        setPreviewError(null);
+                                      })
+                                      .catch(() => {
+                                        // Fetch failed but iframe loaded something — trust it
+                                        if (previewTimerRef.current) clearInterval(previewTimerRef.current);
+                                        if (loader) {
+                                          (loader as HTMLElement).style.opacity = "0";
+                                          setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                        }
+                                      });
+                                  } catch {
+                                    // Cross-origin — just hide loader on any load event
+                                    if (loader) {
+                                      (loader as HTMLElement).style.opacity = "0";
+                                      setTimeout(() => { if (loader) (loader as HTMLElement).style.display = "none"; }, 300);
+                                    }
+                                  }
+                                }}
+                                onError={() => {
+                                  setPreviewError("Failed to connect to sandbox. The server may have stopped.");
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <iframe
+                              srcDoc={(() => {
+                                const code = displayCode;
+                                const lang = displayLang;
+                                if (lang === "html" || code.trim().startsWith("<!DOCTYPE") || code.trim().startsWith("<html")) return code;
+                                if (lang === "tsx" || lang === "jsx" || lang === "typescript" || lang === "javascript") {
+                                  if (code.includes("React") || code.includes("useState") || code.includes("JSX") || code.includes("<div")) {
+                                    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://unpkg.com/react@18/umd/react.development.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><style>body{margin:0;font-family:system-ui,sans-serif}</style></head><body><div id="root"></div><script type="text/babel">${code}\nif(typeof App!=='undefined')ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));</script></body></html>`;
+                                  }
+                                  return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;background:#1a1a2e;color:#0f0}</style></head><body><pre id="output"></pre><script>const _log=console.log;const _lines=[];console.log=(...a)=>{_lines.push(a.join(' '));document.getElementById('output').textContent=_lines.join('\\n')};${code}</script></body></html>`;
+                                }
+                                if (lang === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS Preview</p></body></html>`;
+                                if (lang === "svg") return `<!DOCTYPE html><html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${code}</body></html>`;
+                                return `<!DOCTYPE html><html><head><style>body{margin:0;font-family:monospace;padding:16px;white-space:pre-wrap;background:#1e1e1e;color:#d4d4d4}</style></head><body>${code.replace(/</g, "&lt;")}</body></html>`;
+                              })()}
+                              className="w-full h-full bg-white"
+                              sandbox="allow-scripts"
+                              title={`Preview of ${activeArtifact.filename}`}
+                            />
+                          )
+                        )}
+                      </>
+                    )}
+                  </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </aside>
+      ) : !isPortal ? (
+        <>
+          {/* Context panel toggle button (visible when panel is hidden, desktop only) */}
+          {!contextPanelOpen && (
+            <button
+              onClick={toggleContextPanel}
+              className="hidden lg:flex items-center justify-center w-8 shrink-0 border-l bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-label="Show context panel"
+              title="Show context panel"
+            >
+              <PanelRightOpen className="h-4 w-4" />
+            </button>
           )}
-        </div>
-      </aside>
+
+          {/* Right: context panel (hidden by default, opens on search results) */}
+          {contextPanelOpen && (
+            <aside className="hidden lg:flex w-72 shrink-0 border-l flex-col bg-card">
+              <div className="px-4 py-3 border-b flex items-center gap-2">
+                <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Context Retrieved</p>
+                {latestSources.length > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground">{latestSources.length} items</span>
+                )}
+                <button
+                  onClick={toggleContextPanel}
+                  className="ml-auto inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  aria-label="Hide context panel"
+                  title="Hide context panel"
+                >
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {latestSources.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4 text-center">
+                    <FileText className="h-6 w-6 mb-2 opacity-30" />
+                    <p className="text-xs">Send a message to see which documents were retrieved.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {latestSources.map((s, i) => {
+                      const ContentIcon = CONTENT_ICON[s.content_type] ?? FileText;
+                      const SrcIcon = SOURCE_ICON[s.source_type] ?? FileText;
+                      return (
+                        <div key={s.id} className="px-4 py-3 space-y-1.5">
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5 shrink-0">
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium leading-snug line-clamp-2">{s.title}</p>
+                              {s.description_short && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                  {s.description_short}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <SrcIcon className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">
+                              {SOURCE_LABEL[s.source_type] ?? s.source_type}
+                            </span>
+                            <ContentIcon className="h-3 w-3 text-muted-foreground ml-1" />
+                            <span className="text-[10px] text-muted-foreground">
+                              {s.content_type.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <ScoreBar score={s.rrf_score} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </aside>
+          )}
+        </>
+      ) : null}
+      <ChatParticipantsModal
+        open={participantsOpen}
+        onClose={() => setParticipantsOpen(false)}
+        conversationId={conversationId ?? ""}
+        currentUserId=""
+        isOwner={true}
+      />
     </div>
   );
 }

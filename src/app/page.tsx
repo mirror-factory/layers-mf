@@ -10,7 +10,7 @@ export default async function RootPage() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect("/context");
+    redirect("/home");
   }
 
   return (

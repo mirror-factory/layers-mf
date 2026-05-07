@@ -273,7 +273,7 @@ function UseCase1() {
       <Card className="p-6 mb-6">
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           You arrive at your desk. Instead of checking Slack, Linear, Google
-          Drive, and Discord separately, Layers has already done that for you.
+          Drive, and Discord separately, Dewey has already done that for you.
         </p>
 
         <div className="flex flex-wrap gap-2 mb-6">
@@ -359,16 +359,16 @@ function UseCase2() {
             {
               icon: MessageSquare,
               color: "bg-blue-500",
-              title: "Ask Layers Chat",
+              title: "Ask Dewey Chat",
               description:
-                '"What did we decide about pricing last week?" — Layers expands your query into 4 variations, searches across all sources with hybrid vector + keyword search.',
+                '"What did we decide about pricing last week?" — Dewey expands your query into 4 variations, searches across all sources with hybrid vector + keyword search.',
             },
             {
               icon: Brain,
               color: "bg-purple-500",
               title: "AI Synthesizes Across Sources",
               description:
-                "Layers finds the meeting transcript where it was discussed, the Linear issue where it was tracked, the Google Doc with the analysis, and the Slack message confirming it. Trust-weighted ranking puts the Linear issue (authoritative) above the Slack message (context).",
+                "Dewey finds the meeting transcript where it was discussed, the Linear issue where it was tracked, the Google Doc with the analysis, and the Slack message confirming it. Trust-weighted ranking puts the Linear issue (authoritative) above the Slack message (context).",
             },
             {
               icon: FileText,
@@ -471,7 +471,7 @@ function UseCase3() {
               color: "bg-purple-500",
               title: "AI Surfaces Insights",
               description:
-                '"New insight: The meeting transcript from Monday mentions a March 28 deadline, but PROD-225 (Stripe setup) is still in Backlog." — Layers finds contradictions across sources automatically.',
+                '"New insight: The meeting transcript from Monday mentions a March 28 deadline, but PROD-225 (Stripe setup) is still in Backlog." — Dewey finds contradictions across sources automatically.',
             },
             {
               icon: BarChart3,
@@ -623,7 +623,7 @@ function UseCase5() {
               color: "bg-emerald-500",
               title: "Searchable Forever",
               description:
-                "Six months later, someone asks \"what did we decide in the March planning meeting?\" — Layers finds the exact passage with the decision.",
+                "Six months later, someone asks \"what did we decide in the March planning meeting?\" — Dewey finds the exact passage with the decision.",
             },
           ]}
         />
@@ -755,7 +755,7 @@ function DataFlowSection() {
           {/* Row 2: Ingestion */}
           <div className="flex justify-center mb-4">
             <Badge variant="outline" className="text-xs px-4 py-1.5">
-              Nango OAuth + Webhook Ingestion
+              MCP + Webhook Ingestion
             </Badge>
           </div>
 
@@ -881,7 +881,7 @@ export default function UseCasesPage() {
       </AnimatedSection>
 
       <div className="mt-12 text-center text-xs text-muted-foreground">
-        <p>Layers Platform — Mirror Factory</p>
+        <p>Layers — Mirror Factory</p>
       </div>
     </div>
   );

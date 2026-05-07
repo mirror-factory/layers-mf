@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dependencies Registry",
+  "description": "Canonical shape for .ai-dev-kit/registries/dependencies.yaml -- one entry per declared dependency (runtime, dev, peer) with its current vulnerability list, cross-referenced vendor registry, and the paths that import it. Refreshed by scripts/sync-dependencies.ts (runs pnpm/npm audit --json + import scan). The pre-push gate check-dependencies.ts fails on CRITICAL or HIGH, warns on MEDIUM, or when last_audited_on is older than 14 days.",
+  "type": "object",
+  "required": ["kind", "schema_version", "last_audited_on", "entries", "summary"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "dependencies"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "last_audited_on": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last sync-dependencies.ts run. Stale after 14 days; check-dependencies.ts fails the push to force a refresh."
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version", "type", "vendor_registry", "license", "vulnerabilities", "used_by"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Exact package name as declared in package.json."
+          },
+          "version": {
+            "type": "string",
+            "description": "Version range declared in package.json (e.g. '^4.15.0')."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["runtime", "dev", "peer"]
+          },
+          "vendor_registry": {
+            "type": ["string", "null"],
+            "description": "Relative path to the matching .ai-dev-kit/registries/<vendor>.json when the package name lines up with a known vendor (assemblyai -> .ai-dev-kit/registries/assemblyai.json). null when no match."
+          },
+          "license": {
+            "type": ["string", "null"]
+          },
+          "vulnerabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "severity"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "CVE-YYYY-NNNN, GHSA advisory id, or the ID reported by pnpm/npm audit."
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+                },
+                "patched_in": {
+                  "type": ["string", "null"],
+                  "description": "Semver range that resolves the advisory, or null when no patch is available yet."
+                },
+                "reported_on": {
+                  "type": ["string", "null"],
+                  "format": "date"
+                },
+                "url": {
+                  "type": ["string", "null"],
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "used_by": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Relative source paths that import this package (grep-based scan across lib/, app/, components/, src/)."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["runtime", "dev", "critical", "high", "medium", "low"],
+      "properties": {
+        "runtime": { "type": "integer" },
+        "dev": { "type": "integer" },
+        "critical": { "type": "integer" },
+        "high": { "type": "integer" },
+        "medium": { "type": "integer" },
+        "low": { "type": "integer" }
+      }
+    }
+  },
+  "additionalProperties": false
+}
